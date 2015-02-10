@@ -204,6 +204,16 @@ Section dedup.
     - simpl. invc H. concludes. rewrite IHxs.
       break_if; congruence.
   Qed.
+
+  Lemma dedup_not_in_cons :
+    forall x xs,
+      (~ In x xs) ->
+      x :: dedup xs = dedup (x :: xs).
+  Proof.
+    induction xs; intros.
+    - auto.
+    - simpl in *. intuition. repeat break_match; intuition.
+  Qed.
 End dedup.
 
 Lemma filter_fun_ext_eq : forall A f g xs,
