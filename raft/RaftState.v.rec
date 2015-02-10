@@ -1,0 +1,32 @@
+Section RaftState.
+  Variable term : Type.
+  Variable name : Type.
+  Variable entry : Type.
+  Variable logIndex : Type.
+  Variable serverType : Type.
+  Variable stateMachineData : Type.
+
+  Record raft_data :=
+    mkRaft_data {
+        (* persistent *)
+        currentTerm : term;
+        votedFor : option name;
+        log : list entry;
+        (* volatile *)
+        commitIndex : logIndex;
+        lastApplied : logIndex;
+        stateMachine : stateMachineData;
+        (* leader state *)
+        nextIndex : list (name * logIndex);
+        matchIndex : list (name * logIndex);
+        shouldSend : bool;
+        (* candidate state *)
+        votesReceived : list name;
+        (* whoami *)
+        type : serverType;
+        (* client request state *)
+        outstandingRequests : list entry;
+        (* ghost variables *)
+        electoralVictories : list (term * list name * list entry)
+      }.
+End RaftState.
