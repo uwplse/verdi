@@ -711,15 +711,6 @@ Section CommonTheorems.
     repeat break_match; repeat find_inversion; auto.
   Qed.
 
-  Lemma stupid_list_lemma_392349283423 :
-    forall A xs ys zs (a b : A),
-      zs = xs ++ a :: ys ->
-      In b (xs ++ ys) ->
-      In b zs.
-  Proof.
-    intros. subst. do_in_app. intuition.
-  Qed.
-
   Lemma handleAppendEntriesReply_same_log :
     forall n st src t es b st' l,
       handleAppendEntriesReply n st src t es b = (st', l) ->
