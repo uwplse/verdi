@@ -539,13 +539,6 @@ Section CommonTheorems.
     eapply uniqueIndices_elim_eq; eauto.
   Qed.
 
-  Lemma if_sum_bool_fun_comm :
-    forall A B C D (b : {A}+{B}) (c1 c2 : C) (f : C -> D),
-      f (if b then c1 else c2) = if b then f c1 else f c2.
-  Proof.
-    intros. break_if; auto.
-  Qed.
-
   Definition entries_match entries entries' :=
     forall e e' e'',
       eIndex e = eIndex e' ->
