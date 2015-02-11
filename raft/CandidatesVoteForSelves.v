@@ -27,7 +27,7 @@ Section CandidatesVoteForSelves.
         rewrite H in *
     end.
 
-  Ltac come_to_jesus :=
+  Ltac t :=
     repeat break_match;
       simpl in *; try find_inversion; rewrite_state;
       repeat break_if; subst; eauto; simpl in *; try discriminate.
@@ -37,7 +37,7 @@ Section CandidatesVoteForSelves.
   Proof.
     unfold raft_net_invariant_do_leader, candidates_vote_for_selves. intros.
     unfold doLeader, advanceCommitIndex in *.
-    come_to_jesus.
+    t.
   Qed.
 
   Lemma candidates_vote_for_selves_client_request :
@@ -45,7 +45,7 @@ Section CandidatesVoteForSelves.
   Proof.
     unfold raft_net_invariant_client_request, candidates_vote_for_selves.
     intros. unfold handleClientRequest in *.
-    come_to_jesus.
+    t.
   Qed.
 
   Lemma candidates_vote_for_selves_timeout :
@@ -53,7 +53,7 @@ Section CandidatesVoteForSelves.
   Proof.
     unfold raft_net_invariant_timeout, candidates_vote_for_selves. intros.
     unfold handleTimeout, tryToBecomeLeader in *.
-    come_to_jesus.
+    t.
   Qed.
 
   Lemma candidates_vote_for_selves_append_entries :
@@ -61,7 +61,7 @@ Section CandidatesVoteForSelves.
   Proof.
     unfold raft_net_invariant_append_entries, candidates_vote_for_selves. intros.
     unfold handleAppendEntries, advanceCurrentTerm in *.
-    come_to_jesus.
+    t.
   Qed.
 
   Lemma candidates_vote_for_selves_append_entries_reply :
@@ -69,7 +69,7 @@ Section CandidatesVoteForSelves.
   Proof.
     unfold raft_net_invariant_append_entries_reply, candidates_vote_for_selves. intros.
     unfold handleAppendEntriesReply, advanceCurrentTerm in *.
-    come_to_jesus.
+    t.
   Qed.
 
   Lemma candidates_vote_for_selves_request_vote :
@@ -77,7 +77,7 @@ Section CandidatesVoteForSelves.
   Proof.
     unfold raft_net_invariant_request_vote, candidates_vote_for_selves. intros.
     unfold handleRequestVote, advanceCurrentTerm in *.
-    come_to_jesus. exfalso. find_apply_hyp_hyp. congruence.
+    t. exfalso. find_apply_hyp_hyp. congruence.
   Qed.
 
   Lemma candidates_vote_for_selves_request_vote_reply :
@@ -85,7 +85,7 @@ Section CandidatesVoteForSelves.
   Proof.
     unfold raft_net_invariant_request_vote_reply, candidates_vote_for_selves. intros.
     unfold handleRequestVoteReply, advanceCurrentTerm in *.
-    come_to_jesus.
+    t.
   Qed.
   
   Lemma candidates_vote_for_selves_do_generic_server :
@@ -93,7 +93,7 @@ Section CandidatesVoteForSelves.
   Proof.
     unfold raft_net_invariant_do_generic_server, candidates_vote_for_selves. intros.
     unfold doGenericServer in *.
-    come_to_jesus.
+    t.
   Qed.
   
   Lemma candidates_vote_for_selves_state_same_packet_subset :
