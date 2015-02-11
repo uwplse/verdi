@@ -4,6 +4,7 @@ Require Import List.
 Require Import Coq.Numbers.Natural.Abstract.NDiv.
 Import ListNotations.
 Require Import Sorting.Permutation.
+Require Import Omega.
 
 Require Import Util.
 Require Import Net.
@@ -227,6 +228,196 @@ Section LeaderSublog.
       find_apply_hyp_hyp; intuition eauto; subst; try discriminate.
   Qed.
 
+  Require Import CandidateEntries.
+  Require Import RaftRefinement.
+  Require Import VotesCorrect.
+  Require Import CroniesCorrect.
+
+  Definition CandidateEntriesLowered net e h :=
+      currentTerm (nwState net h) = eTerm e ->
+      wonElection (dedup name_eq_dec (votesReceived (nwState net h))) = true ->
+      type (nwState net h) <> Candidate.
+
+  Ltac apply_prop_hyp P Q :=
+    match goal with
+    | [ H : context [ P ], H' : context [ Q ] |- _ ] =>
+      apply H in H'
+    end.
+
+  Lemma candidate_entries_lowered' :
+    forall net,
+      CandidateEntries net ->
+      votes_correct net ->
+      cronies_correct net ->
+      forall h h' e,
+        In e (log (snd (nwState net h'))) ->
+        CandidateEntriesLowered (deghost net) e h.
+  Proof.
+    unfold CandidateEntriesLowered, CandidateEntries, votes_correct, cronies_correct.
+    intros. break_and.
+    rewrite deghost_spec.
+
+    apply_prop_hyp candidateEntries_host_invariant In.
+    unfold candidateEntries in *. break_exists. break_and.
+    repeat match goal with
+           | [ H : _ |- _ ] => rewrite deghost_spec in H
+           end.
+    intro.
+    assert (x = h).
+    {
+      match goal with
+      | H : wonElection _ = _ |- _ =>
+        eapply wonElection_one_in_common in H; [|clear H; eauto]
+      end.
+      break_exists. break_and.
+
+      eapply_prop one_vote_per_term;
+        try solve [eapply_prop cronies_votes; eauto].
+      eapply_prop cronies_votes.
+      repeat find_reverse_rewrite.
+      eapply_prop votes_received_cronies; auto.
+    }
+    subst.
+    concludes.
+    contradiction.
+  Qed.
+
+  Lemma candidate_entries_lowered :
+    forall net,
+      raft_intermediate_reachable net ->
+      forall h h' e,
+        In e (log (nwState net h')) ->
+        CandidateEntriesLowered net e h.
+  Proof.
+    intros net H.
+    pattern net.
+    apply lower_prop; auto.
+    clear H net.
+    intros.
+    repeat match goal with
+           | [ H : _ |- _ ] => rewrite deghost_spec in H
+           end.
+    eapply candidate_entries_lowered';
+      eauto using candidate_entries_invariant, votes_correct_invariant, cronies_correct_invariant.
+  Qed.
+
+  Definition CandidateEntriesLowered_rvr net e p :=
+    In p (nwPackets net) ->
+    pBody p = RequestVoteReply (eTerm e) true ->
+    currentTerm (nwState net (pDst p)) = eTerm e ->
+    wonElection (dedup name_eq_dec (pSrc p :: votesReceived (nwState net (pDst p)))) = true ->
+    type (nwState net (pDst p)) <> Candidate.
+
+  Lemma candidate_entries_lowered_rvr' :
+    forall net,
+      CandidateEntries net ->
+      votes_correct net ->
+      cronies_correct net ->
+      forall p h e,
+        In e (log (snd (nwState net h))) ->
+        CandidateEntriesLowered_rvr (deghost net) e p.
+  Proof.
+    unfold CandidateEntriesLowered_rvr, CandidateEntries, votes_correct, cronies_correct, votes_nw.
+    intros. break_and.
+    rewrite deghost_spec.
+    assert (exists q, In q (nwPackets net) /\ p = deghost_packet q).
+    {
+      unfold deghost in H3. simpl in *.
+      do_in_map. subst. simpl in *. eauto.
+    }
+    break_exists.  break_and. subst.
+    eapply H8 in H14; eauto. clear H8.
+    apply_prop_hyp candidateEntries_host_invariant In.
+    unfold candidateEntries in *. break_exists. break_and.
+    repeat match goal with
+           | [ H : _ |- _ ] => rewrite deghost_spec in H
+           end.
+    match goal with
+    | H : wonElection _ = _ |- _ =>
+      eapply wonElection_one_in_common in H; [|clear H; eauto]
+    end.
+    break_exists.
+    break_and.
+    simpl in *.
+    intuition.
+    - subst.
+      apply_prop_hyp cronies_votes In.
+      assert (x0 = pDst x) by (eapply_prop one_vote_per_term; eauto).
+      subst. concludes. contradiction.
+    - apply_prop_hyp votes_received_cronies In. concludes.
+      apply_prop_hyp cronies_votes In.
+      apply_prop_hyp cronies_votes In.
+      unfold raft_data in *. unfold raft_refined_base_params, raft_refined_multi_params in *.
+      simpl in *.
+      find_reverse_rewrite.
+      assert (x0 = pDst x) by (eapply_prop one_vote_per_term; eauto).
+      subst.
+      concludes. contradiction.
+  Qed.
+
+  Lemma candidate_entries_lowered_rvr :
+    forall net,
+      raft_intermediate_reachable net ->
+      forall p h e,
+        In e (log (nwState net h)) ->
+        CandidateEntriesLowered_rvr net e p.
+  Proof.
+    intros net H.
+    pattern net.
+    apply lower_prop; auto.
+    clear H net.
+    intros.
+    repeat match goal with
+           | [ H : _ |- _ ] => rewrite deghost_spec in H
+           end.
+    eapply candidate_entries_lowered_rvr';
+      eauto using candidate_entries_invariant, votes_correct_invariant, cronies_correct_invariant.
+  Qed.
+
+  Lemma candidate_entries_lowered_nw' :
+    forall net,
+      CandidateEntries net ->
+      votes_correct net ->
+      cronies_correct net ->
+      forall h p e t li pli plt es lc,
+        pBody p = AppendEntries t li pli plt es lc ->
+        In p (nwPackets (deghost net)) ->
+        In e es ->
+        CandidateEntriesLowered (deghost net) e h.
+  Admitted.
+
+  Lemma candidate_entries_lowered_nw :
+    forall net,
+      raft_intermediate_reachable net ->
+      forall h p e t li pli plt es lc,
+        pBody p = AppendEntries t li pli plt es lc ->
+        In p (nwPackets net) ->
+        In e es ->
+        CandidateEntriesLowered net e h.
+  Admitted.
+
+  Lemma candidate_entries_lowered_nw_rvr' :
+    forall net,
+      CandidateEntries net ->
+      votes_correct net ->
+      cronies_correct net ->
+      forall p' p e t li pli plt es lc,
+        pBody p = AppendEntries t li pli plt es lc ->
+        In p (nwPackets (deghost net)) ->
+        In e es ->
+        CandidateEntriesLowered_rvr (deghost net) e p'.
+  Admitted.
+
+  Lemma candidate_entries_lowered_nw_rvr :
+    forall net,
+      raft_intermediate_reachable net ->
+      forall p' p e t li pli plt es lc,
+        pBody p = AppendEntries t li pli plt es lc ->
+        In p (nwPackets net) ->
+        In e es ->
+        CandidateEntriesLowered_rvr net e p'.
+  Admitted.
+
   Lemma leader_sublog_request_vote_reply :
     raft_net_invariant_request_vote_reply
       leader_sublog_invariant.
@@ -237,15 +428,25 @@ Section LeaderSublog.
     intuition idtac; simpl in *.
     - repeat find_higher_order_rewrite; repeat break_match; repeat find_inversion;
       subst; simpl in *; intuition eauto; try discriminate.
-      + admit. (* these will use the new invariant *)
-      + admit.
+      + exfalso. eapply candidate_entries_lowered; eauto.
+      + rewrite dedup_not_in_cons in * by auto.
+        exfalso. eapply candidate_entries_lowered_rvr; eauto.
+        do_bool.
+        find_rewrite.
+        f_equal.
+        omega.
     - repeat find_higher_order_rewrite; repeat break_match; repeat find_inversion;
       subst; simpl in *; intuition eauto;
       find_apply_hyp_hyp; intuition eauto; subst; try discriminate.
-      + admit.
-      + admit.
-  Admitted.
-  
+      + exfalso. eapply candidate_entries_lowered_nw; eauto.
+      + rewrite dedup_not_in_cons in * by auto.
+        exfalso. eapply candidate_entries_lowered_nw_rvr; eauto.
+        do_bool.
+        find_rewrite.
+        f_equal.
+        omega.
+  Qed.
+
   Lemma leader_sublog_do_generic_server :
     raft_net_invariant_do_generic_server
       leader_sublog_invariant.
