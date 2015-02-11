@@ -71,6 +71,20 @@ Section CandidateEntries.
     simpl in *. intuition. subst. auto.
   Qed.
 
+  Lemma candidateEntries_same :
+    forall (st st' : name -> _) e,
+      candidateEntries e st ->
+      (forall h, cronies (fst (st' h)) = cronies (fst (st h))) ->
+      (forall h, currentTerm (snd (st' h)) = currentTerm (snd (st h))) ->
+      (forall h, type (snd (st' h)) = type (snd (st h))) ->
+      candidateEntries e st'.
+  Proof.
+    unfold candidateEntries.
+    firstorder. eexists.
+    repeat find_higher_order_rewrite.
+    eauto.
+  Qed.
+
   Lemma candidate_entries_client_request :
     refined_raft_net_invariant_client_request CandidateEntries.
   Proof.
@@ -81,32 +95,37 @@ Section CandidateEntries.
       intros; simpl in *.
       eapply candidateEntries_ext; try eassumption.
       repeat find_higher_order_rewrite.
+
       destruct (name_eq_dec h0 h); subst.
       + rewrite_update.
         simpl in *.
         find_apply_lem_hyp handleClientRequest_spec; intuition eauto.
         find_apply_hyp_hyp.
         intuition.
-        * unfold candidateEntries in *.
-          find_apply_hyp_hyp. break_exists.
-          exists x.
-          destruct (name_eq_dec x h);
-            subst; rewrite_update; intuition eauto.
-          simpl in *.
-          repeat find_rewrite; intuition.
+        * rewrite_update.
+          eapply candidateEntries_same; eauto; intuition;
+          destruct (name_eq_dec h0 h); subst; rewrite_update; auto.
         * find_apply_lem_hyp cronies_correct_invariant.
           unfold candidateEntries. exists h.
           intuition; rewrite_update; simpl in *; try congruence.
           repeat find_rewrite. simpl in *.
           eauto using won_election_cronies.
       + rewrite_update.
-        unfold candidateEntries in *.
-        find_apply_hyp_hyp. break_exists.
-        exists x. destruct (name_eq_dec x h); subst;
-             intuition; rewrite_update; simpl in *; auto.
         find_apply_lem_hyp handleClientRequest_spec.
-        intuition. repeat find_rewrite. auto.
-  Admitted.
+        eapply candidateEntries_same; eauto; intuition;
+        destruct (name_eq_dec h1 h); subst; rewrite_update; auto.
+    - unfold candidateEntries_nw_invariant in *.
+      intros. simpl in *.
+      eapply candidateEntries_ext; try eassumption.
+      find_apply_lem_hyp handleClientRequest_spec.
+      intuition.
+      subst. simpl in *.
+
+      eapply_prop_hyp candidateEntries AppendEntries; eauto.
+      + eapply candidateEntries_same; eauto; intuition;
+        destruct (name_eq_dec h h0); subst; rewrite_update; auto.
+      + find_apply_hyp_hyp. intuition.
+  Qed.
 
   Lemma candidate_entries_timeout :
     refined_raft_net_invariant_timeout CandidateEntries.
