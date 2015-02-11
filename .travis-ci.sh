@@ -3,7 +3,6 @@ sudo apt-get update -qq
 sudo apt-get install -qq ocaml ocaml-native-compilers camlp4-extra opam
 export OPAMYES=1
 opam init
-opam install ${OPAM_DEPENDS}
 eval `opam config env`
 opam repo add coq-8.5 https://github.com/coq/repo-8.5.git
 opam install coq
