@@ -308,6 +308,25 @@ Section LeaderSublog.
     wonElection (dedup name_eq_dec (pSrc p :: votesReceived (nwState net (pDst p)))) = true ->
     type (nwState net (pDst p)) <> Candidate.
 
+  Lemma deghost_packet_exists :
+    forall net p,
+      In p (nwPackets (deghost net)) ->
+      exists (q : packet (params := raft_refined_multi_params (raft_params := raft_params))),
+        In q (nwPackets net) /\ p = deghost_packet q.
+  Proof.
+    unfold deghost.
+    simpl.
+    intros.
+    do_in_map.
+    eauto.
+  Qed.
+
+  Ltac eapply_prop_hyp P Q :=
+    match goal with
+    | [ H : context [ P ], H' : context [ Q ] |- _ ] =>
+      eapply H in H'
+    end.
+
   Lemma candidate_entries_lowered_rvr' :
     forall net,
       CandidateEntries net ->
@@ -317,16 +336,14 @@ Section LeaderSublog.
         In e (log (snd (nwState net h))) ->
         CandidateEntriesLowered_rvr (deghost net) e p.
   Proof.
-    unfold CandidateEntriesLowered_rvr, CandidateEntries, votes_correct, cronies_correct, votes_nw.
+    unfold CandidateEntriesLowered_rvr, CandidateEntries, votes_correct, cronies_correct.
     intros. break_and.
     rewrite deghost_spec.
-    assert (exists q, In q (nwPackets net) /\ p = deghost_packet q).
-    {
-      unfold deghost in H3. simpl in *.
-      do_in_map. subst. simpl in *. eauto.
-    }
+
+    find_apply_lem_hyp deghost_packet_exists.
     break_exists.  break_and. subst.
-    eapply H8 in H14; eauto. clear H8.
+    eapply_prop_hyp votes_nw pBody.
+
     apply_prop_hyp candidateEntries_host_invariant In.
     unfold candidateEntries in *. break_exists. break_and.
     repeat match goal with
@@ -349,10 +366,10 @@ Section LeaderSublog.
       apply_prop_hyp cronies_votes In.
       unfold raft_data in *. unfold raft_refined_base_params, raft_refined_multi_params in *.
       simpl in *.
-      find_reverse_rewrite.
+      repeat find_reverse_rewrite.
       assert (x0 = pDst x) by (eapply_prop one_vote_per_term; eauto).
       subst.
-      concludes. contradiction.
+      repeat concludes. contradiction.
   Qed.
 
   Lemma candidate_entries_lowered_rvr :
@@ -384,7 +401,36 @@ Section LeaderSublog.
         In p (nwPackets (deghost net)) ->
         In e es ->
         CandidateEntriesLowered (deghost net) e h.
-  Admitted.
+  Proof.
+    unfold CandidateEntriesLowered, CandidateEntries, votes_correct, cronies_correct.
+    intros. break_and.
+    rewrite deghost_spec.
+
+    find_apply_lem_hyp deghost_packet_exists.
+    break_exists. break_and. subst.
+
+    eapply_prop_hyp candidateEntries_nw_invariant In; eauto.
+    unfold candidateEntries in *. break_exists. break_and.
+    match goal with
+    | H : wonElection _ = _ |- _ =>
+      eapply wonElection_one_in_common in H; [|clear H; eauto]
+    end.
+    break_exists. break_and.
+    repeat match goal with
+           | [ H : _ |- _ ] => rewrite deghost_spec in H
+           end.
+
+    intro.
+    assert (h = x0).
+    {
+      eapply_prop one_vote_per_term;
+      eapply_prop cronies_votes.
+      - eapply_prop votes_received_cronies; eauto.
+      - find_reverse_rewrite. auto.
+    }
+    subst.
+    concludes. contradiction.
+  Qed.
 
   Lemma candidate_entries_lowered_nw :
     forall net,
@@ -394,7 +440,18 @@ Section LeaderSublog.
         In p (nwPackets net) ->
         In e es ->
         CandidateEntriesLowered net e h.
-  Admitted.
+  Proof.
+    intros net H.
+    pattern net.
+    apply lower_prop; auto.
+    clear H net.
+    intros.
+    repeat match goal with
+           | [ H : _ |- _ ] => rewrite deghost_spec in H
+           end.
+    eapply candidate_entries_lowered_nw';
+      eauto using candidate_entries_invariant, votes_correct_invariant, cronies_correct_invariant.
+  Qed.
 
   Lemma candidate_entries_lowered_nw_rvr' :
     forall net,
@@ -406,7 +463,45 @@ Section LeaderSublog.
         In p (nwPackets (deghost net)) ->
         In e es ->
         CandidateEntriesLowered_rvr (deghost net) e p'.
-  Admitted.
+  Proof.
+    unfold CandidateEntriesLowered_rvr, CandidateEntries, votes_correct, cronies_correct.
+    intros. break_and.
+    rewrite deghost_spec.
+
+    find_apply_lem_hyp deghost_packet_exists.
+    find_apply_lem_hyp deghost_packet_exists.
+    break_exists.  break_and. subst.
+    eapply_prop_hyp votes_nw pBody. concludes.
+    eapply_prop_hyp candidateEntries_nw_invariant pBody; auto.
+
+    find_insterU. conclude_using eauto.
+    unfold candidateEntries in *.
+    break_exists. break_and.
+
+    match goal with
+    | H : wonElection _ = _ |- _ =>
+      eapply wonElection_one_in_common in H; [|clear H; eauto]
+    end.
+    break_exists. break_and.
+    repeat match goal with
+           | [ H : _ |- _ ] => rewrite deghost_spec in H
+           end.
+    simpl in *.
+    break_or_hyp.
+    - apply_prop_hyp cronies_votes In.
+      assert (pDst x = x1) by (eapply_prop one_vote_per_term; eauto).
+      subst. auto.
+    - intro.
+      assert (pDst x = x1).
+      { eapply_prop one_vote_per_term;
+        eapply_prop cronies_votes.
+        - eapply_prop votes_received_cronies; eauto.
+        - repeat find_reverse_rewrite. auto.
+      }
+      subst.
+      concludes. contradiction.
+  Qed.
+
 
   Lemma candidate_entries_lowered_nw_rvr :
     forall net,
@@ -416,7 +511,18 @@ Section LeaderSublog.
         In p (nwPackets net) ->
         In e es ->
         CandidateEntriesLowered_rvr net e p'.
-  Admitted.
+  Proof.
+    intros net H.
+    pattern net.
+    apply lower_prop; auto.
+    clear H net.
+    intros.
+    repeat match goal with
+           | [ H : _ |- _ ] => rewrite deghost_spec in H
+           end.
+    eapply candidate_entries_lowered_nw_rvr';
+      eauto using candidate_entries_invariant, votes_correct_invariant, cronies_correct_invariant.
+  Qed.
 
   Lemma leader_sublog_request_vote_reply :
     raft_net_invariant_request_vote_reply
