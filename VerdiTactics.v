@@ -315,3 +315,17 @@ Ltac find_copy_eapply_lem_hyp lem :=
   match goal with
     | [ H : _ |- _ ] => copy_eapply lem H
   end.
+
+Ltac apply_prop_hyp P Q :=
+  match goal with
+  | [ H : context [ P ], H' : context [ Q ] |- _ ] =>
+    apply H in H'
+  end.
+
+
+Ltac eapply_prop_hyp P Q :=
+  match goal with
+  | [ H : context [ P ], H' : context [ Q ] |- _ ] =>
+    eapply H in H'
+  end.
+
