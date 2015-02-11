@@ -111,6 +111,7 @@ Section OneLeaderPerTerm.
 
   Require Import RaftRefinement.
   Require Import CroniesCorrect.
+  Require Import VotesCorrect.
 
   Lemma one_leader_per_term_invariant' :
     forall net,
