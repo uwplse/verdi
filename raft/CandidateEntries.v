@@ -57,6 +57,7 @@ Section CandidateEntries.
       handleClientRequest h d id c = (out, d', l) ->
       currentTerm d' = currentTerm d /\
       type d' = type d /\
+      l = [] /\
       (forall e, In e (log d') ->
             (In e (log d) \/ (e = (mkEntry
                                      h
