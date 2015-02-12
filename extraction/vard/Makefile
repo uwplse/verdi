@@ -21,7 +21,12 @@ run: vard.native
 debug: vard.native
 	./scripts/start-tmux-debug.sh
 
+bench-vard: vard.native
+	./scripts/bench-vard.sh
+	./scripts/clear-verdi.sh
 
-
+bench-etcd: vard.native
+	./scripts/bench-etcd.sh
+	./scripts/clear-etcd.sh
 
 .PHONY : default coq run clear-data

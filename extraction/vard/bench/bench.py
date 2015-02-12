@@ -27,11 +27,17 @@ def benchmark(ev, client, requests, keys, put_percentage, n):
             end = time.time()
             gets.append(end-start)
 
+def cluster(addrs):
+    ret = []
+    for addr in addrs.split(','):
+        (host, _, port) = addr.partition(':')
+        ret.append((host, int(port)))
+    return ret
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--service', default='vard', choices=['etcd', 'vard'])
-    parser.add_argument('--host', default='localhost')
-    parser.add_argument('--port', default=8001, type=int)
+    parser.add_argument('--cluster', type=cluster)
     parser.add_argument('--requests', default=1000, type=int)
     parser.add_argument('--threads', default=50, type=int)
     parser.add_argument('--keys', default=100, type=int)
@@ -40,14 +46,13 @@ def main():
 
     Client = vard.Client
     if args.service == 'etcd':
-        print 'using etcd'
         Client = etcd.Client
 
+    host, port = Client.find_leader(args.cluster)
     ev = t.Event()
     threads = []
     for i in range(args.threads):
-        print 'starting'
-        c = Client(args.host, args.port)
+        c = Client(host, port)
         thr = t.Thread(target=benchmark, args=(ev, c, args.requests, args.keys, args.put_percentage, i))
         threads.append(thr)
         thr.start()
