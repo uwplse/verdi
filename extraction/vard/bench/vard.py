@@ -5,7 +5,22 @@ class LeaderChanged(Exception):
     pass
 
 class Client(object):
+    class NoLeader(Exception):
+        pass
 
+    @classmethod
+    def find_leader(cls, cluster):
+        # cluster should be a list of [(host, port)] pairs
+        for (host, port) in cluster:
+            c = cls(host, port)
+            try:
+                c.get('a')
+            except LeaderChanged:
+                continue
+            else:
+                return (host, port)
+        raise cls.NoLeader
+    
     response_re = re.compile(r'Response\W+([/A-Za-z0-9]+|-)\W+([/A-Za-z0-9]+|-)\W+([/A-Za-z0-9]+|-)')
 
     def __init__(self, host, port):
