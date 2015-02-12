@@ -27,6 +27,6 @@ bench-vard: vard.native
 
 bench-etcd: vard.native
 	./scripts/bench-etcd.sh
-
+	./scripts/clear-etcd.sh
 
 .PHONY : default coq run clear-data
