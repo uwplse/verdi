@@ -145,6 +145,12 @@ Section CandidateEntries.
     congruence.
   Qed.
 
+  Ltac update_destruct :=
+    match goal with
+    | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+    end.
+
+
   Lemma candidate_entries_timeout :
     refined_raft_net_invariant_timeout CandidateEntries.
   Proof.
@@ -161,22 +167,38 @@ Section CandidateEntries.
       destruct (serverType_eq_dec (type (snd (A:=electionsData) (B:=raft_data) (nwState net h))) Leader).
       + find_rewrite. find_inversion.
 
-        repeat (rewrite update_fun_comm in *; simpl in *).
-        rewrite update_nop_ext' in * by auto.
+        do 2 match goal with
+        | [ H : _ |- _ ] =>
+          rewrite update_fun_comm in H
+        end. simpl in *.
+
+        match goal with
+        | [ H : _ |- _ ] =>
+          rewrite update_nop_ext' in H by auto
+        end.
 
         eapply candidateEntries_same; eauto;
         intros;
-        repeat (rewrite update_fun_comm; simpl);
+        repeat (rewrite update_fun_comm; simpl in * );
         update_destruct; subst; rewrite_update;
         auto using update_elections_data_timeout_leader_cronies_same.
-      + rewrite update_fun_comm in *; simpl in *.
+      + match goal with
+        | [ H : _ |- _ ] =>
+          rewrite update_fun_comm in H
+        end. simpl in *.
         match goal with
         | [ H : match _ with | Leader => _ | Follower => ?a | Candidate => _ end = ?b |- _ ] =>
           assert (a = b) by (repeat break_match; try congruence; auto); clear H
         end.
         find_inversion.
-        rewrite update_fun_comm in *; simpl in *.
-        rewrite update_nop_ext' in * by auto.
+        match goal with
+        | [ H : _ |- _ ] =>
+          rewrite update_fun_comm in H
+        end. simpl in *.
+        match goal with
+        | [ H : _ |- _ ] =>
+          rewrite update_nop_ext' in H by auto
+        end.
         find_copy_apply_hyp_hyp.
         unfold candidateEntries in *.
         break_exists. break_and.
