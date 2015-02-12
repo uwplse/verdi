@@ -7,7 +7,7 @@ etcd --name=one \
      --listen-peer-urls http://localhost:9001 \
      --data-dir=/tmp/etcd1 \
      --initial-cluster "one=http://localhost:9001,two=http://localhost:9002,three=http://localhost:9003" \
-      > /dev/null 2&>1 &
+      > /dev/null 2>&1 &
 sleep 1
 
 etcd --name=two \
