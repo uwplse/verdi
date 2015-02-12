@@ -43,7 +43,30 @@ Section OU.
     intros.
     apply update_nop.
   Qed.
+
+  Lemma update_fun_comm :
+    forall A B (f : A -> B) st y v x,
+      f (update st y v x) = update (fun x => f (st x)) y (f v) x.
+  Proof.
+    intros.
+    destruct (name_eq_dec x y); subst; rewrite_update; auto.
+  Qed.
+
+  Lemma update_nop_ext' :
+    forall A (sigma : name -> A) y v,
+      sigma y = v ->
+      update sigma y v = sigma.
+  Proof.
+    intros.
+    subst.
+    apply update_nop_ext.
+  Qed.
 End OU.
+
+Ltac update_destruct :=
+  match goal with
+  | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+  end.
 
 Ltac rewrite_update' H :=
   first [rewrite update_diff in H by congruence |
