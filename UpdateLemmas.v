@@ -49,7 +49,9 @@ Section OU.
       f (update st y v x) = update (fun x => f (st x)) y (f v) x.
   Proof.
     intros.
-    destruct (name_eq_dec x y); subst; rewrite_update; auto.
+    destruct (name_eq_dec x y); subst;
+    repeat first [rewrite update_diff by congruence |
+           rewrite update_eq  by auto ]; auto.
   Qed.
 
   Lemma update_nop_ext' :
