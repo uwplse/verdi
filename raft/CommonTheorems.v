@@ -770,7 +770,17 @@ Section CommonTheorems.
       eauto using name_eq_dec, wonElection_length.
   Qed.
   
-
+  Lemma wonElection_exists_voter :
+    forall l,
+      wonElection l = true ->
+      exists x,
+        In x l.
+  Proof.
+    unfold wonElection.
+    intros.
+    destruct l; try discriminate.
+    simpl. eauto.
+  Qed.
 End CommonTheorems.
 
 Notation is_append_entries m :=
