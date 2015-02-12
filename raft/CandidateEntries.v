@@ -132,16 +132,17 @@ Section CandidateEntries.
   Qed.
 
   Lemma update_elections_data_timeout_leader_cronies_same :
-    forall net h,
-      type (snd (nwState net h)) = Leader ->
-      cronies (update_elections_data_timeout h (nwState net h)) =
-      cronies (fst (nwState net h)).
+    forall sigma h,
+      type (snd (sigma h)) = Leader ->
+      cronies (update_elections_data_timeout h (sigma h)) =
+      cronies (fst (sigma h)).
   Proof.
     unfold update_elections_data_timeout.
     intros.
     repeat break_match; subst; simpl in *; auto.
     unfold handleTimeout, tryToBecomeLeader in *.
-    repeat break_match; try congruence; repeat find_inversion; simpl in *.
+    repeat break_match; try congruence; repeat find_inversion; simpl in *;
+    unfold raft_data in *;
     congruence.
   Qed.
 
@@ -150,6 +151,117 @@ Section CandidateEntries.
     | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
     end.
 
+  Lemma handleTimeout_only_sends_RequestVotes :
+    forall h d out d' l p,
+      handleTimeout h d = (out, d', l) ->
+      In p l ->
+      exists t h' maxi maxt,
+        snd p = RequestVote t h' maxi maxt.
+  Proof.
+    unfold handleTimeout, tryToBecomeLeader.
+    intros.
+    repeat break_match; repeat find_inversion; simpl in *; intuition;
+    do_in_map; subst; simpl; eauto.
+  Qed.
+
+  Lemma handleTimeout_log_same :
+    forall h d out d' l,
+      handleTimeout h d = (out, d', l) ->
+      log d' = log d.
+  Proof.
+    unfold handleTimeout, tryToBecomeLeader.
+    intros.
+    repeat break_match; repeat find_inversion; auto.
+  Qed.
+
+  Ltac find_rewrite_lem lem :=
+    match goal with
+    | [ H : _ |- _ ] =>
+      rewrite lem in H; [idtac]
+    end.
+
+  Ltac find_rewrite_lem_by lem t :=
+    match goal with
+    | [ H : _ |- _ ] =>
+      rewrite lem in H by t
+    end.
+
+  Lemma handleTimeout_not_leader_inc_term :
+    forall h d out d' l,
+      handleTimeout h d = (out, d', l) ->
+      type d <> Leader ->
+      currentTerm d' = S (currentTerm d).
+  Proof.
+    unfold handleTimeout, tryToBecomeLeader.
+    intros. simpl in *.
+    repeat break_match; try congruence; repeat find_inversion; auto.
+  Qed.
+
+  Lemma update_elections_data_timeout_cronies :
+    forall h d out d' l t,
+      handleTimeout h (snd d) = (out, d', l) ->
+      cronies (update_elections_data_timeout h d) t = cronies (fst d) t \/
+      (t = currentTerm d' /\
+       cronies (update_elections_data_timeout h d) t = votesReceived d').
+  Proof.
+    unfold update_elections_data_timeout.
+    intros.
+    repeat break_match; repeat find_inversion; simpl; auto.
+    break_match; auto.
+  Qed.
+
+  Lemma handleTimeout_preserves_candidateEntries :
+    forall net h e out d l,
+      refined_raft_intermediate_reachable net ->
+      handleTimeout h (snd (nwState net h)) = (out, d, l) ->
+      candidateEntries e (nwState net) ->
+      candidateEntries e (update (nwState net) h (update_elections_data_timeout h (nwState net h), d)).
+  Proof.
+    intros.
+    destruct (serverType_eq_dec (type (snd (A:=electionsData) (B:=raft_data) (nwState net h))) Leader).
+      + (* Leader case *)
+        unfold handleTimeout, tryToBecomeLeader in *. simpl in *.
+        find_rewrite. find_inversion.
+
+        eapply candidateEntries_same; eauto;
+        intros;
+        repeat (rewrite update_fun_comm; simpl in * );
+        update_destruct; subst; rewrite_update;
+        auto using update_elections_data_timeout_leader_cronies_same.
+      + (* non-Leader case *)
+
+        unfold candidateEntries in *.
+        break_exists. break_and.
+        exists x.
+        rewrite update_fun_comm; simpl.
+        rewrite update_fun_comm; simpl.
+        rewrite update_fun_comm; simpl.
+        rewrite update_fun_comm; simpl.
+        rewrite update_fun_comm with (f := type); simpl.
+        update_destruct; subst; rewrite_update; auto.
+        split.
+        * match goal with
+          | [ H : handleTimeout _ _ = _ |- _ ] =>
+            pose proof H;
+              apply update_elections_data_timeout_cronies with (t := eTerm e) in H
+          end.
+          intuition; find_rewrite; auto.
+          find_apply_lem_hyp wonElection_exists_voter.
+          break_exists.
+          find_apply_lem_hyp in_dedup_was_in.
+          find_copy_apply_lem_hyp cronies_term_invariant; auto.
+          find_copy_apply_lem_hyp handleTimeout_not_leader_inc_term; auto.
+          simpl in *.
+          omega.
+        * intros.
+          find_apply_lem_hyp wonElection_exists_voter.
+          break_exists.
+          find_apply_lem_hyp in_dedup_was_in.
+          find_copy_apply_lem_hyp cronies_term_invariant; auto.
+          find_copy_apply_lem_hyp handleTimeout_not_leader_inc_term; auto.
+          simpl in *.
+          omega.
+  Qed.
 
   Lemma candidate_entries_timeout :
     refined_raft_net_invariant_timeout CandidateEntries.
@@ -162,80 +274,25 @@ Section CandidateEntries.
       eapply candidateEntries_ext; try eassumption.
       repeat find_higher_order_rewrite.
 
-      unfold handleTimeout, tryToBecomeLeader in *.
+        find_rewrite_lem update_fun_comm. simpl in *.
+        find_rewrite_lem update_fun_comm. simpl in *.
+        erewrite handleTimeout_log_same in * by eauto.
 
-      destruct (serverType_eq_dec (type (snd (A:=electionsData) (B:=raft_data) (nwState net h))) Leader).
-      + find_rewrite. find_inversion.
-
-        do 2 match goal with
-        | [ H : _ |- _ ] =>
-          rewrite update_fun_comm in H
-        end. simpl in *.
-
-        match goal with
-        | [ H : _ |- _ ] =>
-          rewrite update_nop_ext' in H by auto
-        end.
-
-        eapply candidateEntries_same; eauto;
-        intros;
-        repeat (rewrite update_fun_comm; simpl in * );
-        update_destruct; subst; rewrite_update;
-        auto using update_elections_data_timeout_leader_cronies_same.
-      + match goal with
-        | [ H : _ |- _ ] =>
-          rewrite update_fun_comm in H
-        end. simpl in *.
-        match goal with
-        | [ H : match _ with | Leader => _ | Follower => ?a | Candidate => _ end = ?b |- _ ] =>
-          assert (a = b) by (repeat break_match; try congruence; auto); clear H
-        end.
-        find_inversion.
-        match goal with
-        | [ H : _ |- _ ] =>
-          rewrite update_fun_comm in H
-        end. simpl in *.
-        match goal with
-        | [ H : _ |- _ ] =>
-          rewrite update_nop_ext' in H by auto
-        end.
-        find_copy_apply_hyp_hyp.
-        unfold candidateEntries in *.
-        break_exists. break_and.
-        exists x.
-        rewrite update_fun_comm; simpl.
-        rewrite update_fun_comm; simpl.
-        rewrite update_fun_comm; simpl.
-        rewrite update_fun_comm; simpl.
-        rewrite update_fun_comm with (f := type); simpl.
-        update_destruct; subst; rewrite_update; auto.
-        split.
-        * unfold update_elections_data_timeout.
-          break_match. unfold handleTimeout in *.
-          match goal with
-          | [ H : match _ with | Leader => _ | Follower => ?a | Candidate => _ end = ?b |- _ ] =>
-            assert (a = b) by (repeat break_match; try congruence; auto); clear H
-          end.
-          unfold tryToBecomeLeader in *.
-          find_inversion. simpl.
-          break_if; auto.
-          find_apply_lem_hyp wonElection_exists_voter.
-          break_exists.
-          find_apply_lem_hyp in_dedup_was_in.
-          find_copy_apply_lem_hyp cronies_term_invariant; auto.
-          simpl in *.
-          unfold raft_data in *. unfold raft_refined_base_params, raft_refined_multi_params in *.
-          omega.
-        * intros.
-          find_apply_lem_hyp wonElection_exists_voter.
-          break_exists.
-          find_apply_lem_hyp in_dedup_was_in.
-          find_copy_apply_lem_hyp cronies_term_invariant; auto.
-          simpl in *.
-          unfold raft_data in *. unfold raft_refined_base_params, raft_refined_multi_params in *.
-          omega.
-    -
-  Admitted.
+        find_rewrite_lem_by update_nop_ext' auto.
+        find_apply_hyp_hyp.
+        eauto using handleTimeout_preserves_candidateEntries.
+    - unfold candidateEntries_nw_invariant in *.
+      intros.
+      simpl in *.
+      eapply candidateEntries_ext; eauto.
+      find_apply_hyp_hyp.
+      break_or_hyp.
+      + eapply_prop_hyp pBody pBody; eauto.
+        eauto using handleTimeout_preserves_candidateEntries.
+      + do_in_map. subst. simpl in *.
+        eapply handleTimeout_only_sends_RequestVotes in H8; eauto.
+        break_exists. congruence.
+  Qed.
 
   Lemma candidate_entries_append_entries :
     refined_raft_net_invariant_append_entries CandidateEntries.
