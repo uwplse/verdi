@@ -30,7 +30,7 @@ etcd --name=three \
      2>&1 > /dev/null &
 sleep 1
 
-python bench/setup.py --service etcd --keys 50 --cluster "localhost:8001,localhost:8002,localhost:8003"
-python bench/bench.py --service etcd --keys 50 --cluster "localhost:8001,localhost:8002,localhost:8003" --threads 8 --requests 100
+python2 bench/setup.py --service etcd --keys 50 --cluster "localhost:8001,localhost:8002,localhost:8003"
+python2 bench/bench.py --service etcd --keys 50 --cluster "localhost:8001,localhost:8002,localhost:8003" --threads 8 --requests 100
 
 killall -13 etcd 2>&1 > /dev/null
