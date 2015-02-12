@@ -7,7 +7,7 @@ etcd --name=one \
      --listen-peer-urls http://localhost:9001 \
      --data-dir=/tmp/etcd1 \
      --initial-cluster "one=http://localhost:9001,two=http://localhost:9002,three=http://localhost:9003" \
-     2>&1 > /dev/null &
+      > /dev/null 2>&1 &
 sleep 1
 
 etcd --name=two \
@@ -17,7 +17,7 @@ etcd --name=two \
      --listen-peer-urls http://localhost:9002 \
      --data-dir=/tmp/etcd2 \
      --initial-cluster "one=http://localhost:9001,two=http://localhost:9002,three=http://localhost:9003" \
-     2>&1 > /dev/null &
+      > /dev/null 2>&1 &
 sleep 1
 
 etcd --name=three \
@@ -27,10 +27,10 @@ etcd --name=three \
      --listen-peer-urls http://localhost:9003 \
      --data-dir=/tmp/etcd3 \
      --initial-cluster "one=http://localhost:9001,two=http://localhost:9002,three=http://localhost:9003" \
-     2>&1 > /dev/null &
-sleep 1
+     > /dev/null 2>&1 &
+sleep 2
 
 python2 bench/setup.py --service etcd --keys 50 --cluster "localhost:8001,localhost:8002,localhost:8003"
 python2 bench/bench.py --service etcd --keys 50 --cluster "localhost:8001,localhost:8002,localhost:8003" --threads 8 --requests 100
 
-killall -13 etcd 2>&1 > /dev/null
+killall -9 etcd
