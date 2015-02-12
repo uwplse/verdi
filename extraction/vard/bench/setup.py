@@ -22,7 +22,6 @@ def main():
     args = parser.parse_args()
     Client = vard.Client
     if args.service == 'etcd':
-        print 'using etcd'
         Client = etcd.Client
 
     host, port = Client.find_leader(args.cluster)
