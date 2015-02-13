@@ -294,8 +294,36 @@ Section CandidateEntries.
         break_exists. congruence.
   Qed.
 
+  Lemma handleAppendEntries_preserves_candidate_entries :
+    forall net h t n pli plt es ci d m e,
+      handleAppendEntries h (snd (nwState net h)) t n pli plt es ci = (d, m) ->
+      refined_raft_intermediate_reachable net ->
+      candidateEntries e (nwState net) ->
+      candidateEntries e (update (nwState net) h
+                                 (update_elections_data_appendEntries
+                                    h
+                                    (nwState net h) t n pli plt es ci, d)).
+  Admitted.
+
+    Ltac my_update_destruct :=
+      match goal with
+      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
+      end.
+
+
   Lemma candidate_entries_append_entries :
     refined_raft_net_invariant_append_entries CandidateEntries.
+  Proof.
+    red. unfold CandidateEntries.
+    intros. subst.
+    intuition; simpl in *.
+    - unfold candidateEntries_host_invariant in *.
+      intros.
+      eapply candidateEntries_ext; eauto.
+      repeat find_higher_order_rewrite.
+      find_rewrite_lem update_fun_comm. simpl in *.
+      my_update_destruct.
   Admitted.
 
   Lemma candidate_entries_append_entries_reply :
