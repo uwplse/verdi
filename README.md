@@ -7,6 +7,7 @@ The Verdi Framework
 -------------------
 
 Requirements:
+
  - `coq 8.5beta1`
 
 Running `make` in the root directory will compile the specifications
@@ -14,21 +15,21 @@ and proofs of the core Verdi framework, as well as some simple
 examples. The files in the root directory include:
 
 - Core Verdi files:
-  - `Net.v`: core network semantics, including ghost variables
-  - `VerdiTactics.v` and `Util.v`, tactics and lemmas for Verdi proofs
-  - `HandlerMonad.v`: a monad for writing network/input handlers
-  - `StatePacketPacket.v`: a technique for writing easily decomposable
+    - `Net.v`: core network semantics, including ghost variables
+    - `VerdiTactics.v` and `Util.v`, tactics and lemmas for Verdi proofs
+    - `HandlerMonad.v`: a monad for writing network/input handlers
+    - `StatePacketPacket.v`: a technique for writing easily decomposable
     invariants
 - Example systems
-  - `LockServ.v`: a lock server
-  - `VarD.v`: vard, a key-value store
+    - `LockServ.v`: a lock server
+    - `VarD.v`: vard, a key-value store
 - Verified system transformers
-  - `SeqNum.v` and `SeqNumCorrect.v`, a system transformer
-    implementing sequence numbering
-  - `PrimaryBackup.v`, a system transformer implementing asynchronous
-    primary-backup replication
-    - `VarDPB.v`, the primary-backup transformer applied to the
-      key-value store
+    - `SeqNum.v` and `SeqNumCorrect.v`, a system transformer
+      implementing sequence numbering
+    - `PrimaryBackup.v`, a system transformer implementing asynchronous
+      primary-backup replication
+      - `VarDPB.v`, the primary-backup transformer applied to the
+        key-value store
 
 The Raft Consensus Protocol
 ---------------------------
@@ -59,8 +60,9 @@ The vard Key-Value Store
 ------------------------
 
 Requirements:
- - `coq 8.5beta1`
- - `ocaml`, `ocamlbuild`
+
+- `coq 8.5beta1`
+- `ocaml`, `ocamlbuild`
 
 As discussed above, vard is a simple key-value store implemented in
 Verdi. vard is specified and verified against Verdi's state-machine
