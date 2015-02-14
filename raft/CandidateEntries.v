@@ -906,7 +906,16 @@ Section CandidateEntries.
 
   Lemma candidate_entries_init :
     refined_raft_net_invariant_init CandidateEntries.
-  Admitted.
+  Proof.
+    red.
+    unfold CandidateEntries.
+    unfold candidateEntries_host_invariant, candidateEntries_nw_invariant.
+    intuition;
+     repeat match goal with
+            | [ H : In _ _ |- _ ] => compute in H
+            end;
+    intuition.
+  Qed.
 
   Theorem candidate_entries_invariant :
     forall (net : network),
