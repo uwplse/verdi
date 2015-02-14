@@ -704,9 +704,71 @@ Section CandidateEntries.
   Qed.
 
 
+  Lemma doLeader_preserves_candidateEntries :
+    forall net gd d h os d' ms e,
+      nwState net h = (gd, d) ->
+      doLeader d h = (os, d', ms) ->
+      candidateEntries e (nwState net) ->
+      candidateEntries e (update (nwState net) h (gd, d')).
+  Proof.
+    intros.
+    eapply candidateEntries_same; eauto;
+    intros;
+    repeat (rewrite update_fun_comm; simpl in * );
+    update_destruct; subst; rewrite_update; auto;
+    repeat find_rewrite; simpl; auto;
+    find_apply_lem_hyp doLeader_st; intuition.
+  Qed.
+
+  Lemma doLeader_in_entries :
+    forall (h : name) d h os d' ms m t li pli plt es ci e,
+      doLeader d h = (os, d', ms) ->
+      snd m = AppendEntries t li pli plt es ci ->
+      In m ms ->
+      In e es ->
+      In e (log d).
+  Proof.
+    unfold doLeader.
+    intros.
+    repeat break_match; repeat find_inversion; simpl in *; intuition.
+    do_in_map.
+
+    unfold replicaMessage in *. simpl in *. subst. simpl in *.
+    find_inversion.
+    eauto using findGtIndex_in.
+  Qed.
+
   Lemma candidate_entries_do_leader :
     refined_raft_net_invariant_do_leader CandidateEntries.
-  Admitted.
+  Proof.
+    red. unfold CandidateEntries.
+    intros.
+    intuition; simpl in *.
+    - unfold candidateEntries_host_invariant in *.
+      intros.
+      eapply candidateEntries_ext; eauto.
+      repeat find_higher_order_rewrite.
+      my_update_destruct; subst; rewrite_update.
+      + simpl in *.
+        find_erewrite_lem doLeader_same_log.
+        replace (log d) with (log (snd (nwState net h0))) in * by (find_rewrite; auto).
+        eauto using doLeader_preserves_candidateEntries.
+      + eauto using doLeader_preserves_candidateEntries.
+    - unfold candidateEntries_nw_invariant in *.
+      intros. simpl in *.
+      eapply candidateEntries_ext; eauto.
+      find_apply_hyp_hyp.
+      intuition.
+      + eauto using doLeader_preserves_candidateEntries.
+      + do_in_map. subst. simpl in *.
+        eapply doLeader_preserves_candidateEntries; eauto.
+        eapply_prop candidateEntries_host_invariant.
+        match goal with
+        | [ H : _ |- _ ] => rewrite H
+        end.
+        simpl.
+        eauto using doLeader_in_entries.
+  Qed.
 
   Lemma candidate_entries_do_generic_server :
     refined_raft_net_invariant_do_generic_server CandidateEntries.
