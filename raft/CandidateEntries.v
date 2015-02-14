@@ -836,7 +836,20 @@ Section CandidateEntries.
 
   Lemma candidate_entries_state_same_packet_subset :
     refined_raft_net_invariant_state_same_packet_subset CandidateEntries.
-  Admitted.
+  Proof.
+    red. unfold CandidateEntries.
+    intros.
+    intuition.
+    - unfold candidateEntries_host_invariant in *.
+      intros.
+      repeat find_reverse_higher_order_rewrite.
+      apply candidateEntries_ext with (sigma := nwState net); eauto.
+    - unfold candidateEntries_nw_invariant in *.
+      intros.
+      find_apply_hyp_hyp.
+      eapply_prop_hyp In In; eauto.
+      apply candidateEntries_ext with (sigma := nwState net); eauto.
+  Qed.
 
   Lemma candidate_entries_reboot :
     refined_raft_net_invariant_reboot CandidateEntries.
