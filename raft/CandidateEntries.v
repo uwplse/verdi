@@ -294,6 +294,26 @@ Section CandidateEntries.
         break_exists. congruence.
   Qed.
 
+  Lemma update_elections_data_appendEntries_cronies_same :
+    forall h d t n pli plt es ci,
+      cronies (update_elections_data_appendEntries h d t n pli plt es ci) =
+      cronies (fst d).
+  Proof.
+    unfold update_elections_data_appendEntries.
+    intros.
+    repeat break_match; auto.
+  Qed.
+
+  Lemma handleAppendEntries_term_same_or_type_follower :
+    forall h t n pli plt es ci d m st,
+      handleAppendEntries h st t n pli plt es ci = (d, m) ->
+      (currentTerm d = currentTerm st /\ type d = type st) \/ type d = Follower.
+  Proof.
+    unfold handleAppendEntries in *.
+    intros.
+    repeat break_match; repeat find_inversion; simpl in *; auto; try congruence.
+  Qed.
+
   Lemma handleAppendEntries_preserves_candidate_entries :
     forall net h t n pli plt es ci d m e,
       handleAppendEntries h (snd (nwState net h)) t n pli plt es ci = (d, m) ->
@@ -303,14 +323,36 @@ Section CandidateEntries.
                                  (update_elections_data_appendEntries
                                     h
                                     (nwState net h) t n pli plt es ci, d)).
-  Admitted.
+  Proof.
+    unfold candidateEntries.
+    intros. break_exists. break_and.
+    exists x.
+    split.
+    - rewrite update_fun_comm. simpl.
+      rewrite update_fun_comm. simpl.
+      rewrite update_elections_data_appendEntries_cronies_same.
+      destruct (name_eq_dec x h); subst; rewrite_update; auto.
+    - intros.
+      rewrite update_fun_comm. simpl.
+      find_rewrite_lem update_fun_comm. simpl in *.
+      destruct (name_eq_dec x h); subst; rewrite_update; auto.
+      find_apply_lem_hyp handleAppendEntries_term_same_or_type_follower.
+      intro; intuition;
+      repeat find_rewrite; auto; discriminate.
+  Qed.
 
-    Ltac my_update_destruct :=
-      match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-      end.
+  Ltac my_update_destruct :=
+    match goal with
+    | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+    | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
+    end.
 
+  Lemma is_append_entries_intro :
+    forall t n plt pli es ci,
+      is_append_entries (AppendEntries t n pli plt es ci).
+  Proof.
+    eauto 20.
+  Qed.
 
   Lemma candidate_entries_append_entries :
     refined_raft_net_invariant_append_entries CandidateEntries.
@@ -323,8 +365,22 @@ Section CandidateEntries.
       eapply candidateEntries_ext; eauto.
       repeat find_higher_order_rewrite.
       find_rewrite_lem update_fun_comm. simpl in *.
-      my_update_destruct.
-  Admitted.
+      my_update_destruct; subst; rewrite_update;
+      eapply handleAppendEntries_preserves_candidate_entries; eauto.
+      find_copy_apply_lem_hyp handleAppendEntries_spec. break_and.
+      find_apply_hyp_hyp. intuition eauto.
+    - unfold candidateEntries_nw_invariant in *.
+      intros. simpl in *.
+      eapply candidateEntries_ext; eauto.
+      find_apply_hyp_hyp.
+      intuition.
+      + eapply handleAppendEntries_preserves_candidate_entries; eauto.
+      + subst. simpl in *. find_apply_lem_hyp handleAppendEntries_spec.
+        break_and.
+        subst.
+        exfalso.
+        eauto using is_append_entries_intro.
+  Qed.
 
   Lemma candidate_entries_append_entries_reply :
     refined_raft_net_invariant_append_entries_reply CandidateEntries.
