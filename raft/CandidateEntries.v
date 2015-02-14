@@ -304,6 +304,24 @@ Section CandidateEntries.
     repeat break_match; auto.
   Qed.
 
+  Lemma handleAppendEntries_spec :
+    forall h st t n pli plt es ci st' m,
+      handleAppendEntries h st t n pli plt es ci = (st', m) ->
+      (currentTerm st <= currentTerm st' /\
+       (forall e,
+          In e (log st') ->
+          In e (log st) \/
+          In e es /\ currentTerm st' = t) /\
+       ~ is_append_entries m).
+  Proof.
+    intros.
+    unfold handleAppendEntries, advanceCurrentTerm in *.
+    repeat break_match; try find_inversion; subst; simpl in *; intuition;
+    do_bool; intuition; try solve [break_exists; congruence];
+    in_crush; eauto using removeAfterIndex_in.
+  Qed.    
+
+
   Lemma handleAppendEntries_term_same_or_type_follower :
     forall h t n pli plt es ci d m st,
       handleAppendEntries h st t n pli plt es ci = (d, m) ->
@@ -466,8 +484,6 @@ Section CandidateEntries.
   Qed.
         
     
-  Admitted.
-
   Lemma candidate_entries_request_vote :
     refined_raft_net_invariant_request_vote CandidateEntries.
   Admitted.
