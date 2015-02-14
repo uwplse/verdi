@@ -382,8 +382,90 @@ Section CandidateEntries.
         eauto using is_append_entries_intro.
   Qed.
 
+  Lemma handleAppendEntriesReply_spec :
+    forall h st h' t es r st' ms,
+      handleAppendEntriesReply h st h' t es r = (st', ms) ->
+      log st' = log st /\
+      ((currentTerm st' = currentTerm st /\ type st' = type st)
+       \/ type st' = Follower) /\
+      (forall m, In m ms -> ~ is_append_entries (snd m)).
+  Proof.
+    intros.
+    unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat break_match; try find_inversion; subst; simpl in *; intuition;
+    do_bool; intuition.
+  Qed.
+
+
+  Lemma handleAppendEntriesReply_preserves_candidate_entries :
+    forall net h h' t es r st' ms e,
+      handleAppendEntriesReply h (snd (nwState net h)) h' t es r = (st', ms) ->
+      refined_raft_intermediate_reachable net ->
+      candidateEntries e (nwState net) ->
+      candidateEntries e (update (nwState net) h (fst (nwState net h), st')).
+  Proof.
+    unfold candidateEntries.
+    intros. break_exists. break_and.
+    exists x.
+    split.
+    - rewrite update_fun_comm. simpl.
+      rewrite update_fun_comm. simpl.
+      my_update_destruct; subst; rewrite_update; auto.
+    - intros. my_update_destruct; subst; rewrite_update; auto.
+      simpl in *.
+      find_apply_lem_hyp handleAppendEntriesReply_spec.
+      intuition; repeat find_rewrite; intuition.
+      congruence.
+  Qed.
+
+
+  Ltac prove_in :=
+    match goal with
+      | [ _ : nwPackets ?net = _,
+              _ : In (?p : packet) _ |- _] =>
+        assert (In p (nwPackets net)) by (repeat find_rewrite; do_in_app; intuition)
+      | [ _ : nwPackets ?net = _,
+              _ : pBody ?p = _ |- _] =>
+        assert (In p (nwPackets net)) by (repeat find_rewrite; intuition)
+    end.
+  
   Lemma candidate_entries_append_entries_reply :
     refined_raft_net_invariant_append_entries_reply CandidateEntries.
+  Proof.
+    red. unfold CandidateEntries. intros. intuition.
+    - unfold candidateEntries_host_invariant in *.
+      intros. simpl in *. eapply candidateEntries_ext; eauto.
+      repeat find_higher_order_rewrite.
+      find_rewrite_lem update_fun_comm. simpl in *.
+      my_update_destruct.
+      + subst. rewrite_update.
+        unfold candidateEntries in *.
+        find_apply_lem_hyp handleAppendEntriesReply_spec. break_and.
+        repeat find_rewrite.
+        find_apply_hyp_hyp.
+        break_exists; exists x; eauto.
+        my_update_destruct; intuition; subst; rewrite_update; simpl in *; auto;
+        repeat find_rewrite; intuition; congruence.
+      + rewrite_update. find_apply_hyp_hyp.
+        eauto using handleAppendEntriesReply_preserves_candidate_entries.
+    - unfold candidateEntries_nw_invariant in *. intros. simpl in *.
+      find_apply_hyp_hyp. intuition.
+      + (* packet already in nw *)
+        prove_in.
+        eapply candidateEntries_ext; eauto.
+        find_eapply_lem_hyp handleAppendEntriesReply_preserves_candidate_entries; eauto.
+        subst. auto.
+      + exfalso.
+        do_in_map.
+        find_eapply_lem_hyp handleAppendEntriesReply_spec; eauto.
+        subst. simpl in *. find_rewrite.
+        match goal with
+          | H : ~ is_append_entries _ |- _ => apply H
+        end.
+        repeat eexists; eauto.
+  Qed.
+        
+    
   Admitted.
 
   Lemma candidate_entries_request_vote :
