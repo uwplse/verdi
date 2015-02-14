@@ -773,9 +773,66 @@ Section CandidateEntries.
         eauto using doLeader_in_entries.
   Qed.
 
+  Lemma doGenericServer_same_type :
+    forall h d os d' ms,
+      doGenericServer h d = (os, d', ms) ->
+      type d' = type d.
+  Proof.
+    unfold doGenericServer.
+    intros.
+    repeat break_match; repeat find_inversion; auto.
+  Qed.
+
+  Lemma doGenericServer_preserves_candidateEntries :
+    forall net gd d h os d' ms e,
+      nwState net h = (gd, d) ->
+      doGenericServer h d = (os, d', ms) ->
+      candidateEntries e (nwState net) ->
+      candidateEntries e (update (nwState net) h (gd, d')).
+  Proof.
+    intros.
+    eapply candidateEntries_same; eauto;
+    intros;
+    repeat (rewrite update_fun_comm; simpl in * );
+    update_destruct; subst; rewrite_update; auto;
+    repeat find_rewrite; simpl; auto.
+    - find_copy_apply_lem_hyp TermSanity.doGenericServer_spec. break_and. auto.
+    - eauto using doGenericServer_same_type.
+  Qed.
+
   Lemma candidate_entries_do_generic_server :
     refined_raft_net_invariant_do_generic_server CandidateEntries.
-  Admitted.
+  Proof.
+    red. unfold CandidateEntries.
+    intros.
+    intuition; simpl in *.
+    - unfold candidateEntries_host_invariant in *.
+      intros.
+      eapply candidateEntries_ext; eauto.
+      repeat find_higher_order_rewrite.
+      my_update_destruct; subst; rewrite_update.
+      + simpl in *.
+        find_copy_apply_lem_hyp TermSanity.doGenericServer_spec. break_and.
+        find_rewrite.
+        repeat match goal with
+        | [ H : nwState ?net ?h = (_, ?d), H' : context [ log ?d ] |- _ ] =>
+          replace (log d) with (log (snd (nwState net h))) in H' by (repeat find_rewrite; auto)
+        end.
+        eauto using doGenericServer_preserves_candidateEntries.
+      + eauto using doGenericServer_preserves_candidateEntries.
+    - unfold candidateEntries_nw_invariant in *.
+      intros. simpl in *.
+      eapply candidateEntries_ext; eauto.
+      find_apply_hyp_hyp.
+      intuition.
+      + eauto using doGenericServer_preserves_candidateEntries.
+      + do_in_map.
+        find_copy_apply_lem_hyp TermSanity.doGenericServer_spec. break_and.
+        subst. simpl in *.
+        find_apply_hyp_hyp.
+        exfalso.
+        find_rewrite. eauto 20.
+  Qed.
 
   Lemma candidate_entries_state_same_packet_subset :
     refined_raft_net_invariant_state_same_packet_subset CandidateEntries.
