@@ -751,7 +751,10 @@ Section CandidateEntries.
       my_update_destruct; subst; rewrite_update.
       + simpl in *.
         find_erewrite_lem doLeader_same_log.
-        replace (log d) with (log (snd (nwState net h0))) in * by (find_rewrite; auto).
+        repeat match goal with
+        | [ H : nwState ?net ?h = (_, ?d), H' : context [ log ?d ] |- _ ] =>
+          replace (log d) with (log (snd (nwState net h))) in H' by (repeat find_rewrite; auto)
+        end.
         eauto using doLeader_preserves_candidateEntries.
       + eauto using doLeader_preserves_candidateEntries.
     - unfold candidateEntries_nw_invariant in *.
