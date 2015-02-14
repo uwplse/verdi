@@ -851,9 +851,58 @@ Section CandidateEntries.
       apply candidateEntries_ext with (sigma := nwState net); eauto.
   Qed.
 
+  Lemma reboot_log_same :
+    forall d,
+      log (reboot d) = log d.
+  Proof.
+    unfold reboot.
+    auto.
+  Qed.
+
+  Lemma reboot_preservers_candidateEntries :
+    forall net h d gd e,
+      nwState net h = (gd, d) ->
+      candidateEntries e (nwState net) ->
+      candidateEntries e (update (nwState net) h (gd, reboot d)).
+  Proof.
+    unfold reboot, candidateEntries.
+    intros.
+    break_exists.
+    exists x.
+    break_and.
+    rewrite update_fun_comm. simpl in *.
+    my_update_destruct; subst; rewrite_update; auto.
+    repeat find_rewrite. simpl in *. intuition. discriminate.
+  Qed.
+
   Lemma candidate_entries_reboot :
     refined_raft_net_invariant_reboot CandidateEntries.
-  Admitted.
+  Proof.
+    red. unfold CandidateEntries.
+    intros.
+    intuition.
+    - unfold candidateEntries_host_invariant in *.
+      intros.
+      repeat find_higher_order_rewrite.
+      eapply candidateEntries_ext; eauto.
+      subst.
+      find_rewrite_lem update_fun_comm. simpl in *.
+      find_rewrite_lem update_fun_comm. simpl in *.
+      my_update_destruct; subst; rewrite_update.
+      + repeat match goal with
+        | [ H : nwState ?net ?h = (_, ?d), H' : context [ log ?d ] |- _ ] =>
+          replace (log d) with (log (snd (nwState net h))) in H' by (repeat find_rewrite; auto)
+        end.
+        find_apply_hyp_hyp.
+        eauto using reboot_preservers_candidateEntries.
+      + eauto using reboot_preservers_candidateEntries.
+    - unfold candidateEntries_nw_invariant in *.
+      intros.
+      repeat find_reverse_rewrite.
+      eapply_prop_hyp In In; eauto.
+      eapply candidateEntries_ext; eauto.
+      eauto using reboot_preservers_candidateEntries.
+  Qed.
 
   Lemma candidate_entries_init :
     refined_raft_net_invariant_init CandidateEntries.
