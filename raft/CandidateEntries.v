@@ -600,9 +600,109 @@ Section CandidateEntries.
         subst. break_exists. discriminate.
   Qed.
 
+  Lemma handleRequestVoteReply_spec :
+    forall h st h' t r st',
+      st' = handleRequestVoteReply h st h' t r ->
+      log st' = log st /\
+      (forall v, In v (votesReceived st) -> In v (votesReceived st')) /\
+      ((currentTerm st' = currentTerm st /\ type st' = type st)
+       \/ type st' <> Candidate) /\
+      (type st <> Leader /\ type st' = Leader ->
+       (type st = Candidate /\ wonElection (dedup name_eq_dec
+                                                  (votesReceived st')) = true)).
+  Proof.
+    intros.
+    unfold handleRequestVoteReply, advanceCurrentTerm in *.
+    repeat break_match; try find_inversion; subst; simpl in *; intuition;
+    do_bool; intuition; try right; congruence.
+  Qed.
+
+  Lemma handleRequestVoteReply_preserves_candidate_entries :
+    forall net h h' t r st' e,
+      st' = handleRequestVoteReply h (snd (nwState net h)) h' t r ->
+      refined_raft_intermediate_reachable net ->
+      candidateEntries e (nwState net) ->
+      candidateEntries e (update (nwState net) h
+                               (update_elections_data_requestVoteReply h h' t r (nwState net h),
+                                st')).
+  Proof. 
+  unfold candidateEntries.
+    intros. break_exists. break_and.
+    exists x.
+    split.
+    - rewrite update_fun_comm. simpl.
+      rewrite update_fun_comm. simpl.
+      my_update_destruct; subst; rewrite_update; auto.
+      unfold update_elections_data_requestVoteReply in *.
+      repeat break_match; simpl in *; auto.
+      + break_if; simpl in *; repeat find_rewrite; auto.
+         match goal with
+          | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
+            remember (handleRequestVoteReply h st h' t r) as new_state
+         end. find_apply_lem_hyp handleRequestVoteReply_spec. intuition.
+         repeat find_rewrite. intuition.
+      + break_if; simpl in *; find_rewrite; auto.
+        match goal with
+          | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
+            remember (handleRequestVoteReply h st h' t r) as new_state
+        end. find_apply_lem_hyp handleRequestVoteReply_spec. intuition.
+        repeat find_rewrite. intuition.
+      +  break_if; simpl in *; find_rewrite; auto.
+        match goal with
+          | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
+            remember (handleRequestVoteReply h st h' t r) as new_state
+        end. find_apply_lem_hyp handleRequestVoteReply_spec. intuition.
+        repeat find_rewrite. intuition.
+        * find_apply_lem_hyp cronies_correct_invariant.
+          unfold cronies_correct in *. intuition.
+          unfold votes_received_leaders in *.
+          match goal with
+            | H :  Leader = _ |- _ =>
+              symmetry in H
+          end. find_apply_hyp_hyp.
+          eapply wonElection_no_dup_in;
+            eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
+        * destruct (serverType_eq_dec (type (snd (nwState net x))) Leader); intuition.
+          find_apply_lem_hyp cronies_correct_invariant; auto.
+          eapply wonElection_no_dup_in;
+            eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
+    - rewrite update_fun_comm. simpl.
+      rewrite update_fun_comm. simpl.
+      my_update_destruct; subst; rewrite_update; auto.
+      match goal with
+          | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
+            remember (handleRequestVoteReply h st h' t r) as new_state
+      end. find_apply_lem_hyp handleRequestVoteReply_spec. intuition.
+      repeat find_rewrite. intuition.
+  Qed.
+  
   Lemma candidate_entries_request_vote_reply :
     refined_raft_net_invariant_request_vote_reply CandidateEntries.
-  Admitted.
+    red. unfold CandidateEntries. intros. intuition.
+    - unfold candidateEntries_host_invariant in *.
+      intros. simpl in *. eapply candidateEntries_ext; eauto.
+      repeat find_higher_order_rewrite.
+      find_rewrite_lem update_fun_comm. simpl in *.
+      my_update_destruct.
+      + subst. rewrite_update.
+        match goal with
+          | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
+            remember (handleRequestVoteReply h st h' t r) as new_state
+        end.
+        find_copy_apply_lem_hyp handleRequestVoteReply_spec. break_and.
+        match goal with
+          | H : log _ = log _ |- _ => rewrite H in *
+        end.
+        find_apply_hyp_hyp.
+        eapply handleRequestVoteReply_preserves_candidate_entries; eauto.
+      + rewrite_update.
+        eapply handleRequestVoteReply_preserves_candidate_entries; eauto.
+    - unfold candidateEntries_nw_invariant in *.
+      intros. simpl in *. eapply candidateEntries_ext; eauto.
+      repeat find_higher_order_rewrite.
+      eapply handleRequestVoteReply_preserves_candidate_entries; eauto.
+  Qed.
+
 
   Lemma candidate_entries_do_leader :
     refined_raft_net_invariant_do_leader CandidateEntries.
