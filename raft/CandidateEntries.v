@@ -482,11 +482,123 @@ Section CandidateEntries.
         end.
         repeat eexists; eauto.
   Qed.
-        
-    
+
+  Lemma update_elections_data_requestVote_cronies_same :
+    forall h h' t lli llt st,
+      cronies (update_elections_data_requestVote h h' t h' lli llt st) =
+      cronies (fst st).
+  Proof.
+    unfold update_elections_data_requestVote.
+    intros.
+    repeat break_match; auto.
+  Qed.
+
+  Lemma advanceCurrentTerm_same_or_type_follower :
+    forall st t,
+      advanceCurrentTerm st t = st \/
+      type (advanceCurrentTerm st t) = Follower.
+  Proof.
+    unfold advanceCurrentTerm.
+    intros. repeat break_match; auto.
+  Qed.
+
+  Lemma handleRV_advanceCurrentTerm_preserves_candidateEntries :
+    forall net h h' t lli llt e,
+      candidateEntries e (nwState net) ->
+      candidateEntries e
+                       (update (nwState net) h
+                               (update_elections_data_requestVote h h' t h' lli llt (nwState net h),
+                                advanceCurrentTerm (snd (nwState net h)) t)).
+  Proof.
+    intros.
+    unfold candidateEntries in *.
+    break_exists.  break_and.
+    exists x.
+    split; update_destruct; subst; rewrite_update; auto; simpl.
+    + rewrite update_elections_data_requestVote_cronies_same. auto.
+    + intros.
+      match goal with
+      | [ |- context [advanceCurrentTerm ?st ?t] ] =>
+        pose proof advanceCurrentTerm_same_or_type_follower st t
+      end.
+      intuition; try congruence.
+      repeat find_rewrite. auto.
+  Qed.
+
+  Lemma handleRequestVote_preserves_candidateEntries :
+    forall net h h' t lli llt d e m,
+      handleRequestVote h (snd (nwState net h)) t h' lli llt = (d, m) ->
+      candidateEntries e (nwState net) ->
+      candidateEntries e (update (nwState net) h
+                                 (update_elections_data_requestVote
+                                    h h' t h' lli llt (nwState net h), d)).
+  Proof.
+    unfold handleRequestVote.
+    intros.
+    repeat break_match; repeat find_inversion;
+    auto using handleRV_advanceCurrentTerm_preserves_candidateEntries.
+    - eapply candidateEntries_same; eauto;
+        intros;
+        repeat (rewrite update_fun_comm; simpl in * );
+        update_destruct; subst; rewrite_update;
+        auto using update_elections_data_requestVote_cronies_same.
+    - unfold candidateEntries in *. break_exists. break_and. exists x.
+      simpl.
+      split.
+      + rewrite update_fun_comm with (f := fst). simpl.
+        rewrite update_fun_comm with (f := cronies). simpl.
+        rewrite update_elections_data_requestVote_cronies_same.
+        update_destruct; subst; rewrite_update; auto.
+      + rewrite update_fun_comm with (f := snd). simpl.
+        rewrite update_fun_comm with (f := currentTerm). simpl.
+        rewrite update_fun_comm with (f := type). simpl.
+        update_destruct; subst; rewrite_update; auto.
+        match goal with
+        | [ |- context [advanceCurrentTerm ?st ?t] ] =>
+          pose proof advanceCurrentTerm_same_or_type_follower st t
+        end.
+        intuition; try congruence.
+        repeat find_rewrite. auto.
+  Qed.
+
+  Lemma handleRequestVote_only_sends_RVR :
+    forall d h h' t lli llt d' m,
+      handleRequestVote h d t h' lli llt = (d', m) ->
+      is_request_vote_reply m.
+  Proof.
+    unfold handleRequestVote.
+    intros.
+    repeat break_match; repeat find_inversion; eauto.
+  Qed.
+
+  Ltac find_erewrite_lem lem :=
+    match goal with
+    | [ H : _ |- _] => erewrite lem in H by eauto
+    end.
+
   Lemma candidate_entries_request_vote :
     refined_raft_net_invariant_request_vote CandidateEntries.
-  Admitted.
+  Proof.
+    red. unfold CandidateEntries.
+    intros. subst.
+    intuition; simpl in *.
+    - unfold candidateEntries_host_invariant in *.
+      intros.
+      eapply candidateEntries_ext; eauto.
+      repeat find_higher_order_rewrite.
+      find_rewrite_lem update_fun_comm. simpl in *.
+      my_update_destruct; subst; rewrite_update; simpl in *;
+      try find_erewrite_lem handleRequestVote_same_log;
+      eapply handleRequestVote_preserves_candidateEntries; eauto.
+    - unfold candidateEntries_nw_invariant in *.
+      intros. simpl in *.
+      eapply candidateEntries_ext; eauto.
+      find_apply_hyp_hyp. intuition.
+      + eauto using handleRequestVote_preserves_candidateEntries.
+      + subst. simpl in *.
+        find_apply_lem_hyp handleRequestVote_only_sends_RVR.
+        subst. break_exists. discriminate.
+  Qed.
 
   Lemma candidate_entries_request_vote_reply :
     refined_raft_net_invariant_request_vote_reply CandidateEntries.
