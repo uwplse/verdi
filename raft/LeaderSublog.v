@@ -238,12 +238,6 @@ Section LeaderSublog.
       wonElection (dedup name_eq_dec (votesReceived (nwState net h))) = true ->
       type (nwState net h) <> Candidate.
 
-  Ltac apply_prop_hyp P Q :=
-    match goal with
-    | [ H : context [ P ], H' : context [ Q ] |- _ ] =>
-      apply H in H'
-    end.
-
   Lemma candidate_entries_lowered' :
     forall net,
       CandidateEntries net ->
@@ -320,12 +314,6 @@ Section LeaderSublog.
     do_in_map.
     eauto.
   Qed.
-
-  Ltac eapply_prop_hyp P Q :=
-    match goal with
-    | [ H : context [ P ], H' : context [ Q ] |- _ ] =>
-      eapply H in H'
-    end.
 
   Lemma candidate_entries_lowered_rvr' :
     forall net,
