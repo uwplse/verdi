@@ -58,8 +58,8 @@ Section Sorted.
   Qed.
 
   Theorem handleClientRequest_log :
-    forall h st id c out st' ps,
-      handleClientRequest h st id c = (out, st', ps) ->
+    forall h st client id c out st' ps,
+      handleClientRequest h st client id c = (out, st', ps) ->
       ps = [] /\
       (log st' = log st \/
        exists e,
@@ -73,8 +73,8 @@ Section Sorted.
   Qed.
 
   Theorem handleClientRequest_packets :
-    forall h st id c out st' ps,
-      handleClientRequest h st id c = (out, st', ps) ->
+    forall h st client id c out st' ps,
+      handleClientRequest h st client id c = (out, st', ps) ->
       ps = [].
   Proof.
     intros. find_apply_lem_hyp handleClientRequest_log. intuition.

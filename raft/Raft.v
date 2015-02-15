@@ -43,6 +43,7 @@ Section Raft.
   
   Record entry := mkEntry {
                       eAt : name;
+                      eClient : nat;
                       eId : nat;
                       eIndex : logIndex;
                       eTerm : term;
@@ -57,11 +58,11 @@ Section Raft.
 
   Inductive raft_input : Type :=
   | Timeout : raft_input
-  | ClientRequest : nat -> input -> raft_input.
+  | ClientRequest : nat -> nat -> input -> raft_input.
 
   Inductive raft_output : Type :=
-  | NotLeader : nat -> raft_output
-  | ClientResponse : nat -> output -> raft_output.
+  | NotLeader : nat -> nat -> raft_output
+  | ClientResponse : nat -> nat -> output -> raft_output.
   
   Inductive serverType : Set :=
   | Follower
@@ -309,7 +310,7 @@ Section Raft.
       | e :: es =>
         let (out, state) := handler (eInput e) state in
         let out := if name_eq_dec (eAt e) h then
-                     map (fun o => ClientResponse (eId e) o) out
+                     map (fun o => ClientResponse (eClient e) (eId e) o) out
                    else
                      [] in
         let (out', state) := applyEntries h state es in
@@ -376,19 +377,19 @@ Section Raft.
     (genericOut ++ leaderOut,
      state, pkts ++ genericPkts ++ leaderPkts).
 
-  Definition handleClientRequest (me : name) (state : raft_data) (id : nat) (c : input)
+  Definition handleClientRequest (me : name) (state : raft_data) (client : nat) (id : nat) (c : input)
   : list raft_output * raft_data * list (name * msg) :=
     match (type state) with
       | Leader => let index := S (maxIndex (log state)) in
                  ([],
                   {[ {[ {[ state with log :=
-                             (mkEntry me id index (currentTerm state) c) :: (log state) ]}
+                             (mkEntry me client id index (currentTerm state) c) :: (log state) ]}
                         with matchIndex :=
                           (assoc_set name_eq_dec (matchIndex state) me index)
                       ]}
                      with shouldSend := true ]},
                   [])
-      | _ => ([NotLeader id], state, [])
+      | _ => ([NotLeader client id], state, [])
     end.
 
   
@@ -401,7 +402,7 @@ Section Raft.
 
   Definition handleInput (me : name) (inp : raft_input) (state : raft_data) :=
     match inp with
-      | ClientRequest id c => handleClientRequest me state id c
+      | ClientRequest client id c => handleClientRequest me state client id c
       | Timeout => handleTimeout me state
     end.
 
@@ -514,8 +515,8 @@ Section Raft.
 
 
   Definition raft_net_invariant_client_request (P : network -> Prop) :=
-    forall h net st' ps' out d l id c,
-      handleClientRequest h (nwState net h) id c = (out, d, l) ->
+    forall h net st' ps' out d l client id c,
+      handleClientRequest h (nwState net h) client id c = (out, d, l) ->
       P net ->
       raft_intermediate_reachable net ->
       (forall h', st' h' = update (nwState net) h d h') ->

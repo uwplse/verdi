@@ -57,14 +57,15 @@ Section CandidateEntries.
     candidateEntries_host_invariant (nwState net) /\ candidateEntries_nw_invariant net.
 
   Lemma handleClientRequest_spec :
-    forall h d id c out d' l,
-      handleClientRequest h d id c = (out, d', l) ->
+    forall h d client id c out d' l,
+      handleClientRequest h d client id c = (out, d', l) ->
       currentTerm d' = currentTerm d /\
       type d' = type d /\
       l = [] /\
       (forall e, In e (log d') ->
             (In e (log d) \/ (e = (mkEntry
                                      h
+                                     client
                                      id
                                      (S (maxIndex (log d)))
                                      (currentTerm d)

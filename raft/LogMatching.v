@@ -785,14 +785,14 @@ Ltac assert_do_leader :=
     end.
 
   Lemma handleClientRequest_log_matching_hosts_entries_match :
-    forall h h' net id c,
+    forall h h' net client id c,
       h' <> h ->
       log_matching_hosts net ->
       leader_sublog_host_invariant net ->
       logs_sorted_host net ->
       type (nwState net h) = Leader ->
       entries_match 
-        ((mkEntry h id (S (maxIndex (log (nwState net h)))) (currentTerm (nwState net h)) c)
+        ((mkEntry h client id (S (maxIndex (log (nwState net h)))) (currentTerm (nwState net h)) c)
            :: (log (nwState net h)))
         (log (nwState net h')).
   Proof.

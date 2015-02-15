@@ -192,8 +192,8 @@ Section GhostElections.
         refined_raft_intermediate_reachable (mkNetwork ps' st').
 
   Definition refined_raft_net_invariant_client_request (P : network -> Prop) :=
-    forall h net st' ps' gd out d l id c,
-      handleClientRequest h (snd (nwState net h)) id c = (out, d, l) ->
+    forall h net st' ps' gd out d l client id c,
+      handleClientRequest h (snd (nwState net h)) client id c = (out, d, l) ->
       gd = fst (nwState net h) ->
       P net ->
       refined_raft_intermediate_reachable net ->

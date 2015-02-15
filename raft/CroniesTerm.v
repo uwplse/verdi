@@ -31,8 +31,8 @@ Section CroniesTerm.
     end.
 
   Lemma handleClientRequest_spec :
-    forall h st id c out st' l,
-      handleClientRequest h st id c = (out, st', l) ->
+    forall h st client id c out st' l,
+      handleClientRequest h st client id c = (out, st', l) ->
       currentTerm st' = currentTerm st.
   Proof.
     intros. unfold handleClientRequest in *.

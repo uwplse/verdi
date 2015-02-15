@@ -57,8 +57,8 @@ Section CroniesCorrect.
     votes_received_cronies net /\ cronies_votes net /\ votes_nw net /\ votes_received_leaders net.
 
   Lemma handleClientRequest_rvr :
-    forall h net ps id c out d l p t v,
-      handleClientRequest h (snd (nwState net h)) id c = (out, d, l) ->
+    forall h net ps client id c out d l p t v,
+      handleClientRequest h (snd (nwState net h)) client id c = (out, d, l) ->
       (forall p' : packet,
          In p' ps ->
          In p' (nwPackets net) \/

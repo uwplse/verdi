@@ -151,8 +151,8 @@ Section TermSanity.
 
 
   Lemma handleClientRequest_messages :
-    forall h d id c os d' ms,
-      handleClientRequest h d id c = (os, d', ms) ->
+    forall h d client id c os d' ms,
+      handleClientRequest h d client id c = (os, d', ms) ->
       (forall m, In m ms -> ~ is_append_entries (snd m)).
   Proof.
     intros. unfold handleClientRequest in *.
