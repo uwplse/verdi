@@ -20,11 +20,10 @@ Section SeqNumCorrect.
         n' > (tmNum (snd p)).
   Proof.
     induction l; intros; simpl in *.
-    - invcs H. intuition.
-    - break_match. invcs H. intuition.
-      + invcs H. omega.
-      + specialize (IHl n0 l0). intuition.
-        specialize (H0 p). intuition.
+    - find_inversion. simpl in *. intuition.
+    - break_match. find_inversion. simpl in *. intuition.
+      + subst. simpl. omega.
+      + eauto using le_gt_trans, le_plus_l.
   Qed.
 
   Lemma processPackets_num_monotonic :
@@ -33,9 +32,10 @@ Section SeqNumCorrect.
       n' >= n.
   Proof.
     induction l; intros; simpl in *.
-    - intros. invcs H. intuition.
-    - break_match.
-      invcs H. specialize (IHl n0 l0). intuition.
+    - intros. find_inversion. intuition.
+    - break_match. find_inversion.
+      find_insterU. find_insterU. conclude_using eauto.
+      omega.
   Qed.
 
   Lemma processPackets_ge_start :
@@ -147,8 +147,8 @@ Section SeqNumCorrect.
     net = net'.
   Proof.
     intros; destruct net, net'.
-    simpl in H, H0.
-    rewrite H, H0.
+    simpl in *.
+    subst.
     auto.
   Qed.
 
@@ -162,7 +162,10 @@ Section SeqNumCorrect.
   Proof.
     apply inductive_invariant_true_in_reachable. unfold inductive_invariant, inductive.
     unfold sequence_sane. simpl in *. intuition.
-    invcs H0; try find_inversion.
+    match goal with
+      | [ H : step_d _ _ _ |- _ ] =>
+        invcs H
+    end; try find_inversion.
     - (* deliver case *)
       unfold seq_num_net_handlers in *.
       simpl in *.
