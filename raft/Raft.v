@@ -513,6 +513,28 @@ Section Raft.
                          In p (send_packets h ms)) ->
         raft_intermediate_reachable (mkNetwork ps' st').
 
+  Lemma step_f_star_raft_intermediate_reachable' :
+    forall n' tr,
+      step_f_star step_f_init n' tr ->
+      raft_intermediate_reachable (snd n').
+  Proof.
+    intros. find_apply_lem_hyp refl_trans_1n_n1_trace.
+    remember step_f_init as net1.
+    induction H.
+    - subst. simpl. constructor.
+    - destruct x'; destruct x''. simpl in *.
+      econstructor; eauto.
+  Qed.
+
+  Lemma step_f_star_raft_intermediate_reachable :
+    forall failed net tr,
+      step_f_star step_f_init (failed, net) tr ->
+      raft_intermediate_reachable net.
+  Proof.
+    intros.
+    replace net with (snd (failed, net)); [|simpl; auto].
+    eapply step_f_star_raft_intermediate_reachable'; eauto.
+  Qed.
 
   Definition raft_net_invariant_client_request (P : network -> Prop) :=
     forall h net st' ps' out d l client id c,
