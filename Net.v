@@ -21,7 +21,7 @@ Class BaseParams :=
 Class OneNodeParams (P : BaseParams) :=
   {
     init : data;
-    handler : input -> data -> (list output * data)
+    handler : input -> data -> (output * data)
   }.
 
 Class MultiParams (P : BaseParams) :=
@@ -230,8 +230,8 @@ End StepRelations.
 Section Step1.
   Context `{params : OneNodeParams}.
 
-  Inductive step_1 : (step_relation data (input * list output)) :=
-  | S1T_deliver : forall (i : input) s s' (out : list output),
+  Inductive step_1 : (step_relation data (input * output)) :=
+  | S1T_deliver : forall (i : input) s s' (out : output),
                     handler i s = (out, s') ->
                     step_1 s s' [(i, out)].
 
