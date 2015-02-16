@@ -310,7 +310,7 @@ Section Raft.
       | e :: es =>
         let (out, state) := handler (eInput e) state in
         let out := if name_eq_dec (eAt e) h then
-                     map (fun o => ClientResponse (eClient e) (eId e) o) out
+                     [ClientResponse (eClient e) (eId e) out]
                    else
                      [] in
         let (out', state) := applyEntries h state es in
