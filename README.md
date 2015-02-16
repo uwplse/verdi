@@ -1,6 +1,8 @@
 Verdi
 =====
 
+[![Build Status](https://travis-ci.org/uwplse/verdi.svg)](https://travis-ci.org/uwplse/verdi)
+
 A framework for formally verifying distributed systems implementations in Coq
 
 The Verdi Framework
