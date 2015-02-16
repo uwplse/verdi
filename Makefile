@@ -9,7 +9,7 @@ clean: Makefile.coq
 	rm -rf Makefile.coq
 
 Makefile.coq:
-	coq_makefile -Q . "" *.v > Makefile.coq
+	coq_makefile -Q . "" -arg -no-native-compiler *.v > Makefile.coq
 
 quick: Makefile.coq
 	$(MAKE) -f Makefile.coq quick
