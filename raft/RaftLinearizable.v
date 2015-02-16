@@ -27,22 +27,68 @@ Section RaftLinearizable.
                        | _ => None
                      end) l ++ import xs
       | _ :: xs => import xs
-  end.
+    end.
 
-(*
-  Definition export (env : key -> option input) (l : list (IR key)) : option (list (input * output)) :=
-    (*
-    map (fun x => (match x with
-                      | IRI _ k =>
-                      | IRO _ k => O _ k
-                      | IRU _ k => O _ k
-                    end)) l. *)
-*)
+  Inductive exported (env_i : key -> option input) (env_o : key -> option output) :
+    list (IR key) -> list (input * output) -> Prop :=
+  | exported_nil : exported env_i env_o nil nil
+  | exported_IO : forall k i o l tr,
+                    env_i k = Some i ->
+                    env_o k = Some o ->
+                    exported env_i env_o l tr ->
+                    exported env_i env_o (IRI _ k :: IRO _ k :: l) ((i, o) :: tr)
+  | exported_IU : forall k i o l tr,
+                    env_i k = Some i ->
+                    exported env_i env_o l tr ->
+                    exported env_i env_o (IRI _ k :: IRU _ k :: l) ((i, o) :: tr).
 
-(*
-  Definition raft_linearizable
-             (tr : list (name * (input + list output))) : Prop :=
-    exists l',
-      equivalent (import tr) l' /\
-*)
+  Require Import Sumbool.
+  Require Import Arith.
+  
+  Fixpoint get_input (tr : list (name * (raft_input + list raft_output))) (k : key)
+    : option input :=
+    match tr with
+      | [] => None
+      | (_, (inl (ClientRequest c id cmd))) :: xs =>
+        if (sumbool_and _ _ _ _
+                        (eq_nat_dec c (fst k))
+                        (eq_nat_dec id (snd k))) then
+          Some cmd
+        else
+          get_input xs k
+      | _ :: xs => get_input xs k
+    end.
+
+  Fixpoint get_output' (os : list raft_output) (k : key) : option output :=
+    match os with
+      | [] => None
+      | ClientResponse c id o :: xs => 
+        if (sumbool_and _ _ _ _
+                        (eq_nat_dec c (fst k))
+                        (eq_nat_dec id (snd k))) then
+          Some o
+        else
+          get_output' xs k
+      | _ :: xs => get_output' xs k
+    end.
+
+  Fixpoint get_output (tr : list (name * (raft_input + list raft_output))) (k : key)
+    : option output :=
+    match tr with
+      | [] => None
+      | (_, (inr os)) :: xs => (match get_output' os k with
+                                 | Some o => Some o
+                                 | None => get_output xs k
+                               end)
+      | _ :: xs => get_output xs k
+    end.
+  
+  Theorem raft_linearizable :
+    forall failed net tr,
+      step_f_star step_f_init (failed, net) tr ->
+      exists l tr1 st,
+        equivalent _ (import tr) l /\
+        exported (get_input tr) (get_output tr) l tr1 /\
+        step_1_star init st tr1.
+  Admitted.
 End RaftLinearizable.
