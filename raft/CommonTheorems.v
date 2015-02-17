@@ -782,6 +782,7 @@ Section CommonTheorems.
     simpl. eauto.
   Qed.
 
+  (* Find the node with the largest last applied and get all its applied entries *)
   Fixpoint applied_entries' (sigma : name -> raft_data) (l : list name) : option (nat * name) :=
     match l with
       | n :: l' => match (applied_entries' sigma l') with
