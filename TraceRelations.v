@@ -5,9 +5,9 @@ Require Import Net.
 Require Import Util.
 Require Import VerdiTactics.
 
-Class TraceRelation `{State : Type} `{Trace : Type} (step : step_relation State Trace) :=
+Class TraceRelation `{State : Type} `{Event : Type} (step : step_relation State Event) :=
   {
-    T : (list Trace) -> Prop;
+    T : (list Event) -> Prop;
     T_dec : forall l, {T l} + {~ T l};
     R : State -> Prop;
     R_monotonic : forall s s' o, step s s' o -> R s -> R s';
