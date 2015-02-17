@@ -12,7 +12,6 @@ Class TraceRelation `{State : Type} `{Trace : Type} (step : step_relation State 
     R : State -> Prop;
     R_monotonic : forall s s' o, step s s' o -> R s -> R s';
     T_false_init : ~ T [];
-    T_monotonic : forall tr o, T tr -> T (tr ++ o);
     T_implies_R : forall tr s s' o,
                     ~ T tr ->
                     step s s' o ->

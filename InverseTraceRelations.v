@@ -11,7 +11,6 @@ Class InverseTraceRelation `{State : Type} `{Trace : Type} (step : step_relation
     R : State -> Prop;
     R_dec : forall s, {R s} + {~ R s};
     T_monotonic : forall tr o, T tr -> T (tr ++ o);
-    R_monotonic : forall s s' o, step s s' o -> R s -> R s';
     R_implies_T : forall s s' o tr,
                     ~ R s ->
                     step s s' o ->
