@@ -8,7 +8,7 @@ RaftState.v: RaftState.v.rec extract_record_notation.py
 	$(PYTHON) extract_record_notation.py RaftState.v.rec raft_data > RaftState.v
 
 Makefile.coq:
-	coq_makefile -Q .. "" -Q . "" *.v > Makefile.coq
+	coq_makefile -Q .. "" -Q . "" -arg -no-native-compiler *.v > Makefile.coq
 
 quick: Makefile.coq
 	$(MAKE) -f Makefile.coq quick
