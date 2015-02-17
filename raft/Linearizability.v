@@ -5,16 +5,30 @@ Require Import VerdiTactics.
 
 Section Linearizability.
   Variable K : Type.
+  Variable K_eq_dec : forall x y : K, {x = y} + {x <> y}.
 
   Inductive op : Type :=
   | I : K -> op
   | O : K -> op.
+
+  Definition op_eq_dec :
+    forall x y : op, {x = y} + {x <> y}.
+  Proof.
+    decide equality.
+  Qed.
 
   Inductive IR : Type :=
   | IRI : K -> IR
   | IRO : K -> IR
   | IRU : K -> IR.
 
+  Definition IR_eq_dec :
+    forall x y : IR, {x = y} + {x <> y}.
+  Proof.
+    decide equality.
+  Qed.
+
+  
   (* Hypothesis trace_NoDup : NoDup trace. *)
   (* also maybe: no Us *)
   (* alse maybe: every O has corresponding I before it *)
@@ -72,6 +86,27 @@ Section Linearizability.
       good_trace ir.
 
   Functional Scheme good_trace_ind := Induction for  good_trace Sort Prop.
+
+  Fixpoint before {A: Type} (A_eq_dec : forall x y : A, {x = y} + {x <> y}) (x : A) y l : Prop :=
+    match l with
+      | [] => False
+      | a :: l' =>
+        if (A_eq_dec a x) then True
+        else
+          if (A_eq_dec a y) then False
+          else before A_eq_dec x y l'
+    end.
+
+  Theorem equivalent_intro :
+    forall l ir,
+      good_trace ir ->
+      (forall k, In (O k) l -> In (IRO k) ir) ->
+      (forall k, In (IRO k) ir -> In (O k) l) ->
+      (forall k k', In (I k') l -> before op_eq_dec (O k) (I k') l ->
+               before IR_eq_dec (IRO k) (IRI k') ir) ->
+      equivalent l ir.
+  Proof.
+  Admitted.
 
 (*
   Lemma good_trace_acknowledge_all_ops_id :
