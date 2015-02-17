@@ -781,6 +781,27 @@ Section CommonTheorems.
     destruct l; try discriminate.
     simpl. eauto.
   Qed.
+
+  Fixpoint applied_entries' (sigma : name -> raft_data) (l : list name) : option (nat * name) :=
+    match l with
+      | n :: l' => match (applied_entries' sigma l') with
+                    | None => Some (lastApplied (sigma n), n)
+                    | Some (ci, n') =>
+                      if ci <? (lastApplied (sigma n)) then
+                        Some (lastApplied (sigma n), n)
+                      else
+                        Some (ci, n')
+                  end
+      | [] => None
+    end.
+
+  Definition applied_entries (sigma : name -> raft_data) : (list entry) :=
+    match applied_entries' sigma (all_fin N) with
+      | Some (ci, n) =>
+        removeAfterIndex (log (sigma n)) ci
+      | None => []
+    end.
+  
 End CommonTheorems.
 
 Notation is_append_entries m :=
