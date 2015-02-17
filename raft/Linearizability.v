@@ -1,6 +1,7 @@
 Require Import List.
 Import ListNotations.
 
+Require Import Util.
 Require Import VerdiTactics.
 
 Section Linearizability.
@@ -86,16 +87,6 @@ Section Linearizability.
       good_trace ir.
 
   Functional Scheme good_trace_ind := Induction for  good_trace Sort Prop.
-
-  Fixpoint before {A: Type} (A_eq_dec : forall x y : A, {x = y} + {x <> y}) (x : A) y l : Prop :=
-    match l with
-      | [] => False
-      | a :: l' =>
-        if (A_eq_dec a x) then True
-        else
-          if (A_eq_dec a y) then False
-          else before A_eq_dec x y l'
-    end.
 
   Theorem equivalent_intro :
     forall l ir,
