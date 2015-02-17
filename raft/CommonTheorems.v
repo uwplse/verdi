@@ -798,7 +798,7 @@ Section CommonTheorems.
   Definition applied_entries (sigma : name -> raft_data) : (list entry) :=
     match applied_entries' sigma (all_fin N) with
       | Some (ci, n) =>
-        removeAfterIndex (log (sigma n)) ci
+        rev (removeAfterIndex (log (sigma n)) ci)
       | None => []
     end.
   
