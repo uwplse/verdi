@@ -11,7 +11,7 @@ Class TraceRelation `{State : Type} `{Trace : Type} (step : step_relation State 
     T_dec : forall l, {T l} + {~ T l};
     R : State -> Prop;
     R_monotonic : forall s s' o, step s s' o -> R s -> R s';
-    T_not_true_init : ~ T [];
+    T_false_init : ~ T [];
     T_monotonic : forall tr o, T tr -> T (tr ++ o);
     T_implies_R : forall tr s s' o,
                     ~ T tr ->
@@ -30,8 +30,7 @@ Section TraceRelations.
   Proof.
     intros. find_apply_lem_hyp refl_trans_1n_n1_trace.
     induction H.
-    - intros; exfalso; eauto using T_not_true_init.
-    - intros.
-      destruct (T_dec cs); eauto using R_monotonic, T_implies_R.
+    - intros; exfalso; eauto using T_false_init.
+    - destruct (T_dec cs); eauto using R_monotonic, T_implies_R.
   Qed.
 End TraceRelations.
