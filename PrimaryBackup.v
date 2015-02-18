@@ -41,7 +41,7 @@ Section PrimaryBackup.
   | Read : PB_input.
 
   Inductive PB_output :=
-  | RequestResponse : input -> list output -> PB_output
+  | RequestResponse : input -> output -> PB_output
   | ReadResponse : data -> PB_output.
 
   Record PB_data :=
@@ -218,7 +218,7 @@ Section PrimaryBackup.
       PB_net
       PB_input_handler.
 
-  Definition inputs_1 (tr : list ((@input base_params) * list (@output base_params))) :
+  Definition inputs_1 (tr : list ((@input base_params) * (@output base_params))) :
       list (@input base_params) :=
     map (@fst _ _) tr.
 
@@ -230,12 +230,12 @@ Section PrimaryBackup.
                         end)
               tr.
 
-  Definition outputs_1 (tr : list ((@input base_params) * list (@output base_params))) :
-    list (list (@output base_params)) :=
+  Definition outputs_1 (tr : list ((@input base_params) * (@output base_params))) :
+    list (@output base_params) :=
     map (@snd _ _) tr.
 
   Fixpoint outputs_m (tr : list (name * (@input PB_base_params + list (@output PB_base_params)))) :
-    list (list (@output base_params)) :=
+    list (@output base_params) :=
     match tr with
       | [] => []
       | (Primary, inr l) :: tr' => filterMap (fun x => match x with
@@ -246,7 +246,7 @@ Section PrimaryBackup.
     end.
 
   Fixpoint processInputs (d : @data base_params) (l : list (@input base_params)) :
-      (@data base_params * list (list (@output base_params))) :=
+      (@data base_params * list (@output base_params)) :=
     match l with
       | [] => (d, [])
       | i :: l' => let (os, d') := @handler _ one_node_params i d in
@@ -524,7 +524,7 @@ Section PrimaryBackup.
   Qed.
 
   Lemma outputs_1_on_nil :
-    outputs_1 (@nil ((@input base_params) * (list (@output base_params)))) = [].
+    outputs_1 (@nil ((@input base_params) * ((@output base_params)))) = [].
   Proof.
     auto.
   Qed.
@@ -851,7 +851,7 @@ Section PrimaryBackup.
   Qed.
 
   Fixpoint revert_trace (tr : list (name * ((@input PB_base_params) + list (@output PB_base_params)))) :
-    list (@input base_params * list (@output base_params)) :=
+    list (@input base_params * (@output base_params)) :=
     match tr with
       | [] => []
       | (h, t) :: tr' => match t with
@@ -933,7 +933,7 @@ Section PrimaryBackup.
   Qed.
 
   Theorem transformer :
-    forall (P : list (input * list output) -> Prop),
+    forall (P : list (input * output) -> Prop),
       (forall st tr,
          step_1_star init st tr ->
          P tr) ->
