@@ -11,6 +11,7 @@ Require Import VerdiTactics.
 Require Import Raft.
 Require Import CommonTheorems.
 Require Import Linearizability.
+Require Import OutputImpliesApplied.
 
 Section RaftLinearizable.
   Context {orig_base_params : BaseParams}.
@@ -92,8 +93,6 @@ Section RaftLinearizable.
                                end)
       | _ :: xs => get_output xs k
     end.
-
-
 
   Fixpoint log_to_IR (env_o : key -> option output) (log : list entry) : list (IR key) :=
     match log with
@@ -177,6 +176,74 @@ Section RaftLinearizable.
     intros. apply execute_log_correct'.
   Qed.
 
+  Lemma in_import_in_trace :
+    forall tr k,
+      In (O _ k) (import tr) ->
+      exists os h,
+        In (h, inr os) tr /\
+        exists o, In (ClientResponse (fst k) (snd k) o) os.
+  Proof.
+    induction tr; intros; simpl in *; intuition.
+    repeat break_match; subst; intuition.
+    - find_apply_hyp_hyp. break_exists_exists.
+      intuition. 
+    - simpl in *. intuition; try congruence.
+      find_apply_hyp_hyp. break_exists_exists.
+      intuition.
+    - do_in_app. intuition.
+      + find_apply_lem_hyp In_filterMap.
+        break_exists. intuition.
+        break_match; try congruence.
+        find_inversion.
+        repeat eexists; intuition eauto.
+      + find_apply_hyp_hyp. break_exists_exists.
+        intuition.
+  Qed.
+
+  Lemma in_applied_entries_in_IR :
+    forall log e client id env,
+      eClient e = client ->
+      eId e = id ->
+      In e log ->
+      (exists o, env (client, id) = Some o) ->
+      In (IRO _ (client, id)) (log_to_IR env log).
+  Proof.
+    intros.
+    induction log; simpl in *; intuition.
+    - subst. break_exists.
+      repeat break_match; intuition.
+      simpl in *.
+      subst. congruence.
+    - repeat break_match; in_crush.
+  Qed.
+
+  Theorem get_output'_In :
+    forall l client id o,
+      In (ClientResponse client id o) l ->
+      exists o', get_output' l (client, id) = Some o'.
+  Proof.
+    intros. induction l; simpl in *; intuition.
+    - subst. break_if; simpl in *; intuition eauto.
+    - break_match; simpl in *; intuition eauto.
+      break_if; simpl in *; intuition eauto.
+  Qed.
+  
+  Theorem import_get_output :
+    forall tr k,
+      In (O _ k) (import tr) ->
+      exists o,
+        get_output tr k = Some o.
+  Proof.
+    intros.
+    induction tr; simpl in *; intuition.
+    repeat break_match; intuition; subst; simpl in *; intuition; try congruence;
+    do_in_app; intuition eauto.
+    find_apply_lem_hyp In_filterMap.
+    break_exists; break_match; intuition; try congruence.
+    subst. find_inversion.
+    find_apply_lem_hyp get_output'_In. break_exists; congruence.
+  Qed.
+
   Theorem raft_linearizable :
     forall failed net tr,
       input_correct tr ->
@@ -193,7 +260,14 @@ Section RaftLinearizable.
     intuition eauto using execute_log_correct.
     - eapply equivalent_intro; eauto using log_to_IR_good_trace.
       + (* In O -> In IRO *)
-        admit.
+        intros.
+        find_copy_apply_lem_hyp in_import_in_trace.
+        find_eapply_lem_hyp output_implies_applied; eauto.
+        unfold in_applied_entries in *.
+        break_exists. intuition.
+        destruct k; simpl in *.
+        eapply in_applied_entries_in_IR; eauto.
+        apply import_get_output. auto.
       + (* In IRO -> In O *)
         admit.
       + (* before preserved *)
