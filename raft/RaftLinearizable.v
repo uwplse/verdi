@@ -142,15 +142,27 @@ Section RaftLinearizable.
       auto.
   Qed.
 
-  Lemma execute_log_correct' :
+  Lemma snd_execute_log' :
     forall log st tr,
-      step_1_star st (snd (execute_log' log st tr))
+      snd (execute_log' log st tr) = snd (execute_log' log st []).
+  Proof.
+    induction log; intros.
+    - auto.
+    - simpl. break_let. rewrite IHlog.
+      rewrite IHlog with (tr := [(eInput a, o)]).
+      auto.
+  Qed.
+
+  Lemma execute_log_correct' :
+    forall log st,
+      step_1_star st (snd (execute_log' log st []))
                   (fst (execute_log' log st [])).
   Proof.
     induction log; intros.
     - simpl. constructor.
     - simpl. break_let.
       rewrite fst_execute_log'.
+      rewrite snd_execute_log'.
       unfold step_1_star in *.
       econstructor.
       + constructor. eauto.
