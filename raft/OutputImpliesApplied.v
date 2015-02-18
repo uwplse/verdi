@@ -80,17 +80,17 @@ Section OutputImpliesApplied.
 
   Instance TR : TraceRelation step_f :=
     {
+      init := step_f_init;
       T := in_output ;
       T_dec := in_output_dec;
-      R := fun s => raft_intermediate_reachable (snd s) /\
-                   in_applied_entries (snd s)
+      R := fun s => in_applied_entries (snd s)
     }.
   Proof.
   - intros.
-    unfold in_applied_entries in *. intuition.
-    + destruct s; destruct s'; econstructor; eauto.
-    + break_exists; eexists; intuition eauto.
-      destruct s; destruct s'; eapply applied_entries_monotonic; eauto.
+    unfold in_applied_entries in *.
+    break_exists; eexists; intuition eauto.
+    destruct s; destruct s'; eapply applied_entries_monotonic; eauto.
+    eauto using refl_trans_1n_n1_trace, step_f_star_raft_intermediate_reachable.
   - unfold in_output in *. intuition.
     break_exists; intuition.
   - intros.
