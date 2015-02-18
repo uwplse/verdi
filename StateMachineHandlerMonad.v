@@ -46,9 +46,7 @@ Definition when {S A} (b : bool) (m : GenHandler1 S A) : GenHandler1 S unit :=
 
 Ltac monad_unfold :=
   repeat unfold
-         runGenHandler1_ignore,
          runGenHandler1,
-         runGenHandler1_ignore,
          bind,
          write_output,
          get,
