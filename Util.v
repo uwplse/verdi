@@ -1107,12 +1107,10 @@ Section assoc.
   Qed.
 End assoc.
 
-Fixpoint before {A: Type} (A_eq_dec : forall x y : A, {x = y} + {x <> y}) (x : A) y l : Prop :=
+Fixpoint before {A: Type} (x : A) y l : Prop :=
   match l with
     | [] => False
     | a :: l' =>
-      if (A_eq_dec a x) then True
-      else
-        if (A_eq_dec a y) then False
-        else before A_eq_dec x y l'
+      a = x \/
+      (a <> x /\ a <> y /\ before x y l')
   end.

@@ -93,8 +93,8 @@ Section Linearizability.
       good_trace ir ->
       (forall k, In (O k) l -> In (IRO k) ir) ->
       (forall k, In (IRO k) ir -> In (O k) l) ->
-      (forall k k', In (I k') l -> before op_eq_dec (O k) (I k') l ->
-               before IR_eq_dec (IRO k) (IRI k') ir) ->
+      (forall k k', In (I k') l -> before (O k) (I k') l ->
+               before (IRO k) (IRI k') ir) ->
       equivalent l ir.
   Proof.
   Admitted.

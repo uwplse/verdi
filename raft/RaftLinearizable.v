@@ -191,7 +191,7 @@ Section RaftLinearizable.
     exists (fst (execute_log (applied_entries (nwState net)))).
     exists (snd (execute_log (applied_entries (nwState net)))).
     intuition eauto using execute_log_correct.
-    - eapply equivalent_intro with (K_eq_dec := key_eq_dec); eauto using log_to_IR_good_trace.
+    - eapply equivalent_intro; eauto using log_to_IR_good_trace.
       + (* In O -> In IRO *)
         admit.
       + (* In IRO -> In O *)
