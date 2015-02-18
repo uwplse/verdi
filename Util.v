@@ -917,6 +917,20 @@ Proof.
   simpl. auto.
 Qed.
 
+Lemma In_filterMap :
+  forall A B (f : A -> option B) b xs,
+    In b (filterMap f xs) ->
+    exists a,
+      In a xs /\ f a = Some b.
+Proof.
+  intros.
+  induction xs; simpl in *; intuition.
+  break_match.
+  - simpl in *. intuition; subst; eauto.
+    break_exists_exists; intuition.
+  - concludes. break_exists_exists; intuition.
+Qed.
+
 Lemma app_cons_in :
   forall A (l : list A) xs a ys,
     l = xs ++ a :: ys ->
