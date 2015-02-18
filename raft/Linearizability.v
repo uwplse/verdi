@@ -56,7 +56,7 @@ Section Linearizability.
               acknowledge_all_ops (O k :: tr) (IRO k :: out).
 
   Definition good_move (x y : IR) : Prop :=
-    (forall k, x <> IRO k /\ y <> IRI k).
+    (forall k k', x <> IRO k /\ y <> IRI k').
 
   Inductive IR_equivalent : list IR -> list IR -> Prop :=
   | equiv_nil : IR_equivalent [] []
