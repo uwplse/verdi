@@ -48,6 +48,13 @@ Ltac break_exists :=
            | [H : exists _, _ |- _ ] => destruct H
          end.
 
+Ltac break_exists_exists :=
+  repeat match goal with
+           | H:exists _, _ |- _ =>
+             let x := fresh "x" in
+             destruct H as [x]; exists x
+         end.
+
 Ltac break_and :=
   repeat match goal with
            | [H : _ /\ _ |- _ ] => destruct H
