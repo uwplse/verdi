@@ -133,19 +133,19 @@ End assoc.
 Arguments assoc {_} {_} _ _ _.
 Arguments assoc_set {_} {_} _ _ _ _.
 Arguments assoc_del {_} {_} _ _ _.
-Require Import HandlerMonad.
-Definition getk k : GenHandler unit data output (option value) :=
+Require Import StateMachineHandlerMonad.
+Definition getk k : GenHandler1 data (option value) :=
   db <- get ;;
   ret (assoc key_eq_dec db k).
 
-Definition setk k v : GenHandler unit data output unit := modify (fun db => assoc_set key_eq_dec db k v).
+Definition setk k v : GenHandler1 data unit := modify (fun db => assoc_set key_eq_dec db k v).
 
-Definition delk k : GenHandler unit data output unit := modify (fun db => assoc_del key_eq_dec db k).
+Definition delk k : GenHandler1 data unit := modify (fun db => assoc_del key_eq_dec db k).
 
-Definition resp k v old : GenHandler unit data output unit :=
+Definition resp k v old : GenHandler1 data output :=
   write_output (Response k v old).
 
-Definition VarDHandler' (inp : input) : GenHandler unit data output unit :=
+Definition VarDHandler' (inp : input) : GenHandler1 data output :=
   match inp with
     | Get k => v <- getk k ;; resp k v v
     | Put k v => old <- getk k ;; setk k v ;; resp k (Some v) old
@@ -164,9 +164,9 @@ Definition VarDHandler' (inp : input) : GenHandler unit data output unit :=
             resp k old old
   end.
 
-Definition runHandler (h : input -> GenHandler unit data output unit)
-           (inp : input) (d : data) : (list output) * data :=
-  runGenHandler1_ignore (h inp) d.
+Definition runHandler (h : input -> GenHandler1 data output)
+           (inp : input) (d : data) : output * data :=
+  runGenHandler1 d (h inp).
 
 Definition VarDHandler := runHandler VarDHandler'.
 
@@ -208,7 +208,7 @@ Fixpoint interpret (k : key) (ops : list input) (init : option value) :=
       (operate op (fst (interpret k ops init)))
   end.
 
-Definition inputs_with_key (trace : list (input * list output)) (k : key) : list input :=
+Definition inputs_with_key (trace : list (input * output)) (k : key) : list input :=
   filterMap (fun ev => if key_eq_dec k (input_key (fst ev)) then
                             Some (fst ev)
                           else
@@ -216,21 +216,21 @@ Definition inputs_with_key (trace : list (input * list output)) (k : key) : list
             trace.
 
 
-Inductive trace_correct : list (input * list output) -> Prop :=
+Inductive trace_correct : list (input * output) -> Prop :=
 | TCnil : trace_correct []
 | TCApp : forall t i v o, trace_correct t ->
                      interpret (input_key i)
                                (i :: (rev (inputs_with_key t (input_key i))))
                                None = (v, o) ->
-                     trace_correct (t ++ [(i, [Response (input_key i) v o])]).
+                     trace_correct (t ++ [(i, Response (input_key i) v o)]).
 
-Inductive trace_correct' : data -> list (input * list output) -> Prop :=
+Inductive trace_correct' : data -> list (input * output) -> Prop :=
 | TC'nil : forall st, trace_correct' st []
 | TC'App : forall st t i v o, trace_correct' st t ->
                          interpret (input_key i)
                                    (i :: (rev (inputs_with_key t (input_key i))))
                                    (assoc key_eq_dec st (input_key i)) = (v, o) ->
-                         trace_correct' st (t ++ [(i, [Response (input_key i) v o])]).
+                         trace_correct' st (t ++ [(i, Response (input_key i) v o)]).
 
 Lemma trace_correct'_trace_correct :
   forall trace,
@@ -243,7 +243,7 @@ Proof.
   - subst. constructor; auto.
 Qed.
 
-Definition trace_state_correct (trace : list (input * list output)) (st : data) (st' : data) :=
+Definition trace_state_correct (trace : list (input * output)) (st : data) (st' : data) :=
   forall k,
     fst (interpret k (rev (inputs_with_key trace k)) (assoc key_eq_dec st k)) = assoc key_eq_dec st' k.
 
@@ -257,7 +257,7 @@ Ltac vard_unfold :=
 Lemma trace_well_formed :
   forall st st' trace,
     step_1_star st st' trace ->
-    (trace = [] \/ exists t i o, trace = t ++ [(i, [o])]).
+    (trace = [] \/ exists t i o, trace = t ++ [(i, o)]).
 Proof.
   intros.
   find_apply_lem_hyp refl_trans_1n_n1_trace.
@@ -500,7 +500,7 @@ Qed.
 
 Open Scope string_scope.
 Example trace_correct_eg0 :
-  trace_correct [(Put "james" "awesome", [Response "james" (Some "awesome") None])].
+  trace_correct [(Put "james" "awesome", Response "james" (Some "awesome") None)].
 Proof.
   rewrite <- app_nil_l.
   constructor.
