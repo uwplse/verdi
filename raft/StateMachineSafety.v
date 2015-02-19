@@ -12,12 +12,15 @@ Section StateMachineSafety.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
+  Definition commit_recorded net h e :=
+    In e (log (nwState net h)) /\
+    (eIndex e < lastApplied (nwState net h) \/
+     eIndex e < commitIndex (nwState net h)).
+
   Definition state_machine_safety_host net :=
     forall h h' e e',
-      eIndex e < lastApplied (nwState net h) ->
-      In e (log (nwState net h)) ->
-      eIndex e' < lastApplied (nwState net h') ->
-      In e' (log (nwState net h')) ->
+      commit_recorded net h e ->
+      commit_recorded net h' e' ->
       eIndex e = eIndex e' ->
       e = e'.
 
@@ -27,7 +30,7 @@ Section StateMachineSafety.
       pBody p = AppendEntries t leaderId prevLogIndex prevLogTerm
                               entries leaderCommit ->
       t >= currentTerm (nwState net h) ->
-      eIndex e < lastApplied (nwState net h) ->
+      commit_recorded net h e ->
       (prevLogIndex > eIndex e \/
        In e entries).
 
