@@ -107,6 +107,23 @@ Ltac find_rewrite :=
     | [ H : ?X = _ |- context [ ?X ] ] => rewrite H
   end.
 
+Ltac find_rewrite_lem lem :=
+  match goal with
+    | [ H : _ |- _ ] =>
+      rewrite lem in H; [idtac]
+  end.
+
+Ltac find_rewrite_lem_by lem t :=
+  match goal with
+    | [ H : _ |- _ ] =>
+      rewrite lem in H by t
+  end.
+
+Ltac find_erewrite_lem lem :=
+  match goal with
+    | [ H : _ |- _] => erewrite lem in H by eauto
+  end.
+
 Ltac find_reverse_rewrite :=
   match goal with
     | [ H : _ = ?X _ _ _ _, H' : ?X _ _ _ _ = _ |- _ ] => rewrite <- H in H'

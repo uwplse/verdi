@@ -175,18 +175,6 @@ Section CandidateEntries.
     repeat break_match; repeat find_inversion; auto.
   Qed.
 
-  Ltac find_rewrite_lem lem :=
-    match goal with
-    | [ H : _ |- _ ] =>
-      rewrite lem in H; [idtac]
-    end.
-
-  Ltac find_rewrite_lem_by lem t :=
-    match goal with
-    | [ H : _ |- _ ] =>
-      rewrite lem in H by t
-    end.
-
   Lemma handleTimeout_not_leader_inc_term :
     forall h d out d' l,
       handleTimeout h d = (out, d', l) ->
@@ -571,11 +559,6 @@ Section CandidateEntries.
     intros.
     repeat break_match; repeat find_inversion; eauto.
   Qed.
-
-  Ltac find_erewrite_lem lem :=
-    match goal with
-    | [ H : _ |- _] => erewrite lem in H by eauto
-    end.
 
   Lemma candidate_entries_request_vote :
     refined_raft_net_invariant_request_vote CandidateEntries.
