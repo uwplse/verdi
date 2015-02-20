@@ -709,18 +709,13 @@ Section Linearizability.
       eapply IR_equiv_trans.
       + apply op_equiv_AAOF_IR_equiv.
         apply op_equivalent_all_Is_middle.
-
         intros.
         match goal with
           | [ H : context [before] |- _ ] => apply H
         end.
         apply In_app_before; auto using op_eq_dec.
-
         find_rewrite_lem get_op_input_keys_app. rewrite get_op_input_keys_defn in *.
-        intro.
-
-        eapply NoDup_remove_2;
-        eauto using in_or_app, get_op_input_keys_complete.
+        intro. eapply NoDup_remove_2; eauto using in_or_app, get_op_input_keys_complete.
       + repeat rewrite app_ass.
         unfold acknowledge_all_ops_func. fold acknowledge_all_ops_func.
         break_if.
