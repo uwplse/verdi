@@ -296,6 +296,19 @@ Section Linearizability.
     simpl. repeat break_match; congruence.
   Qed.
 
+  Definition get_op_output_keys (l : list op) : list K :=
+    filterMap (fun x => match x with
+                          | O k => Some k
+                          | _ => None
+                        end) l.
+
+  Definition get_IR_output_keys (l : list IR) : list K :=
+    filterMap (fun x => match x with
+                          | IRO k => Some k
+                          | IRU k => Some k
+                          | _ => None
+                        end) l.
+
   (* this is cleaner than the auto-generated functional induction scheme *)
   Fixpoint good_trace_ind'
     (P : list IR -> Prop -> Prop)
@@ -670,6 +683,8 @@ Section Linearizability.
       (forall k, In (IRI k) ir -> In (I k) l) ->
       NoDup (get_op_input_keys l) ->
       NoDup (get_IR_input_keys ir) ->
+      NoDup (get_op_input_keys l) ->
+      NoDup (get_IR_input_keys ir) ->
       IR_equivalent (acknowledge_all_ops_func l ir) ir.
   Proof.
     intros ir.
@@ -734,6 +749,8 @@ Section Linearizability.
       (forall k, In (O k) l -> before (I k) (O k) l) ->
       NoDup (get_op_input_keys l) ->
       NoDup (get_IR_input_keys ir) ->
+      NoDup (get_op_output_keys l) ->
+      NoDup (get_IR_output_keys ir) ->
       equivalent l ir.
   Proof.
     intros.
