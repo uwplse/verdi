@@ -11,6 +11,8 @@ Require Import TraceRelations.
 
 Require Import Raft.
 Require Import CommonTheorems.
+Require Import LogMatching.
+Require Import StateMachineSafety.
 Require Import AppliedEntriesMonotonic.
 
 Require Import UpdateLemmas.
@@ -113,6 +115,16 @@ Section OutputImpliesApplied.
     intros. unfold doLeader, advanceCommitIndex in *.
     repeat break_match; find_inversion; intuition eauto using in_output_list_empty.
   Qed.
+
+  Lemma handleInput_in_output_list :
+    forall st h i out st' m,
+      handleInput h i st = (out, st', m) ->
+      ~ in_output_list out.
+  Proof.
+    intros. unfold handleInput, handleTimeout, handleClientRequest, tryToBecomeLeader in *.
+    repeat break_match; find_inversion; intuition eauto using in_output_list_empty;
+    unfold in_output_list in *; break_exists; simpl in *; intuition; congruence.
+  Qed.
   
   Definition in_applied_entries (net : network) : Prop :=
     exists e,
@@ -120,15 +132,6 @@ Section OutputImpliesApplied.
       eId e = id /\
       In e (applied_entries (nwState net)).
 
-  Lemma applied_entries'_log_lastApplied_same :
-    forall sigma sigma' l,
-      (forall h, lastApplied (sigma' h) = lastApplied (sigma h)) ->
-      applied_entries' sigma' l = applied_entries' sigma l.
-  Proof.
-    intros. induction l; simpl in *; auto.
-    repeat find_higher_order_rewrite. auto.
-  Qed.
-  
   Lemma applied_entries_log_lastApplied_same :
     forall sigma sigma',
       (forall h, log (sigma' h) = log (sigma h)) ->
@@ -137,12 +140,10 @@ Section OutputImpliesApplied.
   Proof.
     intros.
     unfold applied_entries in *.
-    erewrite applied_entries'_log_lastApplied_same; eauto.
+    rewrite argmax_fun_ext with (g := fun h : name => lastApplied (sigma h)); intuition.
     break_match; auto.
-    break_let.
-    find_higher_order_rewrite. auto.
+    repeat find_higher_order_rewrite. auto.
   Qed.
-
 
   Ltac update_destruct :=
     match goal with
@@ -199,8 +200,46 @@ Section OutputImpliesApplied.
     find_apply_lem_hyp In_rev.
     find_apply_lem_hyp filter_In.
     intuition. repeat (do_bool; intuition).
-    unfold applied_entries.
-
+    break_if; simpl in *; do_bool; [|omega].
+    match goal with
+      | |- context [update ?st ?h ?st'] =>
+        pose proof applied_entries_update st h st'
+    end. forwards; [simpl in *; intuition|]. concludes.
+    intuition.
+    - simpl in *. unfold raft_data in *. simpl in *.
+      find_rewrite.
+      match goal with | H : applied_entries _ = applied_entries _ |- _ => clear H end.
+      break_exists. intuition.
+      unfold applied_entries in *.
+      find_rewrite.
+      match goal with
+        | |- In _ (rev ?l') => apply in_rev with (l := l')
+      end.
+      apply removeAfterIndex_le_In; intuition.
+      find_copy_apply_lem_hyp log_matching_invariant.
+      find_apply_lem_hyp state_machine_safety_invariant.
+      unfold state_machine_safety, log_matching, log_matching_hosts in *.
+      intuition.
+      match goal with
+        | [ e : entry, H : forall _ _, _ <= _ <= _ -> _, Hm : maxIndex_lastApplied _
+                                                   |- In _ (log (_ _ ?h)) ] =>
+          specialize (H h (eIndex e)); specialize (Hm h); forward H; intuition
+      end. break_exists. intuition.
+      find_apply_lem_hyp findGtIndex_necessary. intuition.
+      match goal with
+        | _ : In ?e1 (log _), _ : In ?e2 (log _) |- _ =>
+          cut (e1 = e2); [intros; subst; auto|]
+      end. eapply_prop state_machine_safety_host; unfold commit_recorded; intuition eauto.
+      omega.
+    - simpl in *. unfold raft_data in *. simpl in *.
+      find_rewrite.
+      match goal with
+        | |- In _ (rev ?l') => apply in_rev with (l := l')
+      end.
+      find_apply_lem_hyp findGtIndex_necessary.
+      intuition.
+      eauto using removeAfterIndex_le_In.
+  Qed.
   
   Lemma output_implies_in_applied_entries :
     forall failed net failed' net' o,
@@ -233,8 +272,42 @@ Section OutputImpliesApplied.
       rewrite_update. repeat find_rewrite_lem update_overwrite.
       unfold data in *. simpl in *.
       find_rewrite.
-      
-
+      match goal with
+        | _ : raft_intermediate_reachable (mkNetwork ?ps ?st),
+          H : doGenericServer ?h ?r = _ |- _ =>
+          replace r with (nwState (mkNetwork ps st) h) in H by (simpl in *; rewrite_update; auto)
+      end.
+      find_eapply_lem_hyp doGenericServer_in_output_list; [|idtac|eauto]; eauto.
+      break_exists_exists. intuition. simpl in *.
+      find_rewrite_lem update_overwrite. auto.
+    - unfold in_output in *.
+      break_exists; simpl in *; intuition; find_inversion.
+      unfold in_applied_entries in *. simpl in *.
+      unfold RaftInputHandler in *.
+      repeat break_let. repeat find_inversion. simpl in *.
+      find_copy_eapply_lem_hyp RIR_handleInput; eauto.
+      find_apply_lem_hyp in_output_list_split.
+      intuition; [exfalso; eapply handleInput_in_output_list; eauto|].
+      find_apply_lem_hyp in_output_list_split.
+      intuition; [|exfalso; eapply doLeader_in_output_list; eauto].
+      match goal with
+        | _ : doLeader ?st ?h = _, _ : doGenericServer _ ?d = _ |- _ =>
+          replace st with ((update (nwState net) h st) h) in *;
+            [|rewrite_update; auto]
+      end.
+      find_apply_lem_hyp doLeader_appliedEntries.
+      rewrite_update. repeat find_rewrite_lem update_overwrite.
+      unfold data in *. simpl in *.
+      find_rewrite.
+      match goal with
+        | _ : raft_intermediate_reachable (mkNetwork ?ps ?st),
+          H : doGenericServer ?h ?r = _ |- _ =>
+          replace r with (nwState (mkNetwork ps st) h) in H by (simpl in *; rewrite_update; auto)
+      end.
+      find_eapply_lem_hyp doGenericServer_in_output_list; [|idtac|eauto]; eauto.
+      break_exists_exists. intuition. simpl in *.
+      find_rewrite_lem update_overwrite. auto.
+  Qed.
 
   Instance TR : TraceRelation step_f :=
     {
@@ -256,7 +329,7 @@ Section OutputImpliesApplied.
     destruct s' as [failed' net']. simpl in *.
     find_apply_lem_hyp step_f_star_raft_intermediate_reachable.
     find_apply_lem_hyp in_output_changed; auto.
-    admit.
+    eauto using output_implies_in_applied_entries.
   Defined.
 
   Theorem output_implies_applied :
@@ -265,7 +338,7 @@ Section OutputImpliesApplied.
       in_output tr ->
       in_applied_entries net.
   Proof.
-    intros. pose proof (trace_relations_work step_f_init (failed, net) tr).
-    concludes. intuition. find_apply_hyp_goal.
+    intros. pose proof (trace_relations_work (failed, net) tr).
+    concludes. intuition.
   Qed.
 End OutputImpliesApplied.
