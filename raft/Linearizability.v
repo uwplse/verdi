@@ -302,12 +302,37 @@ Section Linearizability.
                           | _ => None
                         end) l.
 
+  Lemma get_op_output_keys_defn :
+    forall x l,
+      get_op_output_keys (x :: l) = match x with
+                                      | O k => k :: get_op_output_keys l
+                                      | _ => get_op_output_keys l
+                                    end.
+  Proof.
+    unfold get_op_output_keys.
+    intros.
+    simpl.
+    repeat break_match; congruence.
+  Qed.
+
   Definition get_IR_output_keys (l : list IR) : list K :=
     filterMap (fun x => match x with
                           | IRO k => Some k
                           | IRU k => Some k
                           | _ => None
                         end) l.
+
+  Lemma get_IR_output_keys_defn :
+    forall x l,
+      get_IR_output_keys (x :: l) = match x with
+                                      | IRO k => k :: get_IR_output_keys l
+                                      | IRU k => k :: get_IR_output_keys l
+                                      | _ => get_IR_output_keys l
+                                    end.
+  Proof.
+    unfold get_IR_output_keys.
+    intros. simpl. repeat break_match; congruence.
+  Qed.
 
   (* this is cleaner than the auto-generated functional induction scheme *)
   Fixpoint good_trace_ind'
@@ -658,6 +683,14 @@ Section Linearizability.
     induction xs; simpl; repeat break_match; simpl; intuition (auto; try congruence).
   Qed.
 
+  Lemma get_op_output_keys_app :
+    forall xs ys,
+      get_op_output_keys (xs ++ ys) = get_op_output_keys xs ++ get_op_output_keys ys.
+  Proof.
+    intros.
+    apply filterMap_app.
+  Qed.
+
   Lemma get_op_input_keys_complete :
     forall xs k,
       In (I k) xs ->
@@ -667,6 +700,16 @@ Section Linearizability.
     intros.
     eapply filterMap_In; eauto.
     auto.
+  Qed.
+
+  Lemma get_IR_output_keys_complete_U :
+    forall xs k,
+      In (IRU k) xs ->
+      In k (get_IR_output_keys xs).
+  Proof.
+    unfold get_IR_output_keys.
+    intros.
+    eapply filterMap_In; eauto. auto.
   Qed.
 
   Lemma IR_equivalent_acknowledge_all_ops_func :
@@ -726,7 +769,12 @@ Section Linearizability.
            appear in rest of l, get rid of first two elements of
            target and recurse. *)
         * { break_if.
-            - admit. (* contradiction: need NoDup on outputs *)
+            - repeat rewrite get_IR_output_keys_defn in *.
+              match goal with
+                | [ H : NoDup (_ :: _) |- _ ] => invc H
+              end.
+              simpl in *. intuition (try congruence).
+              exfalso. eauto using get_IR_output_keys_complete_U.
             - exfalso. apply n. red. intuition.
           }
     - (* IRU case. *)
