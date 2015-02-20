@@ -683,8 +683,8 @@ Section Linearizability.
       (forall k, In (IRI k) ir -> In (I k) l) ->
       NoDup (get_op_input_keys l) ->
       NoDup (get_IR_input_keys ir) ->
-      NoDup (get_op_input_keys l) ->
-      NoDup (get_IR_input_keys ir) ->
+      NoDup (get_op_output_keys l) ->
+      NoDup (get_IR_output_keys ir) ->
       IR_equivalent (acknowledge_all_ops_func l ir) ir.
   Proof.
     intros ir.
