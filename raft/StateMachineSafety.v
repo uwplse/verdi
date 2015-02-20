@@ -24,6 +24,10 @@ Section StateMachineSafety.
       eIndex e = eIndex e' ->
       e = e'.
 
+  Definition maxIndex_lastApplied net :=
+    forall h,
+      lastApplied (nwState net h) <= maxIndex (log (nwState net h)).
+
   Definition state_machine_safety_nw net :=
     forall h p t leaderId prevLogIndex prevLogTerm entries leaderCommit e,
       In p (nwPackets net) ->
@@ -35,7 +39,7 @@ Section StateMachineSafety.
        In e entries).
 
   Definition state_machine_safety net :=
-    state_machine_safety_host net /\ state_machine_safety_nw net.
+    state_machine_safety_host net /\ state_machine_safety_nw net /\ maxIndex_lastApplied net.
 
   Theorem state_machine_safety_invariant :
     forall net,
