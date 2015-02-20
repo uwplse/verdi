@@ -266,6 +266,18 @@ Section Linearizability.
                           | _ => None
                         end) l.
 
+  Lemma get_op_input_keys_defn :
+    forall x l,
+      get_op_input_keys (x :: l) = match x with
+                               | I k => k :: get_op_input_keys l
+                               | _ => get_op_input_keys l
+                                   end.
+  Proof.
+    unfold get_op_input_keys.
+    intros.
+    simpl. repeat break_match; congruence.
+  Qed.
+
   Definition get_IR_input_keys (l : list IR) : list K :=
     filterMap (fun x => match x with
                           | IRI k => Some k
@@ -598,6 +610,52 @@ Section Linearizability.
     - eauto.
   Qed.
 
+  Lemma op_equivalent_all_Is_middle :
+    forall xs ys k,
+      (forall x, In x xs -> exists k, x = I k) ->
+      op_equivalent (xs ++ I k :: ys) (I k :: xs ++ ys).
+  Proof.
+    intros.
+    rewrite app_comm_cons.
+    replace (xs ++ I k :: ys) with ((xs ++ [I k]) ++ ys) by now rewrite app_ass.
+    auto using op_equiv_app_tail, op_equivalent_all_Is.
+  Qed.
+
+  Lemma filterMap_app :
+    forall A B (f : A -> option B) xs ys,
+      filterMap f (xs ++ ys) = filterMap f xs ++ filterMap f ys.
+  Proof.
+    induction xs; intros; simpl in *; repeat break_match; simpl in *; intuition auto using f_equal.
+  Qed.
+
+  Lemma get_op_input_keys_app :
+    forall xs ys,
+      get_op_input_keys (xs ++ ys) = get_op_input_keys xs ++ get_op_input_keys ys.
+  Proof.
+    intros.
+    apply filterMap_app.
+  Qed.
+
+  Lemma filterMap_In :
+    forall A B (f : A -> option B) a b xs,
+      f a = Some b ->
+      In a xs ->
+      In b (filterMap f xs).
+  Proof.
+    induction xs; simpl; repeat break_match; simpl; intuition (auto; try congruence).
+  Qed.
+
+  Lemma get_op_input_keys_complete :
+    forall xs k,
+      In (I k) xs ->
+      In k (get_op_input_keys xs).
+  Proof.
+    unfold get_op_input_keys.
+    intros.
+    eapply filterMap_In; eauto.
+    auto.
+  Qed.
+
   Lemma IR_equivalent_acknowledge_all_ops_func :
     forall ir,
       good_trace ir ->
@@ -635,15 +693,17 @@ Section Linearizability.
 
       eapply IR_equiv_trans.
       + apply op_equiv_AAOF_IR_equiv.
-        rewrite app_comm_cons.
-        rewrite <- app_ass.
-        apply op_equiv_app_tail.
-        replace (x ++ I k' :: x0) with ((x ++ [I k']) ++ x0) by now rewrite app_ass.
-        apply op_equiv_app_tail.
-        apply op_equivalent_all_Is.
+        apply op_equivalent_all_Is_middle.
+
         intros.
-        apply H7. apply In_app_before; auto using op_eq_dec. admit. (* from NoDup stuff... *)
-      + repeat rewrite app_ass. rewrite <- app_comm_cons.
+        apply H7. apply In_app_before; auto using op_eq_dec.
+
+        find_rewrite_lem get_op_input_keys_app. rewrite get_op_input_keys_defn in *.
+        intro.
+
+        eapply NoDup_remove_2;
+        eauto using in_or_app, get_op_input_keys_complete.
+      + repeat rewrite app_ass.
         unfold acknowledge_all_ops_func. fold acknowledge_all_ops_func.
         break_if.
         * constructor.
