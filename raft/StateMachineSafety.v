@@ -14,8 +14,8 @@ Section StateMachineSafety.
 
   Definition commit_recorded net h e :=
     In e (log (nwState net h)) /\
-    (eIndex e < lastApplied (nwState net h) \/
-     eIndex e < commitIndex (nwState net h)).
+    (eIndex e <= lastApplied (nwState net h) \/
+     eIndex e <= commitIndex (nwState net h)).
 
   Definition state_machine_safety_host net :=
     forall h h' e e',
