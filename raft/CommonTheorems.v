@@ -13,6 +13,9 @@ Require Import Net.
 Require Import RaftState.
 Require Import Raft.
 Require Import VerdiTactics.
+Require Import UpdateLemmas.
+
+Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 Section CommonTheorems.
   Context {orig_base_params : BaseParams}.
@@ -782,27 +785,153 @@ Section CommonTheorems.
     simpl. eauto.
   Qed.
 
-  (* Find the node with the largest last applied and get all its applied entries *)
-  Fixpoint applied_entries' (sigma : name -> raft_data) (l : list name) : option (nat * name) :=
+  Fixpoint argmax {A : Type} (f : A -> nat) (l : list A) : option A :=
     match l with
-      | n :: l' => match (applied_entries' sigma l') with
-                    | None => Some (lastApplied (sigma n), n)
-                    | Some (ci, n') =>
-                      if ci <? (lastApplied (sigma n)) then
-                        Some (lastApplied (sigma n), n)
-                      else
-                        Some (ci, n')
+      | a :: l' => match argmax f l' with
+                    | Some a' => if f a' <=? f a then
+                                  Some a
+                                else
+                                  Some a'
+                    | None => Some a
                   end
       | [] => None
     end.
 
+  Lemma argmax_fun_ext :
+    forall A (f : A -> nat) g l,
+      (forall a, f a = g a) ->
+      argmax f l = argmax g l.
+  Proof.
+    intros. induction l; simpl in *; intuition.
+    find_rewrite. break_match; intuition.
+    repeat find_higher_order_rewrite. auto.
+  Qed.
+
+  Lemma argmax_None :
+    forall A (f : A -> nat) l,
+      argmax f l = None ->
+      l = [].
+  Proof.
+    intros. destruct l; simpl in *; intuition.
+    repeat break_match; congruence.
+  Qed.
+
+  Lemma argmax_elim :
+    forall A (f : A -> nat) l a,
+      argmax f l = Some a ->
+      (In a l /\
+       forall x, In x l -> f a >= f x).
+  Proof.
+    induction l; intros; simpl in *; [congruence|].
+    repeat break_match; find_inversion.
+    - do_bool.
+      match goal with
+        | H : forall _, Some ?a = Some _ -> _ |- _ =>
+          specialize (H a)
+      end. intuition; subst; auto.
+      find_apply_hyp_hyp. omega.
+    - do_bool.
+      match goal with
+        | H : forall _, Some ?a = Some _ -> _ |- _ =>
+          specialize (H a)
+      end. intuition; subst; auto.
+      find_apply_hyp_hyp. omega.
+    - intuition; subst; auto.
+      find_apply_lem_hyp argmax_None.
+      subst. solve_by_inversion.
+  Qed.
+
+  Lemma argmax_in :
+    forall A (f : A -> nat) l a,
+      argmax f l = Some a ->
+      In a l.
+  Proof.
+    intros. find_apply_lem_hyp argmax_elim. intuition.
+  Qed.
+  
+  Lemma argmax_one_different :
+    forall A (A_eq_dec : forall x y : A, {x = y} + {x <> y}) f g (l : list A) a,
+      (forall x, In x l -> a <> x -> f x = g x) ->
+      (forall x, In x l -> f x <= g x) ->
+      (argmax g l = argmax f l \/
+       argmax g l = Some a).
+  Proof.
+    intros. induction l; simpl in *; intuition.
+    conclude IHl intuition.
+    conclude IHl intuition. intuition.
+    - find_rewrite. break_match; intuition.
+      repeat break_if; intuition.
+      + do_bool. right.
+        find_apply_lem_hyp argmax_in; intuition.
+        destruct (A_eq_dec a a1); destruct (A_eq_dec a a0); repeat subst; intuition;
+        specialize (H0 a1); specialize (H a0); intuition; repeat find_rewrite; omega.
+      + do_bool. right.
+        find_apply_lem_hyp argmax_in; intuition.
+        destruct (A_eq_dec a a1); destruct (A_eq_dec a a0); repeat subst; intuition.
+        * specialize (H a1); specialize (H0 a0); intuition. repeat find_rewrite. omega.
+        * specialize (H a1); specialize (H0 a0); intuition. repeat find_rewrite. omega.
+    - find_rewrite. repeat break_match; subst; intuition.
+      do_bool.
+      repeat find_apply_lem_hyp argmax_elim; intuition.
+      destruct (A_eq_dec a a1); destruct (A_eq_dec a a0); repeat subst; intuition.
+      + specialize (H a0); specialize (H0 a1); intuition. repeat find_rewrite. omega.
+      + pose proof H a0; pose proof H a1; intuition. repeat find_rewrite.
+        specialize (H3 a1). intuition. omega.
+  Qed.
+  
+
   Definition applied_entries (sigma : name -> raft_data) : (list entry) :=
-    match applied_entries' sigma (all_fin N) with
-      | Some (ci, n) =>
-        rev (removeAfterIndex (log (sigma n)) ci)
+    match argmax (fun h => lastApplied (sigma h)) (all_fin N) with
+      | Some h =>
+        rev (removeAfterIndex (log (sigma h)) (lastApplied (sigma h)))
       | None => []
     end.
+
+  Ltac update_destruct :=
+    match goal with
+    | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+    end.
+
+  Ltac update_destruct_hyp :=
+    match goal with
+    | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
+    end.
+
   
+  Lemma applied_entries_update :
+    forall sigma h st,
+      lastApplied st >= lastApplied (sigma h) ->
+      (applied_entries (update sigma h st) = applied_entries sigma /\
+       (exists h', 
+          argmax (fun h => lastApplied (sigma h)) (all_fin N) = Some h' /\
+          lastApplied (sigma h') >= lastApplied st))
+       \/
+      applied_entries (update sigma h st) = (rev (removeAfterIndex (log st) (lastApplied st))).
+  Proof.
+    intros.
+    unfold applied_entries in *.
+    repeat break_match; intuition;
+    try solve [find_apply_lem_hyp argmax_None;
+                exfalso;
+                pose proof (all_fin_all _ h); find_rewrite; intuition].
+    match goal with
+      | _ : argmax ?f ?l = _, _ : argmax ?g ?l = _ |- _ =>
+        pose proof argmax_one_different name name_eq_dec g f l h as Hproof
+    end.
+    forward Hproof; [intros; rewrite_update; intuition|]; concludes.
+    forward Hproof; [intros; update_destruct; subst; rewrite_update; intuition|]; concludes.
+    intuition.
+    - repeat find_rewrite. find_inversion.
+      update_destruct; subst; rewrite_update; intuition. left.
+      intuition. eexists; intuition eauto. repeat find_apply_lem_hyp argmax_elim; intuition eauto.
+      match goal with
+          H : _ |- _ =>
+          solve [specialize (H h); rewrite_update; eauto using all_fin_all]
+      end.
+    - repeat find_rewrite. find_inversion. rewrite_update. intuition.
+  Qed.
+    
+    
 End CommonTheorems.
 
 Notation is_append_entries m :=
