@@ -337,7 +337,7 @@ Section StepFailure.
                   input_handlers h inp (nwState net h) = (out, d, l) ->
                   net' = mkNetwork (send_packets h l ++ nwPackets net)
                                    (update (nwState net) h d) ->
-                  step_f (failed, net) (failed, net') [(h, inl inp)]
+                  step_f (failed, net) (failed, net') [(h, inl inp) ;  (h, inr out)]
   (* drops a packet *)
   | SF_drop : forall net net' failed p xs ys,
                 nwPackets net = xs ++ p :: ys ->
