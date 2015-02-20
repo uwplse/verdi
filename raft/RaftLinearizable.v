@@ -258,7 +258,7 @@ Section RaftLinearizable.
     exists (fst (execute_log (applied_entries (nwState net)))).
     exists (snd (execute_log (applied_entries (nwState net)))).
     intuition eauto using execute_log_correct.
-    - eapply equivalent_intro; eauto using log_to_IR_good_trace.
+    - eapply equivalent_intro; eauto using log_to_IR_good_trace, key_eq_dec.
       + (* In O -> In IRO *)
         intros.
         find_copy_apply_lem_hyp in_import_in_trace.
@@ -270,7 +270,15 @@ Section RaftLinearizable.
         apply import_get_output. auto.
       + (* In IRO -> In O *)
         admit.
+      + (* In IRU -> In O *)
+        admit.
       + (* before preserved *)
+        admit.
+      + (* I before O *)
+        admit.
+      + (* NoDup input *)
+        admit.
+      + (* NoDup output *)
         admit.
     - admit.
   Qed.
