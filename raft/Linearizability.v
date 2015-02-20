@@ -696,7 +696,10 @@ Section Linearizability.
         apply op_equivalent_all_Is_middle.
 
         intros.
-        apply H7. apply In_app_before; auto using op_eq_dec.
+        match goal with
+          | [ H : context [before] |- _ ] => apply H
+        end.
+        apply In_app_before; auto using op_eq_dec.
 
         find_rewrite_lem get_op_input_keys_app. rewrite get_op_input_keys_defn in *.
         intro.
