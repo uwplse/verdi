@@ -931,6 +931,32 @@ Section CommonTheorems.
     - repeat find_rewrite. find_inversion. rewrite_update. intuition.
   Qed.
     
+  Lemma applied_entries_log_lastApplied_same :
+    forall sigma sigma',
+      (forall h, log (sigma' h) = log (sigma h)) ->
+      (forall h, lastApplied (sigma' h) = lastApplied (sigma h)) ->
+      applied_entries sigma' = applied_entries sigma.
+  Proof.
+    intros.
+    unfold applied_entries in *.
+    rewrite argmax_fun_ext with (g := fun h : name => lastApplied (sigma h)); intuition.
+    break_match; auto.
+    repeat find_higher_order_rewrite. auto.
+  Qed.
+
+  Lemma doLeader_appliedEntries :
+  forall sigma h os st' ms,
+    doLeader (sigma h) h = (os, st', ms) ->
+    applied_entries (update sigma h st') = applied_entries sigma.
+  Proof.
+    intros.
+    apply applied_entries_log_lastApplied_same.
+    - intros. update_destruct; subst; rewrite_update; auto.
+      eapply doLeader_same_log; eauto.
+    - intros. update_destruct; subst; rewrite_update; auto.
+      unfold doLeader in *. repeat break_match; find_inversion; auto.
+  Qed.
+
     
 End CommonTheorems.
 
