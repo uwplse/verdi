@@ -29,7 +29,6 @@ Section Linearizability.
     decide equality.
   Qed.
 
-  
   (* Hypothesis trace_NoDup : NoDup trace. *)
   (* also maybe: no Us *)
   (* alse maybe: every O has corresponding I before it *)
@@ -457,7 +456,7 @@ Section Linearizability.
     red. intuition congruence.
   Qed.
 
-  Lemma IR_equivalent_all_Is :
+  Lemma IR_equivalent_all_Is_I :
     forall l k,
       (forall x, In x l -> exists k, x = IRI k) ->
       IR_equivalent (l ++ [IRI k]) (IRI k :: l).
@@ -625,7 +624,7 @@ Section Linearizability.
     red. intuition congruence.
   Qed.
 
-  Lemma op_equivalent_all_Is :
+  Lemma op_equivalent_all_Is_I :
     forall l k,
       (forall x, In x l -> exists k, x = I k) ->
       op_equivalent (l ++ [I k]) (I k :: l).
@@ -635,6 +634,36 @@ Section Linearizability.
     - auto.
     - specialize (H a). concludes. break_exists. subst.
       auto using op_equivalent_refl, good_op_move_II.
+  Qed.
+
+  Lemma good_op_move_neq_IO :
+    forall k k',
+      k <> k' ->
+      good_op_move (I k) (O k').
+  Proof.
+    unfold good_op_move.
+    intuition congruence.
+  Qed.
+
+  Lemma good_op_move_OO :
+    forall k k',
+      good_op_move (O k) (O k').
+  Proof.
+    unfold good_op_move.
+    intuition congruence.
+  Qed.
+
+  Lemma op_equivalent_all_Is_O :
+    forall l k,
+      (forall k', In (I k') l -> k <> k') ->
+      op_equivalent (l ++ [O k]) (O k :: l).
+  Proof.
+    induction l; intros; simpl in *; intuition.
+    apply op_equiv_trans with (l2 := (a :: O k :: l)).
+    - eauto 10.
+    - destruct a.
+      + eauto 6 using good_op_move_neq_IO, op_equivalent_refl.
+      + eauto 6 using good_op_move_OO, op_equivalent_refl.
   Qed.
 
   Lemma op_equiv_app_tail :
@@ -647,7 +676,7 @@ Section Linearizability.
     - eauto.
   Qed.
 
-  Lemma op_equivalent_all_Is_middle :
+  Lemma op_equivalent_all_Is_I_middle :
     forall xs ys k,
       (forall x, In x xs -> exists k, x = I k) ->
       op_equivalent (xs ++ I k :: ys) (I k :: xs ++ ys).
@@ -655,7 +684,7 @@ Section Linearizability.
     intros.
     rewrite app_comm_cons.
     replace (xs ++ I k :: ys) with ((xs ++ [I k]) ++ ys) by now rewrite app_ass.
-    auto using op_equiv_app_tail, op_equivalent_all_Is.
+    auto using op_equiv_app_tail, op_equivalent_all_Is_I.
   Qed.
 
   Lemma filterMap_app :
@@ -701,6 +730,17 @@ Section Linearizability.
     auto.
   Qed.
 
+  Lemma get_op_output_keys_complete :
+    forall xs k,
+      In (O k) xs ->
+      In k (get_op_output_keys xs).
+  Proof.
+    unfold get_op_input_keys.
+    intros.
+    eapply filterMap_In; eauto.
+    auto.
+  Qed.
+
   Lemma get_IR_output_keys_complete_U :
     forall xs k,
       In (IRU k) xs ->
@@ -711,23 +751,381 @@ Section Linearizability.
     eapply filterMap_In; eauto. auto.
   Qed.
 
+  Lemma get_IR_output_keys_complete_O :
+    forall xs k,
+      In (IRO k) xs ->
+      In k (get_IR_output_keys xs).
+  Proof.
+    unfold get_IR_output_keys.
+    intros.
+    eapply filterMap_In; eauto. auto.
+  Qed.
+
+  Lemma get_IR_input_keys_complete :
+    forall xs k,
+      In (IRI k) xs ->
+      In k (get_IR_input_keys xs).
+  Proof.
+    unfold get_IR_input_keys.
+    intros.
+    eapply filterMap_In; eauto. auto.
+  Qed.
+
+  Lemma op_equivalent_all_Is_O_middle :
+    forall xs ys k,
+      (forall k', In (I k') xs -> k <> k') ->
+      op_equivalent (xs ++ O k :: ys) (O k :: xs ++ ys).
+  Proof.
+    intros.
+    rewrite app_comm_cons.
+    replace (xs ++ O k :: ys) with ((xs ++ [O k]) ++ ys) by now rewrite app_ass.
+    auto using op_equiv_app_tail, op_equivalent_all_Is_O.
+  Qed.
+
+  Lemma In_cons_neq :
+    forall A a x xs,
+      In(A:=A) a (x :: xs) ->
+      a <> x ->
+      In a xs.
+  Proof.
+    simpl.
+    intuition congruence.
+  Qed.
+
+  Lemma NoDup_app3_not_in_1 :
+    forall A (xs ys zs : list A) b,
+      NoDup (xs ++ ys ++ b :: zs) ->
+      In b xs ->
+      False.
+  Proof.
+    intros.
+    rewrite <- app_ass in *.
+    find_apply_lem_hyp NoDup_remove.
+    rewrite app_ass in *.
+    intuition.
+  Qed.
+
+  Lemma NoDup_app3_not_in_2 :
+    forall A (xs ys zs : list A) b,
+      NoDup (xs ++ ys ++ b :: zs) ->
+      In b ys ->
+      False.
+  Proof.
+    intros.
+    rewrite <- app_ass in *.
+    find_apply_lem_hyp NoDup_remove_2.
+    rewrite app_ass in *.
+    auto 10 with *.
+  Qed.
+
+  Lemma NoDup_app3_not_in_3 :
+    forall A (xs ys zs : list A) b,
+      NoDup (xs ++ ys ++ b :: zs) ->
+      In b zs ->
+      False.
+  Proof.
+    intros.
+    rewrite <- app_ass in *.
+    find_apply_lem_hyp NoDup_remove_2.
+    rewrite app_ass in *.
+    auto 10 with *.
+  Qed.
+
+  Lemma In_cons_2_3 :
+    forall A xs ys zs x y a,
+      In (A:=A) a (xs ++ ys ++ zs) ->
+      In a (xs ++ x :: ys ++ y :: zs).
+  Proof.
+    intros.
+    repeat (do_in_app; intuition auto 10 with *).
+  Qed.
+
+  Lemma NoDup_get_op_output_keys_In_2_3 :
+    forall xs ys zs k,
+      NoDup (get_op_output_keys (xs ++ I k :: ys ++ O k :: zs)) ->
+      In (O k) (xs ++ ys ++ zs) ->
+      False.
+  Proof.
+    intros.
+    rewrite get_op_output_keys_app in *.
+    rewrite get_op_output_keys_defn in *.
+    rewrite get_op_output_keys_app in *.
+    rewrite get_op_output_keys_defn in *.
+    repeat
+      (do_in_app; intuition
+                    eauto using NoDup_app3_not_in_1, NoDup_app3_not_in_2,
+                  NoDup_app3_not_in_3, get_op_output_keys_complete).
+  Qed.
+
+  Lemma NoDup_get_op_input_keys_In_2_3 :
+    forall xs ys zs k,
+      NoDup (get_op_input_keys (xs ++ I k :: ys ++ O k :: zs)) ->
+      In (I k) (xs ++ ys ++ zs) ->
+      False.
+  Proof.
+    intros.
+    rewrite get_op_input_keys_app in *.
+    rewrite get_op_input_keys_defn in *.
+    rewrite get_op_input_keys_app in *.
+    rewrite get_op_input_keys_defn in *.
+    match goal with
+      | [ H : NoDup _ |- _ ] =>
+        apply NoDup_remove_2 in H
+    end.
+    repeat (do_in_app; intuition); eauto 10 using get_op_input_keys_complete with *.
+  Qed.
+
+  Lemma O_IRO_preserved :
+    forall xs ys zs k' ir,
+      NoDup (get_op_output_keys (xs ++ I k' :: ys ++ O k' :: zs)) ->
+      (forall k, In (O k) (xs ++ I k' :: ys ++ O k' :: zs) ->
+                 In (IRO k) (IRI k' :: IRO k' :: ir)) ->
+      forall k, In (O k) (xs ++ ys ++ zs) ->
+                In (IRO k) ir.
+  Proof.
+    intros.
+
+    eapply In_cons_neq.
+    - eapply In_cons_neq.
+      + eauto using In_cons_2_3.
+      + discriminate.
+    - intro. find_inversion. eauto using NoDup_get_op_output_keys_In_2_3.
+  Qed.
+
+  Lemma no_Ik_in_first2 :
+    forall xs ys zs k,
+      NoDup (get_op_input_keys (xs ++ I k :: ys ++ O k :: zs)) ->
+      forall k',
+        In (I k') (xs ++ ys) -> k <> k'.
+  Proof.
+    intros.
+    rewrite get_op_input_keys_app in *. rewrite get_op_input_keys_defn in *.
+    match goal with
+      | [ H : NoDup (_ ++ _ :: _) |- _ ] =>
+        apply NoDup_remove_2 in H
+    end.
+    rewrite get_op_input_keys_app in *.
+    intro. subst.
+
+    repeat do_in_app; intuition auto 10 using get_op_input_keys_complete, in_or_app.
+  Qed.
+
+  Lemma In_cons_2_3_neq :
+    forall A a x y xs ys zs,
+      In (A:=A) a (xs ++ x :: ys ++ y :: zs) ->
+      a <> x ->
+      a <> y ->
+      In a (xs ++ ys ++ zs).
+  Proof.
+    intros.
+    repeat (do_in_app; simpl in *; intuition (auto with *; try congruence)).
+  Qed.
+
+  Lemma IRO_O_preserved :
+    forall xs ys zs k' ir,
+      (~ In k' (get_IR_output_keys ir)) ->
+      (forall k, In (IRO k) (IRI k' :: IRO k' :: ir) ->
+                 In (O k) (xs ++ I k' :: ys ++ O k' :: zs)) ->
+      forall k, In (IRO k) ir ->
+                In (O k) (xs ++ ys ++ zs).
+  Proof.
+    intros.
+
+    eapply In_cons_2_3_neq; eauto using in_cons; try congruence.
+    intro. find_inversion. eauto using get_IR_output_keys_complete_O.
+  Qed.
+
+  Lemma IRU_I_preserved :
+    forall xs ys zs k' ir,
+      (~ In k' (get_IR_output_keys ir)) ->
+      (forall k, In (IRU k) (IRI k' :: IRO k' :: ir) ->
+                 In (I k) (xs ++ I k' :: ys ++ O k' :: zs)) ->
+      forall k, In (IRU k) ir ->
+                In (I k) (xs ++ ys ++ zs).
+  Proof.
+    intros.
+    eapply In_cons_2_3_neq; eauto using in_cons; try congruence.
+    intro. find_inversion. eauto using get_IR_output_keys_complete_U.
+  Qed.
+
+  Lemma before_2_3_insert :
+    forall A xs ys zs x y a b,
+      before(A:=A) a b (xs ++ ys ++ zs) ->
+      b <> x ->
+      b <> y ->
+      before a b (xs ++ x :: ys ++ y :: zs).
+  Proof.
+    induction xs; intros; simpl in *; intuition.
+    induction ys; intros; simpl in *; intuition.
+  Qed.
+
+  Lemma in_before_before_preserved :
+    forall xs ys zs k ir,
+      NoDup (get_op_input_keys (xs ++ I k :: ys ++ O k :: zs)) ->
+      NoDup (get_op_output_keys (xs ++ I k :: ys ++ O k :: zs)) ->
+      (forall k1 k2,
+         In (I k2) (xs ++ I k :: ys ++ O k :: zs) ->
+         before (O k1) (I k2) (xs ++ I k :: ys ++ O k :: zs) ->
+         before (IRO k1) (IRI k2) (IRI k :: IRO k :: ir)) ->
+      forall k1 k2,
+        In (I k2) (xs ++ ys ++ zs) ->
+        before (O k1) (I k2) (xs ++ ys ++ zs) ->
+        before (IRO k1) (IRI k2) ir.
+  Proof.
+    intros.
+    simpl in *.
+    find_copy_eapply_lem_hyp before_2_3_insert.
+    - find_eapply_lem_hyp In_cons_2_3.
+      eapply_prop_hyp In (O k1); eauto.
+      intuition; try congruence.
+      find_inversion.
+      find_copy_eapply_lem_hyp before_In.
+      exfalso.
+      eauto using NoDup_get_op_output_keys_In_2_3.
+    - intro. find_inversion. eauto using NoDup_get_op_input_keys_In_2_3.
+    - discriminate.
+  Qed.
+
+  Lemma before_2_3_reduce :
+    forall A xs ys zs x y a b,
+      before(A:=A) a b (xs ++ x :: ys ++ y :: zs) ->
+      a <> x ->
+      a <> y ->
+      before a b (xs ++ ys ++ zs).
+  Proof.
+    induction xs; intros; simpl in *; intuition; try congruence; eauto.
+    induction ys; intros; simpl in *; intuition; try congruence.
+  Qed.
+
+  Lemma in_before_preserved :
+    forall xs ys zs k',
+      NoDup (get_op_output_keys (xs ++ I k' :: ys ++ O k' :: zs)) ->
+      (forall k, In (O k) (xs ++ I k' :: ys ++ O k' :: zs) ->
+                 before (I k) (O k) (xs ++ I k' :: ys ++ O k' :: zs)) ->
+      forall k, In (O k) (xs ++ ys ++ zs) ->
+                before (I k) (O k) (xs ++ ys ++ zs).
+  Proof.
+    intros.
+    eapply before_2_3_reduce.
+    - eauto using In_cons_2_3.
+    - intro. find_inversion. eauto using NoDup_get_op_output_keys_In_2_3.
+    - discriminate.
+  Qed.
+
+  Lemma IRI_I_preserved :
+    forall xs ys zs k' ir,
+      (~ In k' (get_IR_input_keys ir)) ->
+      (forall k, In (IRI k) (IRI k' :: IRO k' :: ir) -> In (I k) (xs ++ I k' :: ys ++ O k' :: zs)) ->
+      forall k, In (IRI k) ir -> In (I k) (xs ++ ys ++ zs).
+  Proof.
+    intros.
+    eapply In_cons_2_3_neq.
+    - auto with *.
+    - intro. find_inversion. eauto using get_IR_input_keys_complete.
+    - discriminate.
+  Qed.
+
+  Lemma subseq_nil :
+    forall A xs,
+      subseq (A:=A) [] xs.
+  Proof.
+    destruct xs; simpl; auto.
+  Qed.
+
+  Lemma subseq_skip :
+    forall A a xs ys,
+      subseq(A:=A) xs ys ->
+      subseq xs (a :: ys).
+  Proof.
+    induction ys; intros; simpl in *; repeat break_match; intuition.
+  Qed.
+
+  Lemma subseq_filterMap :
+    forall A B (f : A -> option B) ys xs,
+      subseq xs ys ->
+      subseq (filterMap f xs) (filterMap f ys).
+  Proof.
+    induction ys; intros; simpl in *; repeat break_match; auto; try discriminate; intuition; subst.
+    - simpl. find_rewrite. auto.
+    - auto using subseq_skip.
+    - auto using subseq_nil.
+    - simpl. find_rewrite. auto.
+  Qed.
+
+  Lemma subseq_get_op_input_keys :
+    forall xs ys,
+      subseq xs ys ->
+      subseq (get_op_input_keys xs) (get_op_input_keys ys).
+  Proof.
+    eauto using subseq_filterMap.
+  Qed.
+
+  Lemma subseq_get_op_output_keys :
+    forall xs ys,
+      subseq xs ys ->
+      subseq (get_op_output_keys xs) (get_op_output_keys ys).
+  Proof.
+    eauto using subseq_filterMap.
+  Qed.
+
+  Lemma subseq_app_r :
+    forall A xs ys,
+      subseq (A:=A) ys (xs ++ ys).
+  Proof.
+    induction xs; intros; simpl.
+    + auto using subseq_refl.
+    + break_match.
+      * auto.
+      * right. auto using subseq_nil.
+  Qed.
+
+  Lemma subseq_app_tail :
+    forall A ys xs zs,
+      subseq (A:=A) xs ys ->
+      subseq (xs ++ zs) (ys ++ zs).
+  Proof.
+    induction ys; intros; simpl in *.
+    - break_match; intuition auto using subseq_refl.
+    - repeat break_match.
+      + auto.
+      + discriminate.
+      + simpl in *. subst. right. auto using subseq_app_r.
+      + simpl in *. find_inversion. intuition.
+        rewrite app_comm_cons. auto.
+  Qed.
+
+  Lemma subseq_app_head :
+    forall A xs ys zs,
+      subseq (A:=A) ys zs ->
+      subseq (A:=A) (xs ++ ys) (xs ++ zs).
+  Proof.
+    induction xs; intros; simpl; intuition.
+  Qed.
+
+  Lemma subseq_2_3 :
+    forall A xs ys zs x y,
+      subseq(A:=A) (xs ++ ys ++ zs) (xs ++ x :: ys ++ y :: zs).
+  Proof.
+    auto using subseq_refl, subseq_skip, subseq_app_head.
+  Qed.
+
   Lemma IR_equivalent_acknowledge_all_ops_func :
     forall ir,
       good_trace ir ->
       forall l,
-      (forall k, In (O k) l -> In (IRO k) ir) ->
-      (forall k, In (IRO k) ir -> In (O k) l) ->
-      (forall k, In (IRU k) ir -> In (I k) l) ->
-      (forall k k', In (I k') l ->
-                    before (O k) (I k') l ->
-                    before (IRO k) (IRI k') ir) ->
-      (forall k, In (O k) l -> before (I k) (O k) l) ->
-      (forall k, In (IRI k) ir -> In (I k) l) ->
-      NoDup (get_op_input_keys l) ->
-      NoDup (get_IR_input_keys ir) ->
-      NoDup (get_op_output_keys l) ->
-      NoDup (get_IR_output_keys ir) ->
-      IR_equivalent (acknowledge_all_ops_func l ir) ir.
+        (forall k, In (O k) l -> In (IRO k) ir) ->
+        (forall k, In (IRO k) ir -> In (O k) l) ->
+        (forall k, In (IRU k) ir -> In (I k) l) ->
+        (forall k k', In (I k') l ->
+                      before (O k) (I k') l ->
+                      before (IRO k) (IRI k') ir) ->
+        (forall k, In (O k) l -> before (I k) (O k) l) ->
+        (forall k, In (IRI k) ir -> In (I k) l) ->
+        NoDup (get_op_input_keys l) ->
+        NoDup (get_IR_input_keys ir) ->
+        NoDup (get_op_output_keys l) ->
+        NoDup (get_IR_output_keys ir) ->
+        IR_equivalent (acknowledge_all_ops_func l ir) ir.
   Proof.
     intros ir.
     induction ir, good_trace using good_trace_ind; intros; try solve [simpl in *; intuition].
@@ -747,10 +1145,14 @@ Section Linearizability.
       assert (forall x, before x (I k') l -> exists k, x = I k) by eauto using before_head_op.
 
       find_copy_apply_lem_hyp before_split; auto; try congruence. break_exists. subst.
+      repeat match goal with
+               | [ H : In ?x (_ ++ ?x :: _) |- _ ] => clear H
+               | [ H : In ?x (_ ++ _ :: _ ++ ?x :: _) |- _ ] => clear H
+             end.
 
       eapply IR_equiv_trans.
       + apply op_equiv_AAOF_IR_equiv.
-        apply op_equivalent_all_Is_middle.
+        apply op_equivalent_all_Is_I_middle.
         intros.
         match goal with
           | [ H : context [before] |- _ ] => apply H
@@ -762,11 +1164,29 @@ Section Linearizability.
         unfold acknowledge_all_ops_func. fold acknowledge_all_ops_func.
         break_if.
         * constructor.
-          admit.
-        (* continue from here: pull the O out to the front and cancel
-           using lemma similar to all_Is. then because k' can not
-           appear in rest of l, get rid of first two elements of
-           target and recurse. *)
+          { eapply IR_equiv_trans.
+            - apply op_equiv_AAOF_IR_equiv.
+              rewrite <- app_ass.
+              eauto using op_equivalent_all_Is_O_middle, no_Ik_in_first2.
+            - simpl. constructor.
+              rewrite acknowledge_all_ops_func_target_ext with (t' := ir).
+              + rewrite app_ass.
+                repeat rewrite get_IR_output_keys_defn in *.
+                match goal with
+                  | [ H : NoDup (_ :: _) |- _ ] => invc H
+                end.
+                apply IHP; auto.
+                * eauto using O_IRO_preserved.
+                * eauto using IRO_O_preserved.
+                * eauto using IRU_I_preserved.
+                * eauto using in_before_before_preserved.
+                * eauto using in_before_preserved.
+                * eauto using IRI_I_preserved.
+                * eauto using subseq_NoDup, subseq_get_op_input_keys, subseq_2_3.
+                * eauto using subseq_NoDup, subseq_get_op_output_keys, subseq_2_3.
+              + simpl. intuition congruence.
+              + intuition.
+          }
         * { break_if.
             - repeat rewrite get_IR_output_keys_defn in *.
               match goal with
@@ -807,41 +1227,5 @@ Section Linearizability.
       find_apply_lem_hyp good_trace_IRI_in; auto.
       intuition eauto using before_In.
   Qed.
-
-(*
-  Lemma good_trace_acknowledge_all_ops_id :
-    forall l,
-      good_trace l ->
-      exists l',
-        acknowledge_all_ops l l' /\
-        export l' = l.
-  Proof.
-    intros l H.
-    functional induction (good_trace l); intuition.
-    - exists nil. intuition. constructor.
-    - break_exists. break_and. subst.
-      exists (IRI k' :: IRO k' :: x). intuition.
-      apply AAO_IO.
-      + constructor. auto.
-      + apply AAO_O. auto.
-  Qed.
-
-  Lemma good_trace_equiv :
-    forall l,
-      good_trace l ->
-      equivalent l l.
-  Proof.
-    unfold equivalent.
-    intros.
-    find_copy_apply_lem_hyp good_trace_acknowledge_all_ops_id.
-    break_exists. break_and.
-    subst.
-    exists x.
-    intuition.
-    exists x.
-    intuition auto using IR_equivalent_refl.
-  Qed.
-
-*)
 
 End Linearizability.
