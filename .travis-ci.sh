@@ -6,6 +6,4 @@ tar xf coq-8.5beta1-build.tgz
 pushd coq-8.5beta1
 sudo make install > /dev/null 2>&1
 popd
-make -k
-cd raft
-make -k
+./build.sh
