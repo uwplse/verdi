@@ -70,18 +70,36 @@ Section Linearizability.
   Fixpoint acknowledge_all_ops_func (l : list op) (target : list IR) : list IR :=
     match l with
       | [] => []
-      | x :: xs => let tr := acknowledge_all_ops_func xs target in
-                   match x with
+      | x :: xs => match x with
                      | I k => if acknowledged_op_dec k xs
-                              then IRI k :: tr
+                              then IRI k :: acknowledge_all_ops_func xs target
                               else if in_dec IR_eq_dec (IRU k) target
-                                   then IRI k :: IRU k :: tr
-                                   else tr
-                     | O k => IRO k :: tr
+                                   then IRI k :: IRU k :: acknowledge_all_ops_func xs target
+                                   else acknowledge_all_ops_func xs target
+                     | O k => IRO k :: acknowledge_all_ops_func xs target
                    end
     end.
 
   Hint Constructors acknowledge_all_ops.
+
+  Lemma acknowledge_all_ops_func_defn :
+    forall l target,
+      acknowledge_all_ops_func l target =
+      match l with
+        | [] => []
+        | x :: xs => match x with
+                       | I k => if acknowledged_op_dec k xs
+                                then IRI k :: acknowledge_all_ops_func xs target
+                                else if in_dec IR_eq_dec (IRU k) target
+                                     then IRI k :: IRU k :: acknowledge_all_ops_func xs target
+                                     else acknowledge_all_ops_func xs target
+                       | O k => IRO k :: acknowledge_all_ops_func xs target
+                     end
+      end.
+  Proof.
+    intros.
+    unfold acknowledge_all_ops_func. repeat break_match; auto.
+  Qed.
 
   Lemma acknowledge_all_ops_func_correct :
     forall l target,
@@ -571,6 +589,151 @@ Section Linearizability.
     intuition (try congruence). repeat find_inversion. eauto.
   Qed.
 
+  Lemma good_op_move_cases :
+    forall x y,
+      good_op_move x y ->
+      exists k k',
+        (x = I k /\ y = I k') \/
+        (x = O k /\ y = O k') \/
+        (k <> k' /\ x = I k /\ y = O k').
+  Proof.
+    unfold good_op_move. intros.
+    destruct x as [k|k], y as [k'|k']; exists k, k'; intuition.
+    - right. right. intuition. subst. eauto.
+    - exfalso. eauto.
+  Qed.
+
+  Lemma acknowledged_op_I_cons_reduce :
+    forall k k' l,
+      acknowledged_op k (I k' :: l) ->
+      acknowledged_op k l.
+  Proof.
+    unfold acknowledged_op.
+    simpl. intuition congruence.
+  Qed.
+
+  Lemma acknowledged_op_I_cons_expand :
+    forall k k' l,
+      acknowledged_op k l ->
+      acknowledged_op k (I k' :: l).
+  Proof.
+    unfold acknowledged_op.
+    simpl. intuition congruence.
+  Qed.
+
+  Lemma if_decider_true :
+    forall A B (P : A -> Prop) (dec : forall x, {P x} + {~ P x}) a (b1 b2 : B),
+      P a ->
+      (if dec a then b1 else b2) = b1.
+  Proof.
+    intros.
+    break_if; congruence.
+  Qed.
+
+  Lemma if_decider_false :
+    forall A B (P : A -> Prop) (dec : forall x, {P x} + {~ P x}) a (b1 b2 : B),
+      ~ P a ->
+      (if dec a then b1 else b2) = b2.
+  Proof.
+    intros.
+    break_if; congruence.
+  Qed.
+
+  Hint Constructors op_equivalent.
+
+  Lemma IR_equiv_AAOF_I :
+    forall k xs ys target,
+      op_equivalent xs ys ->
+      IR_equivalent (acknowledge_all_ops_func xs target)
+                    (acknowledge_all_ops_func ys target) ->
+      IR_equivalent (acknowledge_all_ops_func (I k :: xs) target)
+                    (acknowledge_all_ops_func (I k :: ys) target).
+  Proof.
+    intros.
+    simpl.
+    repeat break_match; auto;
+    exfalso; eauto using op_equiv_ack_op_lr, op_equiv_ack_op_rl.
+  Qed.
+
+  Lemma IR_equiv_AAOF_II_neq :
+    forall xs ys target k k',
+      k <> k' ->
+      op_equivalent xs ys ->
+      IR_equivalent (acknowledge_all_ops_func xs target)
+                    (acknowledge_all_ops_func ys target) ->
+      IR_equivalent (acknowledge_all_ops_func (I k :: I k' :: xs) target)
+                    (acknowledge_all_ops_func (I k' :: I k :: ys) target).
+  Proof.
+    intros.
+    rewrite acknowledge_all_ops_func_defn.
+    break_if.
+    - rewrite acknowledge_all_ops_func_defn.
+      break_if; rewrite acknowledge_all_ops_func_defn with (l := _ :: _).
+      + rewrite if_decider_true by
+                  eauto 3 using acknowledged_op_I_cons_expand, op_equiv_ack_op_lr,
+                              acknowledged_op_I_cons_reduce.
+        rewrite acknowledge_all_ops_func_defn with (l := _ :: _).
+        rewrite if_decider_true by
+            eauto 3 using acknowledged_op_I_cons_expand, op_equiv_ack_op_lr,
+                        acknowledged_op_I_cons_reduce.
+        auto.
+      + rewrite if_decider_false with (dec := acknowledged_op_dec _) by
+        intuition eauto using acknowledged_op_I_cons_expand, op_equiv_ack_op_rl,
+                              acknowledged_op_I_cons_reduce.
+        rewrite acknowledge_all_ops_func_defn with (l := _ :: _).
+        rewrite if_decider_true with (dec := acknowledged_op_dec _) by
+            eauto 3 using acknowledged_op_I_cons_expand, op_equiv_ack_op_lr,
+                              acknowledged_op_I_cons_reduce.
+        break_if.
+        * eauto 6 using good_move_IU_neq.
+        * auto.
+    - break_if; rewrite acknowledge_all_ops_func_defn with (l := _ :: _).
+      + break_if; rewrite acknowledge_all_ops_func_defn with (l := _ :: _).
+        * rewrite if_decider_true by
+              eauto 3 using acknowledged_op_I_cons_expand, op_equiv_ack_op_lr,
+                            acknowledged_op_I_cons_reduce.
+          rewrite acknowledge_all_ops_func_defn with (l := _ :: _).
+          rewrite if_decider_false by
+              intuition eauto using acknowledged_op_I_cons_expand, op_equiv_ack_op_rl,
+                            acknowledged_op_I_cons_reduce.
+          rewrite if_decider_true by auto.
+          eauto.
+        * rewrite if_decider_false with (dec := acknowledged_op_dec _) by
+              eauto using acknowledged_op_I_cons_expand, op_equiv_ack_op_rl,
+              acknowledged_op_I_cons_reduce.
+          rewrite acknowledge_all_ops_func_defn with (l := I _ :: _).
+          rewrite if_decider_false with (dec := acknowledged_op_dec _) by
+              eauto using acknowledged_op_I_cons_expand, op_equiv_ack_op_rl,
+              acknowledged_op_I_cons_reduce.
+          rewrite if_decider_true with (dec := in_dec _ (IRU k)) by auto.
+          { break_if.
+            - eapply IR_equiv_trans; [apply IR_equiv_cons; apply IR_equiv_move; auto|].
+              eapply IR_equiv_trans; [apply IR_equiv_move; auto|]. constructor.
+              eapply IR_equiv_trans; [apply IR_equiv_cons; apply IR_equiv_move; auto|].
+              auto using good_move_IU_neq.
+            - auto.
+          }
+      + break_if; rewrite acknowledge_all_ops_func_defn with (l := I _ :: _).
+        * rewrite if_decider_true with (dec := acknowledged_op_dec _) by
+              eauto 3 using acknowledged_op_I_cons_expand, op_equiv_ack_op_lr,
+                  acknowledged_op_I_cons_reduce.
+          rewrite acknowledge_all_ops_func_defn with (l := I _ :: _).
+          rewrite if_decider_false with (dec := acknowledged_op_dec _) by
+              eauto using acknowledged_op_I_cons_expand, op_equiv_ack_op_rl,
+                  acknowledged_op_I_cons_reduce.
+          rewrite if_decider_false by auto.
+          auto.
+        * rewrite if_decider_false with (dec := acknowledged_op_dec _) by
+              eauto using acknowledged_op_I_cons_expand, op_equiv_ack_op_rl,
+                  acknowledged_op_I_cons_reduce.
+           rewrite acknowledge_all_ops_func_defn with (l := I _ :: _).
+           rewrite if_decider_false with (dec := acknowledged_op_dec _) by
+              eauto using acknowledged_op_I_cons_expand, op_equiv_ack_op_rl,
+                  acknowledged_op_I_cons_reduce.
+           rewrite if_decider_false with (dec := in_dec _ (IRU k)) by auto.
+           break_if; auto.
+  Qed.
+
   Lemma op_equiv_AAOF_IR_equiv :
     forall xs ys,
       op_equivalent xs ys ->
@@ -582,33 +745,27 @@ Section Linearizability.
     - simpl.
       repeat break_match; subst; auto;
       exfalso; eauto using op_equiv_ack_op_lr, op_equiv_ack_op_rl.
-    - simpl.
-      repeat break_match; subst; intuition; try congruence;
-      try solve [exfalso; eauto using op_equiv_ack_op_lr, op_equiv_ack_op_rl];
-      auto;
-      try solve [exfalso; eauto using Permutation_in, op_equiv_Permutation, acknowledged_op_defn, Permutation_sym];
-      try solve [repeat find_inversion; exfalso; eauto using not_good_op_move_IO, not_good_op_move_OI].
-      + eapply IR_equiv_trans; [apply IR_equiv_move; auto|]. constructor.
-        eapply IR_equiv_trans; [apply IR_equiv_move; auto|]; auto.
-        apply good_move_IU_neq.
-        intro; subst;
-        exfalso; eauto using Permutation_in, op_equiv_Permutation, acknowledged_op_defn.
-      + auto using good_op_move_good_move_IO.
-      + eauto.
-      + destruct (K_eq_dec k k0).
-        * subst. auto.
+    - find_copy_apply_lem_hyp good_op_move_cases. break_exists. intuition; subst.
+      + destruct (K_eq_dec x0 x1).
+        * subst. auto using IR_equiv_AAOF_I.
+        * auto using IR_equiv_AAOF_II_neq.
+      + simpl. eauto using good_move_OO.
+      + simpl. repeat break_match; intuition; try congruence.
+        * eauto using good_move_IO_neq.
+        * exfalso. eauto using op_equiv_ack_op_lr.
+        * exfalso. eauto using op_equiv_ack_op_lr.
+        * exfalso; eauto using Permutation_in, op_equiv_Permutation, acknowledged_op_defn, Permutation_sym.
         * eapply IR_equiv_trans; [apply IR_equiv_cons; apply IR_equiv_move; auto|].
-          eapply IR_equiv_trans; [apply IR_equiv_move; auto|]. constructor.
-          eapply IR_equiv_trans; [apply IR_equiv_cons; apply IR_equiv_move; auto|].
-          auto using good_move_IU_neq.
-      + eapply IR_equiv_trans; [apply IR_equiv_cons; apply IR_equiv_move; auto|].
-        eapply IR_equiv_trans; [apply IR_equiv_move; auto|]. apply good_move_IO_neq. congruence.
-        auto.
-      + auto using good_move_OO.
+          eapply IR_equiv_trans; [apply IR_equiv_move; auto|]. apply good_move_IO_neq. congruence.
+          auto.
+        * exfalso.
+          match goal with
+            | [ H : In (O _) _ -> False |- _ ] => apply H
+          end.
+          eapply Permutation_in; [apply Permutation_sym; eapply op_equiv_Permutation; eauto|].
+          auto using acknowledged_op_defn.
     - eauto.
   Qed.
-
-  Hint Constructors op_equivalent.
 
   Lemma op_equivalent_refl :
     forall xs,
