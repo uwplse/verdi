@@ -276,9 +276,13 @@ Section RaftLinearizable.
         admit.
       + (* I before O *)
         admit.
-      + (* NoDup input *)
+      + (* NoDup op input *)
         admit.
-      + (* NoDup output *)
+      + (* NoDup IR input *)
+        admit.
+      + (* NoDup op output *)
+        admit.
+      + (* NoDup IR output *)
         admit.
     - admit.
   Qed.
