@@ -429,19 +429,18 @@ Section Linearizability.
     induction l; intros; simpl in *; intuition; subst; try congruence.
     - exists nil. simpl. find_apply_lem_hyp in_split. break_exists. subst. eauto.
     - exists nil. simpl. find_apply_lem_hyp in_split. break_exists. subst. eauto.
+    - exists nil. simpl. find_apply_lem_hyp in_split. break_exists. subst. eauto.
     - eapply_prop_hyp In In; eauto. break_exists. subst.
       exists (a :: x0), x1, x2. auto.
   Qed.
 
   Lemma In_app_before :
-    forall A xs ys x y
-           (A_eq_dec : forall a b : A, {a=b} + {a<>b}),
+    forall A xs ys x y,
       In(A:=A) x xs ->
       (~ In y xs) ->
       before x y (xs ++ y :: ys).
   Proof.
     induction xs; intros; simpl in *; intuition.
-    destruct (A_eq_dec a x); intuition.
   Qed.
 
   Lemma good_move_II :

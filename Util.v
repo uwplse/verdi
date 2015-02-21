@@ -1126,5 +1126,5 @@ Fixpoint before {A: Type} (x : A) y l : Prop :=
     | [] => False
     | a :: l' =>
       a = x \/
-      (a <> x /\ a <> y /\ before x y l')
+      (a <> y /\ before x y l')
   end.
