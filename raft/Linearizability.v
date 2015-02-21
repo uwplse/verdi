@@ -83,18 +83,15 @@ Section Linearizability.
   Hint Constructors acknowledge_all_ops.
 
   Lemma acknowledge_all_ops_func_defn :
-    forall l target,
-      acknowledge_all_ops_func l target =
-      match l with
-        | [] => []
-        | x :: xs => match x with
-                       | I k => if acknowledged_op_dec k xs
-                                then IRI k :: acknowledge_all_ops_func xs target
-                                else if in_dec IR_eq_dec (IRU k) target
-                                     then IRI k :: IRU k :: acknowledge_all_ops_func xs target
-                                     else acknowledge_all_ops_func xs target
-                       | O k => IRO k :: acknowledge_all_ops_func xs target
-                     end
+    forall x l target,
+      acknowledge_all_ops_func (x :: l) target =
+      match x with
+        | I k => if acknowledged_op_dec k l
+                 then IRI k :: acknowledge_all_ops_func l target
+                 else if in_dec IR_eq_dec (IRU k) target
+                      then IRI k :: IRU k :: acknowledge_all_ops_func l target
+                      else acknowledge_all_ops_func l target
+        | O k => IRO k :: acknowledge_all_ops_func l target
       end.
   Proof.
     intros.
@@ -672,7 +669,7 @@ Section Linearizability.
       + rewrite if_decider_true by
                   eauto 3 using acknowledged_op_I_cons_expand, op_equiv_ack_op_lr,
                               acknowledged_op_I_cons_reduce.
-        rewrite acknowledge_all_ops_func_defn with (l := _ :: _).
+        rewrite acknowledge_all_ops_func_defn.
         rewrite if_decider_true by
             eauto 3 using acknowledged_op_I_cons_expand, op_equiv_ack_op_lr,
                         acknowledged_op_I_cons_reduce.
@@ -680,19 +677,19 @@ Section Linearizability.
       + rewrite if_decider_false with (dec := acknowledged_op_dec _) by
         intuition eauto using acknowledged_op_I_cons_expand, op_equiv_ack_op_rl,
                               acknowledged_op_I_cons_reduce.
-        rewrite acknowledge_all_ops_func_defn with (l := _ :: _).
+        rewrite acknowledge_all_ops_func_defn.
         rewrite if_decider_true with (dec := acknowledged_op_dec _) by
             eauto 3 using acknowledged_op_I_cons_expand, op_equiv_ack_op_lr,
                               acknowledged_op_I_cons_reduce.
         break_if.
         * eauto 6 using good_move_IU_neq.
         * auto.
-    - break_if; rewrite acknowledge_all_ops_func_defn with (l := _ :: _).
-      + break_if; rewrite acknowledge_all_ops_func_defn with (l := _ :: _).
+    - break_if; rewrite acknowledge_all_ops_func_defn.
+      + break_if; rewrite acknowledge_all_ops_func_defn.
         * rewrite if_decider_true by
               eauto 3 using acknowledged_op_I_cons_expand, op_equiv_ack_op_lr,
                             acknowledged_op_I_cons_reduce.
-          rewrite acknowledge_all_ops_func_defn with (l := _ :: _).
+          rewrite acknowledge_all_ops_func_defn.
           rewrite if_decider_false by
               intuition eauto using acknowledged_op_I_cons_expand, op_equiv_ack_op_rl,
                             acknowledged_op_I_cons_reduce.
@@ -701,7 +698,7 @@ Section Linearizability.
         * rewrite if_decider_false with (dec := acknowledged_op_dec _) by
               eauto using acknowledged_op_I_cons_expand, op_equiv_ack_op_rl,
               acknowledged_op_I_cons_reduce.
-          rewrite acknowledge_all_ops_func_defn with (l := I _ :: _).
+          rewrite acknowledge_all_ops_func_defn.
           rewrite if_decider_false with (dec := acknowledged_op_dec _) by
               eauto using acknowledged_op_I_cons_expand, op_equiv_ack_op_rl,
               acknowledged_op_I_cons_reduce.
@@ -713,11 +710,11 @@ Section Linearizability.
               auto using good_move_IU_neq.
             - auto.
           }
-      + break_if; rewrite acknowledge_all_ops_func_defn with (l := I _ :: _).
+      + break_if; rewrite acknowledge_all_ops_func_defn.
         * rewrite if_decider_true with (dec := acknowledged_op_dec _) by
               eauto 3 using acknowledged_op_I_cons_expand, op_equiv_ack_op_lr,
                   acknowledged_op_I_cons_reduce.
-          rewrite acknowledge_all_ops_func_defn with (l := I _ :: _).
+          rewrite acknowledge_all_ops_func_defn.
           rewrite if_decider_false with (dec := acknowledged_op_dec _) by
               eauto using acknowledged_op_I_cons_expand, op_equiv_ack_op_rl,
                   acknowledged_op_I_cons_reduce.
@@ -726,7 +723,7 @@ Section Linearizability.
         * rewrite if_decider_false with (dec := acknowledged_op_dec _) by
               eauto using acknowledged_op_I_cons_expand, op_equiv_ack_op_rl,
                   acknowledged_op_I_cons_reduce.
-           rewrite acknowledge_all_ops_func_defn with (l := I _ :: _).
+           rewrite acknowledge_all_ops_func_defn.
            rewrite if_decider_false with (dec := acknowledged_op_dec _) by
               eauto using acknowledged_op_I_cons_expand, op_equiv_ack_op_rl,
                   acknowledged_op_I_cons_reduce.
