@@ -1263,6 +1263,29 @@ Section Linearizability.
     auto using subseq_refl, subseq_skip, subseq_app_head.
   Qed.
 
+  Ltac start :=
+    match goal with
+      | [ H : good_trace (_ :: _) |- _ ] => simpl in H
+    end;
+    break_and; subst;
+    match goal with
+      | [ H : context [In (?c _) (_ :: ?c ?k' :: _) -> In _ ?l] |- _ ] =>
+        assert (In (O k') l) by firstorder;
+          assert (before (I k') (O k') l) by auto;
+          repeat rewrite get_IR_input_keys_defn in *;
+          repeat rewrite get_IR_output_keys_defn in *;
+          repeat match goal with
+                   | [ H : NoDup (_ :: _) |- _ ] => invc H
+                 end;
+          assert (In (I k') l) by eauto using before_In;
+          assert (forall x, before x (I k') l -> exists k, x = I k) by eauto using before_head_op;
+          find_copy_apply_lem_hyp before_split; auto; try congruence; break_exists; subst
+    end;
+    repeat match goal with
+             | [ H : In ?x (_ ++ ?x :: _) |- _ ] => clear H
+             | [ H : In ?x (_ ++ _ :: _ ++ ?x :: _) |- _ ] => clear H
+           end.
+
   Lemma IR_equivalent_acknowledge_all_ops_func :
     forall ir,
       good_trace ir ->
@@ -1284,26 +1307,7 @@ Section Linearizability.
     intros ir.
     induction ir, good_trace using good_trace_ind; intros; try solve [simpl in *; intuition].
     - rewrite acknowledge_all_ops_func_target_nil; auto.
-    - match goal with
-        | [ H : good_trace (_ :: _) |- _ ] => simpl in H
-      end.
-      break_and. subst.
-      assert (In (O k') l) by firstorder.
-      assert (In (I k') l) by eauto using before_In.
-      assert (before (I k') (O k') l) by auto.
-      repeat rewrite get_IR_input_keys_defn in *.
-      match goal with
-        | [ H : NoDup (_ :: _) |- _ ] => invc H
-      end.
-
-      assert (forall x, before x (I k') l -> exists k, x = I k) by eauto using before_head_op.
-
-      find_copy_apply_lem_hyp before_split; auto; try congruence. break_exists. subst.
-      repeat match goal with
-               | [ H : In ?x (_ ++ ?x :: _) |- _ ] => clear H
-               | [ H : In ?x (_ ++ _ :: _ ++ ?x :: _) |- _ ] => clear H
-             end.
-
+    - start.
       eapply IR_equiv_trans.
       + apply op_equiv_AAOF_IR_equiv.
         apply op_equivalent_all_Is_I_middle.
@@ -1315,7 +1319,7 @@ Section Linearizability.
         find_rewrite_lem get_op_input_keys_app. rewrite get_op_input_keys_defn in *.
         intro. eapply NoDup_remove_2; eauto using in_or_app, get_op_input_keys_complete.
       + repeat rewrite app_ass.
-        unfold acknowledge_all_ops_func. fold acknowledge_all_ops_func.
+        rewrite acknowledge_all_ops_func_defn.
         break_if.
         * constructor.
           { eapply IR_equiv_trans.
@@ -1325,10 +1329,6 @@ Section Linearizability.
             - simpl. constructor.
               rewrite acknowledge_all_ops_func_target_ext with (t' := ir).
               + rewrite app_ass.
-                repeat rewrite get_IR_output_keys_defn in *.
-                match goal with
-                  | [ H : NoDup (_ :: _) |- _ ] => invc H
-                end.
                 apply IHP; auto.
                 * eauto using O_IRO_preserved.
                 * eauto using IRO_O_preserved.
@@ -1342,11 +1342,7 @@ Section Linearizability.
               + intuition.
           }
         * { break_if.
-            - repeat rewrite get_IR_output_keys_defn in *.
-              match goal with
-                | [ H : NoDup (_ :: _) |- _ ] => invc H
-              end.
-              simpl in *. intuition (try congruence).
+            - simpl in *. intuition (try congruence).
               exfalso. eauto using get_IR_output_keys_complete_U.
             - exfalso. apply n. red. intuition.
           }
