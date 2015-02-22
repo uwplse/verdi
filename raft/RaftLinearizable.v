@@ -263,7 +263,7 @@ Section RaftLinearizable.
     find_apply_lem_hyp In_get_output'. break_exists; congruence.
   Qed.
 
-  Lemma in_IR_in_log :
+  Lemma IRO_in_IR_in_log :
     forall k log tr,
       In (IRO k) (log_to_IR (get_output tr) log) ->
       exists e out,
@@ -355,7 +355,7 @@ Section RaftLinearizable.
         apply import_get_output. auto.
       + (* In IRO -> In O *)
         intros.
-        find_apply_lem_hyp in_IR_in_log. break_exists. break_and.
+        find_apply_lem_hyp IRO_in_IR_in_log. break_exists. break_and.
         eapply get_output_import_O; eauto.
       + (* In IRU -> In O *)
         admit.
