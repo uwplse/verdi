@@ -1345,7 +1345,7 @@ Section Linearizability.
       good_trace ir ->
       (forall k, In (O k) l -> In (IRO k) ir) ->
       (forall k, In (IRO k) ir -> In (O k) l) ->
-      (forall k, In (IRU k) ir -> In (O k) l) ->
+      (forall k, In (IRU k) ir -> In (I k) l) ->
       (forall k k', In (I k') l ->
                     before (O k) (I k') l ->
                     before (IRO k) (IRI k') ir) ->
@@ -1364,7 +1364,6 @@ Section Linearizability.
     intuition.
     - apply acknowledge_all_ops_func_correct.
     - apply IR_equivalent_acknowledge_all_ops_func; auto.
-      firstorder using good_trace_IRI_in, before_In.
       intros.
       find_apply_lem_hyp good_trace_IRI_in; auto.
       intuition eauto using before_In.
