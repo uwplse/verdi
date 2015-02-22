@@ -30,11 +30,11 @@ Section RaftLinearizable.
     match tr with
       | [] => []
       | (_, (inl (ClientRequest c id cmd))) :: xs =>
-        I _ (c, id) :: import xs
+        I (c, id) :: import xs
       | (_, (inr l)) :: xs =>
         filterMap (fun x =>
                      match x with
-                       | ClientResponse c id cmd => Some (O _ (c, id))
+                       | ClientResponse c id cmd => Some (O (c, id))
                        | _ => None
                      end) l ++ import xs
       | _ :: xs => import xs
@@ -47,11 +47,11 @@ Section RaftLinearizable.
                     env_i k = Some i ->
                     env_o k = Some o ->
                     exported env_i env_o l tr ->
-                    exported env_i env_o (IRI _ k :: IRO _ k :: l) ((i, o) :: tr)
+                    exported env_i env_o (IRI k :: IRO k :: l) ((i, o) :: tr)
   | exported_IU : forall k i o l tr,
                     env_i k = Some i ->
                     exported env_i env_o l tr ->
-                    exported env_i env_o (IRI _ k :: IRU _ k :: l) ((i, o) :: tr).
+                    exported env_i env_o (IRI k :: IRU k :: l) ((i, o) :: tr).
 
   Require Import Sumbool.
   Require Import Arith.
@@ -99,8 +99,8 @@ Section RaftLinearizable.
       | [] => []
       | mkEntry h client id index term input :: log' =>
         (match env_o (client, id) with
-           | None => [IRI _ (client, id); IRU _ (client, id)]
-           | Some _ => [IRI _ (client, id); IRO _ (client, id)]
+           | None => [IRI (client, id); IRU (client, id)]
+           | Some _ => [IRI (client, id); IRO (client, id)]
          end) ++ log_to_IR env_o log'
     end.
 
@@ -178,7 +178,7 @@ Section RaftLinearizable.
 
   Lemma in_import_in_trace :
     forall tr k,
-      In (O _ k) (import tr) ->
+      In (O k) (import tr) ->
       exists os h,
         In (h, inr os) tr /\
         exists o, In (ClientResponse (fst k) (snd k) o) os.
@@ -206,7 +206,7 @@ Section RaftLinearizable.
       eId e = id ->
       In e log ->
       (exists o, env (client, id) = Some o) ->
-      In (IRO _ (client, id)) (log_to_IR env log).
+      In (IRO (client, id)) (log_to_IR env log).
   Proof.
     intros.
     induction log; simpl in *; intuition.
@@ -230,7 +230,7 @@ Section RaftLinearizable.
   
   Theorem import_get_output :
     forall tr k,
-      In (O _ k) (import tr) ->
+      In (O k) (import tr) ->
       exists o,
         get_output tr k = Some o.
   Proof.

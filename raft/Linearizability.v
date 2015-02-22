@@ -1371,3 +1371,9 @@ Section Linearizability.
   Qed.
 
 End Linearizability.
+Arguments I {_} _.
+Arguments O {_} _.
+
+Arguments IRI {_} _.
+Arguments IRO {_} _.
+Arguments IRU {_} _.
