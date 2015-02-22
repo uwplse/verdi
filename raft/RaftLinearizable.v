@@ -22,7 +22,7 @@ Section RaftLinearizable.
 
   Definition key_eq_dec : forall x y : key, {x = y} + {x <> y}.
   Proof.
-    repeat decide equality.
+    decide equality; auto using eq_nat_dec.
   Qed.
 
   Fixpoint import (tr : list (name * (raft_input + list raft_output)))
