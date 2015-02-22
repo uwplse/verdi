@@ -236,7 +236,7 @@ Section RaftLinearizable.
     - repeat break_match; in_crush.
   Qed.
 
-  Theorem get_output'_In :
+  Theorem In_get_output' :
     forall l client id o,
       In (ClientResponse client id o) l ->
       exists o', get_output' l (client, id) = Some o'.
@@ -260,20 +260,21 @@ Section RaftLinearizable.
     find_apply_lem_hyp In_filterMap.
     break_exists; break_match; intuition; try congruence.
     subst. find_inversion.
-    find_apply_lem_hyp get_output'_In. break_exists; congruence.
+    find_apply_lem_hyp In_get_output'. break_exists; congruence.
   Qed.
 
   Lemma in_IR_in_log :
     forall k log tr,
       In (IRO k) (log_to_IR (get_output tr) log) ->
-      exists e,
+      exists e out,
         eClient e = fst k /\
         eId e = snd k /\
+        get_output tr k = Some out /\
         In e log.
   Proof.
     induction log; intros; simpl in *; intuition.
     repeat break_match; subst; simpl in *; intuition; try congruence; try find_inversion; simpl.
-    - eexists. intuition; eauto.
+    - eexists. eexists. intuition; eauto.
     - find_apply_hyp_hyp. break_exists_exists. intuition.
     - find_apply_hyp_hyp. break_exists_exists. intuition.
   Qed.
@@ -300,6 +301,32 @@ Section RaftLinearizable.
         rewrite filterMap_all_None; auto.
         intros.
         repeat break_match; congruence.
+  Qed.
+
+  Lemma get_output'_In :
+    forall l k out,
+      get_output' l k = Some out ->
+      In (ClientResponse (fst k) (snd k) out) l.
+  Proof.
+    induction l; intros; simpl in *; intuition.
+    - discriminate.
+    - repeat break_match; subst; eauto.
+      find_inversion. break_and. subst. eauto.
+  Qed.
+
+  Lemma get_output_import_O :
+    forall tr k out,
+      get_output tr k = Some out ->
+      In (O k) (import tr).
+  Proof.
+    induction tr; intros; simpl in *.
+    - discriminate.
+    - repeat break_match; subst; simpl; intuition eauto.
+      + find_inversion. apply in_or_app. left.
+        find_apply_lem_hyp get_output'_In.
+        eapply filterMap_In; eauto.
+        simpl. now rewrite <- surjective_pairing.
+      + apply in_or_app. eauto.
   Qed.
 
   Theorem raft_linearizable :
@@ -329,7 +356,7 @@ Section RaftLinearizable.
       + (* In IRO -> In O *)
         intros.
         find_apply_lem_hyp in_IR_in_log. break_exists. break_and.
-        admit.
+        eapply get_output_import_O; eauto.
       + (* In IRU -> In O *)
         admit.
       + (* before preserved *)
