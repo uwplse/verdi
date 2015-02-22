@@ -175,7 +175,7 @@ Section Raft.
 
   Definition handleAppendEntries (me : name)
              (state : raft_data) (t : term) (leaderId : name) (prevLogIndex : logIndex)
-             (prevLogTerm : term) (entries : list entry) (leaderCommit : logIndex) :=
+             (prevLogTerm : term) (entries : list entry) (leaderCommit : logIndex) : raft_data * msg :=
     if currentTerm state >? t then
       (state, AppendEntriesReply (currentTerm state) entries false)
     else
@@ -235,7 +235,7 @@ Section Raft.
 
   Definition moreUpToDate t1 i1 t2 i2 := (t1 >? t2) || ((t1 == t2) && (i1 >=? i2)).
 
-  Definition handleRequestVote (me : name) state t candidateId lastLogIndex lastLogTerm :=
+  Definition handleRequestVote (me : name) state t candidateId lastLogIndex lastLogTerm : raft_data * msg :=
     if currentTerm state >? t then
       (state, RequestVoteReply (currentTerm state) false)
     else
@@ -260,7 +260,7 @@ Section Raft.
   Definition wonElection (votes : list name) : bool :=
     (S (div2 (length nodes)) <=? length votes).
 
-  Definition handleRequestVoteReply (me : name) state src t (voteGranted : bool) :=
+  Definition handleRequestVoteReply (me : name) state src t (voteGranted : bool) : raft_data :=
     if t >? (currentTerm state) then
       {[ (advanceCurrentTerm state t) with type := Follower ]}
     else if t <? (currentTerm state) then state else
@@ -400,7 +400,8 @@ Section Raft.
       | _ => tryToBecomeLeader me state
     end.
 
-  Definition handleInput (me : name) (inp : raft_input) (state : raft_data) :=
+  Definition handleInput (me : name) (inp : raft_input) (state : raft_data) :
+    list raft_output * raft_data * list (name * msg) :=
     match inp with
       | ClientRequest client id c => handleClientRequest me state client id c
       | Timeout => handleTimeout me state
