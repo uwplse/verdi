@@ -57,21 +57,30 @@ Section OutputImpliesApplied.
     forall tr : list (name * (raft_input + list raft_output)),
       {in_output tr} + {~ in_output tr}.
   Proof.
-    intros. induction tr.
-    - right. intuition. unfold in_output in *. break_exists.
-      intuition.
-    - intuition.
-      + left. unfold in_output in *. unfold in_output_list in *.
-        repeat (break_exists; intuition); repeat eexists; simpl; intuition eauto.
-      + left. unfold in_output in *.
-        break_exists. exists x. exists x0. 
-        intuition.
-      + right. intros. unfold in_output in *.
-        break_exists; simpl in *; intuition eauto; try (find_inversion; congruence).
-      + destruct (in_output_list_dec b1).
-        * left. unfold in_output. exists b1; eexists; simpl; intuition eauto.
-        * right. intros. unfold in_output in *.
-          break_exists; simpl in *; intuition eauto; find_inversion; intuition.
+    unfold in_output.
+    intros.
+    destruct (find (fun p => match snd p with
+                               | inr l => match find is_client_response l with
+                                            | Some x => true
+                                            | None => false
+                                          end
+                               | _ => false
+                             end) tr) eqn:?.
+    - find_apply_lem_hyp find_some. break_and.
+      repeat break_match; try discriminate.
+      find_apply_lem_hyp find_some. break_and.
+      unfold is_client_response, in_output_list in *.
+      break_match; try discriminate. do_bool. break_and. do_bool. subst.
+      left. exists l, (fst p).
+      find_reverse_rewrite. rewrite <- surjective_pairing.
+      intuition eauto.
+    - right. intro. break_exists. break_and.
+      find_eapply_lem_hyp find_none; eauto.
+      simpl in *. break_match; try discriminate.
+      unfold in_output_list in *. break_exists.
+      find_eapply_lem_hyp find_none; eauto.
+      simpl in *. find_apply_lem_hyp Bool.andb_false_elim.
+      intuition (do_bool; congruence).
   Qed.
 
   Lemma in_output_changed :
