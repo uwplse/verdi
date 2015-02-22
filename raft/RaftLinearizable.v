@@ -176,7 +176,7 @@ Section RaftLinearizable.
     intros. apply execute_log_correct'.
   Qed.
 
-  Lemma in_import_in_trace :
+  Lemma in_import_in_trace_O :
     forall tr k,
       In (O k) (import tr) ->
       exists os h,
@@ -198,6 +198,25 @@ Section RaftLinearizable.
         repeat eexists; intuition eauto.
       + find_apply_hyp_hyp. break_exists_exists.
         intuition.
+  Qed.
+
+  Lemma in_import_in_trace_I :
+    forall tr k,
+      In (I k) (import tr) ->
+      exists h i,
+        In (h, inl (ClientRequest (fst k) (snd k) i)) tr.
+  Proof.
+    induction tr; intros; simpl in *; intuition.
+    repeat break_match; subst.
+    - find_apply_hyp_hyp. break_exists.
+      eauto 10.
+    - simpl in *. intuition.
+      + find_inversion. simpl. eauto 10.
+      + find_apply_hyp_hyp. break_exists. eauto 10.
+    - do_in_app. intuition.
+      + find_eapply_lem_hyp In_filterMap. break_exists. break_and.
+        break_match; discriminate.
+      + find_apply_hyp_hyp. break_exists. eauto 10.
   Qed.
 
   Lemma in_applied_entries_in_IR :
@@ -244,6 +263,30 @@ Section RaftLinearizable.
     find_apply_lem_hyp get_output'_In. break_exists; congruence.
   Qed.
 
+  Lemma import_preserves_NoDup :
+    forall tr,
+      input_correct tr ->
+      NoDup (get_op_input_keys _ (import tr)).
+  Proof.
+    unfold input_correct, get_op_input_keys.
+    induction tr; intros; simpl in *.
+    - auto.
+    - repeat break_match; subst.
+      + auto.
+      + simpl. invc H. constructor; auto.
+        intro. apply H2.
+        find_apply_lem_hyp In_filterMap. break_exists. break_and.
+        break_match; try discriminate. find_inversion.
+        find_apply_lem_hyp in_import_in_trace_I. break_exists.
+
+        eapply filterMap_In; eauto. auto.
+      + rewrite filterMap_app.
+        rewrite filterMap_of_filterMap.
+        rewrite filterMap_all_None; auto.
+        intros.
+        repeat break_match; congruence.
+  Qed.
+
   Theorem raft_linearizable :
     forall failed net tr,
       input_correct tr ->
@@ -261,7 +304,7 @@ Section RaftLinearizable.
     - eapply equivalent_intro; eauto using log_to_IR_good_trace, key_eq_dec.
       + (* In O -> In IRO *)
         intros.
-        find_copy_apply_lem_hyp in_import_in_trace.
+        find_copy_apply_lem_hyp in_import_in_trace_O.
         find_eapply_lem_hyp output_implies_applied; eauto.
         unfold in_applied_entries in *.
         break_exists. intuition.
@@ -279,7 +322,7 @@ Section RaftLinearizable.
       + (* In IRU -> not In O *)
         admit.
       + (* NoDup op input *)
-        admit.
+        auto using import_preserves_NoDup.
       + (* NoDup IR input *)
         admit.
       + (* NoDup op output *)

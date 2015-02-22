@@ -1404,3 +1404,24 @@ Proof.
   apply subseq_skip.
   apply subseq_refl.
 Qed.
+
+Lemma filterMap_of_filterMap :
+  forall A B C (f : B -> option C) (g : A -> option B) xs,
+    filterMap f (filterMap g xs) =
+    filterMap (fun a => match g a with
+                          | Some b => f b
+                          | None => None
+                        end) xs.
+Proof.
+  induction xs; simpl; intuition.
+  repeat break_match; simpl; repeat find_rewrite; auto.
+Qed.
+
+Lemma filterMap_all_None :
+  forall A B (f : A -> option B) xs,
+    (forall x, In x xs -> f x = None) ->
+    filterMap f xs = [].
+Proof.
+  induction xs; intros; simpl in *; intuition.
+  rewrite H; auto.
+Qed.
