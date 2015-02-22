@@ -276,6 +276,8 @@ Section RaftLinearizable.
         admit.
       + (* I before O *)
         admit.
+      + (* In IRU -> not In O *)
+        admit.
       + (* NoDup op input *)
         admit.
       + (* NoDup IR input *)
