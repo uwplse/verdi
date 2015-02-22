@@ -1128,3 +1128,279 @@ Fixpoint before {A: Type} (x : A) y l : Prop :=
       a = x \/
       (a <> y /\ before x y l')
   end.
+
+Lemma before_In :
+  forall A x y l,
+    before (A:=A) x y l ->
+    In x l.
+Proof.
+  induction l; intros; simpl in *; intuition.
+Qed.
+
+
+Lemma before_split :
+  forall A l (x y : A),
+    before x y l ->
+    x <> y ->
+    In x l ->
+    In y l ->
+    exists xs ys zs,
+      l = xs ++ x :: ys ++ y :: zs.
+Proof.
+  induction l; intros; simpl in *; intuition; subst; try congruence.
+  - exists nil. simpl. find_apply_lem_hyp in_split. break_exists. subst. eauto.
+  - exists nil. simpl. find_apply_lem_hyp in_split. break_exists. subst. eauto.
+  - exists nil. simpl. find_apply_lem_hyp in_split. break_exists. subst. eauto.
+  - eapply_prop_hyp In In; eauto. break_exists. subst.
+    exists (a :: x0), x1, x2. auto.
+Qed.
+
+Lemma In_app_before :
+  forall A xs ys x y,
+    In(A:=A) x xs ->
+    (~ In y xs) ->
+    before x y (xs ++ y :: ys).
+Proof.
+  induction xs; intros; simpl in *; intuition.
+Qed.
+
+Lemma if_decider_true :
+  forall A B (P : A -> Prop) (dec : forall x, {P x} + {~ P x}) a (b1 b2 : B),
+    P a ->
+    (if dec a then b1 else b2) = b1.
+Proof.
+  intros.
+  break_if; congruence.
+Qed.
+
+Lemma if_decider_false :
+  forall A B (P : A -> Prop) (dec : forall x, {P x} + {~ P x}) a (b1 b2 : B),
+    ~ P a ->
+    (if dec a then b1 else b2) = b2.
+Proof.
+  intros.
+  break_if; congruence.
+Qed.
+
+Lemma filterMap_app :
+  forall A B (f : A -> option B) xs ys,
+    filterMap f (xs ++ ys) = filterMap f xs ++ filterMap f ys.
+Proof.
+  induction xs; intros; simpl in *; repeat break_match; simpl in *; intuition auto using f_equal.
+Qed.
+
+Lemma filterMap_In :
+  forall A B (f : A -> option B) a b xs,
+    f a = Some b ->
+    In a xs ->
+    In b (filterMap f xs).
+Proof.
+  induction xs; simpl; repeat break_match; simpl; intuition (auto; try congruence).
+Qed.
+
+Lemma In_cons_neq :
+  forall A a x xs,
+    In(A:=A) a (x :: xs) ->
+    a <> x ->
+    In a xs.
+Proof.
+  simpl.
+  intuition congruence.
+Qed.
+
+Lemma NoDup_app3_not_in_1 :
+  forall A (xs ys zs : list A) b,
+    NoDup (xs ++ ys ++ b :: zs) ->
+    In b xs ->
+    False.
+Proof.
+  intros.
+  rewrite <- app_ass in *.
+  find_apply_lem_hyp NoDup_remove.
+  rewrite app_ass in *.
+  intuition.
+Qed.
+
+Lemma NoDup_app3_not_in_2 :
+  forall A (xs ys zs : list A) b,
+    NoDup (xs ++ ys ++ b :: zs) ->
+    In b ys ->
+    False.
+Proof.
+  intros.
+  rewrite <- app_ass in *.
+  find_apply_lem_hyp NoDup_remove_2.
+  rewrite app_ass in *.
+  auto 10 with *.
+Qed.
+
+Lemma NoDup_app3_not_in_3 :
+  forall A (xs ys zs : list A) b,
+    NoDup (xs ++ ys ++ b :: zs) ->
+    In b zs ->
+    False.
+Proof.
+  intros.
+  rewrite <- app_ass in *.
+  find_apply_lem_hyp NoDup_remove_2.
+  rewrite app_ass in *.
+  auto 10 with *.
+Qed.
+
+Lemma In_cons_2_3 :
+  forall A xs ys zs x y a,
+    In (A:=A) a (xs ++ ys ++ zs) ->
+    In a (xs ++ x :: ys ++ y :: zs).
+Proof.
+  intros.
+  repeat (do_in_app; intuition auto 10 with *).
+Qed.
+
+Lemma In_cons_2_3_neq :
+  forall A a x y xs ys zs,
+    In (A:=A) a (xs ++ x :: ys ++ y :: zs) ->
+    a <> x ->
+    a <> y ->
+    In a (xs ++ ys ++ zs).
+Proof.
+  intros.
+  repeat (do_in_app; simpl in *; intuition (auto with *; try congruence)).
+Qed.
+
+Lemma in_middle_reduce :
+  forall A a xs y zs,
+    In (A:=A) a (xs ++ y :: zs) ->
+    a <> y ->
+    In a (xs ++ zs).
+Proof.
+  intros.
+  do_in_app; simpl in *; intuition. congruence.
+Qed.
+
+Lemma before_2_3_insert :
+  forall A xs ys zs x y a b,
+    before(A:=A) a b (xs ++ ys ++ zs) ->
+    b <> x ->
+    b <> y ->
+    before a b (xs ++ x :: ys ++ y :: zs).
+Proof.
+  induction xs; intros; simpl in *; intuition.
+  induction ys; intros; simpl in *; intuition.
+Qed.
+
+Lemma before_middle_insert :
+  forall A xs y zs a b,
+    before(A:=A) a b (xs ++ zs) ->
+    b <> y ->
+    before a b (xs ++ y :: zs).
+Proof.
+  intros.
+  induction xs; intros; simpl in *; intuition.
+Qed.
+
+Lemma in_middle_insert :
+  forall A a xs y zs,
+    In (A:=A) a (xs ++ zs) ->
+    In a (xs ++ y :: zs).
+Proof.
+  intros.
+  do_in_app; simpl in *; intuition.
+Qed.
+
+Lemma before_2_3_reduce :
+  forall A xs ys zs x y a b,
+    before(A:=A) a b (xs ++ x :: ys ++ y :: zs) ->
+    a <> x ->
+    a <> y ->
+    before a b (xs ++ ys ++ zs).
+Proof.
+  induction xs; intros; simpl in *; intuition; try congruence; eauto.
+  induction ys; intros; simpl in *; intuition; try congruence.
+Qed.
+
+Lemma before_middle_reduce :
+  forall A xs zs a b y,
+    before(A:=A) a b (xs ++ y :: zs) ->
+    a <> y ->
+    before a b (xs ++ zs).
+Proof.
+  induction xs; intros; simpl in *; intuition; try congruence; eauto.
+Qed.
+
+Lemma subseq_nil :
+  forall A xs,
+    subseq (A:=A) [] xs.
+Proof.
+  destruct xs; simpl; auto.
+Qed.
+
+Lemma subseq_skip :
+  forall A a xs ys,
+    subseq(A:=A) xs ys ->
+    subseq xs (a :: ys).
+Proof.
+  induction ys; intros; simpl in *; repeat break_match; intuition.
+Qed.
+
+Lemma subseq_filterMap :
+  forall A B (f : A -> option B) ys xs,
+    subseq xs ys ->
+    subseq (filterMap f xs) (filterMap f ys).
+Proof.
+  induction ys; intros; simpl in *; repeat break_match; auto; try discriminate; intuition; subst.
+  - simpl. find_rewrite. auto.
+  - auto using subseq_skip.
+  - auto using subseq_nil.
+  - simpl. find_rewrite. auto.
+Qed.
+
+Lemma subseq_app_r :
+  forall A xs ys,
+    subseq (A:=A) ys (xs ++ ys).
+Proof.
+  induction xs; intros; simpl.
+  + auto using subseq_refl.
+  + break_match.
+    * auto.
+    * right. auto using subseq_nil.
+Qed.
+
+Lemma subseq_app_tail :
+  forall A ys xs zs,
+    subseq (A:=A) xs ys ->
+    subseq (xs ++ zs) (ys ++ zs).
+Proof.
+  induction ys; intros; simpl in *.
+  - break_match; intuition auto using subseq_refl.
+  - repeat break_match.
+    + auto.
+    + discriminate.
+    + simpl in *. subst. right. auto using subseq_app_r.
+    + simpl in *. find_inversion. intuition.
+      rewrite app_comm_cons. auto.
+Qed.
+
+Lemma subseq_app_head :
+  forall A xs ys zs,
+    subseq (A:=A) ys zs ->
+    subseq (A:=A) (xs ++ ys) (xs ++ zs).
+Proof.
+  induction xs; intros; simpl; intuition.
+Qed.
+
+Lemma subseq_2_3 :
+  forall A xs ys zs x y,
+    subseq(A:=A) (xs ++ ys ++ zs) (xs ++ x :: ys ++ y :: zs).
+Proof.
+  auto using subseq_refl, subseq_skip, subseq_app_head.
+Qed.
+
+Lemma subseq_middle :
+  forall A xs y zs,
+    subseq (A:=A) (xs ++ zs) (xs ++ y :: zs).
+Proof.
+  intros.
+  apply subseq_app_head.
+  apply subseq_skip.
+  apply subseq_refl.
+Qed.
