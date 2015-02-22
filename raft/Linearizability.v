@@ -363,8 +363,14 @@ Section Linearizability.
   Proof.
     intros.
     destruct l; simpl; repeat break_match; auto; subst.
-    - apply H2. apply good_trace_ind'; auto.
-    - apply H3. apply good_trace_ind'; auto.
+    - match goal with
+        | [ H : context [IRI _ :: IRO _ :: _ ] |- _ ] => apply H
+      end.
+      apply good_trace_ind'; auto.
+    - match goal with
+        | [ H : context [IRI _ :: IRU _ :: _ ] |- _ ] => apply H
+      end.
+      apply good_trace_ind'; auto.
   Qed.
 
   Lemma good_trace_ind :
@@ -419,7 +425,7 @@ Section Linearizability.
           x = I k.
   Proof.
     intros. destruct x. eauto.
-    eapply H in H1; auto.
+    eapply_prop_hyp In In; eauto.
     simpl in *. intuition congruence.
   Qed.
 
