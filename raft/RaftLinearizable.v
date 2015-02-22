@@ -263,6 +263,21 @@ Section RaftLinearizable.
     find_apply_lem_hyp get_output'_In. break_exists; congruence.
   Qed.
 
+  Lemma in_IR_in_log :
+    forall k log tr,
+      In (IRO k) (log_to_IR (get_output tr) log) ->
+      exists e,
+        eClient e = fst k /\
+        eId e = snd k /\
+        In e log.
+  Proof.
+    induction log; intros; simpl in *; intuition.
+    repeat break_match; subst; simpl in *; intuition; try congruence; try find_inversion; simpl.
+    - eexists. intuition; eauto.
+    - find_apply_hyp_hyp. break_exists_exists. intuition.
+    - find_apply_hyp_hyp. break_exists_exists. intuition.
+  Qed.
+
   Lemma import_preserves_NoDup :
     forall tr,
       input_correct tr ->
@@ -312,6 +327,8 @@ Section RaftLinearizable.
         eapply in_applied_entries_in_IR; eauto.
         apply import_get_output. auto.
       + (* In IRO -> In O *)
+        intros.
+        find_apply_lem_hyp in_IR_in_log. break_exists. break_and.
         admit.
       + (* In IRU -> In O *)
         admit.
