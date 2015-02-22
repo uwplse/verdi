@@ -29,26 +29,23 @@ Section OutputImpliesApplied.
     exists o,
       In (ClientResponse client id o) os.
 
+  Definition is_client_response (out : raft_output) : bool :=
+    match out with
+      | ClientResponse c i _ => andb (beq_nat client c) (beq_nat id i)
+      | NotLeader _ _ => false
+    end.
+
   Definition in_output_list_dec (os : list raft_output) :
     {in_output_list os} + {~ in_output_list os}.
   Proof.
-    induction os.
-    - right. intuition. unfold in_output_list in *. break_exists. intuition.
-    - intuition.
-      + left. unfold in_output_list in *. break_exists; eexists; simpl; intuition eauto.
-      + destruct a.
-        * right. intros.
-          unfold in_output_list in *.
-          break_exists; simpl in *; intuition eauto; congruence.
-        * { destruct (eq_nat_dec n client); destruct (eq_nat_dec n0 id); subst; intuition.
-            - left. unfold in_output_list. eexists; simpl; intuition eauto.
-            - right. intros. unfold in_output_list in *.
-              break_exists; simpl in *; intuition eauto; find_inversion; intuition.
-            - right. intros. unfold in_output_list in *.
-              break_exists; simpl in *; intuition eauto; find_inversion; intuition.
-            - right. intros. unfold in_output_list in *.
-              break_exists; simpl in *; intuition eauto; find_inversion; intuition.
-          }
+    unfold in_output_list.
+    destruct (find is_client_response os) eqn:?.
+    - find_apply_lem_hyp find_some. break_and.
+      unfold is_client_response in *. break_match; try discriminate.
+      subst. do_bool. break_and. do_bool. subst. left. eauto.
+    - right. intro. break_exists.
+      eapply find_none in H; eauto. unfold is_client_response in *.
+      find_apply_lem_hyp Bool.andb_false_elim. intuition; do_bool; congruence.
   Qed.
 
   Definition in_output (tr : list (name * (raft_input + list raft_output))) : Prop :=
