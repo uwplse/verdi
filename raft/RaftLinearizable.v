@@ -12,6 +12,7 @@ Require Import Raft.
 Require Import CommonTheorems.
 Require Import Linearizability.
 Require Import OutputImpliesApplied.
+Require Import AppliedImpliesInput.
 
 Section RaftLinearizable.
   Context {orig_base_params : BaseParams}.
@@ -329,6 +330,34 @@ Section RaftLinearizable.
       + apply in_or_app. eauto.
   Qed.
 
+  Lemma IRU_in_IR_in_log :
+    forall k log tr,
+      In (IRU k) (log_to_IR (get_output tr) log) ->
+      exists e,
+        eClient e = fst k /\
+        eId e = snd k /\
+        get_output tr k = None /\
+        In e log.
+  Proof.
+
+    induction log; intros; simpl in *; intuition.
+    repeat break_match; subst; simpl in *; intuition; try congruence; try find_inversion; simpl.
+    - find_apply_hyp_hyp. break_exists_exists. intuition.
+    - eexists. intuition; eauto.
+    - find_apply_hyp_hyp. break_exists_exists. intuition.
+  Qed.
+
+  Lemma trace_I_in_import :
+    forall tr k h i,
+      In (h, inl (ClientRequest (fst k) (snd k) i)) tr ->
+      In (I k) (import tr).
+  Proof.
+    induction tr; intros; simpl in *; intuition; subst.
+    - rewrite <- surjective_pairing. intuition.
+    - break_match; simpl; eauto.
+    - apply in_or_app. intuition eauto.
+  Qed.
+
   Theorem raft_linearizable :
     forall failed net tr,
       input_correct tr ->
@@ -357,8 +386,13 @@ Section RaftLinearizable.
         intros.
         find_apply_lem_hyp IRO_in_IR_in_log. break_exists. break_and.
         eapply get_output_import_O; eauto.
-      + (* In IRU -> In O *)
-        admit.
+      + (* In IRU -> In I *)
+        intros.
+        find_apply_lem_hyp IRU_in_IR_in_log. break_exists. break_and.
+        destruct k as [c id].
+        find_eapply_lem_hyp applied_implies_input; eauto.
+        unfold in_input in *. break_exists. break_and.
+        eauto using trace_I_in_import.
       + (* before preserved *)
         admit.
       + (* I before O *)
