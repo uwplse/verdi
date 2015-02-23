@@ -14,6 +14,8 @@ Require Import Linearizability.
 Require Import RaftLinearizableDefinitions.
 Require Import OutputImpliesApplied.
 Require Import AppliedImpliesInput.
+Require Import LogUniqueKeys.
+Require Import UniqueIndices.
 
 Section RaftLinearizableProofs.
   Context {orig_base_params : BaseParams}.
@@ -360,7 +362,28 @@ Section RaftLinearizableProofs.
       input_correct tr ->
       step_f_star step_f_init (failed, net) tr ->
       NoDup (map (fun e => (eClient e, eId e)) (applied_entries (nwState net))).
-  Admitted.
+  Proof.
+    intros.
+    find_copy_apply_lem_hyp unique_keys_invariant_invariant; auto.
+    find_apply_lem_hyp step_f_star_raft_intermediate_reachable.
+    find_apply_lem_hyp UniqueIndices_invariant.
+    unfold UniqueIndices, unique_keys_invariant in *. break_and.
+    unfold applied_entries.
+    break_match.
+    - match goal with
+        | [ H : context [argmax] |- _ ] => clear H
+      end.
+      rewrite map_rev.
+      apply NoDup_rev.
+      eapply subseq_NoDup.
+      + apply subseq_map.
+        apply removeAfterIndex_subseq.
+      + unfold unique_keys_host in *. break_and.
+        eapply NoDup_map_map with (g := eIndex).
+        * intros. eapply H4; eauto.
+        * eapply_prop uniqueIndices_host_invariant.
+    - simpl. constructor.
+  Qed.
 
   Lemma get_IR_input_of_log_to_IR :
     forall env log,
