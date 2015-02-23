@@ -398,7 +398,11 @@ Section RaftLinearizable.
       + (* I before O *)
         admit.
       + (* In IRU -> not In O *)
-        admit.
+        intros.
+        find_apply_lem_hyp IRU_in_IR_in_log. break_exists. break_and.
+        intro.
+        find_apply_lem_hyp import_get_output.
+        break_exists. congruence.
       + (* NoDup op input *)
         auto using import_preserves_NoDup.
       + (* NoDup IR input *)
