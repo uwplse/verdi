@@ -11,10 +11,11 @@ Require Import VerdiTactics.
 Require Import Raft.
 Require Import CommonTheorems.
 Require Import Linearizability.
+Require Import RaftLinearizableDefinitions.
 Require Import OutputImpliesApplied.
 Require Import AppliedImpliesInput.
 
-Section RaftLinearizable.
+Section RaftLinearizableProofs.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
@@ -56,7 +57,7 @@ Section RaftLinearizable.
 
   Require Import Sumbool.
   Require Import Arith.
-  
+
   Fixpoint get_input (tr : list (name * (raft_input + list raft_output))) (k : key)
     : option input :=
     match tr with
@@ -74,7 +75,7 @@ Section RaftLinearizable.
   Fixpoint get_output' (os : list raft_output) (k : key) : option output :=
     match os with
       | [] => None
-      | ClientResponse c id o :: xs => 
+      | ClientResponse c id o :: xs =>
         if (sumbool_and _ _ _ _
                         (eq_nat_dec c (fst k))
                         (eq_nat_dec id (snd k))) then
@@ -125,11 +126,7 @@ Section RaftLinearizable.
   Definition execute_log (log : list entry) : (list (input * output) * data) :=
     execute_log' log init [].
 
-  Definition input_correct (tr : list (name * (raft_input + list raft_output))) :=
-    NoDup (filterMap (fun x => match x with
-                                | (_, inl (ClientRequest client id _)) => Some (client, id)
-                                | _ => None
-                              end) tr).
+
 
   Lemma fst_execute_log' :
     forall log st tr,
@@ -187,7 +184,7 @@ Section RaftLinearizable.
     induction tr; intros; simpl in *; intuition.
     repeat break_match; subst; intuition.
     - find_apply_hyp_hyp. break_exists_exists.
-      intuition. 
+      intuition.
     - simpl in *. intuition; try congruence.
       find_apply_hyp_hyp. break_exists_exists.
       intuition.
@@ -247,7 +244,7 @@ Section RaftLinearizable.
     - break_match; simpl in *; intuition eauto.
       break_if; simpl in *; intuition eauto.
   Qed.
-  
+
   Theorem import_get_output :
     forall tr k,
       In (O k) (import tr) ->
@@ -358,6 +355,45 @@ Section RaftLinearizable.
     - apply in_or_app. intuition eauto.
   Qed.
 
+  Lemma NoDup_applied_entries :
+    forall failed net tr,
+      input_correct tr ->
+      step_f_star step_f_init (failed, net) tr ->
+      NoDup (map (fun e => (eClient e, eId e)) (applied_entries (nwState net))).
+  Admitted.
+
+  Lemma get_IR_input_of_log_to_IR :
+    forall env log,
+      get_IR_input_keys _ (log_to_IR env log) =
+      map (fun e => (eClient e, eId e)) log.
+  Proof.
+    induction log; simpl; intuition.
+    repeat break_match; subst; simpl in *;
+    rewrite get_IR_input_keys_defn; auto using f_equal.
+  Qed.
+
+  Lemma get_IR_output_of_log_to_IR :
+    forall env log,
+      get_IR_output_keys _ (log_to_IR env log) =
+      map (fun e => (eClient e, eId e)) log.
+  Proof.
+    induction log; simpl; intuition.
+    repeat break_match; subst; simpl in *;
+    repeat rewrite get_IR_output_keys_defn; auto using f_equal.
+  Qed.
+
+  Lemma NoDup_rev :
+    forall A l,
+      NoDup (A:=A) l ->
+      NoDup (rev l).
+  Proof.
+    induction l; intros.
+    - simpl. auto.
+    - simpl. apply NoDup_append.
+      invc H. constructor; auto.
+      intro. apply H2. apply in_rev. auto.
+  Qed.
+
   Theorem raft_linearizable :
     forall failed net tr,
       input_correct tr ->
@@ -406,11 +442,13 @@ Section RaftLinearizable.
       + (* NoDup op input *)
         auto using import_preserves_NoDup.
       + (* NoDup IR input *)
-        admit.
+        rewrite get_IR_input_of_log_to_IR.
+        eauto using NoDup_applied_entries.
       + (* NoDup op output *)
         admit.
       + (* NoDup IR output *)
-        admit.
+        rewrite get_IR_output_of_log_to_IR.
+        eauto using NoDup_applied_entries.
     - admit.
   Qed.
-End RaftLinearizable.
+End RaftLinearizableProofs.
