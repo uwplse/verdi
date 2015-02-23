@@ -1425,3 +1425,34 @@ Proof.
   induction xs; intros; simpl in *; intuition.
   rewrite H; auto.
 Qed.
+
+Lemma NoDup_rev :
+  forall A l,
+    NoDup (A:=A) l ->
+    NoDup (rev l).
+Proof.
+  induction l; intros.
+  - simpl. auto.
+  - simpl. apply NoDup_append.
+    invc H. constructor; auto.
+    intro. apply H2. apply in_rev. auto.
+Qed.
+
+Lemma NoDup_map_map :
+  forall A B C (f : A -> B) (g : A -> C) xs,
+    (forall x y, In x xs -> In y xs -> f x = f y -> g x = g y) ->
+    NoDup (map g xs) ->
+    NoDup (map f xs).
+Proof.
+  induction xs; intros; simpl in *.
+  - constructor.
+  - invc H0.
+    constructor.
+    + intro.
+      apply H3.
+      do_in_map.
+      find_apply_hyp_hyp.
+      rewrite <- H0.
+      auto using in_map.
+    + auto.
+Qed.

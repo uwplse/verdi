@@ -382,18 +382,6 @@ Section RaftLinearizableProofs.
     repeat rewrite get_IR_output_keys_defn; auto using f_equal.
   Qed.
 
-  Lemma NoDup_rev :
-    forall A l,
-      NoDup (A:=A) l ->
-      NoDup (rev l).
-  Proof.
-    induction l; intros.
-    - simpl. auto.
-    - simpl. apply NoDup_append.
-      invc H. constructor; auto.
-      intro. apply H2. apply in_rev. auto.
-  Qed.
-
   Theorem raft_linearizable :
     forall failed net tr,
       input_correct tr ->
