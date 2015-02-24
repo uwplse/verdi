@@ -648,6 +648,43 @@ Section CommonTheorems.
     intros. repeat break_match; simpl; auto using advanceCurrentTerm_same_log.
   Qed.
 
+
+  Lemma advanceCurrentTerm_same_lastApplied :
+    forall st t,
+      lastApplied (advanceCurrentTerm st t) = lastApplied st.
+  Proof.
+    unfold advanceCurrentTerm. intros.
+    break_if; auto.
+  Qed.
+
+  Lemma tryToBecomeLeader_same_lastApplied :
+    forall n st out st' ms,
+      tryToBecomeLeader n st = (out, st', ms) ->
+      lastApplied st' = lastApplied st.
+  Proof.
+    unfold tryToBecomeLeader.
+    intros. find_inversion. auto.
+  Qed.
+
+  Lemma handleRequestVote_same_lastApplied :
+    forall n st t c li lt st' ms,
+      handleRequestVote n st t c li lt = (st', ms) ->
+      lastApplied st' = lastApplied st.
+  Proof.
+    unfold handleRequestVote.
+    intros.
+    repeat (break_match; try discriminate; repeat (find_inversion; simpl in *));
+      auto using advanceCurrentTerm_same_lastApplied.
+  Qed.
+
+  Lemma handleRequestVoteReply_same_lastApplied :
+    forall n st src t v,
+      lastApplied (handleRequestVoteReply n st src t v) = lastApplied st.
+  Proof.
+    unfold handleRequestVoteReply.
+    intros. repeat break_match; simpl; auto using advanceCurrentTerm_same_lastApplied.
+  Qed.
+  
   Lemma findAtIndex_elim :
     forall l i e,
       findAtIndex l i = Some e ->
@@ -724,6 +761,26 @@ Section CommonTheorems.
     repeat (break_match; repeat (find_inversion; simpl in *)); auto using advanceCurrentTerm_same_log.
   Qed.
 
+  Lemma handleAppendEntriesReply_same_lastApplied :
+    forall n st src t es b st' l,
+      handleAppendEntriesReply n st src t es b = (st', l) ->
+      lastApplied st' = lastApplied st.
+  Proof.
+    intros.
+    unfold handleAppendEntriesReply in *.
+    repeat (break_match; repeat (find_inversion; simpl in *)); auto using advanceCurrentTerm_same_lastApplied.
+  Qed.
+
+  Lemma handleAppendEntries_same_lastApplied :
+    forall h st t n pli plt es ci st' ps,
+      handleAppendEntries h st t n pli plt es ci = (st', ps) ->
+      lastApplied st' = lastApplied st.
+  Proof.
+    intros.
+    unfold handleAppendEntries in *.
+    repeat (break_match; repeat (find_inversion; simpl in *)); auto using advanceCurrentTerm_same_lastApplied.
+  Qed.
+  
   Definition mEntries p :=
     match p with
       | AppendEntries _ _ _ _ entries _ => Some entries
@@ -930,6 +987,26 @@ Section CommonTheorems.
       end.
     - repeat find_rewrite. find_inversion. rewrite_update. intuition.
   Qed.
+
+  Lemma applied_entries_safe_update :
+    forall sigma h st,
+      lastApplied st = lastApplied (sigma h) ->
+      removeAfterIndex (log st) (lastApplied (sigma h))
+      = removeAfterIndex (log (sigma h)) (lastApplied (sigma h)) ->
+      applied_entries (update sigma h st) = applied_entries sigma.
+  Proof.
+    intros. unfold applied_entries in *.
+    repeat break_match; repeat find_rewrite; intuition;
+    match goal with
+      | _ : argmax ?f ?l = _, _ : argmax ?g ?l = _ |- _ =>
+        assert (argmax f l = argmax g l) by
+            (apply argmax_fun_ext; intros; update_destruct; subst; rewrite_update; auto)
+    end; repeat find_rewrite; try congruence.
+    match goal with | H : Some _ = Some _ |- _ => inversion H end.
+    subst. clean.
+    f_equal. update_destruct; subst; rewrite_update; repeat find_rewrite; auto.
+  Qed.
+    
     
   Lemma applied_entries_log_lastApplied_same :
     forall sigma sigma',
@@ -944,6 +1021,18 @@ Section CommonTheorems.
     repeat find_higher_order_rewrite. auto.
   Qed.
 
+  Lemma applied_entries_log_lastApplied_update_same :
+    forall sigma h st,
+      log st = log (sigma h) ->
+      lastApplied st = lastApplied (sigma h) ->
+      applied_entries (update sigma h st) = applied_entries sigma.
+  Proof.
+    intros.
+    apply applied_entries_log_lastApplied_same;
+      intros; update_destruct; subst; rewrite_update; auto.
+  Qed.
+
+  
   Lemma doLeader_appliedEntries :
   forall sigma h os st' ms,
     doLeader (sigma h) h = (os, st', ms) ->
