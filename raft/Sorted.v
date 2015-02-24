@@ -349,44 +349,63 @@ Section Sorted.
     intuition; break_exists; congruence.
   Qed.
 
+  Lemma handleAppendEntries_logs_sorted :
+    forall net p t n pli plt es ci st' m,
+      raft_intermediate_reachable net ->
+      logs_sorted net ->
+      handleAppendEntries (pDst p) (nwState net (pDst p)) t n pli plt es ci =
+      (st', m) ->
+      pBody p = AppendEntries t n pli plt es ci ->
+      In p (nwPackets net) ->
+      sorted (log st').
+  Proof.
+    intros. unfold logs_sorted in *. intuition.
+    find_apply_lem_hyp handleAppendEntries_log. intuition.
+    - find_rewrite; eauto.
+    - subst. unfold logs_sorted_nw in *. simpl in *.
+      find_eapply_hyp_goal; eauto.
+    - find_rewrite. apply sorted_append; eauto using removeAfterIndex_sorted.
+      + intros. find_apply_lem_hyp removeAfterIndex_In_le; eauto.
+        unfold packets_gt_prevIndex in *.
+        eapply gt_le_trans; [|eauto].
+        find_eapply_hyp_goal; [in_crush|eauto|eauto].
+        simpl in *. eauto.
+      + intros. find_copy_apply_lem_hyp removeAfterIndex_In_le; eauto.
+        find_apply_lem_hyp removeAfterIndex_in.
+        break_exists. intuition. subst.
+        match goal with
+          | H : eIndex ?x <= eIndex ?x', _ : In ?x ?ll |- _ =>
+            apply sorted_index_term with (l := ll) (e := x) (e' := x') in H
+        end; eauto.
+        match goal with |- ?a >= ?b => cut (b <= a); [omega|] end.
+        eapply le_trans; eauto.
+        unfold packets_ge_prevTerm in *.
+        find_eapply_hyp_goal; [in_crush|eauto|eauto];
+        simpl in *; eauto.
+  Qed.
+  
   Theorem logs_sorted_append_entries :
     raft_net_invariant_append_entries logs_sorted.
   Proof.
-    unfold raft_net_invariant_append_entries. unfold logs_sorted. intuition.
-    - unfold logs_sorted_host in *. simpl in *. intros.
-      repeat find_higher_order_rewrite. break_match; repeat find_rewrite; eauto.
-      subst. simpl in *.
-      find_apply_lem_hyp handleAppendEntries_log. intuition.
-      + find_rewrite; eauto.
-      + subst. unfold logs_sorted_nw in *. simpl in *.
-        find_eapply_hyp_goal; eauto.
-      + find_rewrite. apply sorted_append; eauto using removeAfterIndex_sorted.
-        * intros. find_apply_lem_hyp removeAfterIndex_In_le; eauto.
-          unfold packets_gt_prevIndex in *.
-          eapply gt_le_trans; [|eauto].
-          find_eapply_hyp_goal; [in_crush|eauto|eauto].
-          simpl in *. eauto.
-        * intros. find_copy_apply_lem_hyp removeAfterIndex_In_le; eauto.
-          find_apply_lem_hyp removeAfterIndex_in.
-          break_exists. intuition. subst.
-          match goal with
-            | H : eIndex ?x <= eIndex ?x', _ : In ?x ?ll |- _ =>
-              apply sorted_index_term with (l := ll) (e := x) (e' := x') in H
-          end; eauto.
-          match goal with |- ?a >= ?b => cut (b <= a); [omega|] end.
-          eapply le_trans; eauto.
-          unfold packets_ge_prevTerm in *.
-          find_eapply_hyp_goal; [in_crush|eauto|eauto];
-          simpl in *; eauto.
-    - simpl in *.
+    unfold raft_net_invariant_append_entries. intros. unfold logs_sorted. intuition.
+    - unfold logs_sorted_host. simpl in *. intros.
+      repeat find_higher_order_rewrite.
+      break_match; repeat find_rewrite; eauto;
+      [|unfold logs_sorted in *; intuition eauto].
+      subst.
+      eauto using handleAppendEntries_logs_sorted.
+    - unfold logs_sorted in *. intuition.
+      simpl in *.
       eapply logs_sorted_nw_not_append_entries; eauto.
       + intros. find_apply_hyp_hyp. intuition eauto.
       + simpl. eauto using handleAppendEntries_not_append_entries.
-    - simpl in *.
+    - unfold logs_sorted in *. intuition.
+      simpl in *.
       eapply packets_gt_prevIndex_not_append_entries; eauto.
       + intros. find_apply_hyp_hyp. intuition eauto.
       + simpl. eauto using handleAppendEntries_not_append_entries.
-    - simpl in *.
+    - unfold logs_sorted in *. intuition.
+      simpl in *.
       eapply packets_ge_prevTerm_not_append_entries; eauto.
       + intros. find_apply_hyp_hyp. intuition eauto.
       + simpl. eauto using handleAppendEntries_not_append_entries.
