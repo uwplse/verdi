@@ -58,25 +58,6 @@ Section LogUniqueKeys.
     unique_keys_invariant step_m_init [].
   Admitted.
 
-  Lemma state_trace_invariant_invariant :
-  forall (R : network -> _ -> Prop) (trace_wf : _ -> Prop) failed net tr,
-    step_f_star step_f_init (failed, net) tr ->
-    trace_wf tr ->
-    (forall ev tr, trace_wf (tr ++ [ev]) -> trace_wf tr) ->
-    (trace_wf [] -> R step_m_init []) ->
-    R net tr.
-  Proof.
-    intros.
-    remember (failed, net) as p. generalize dependent failed. revert net.
-    remember step_f_init as init. revert Heqinit. revert H0.
-    apply refl_trans_1n_n1_trace in H.
-    induction H; intros; subst.
-    - unfold step_f_init in *. find_inversion. auto.
-    - match goal with
-        | [ H : step_f _ _ _ |- _ ] => invc H
-      end.
-      +
-  Admitted.
 
   Lemma unique_keys_invariant_invariant :
     forall failed net tr,
