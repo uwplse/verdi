@@ -1033,6 +1033,16 @@ Section CommonTheorems.
       intros; update_destruct; subst; rewrite_update; auto.
   Qed.
 
+  Lemma applied_entries_cases :
+    forall sigma,
+      applied_entries sigma = [] \/
+      exists h,
+        applied_entries sigma = rev (removeAfterIndex (log (sigma h)) (lastApplied (sigma h))).
+  Proof.
+    intros.
+    unfold applied_entries in *.
+    break_match; simpl in *; intuition eauto.
+  Qed.
   
   Lemma doLeader_appliedEntries :
   forall sigma h os st' ms,
