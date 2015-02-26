@@ -75,7 +75,6 @@ Section AppliedEntriesMonotonic.
     admit.
   Qed.
 
-
   Ltac copy_eapply_prop_hyp P Q :=
   match goal with
   | [ H : context [ P ], H' : context [ Q ] |- _ ] =>
@@ -221,6 +220,68 @@ Section AppliedEntriesMonotonic.
         | H : forall _, _ |- _ => specialize (H h)
       end. omega.
   Qed.
+
+  Ltac update_destruct_hyp :=
+    match goal with
+    | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
+    end.
+
+  Lemma rev_exists_thing :
+    forall A (l : list A) l',
+    (exists l'',
+       l = l'' ++ l') ->
+    exists l'',
+      rev l = rev l' ++ l''.
+  Proof.
+    intros.
+    break_exists.
+    exists (rev x). subst. eauto using rev_app_distr.
+  Qed.
+
+  Lemma in_logs :
+    forall h h' e ps sigma,
+      raft_intermediate_reachable (mkNetwork ps sigma) ->
+      lastApplied (sigma h') <= commitIndex (sigma h) ->
+      eIndex e <= lastApplied (sigma h') ->
+      In e (log (sigma h')) <-> In e (log (sigma h)).
+  Proof.
+    intros.
+    find_copy_apply_lem_hyp log_matching_invariant. unfold log_matching in *.
+    find_copy_apply_lem_hyp state_machine_safety_invariant. unfold state_machine_safety in *.
+    intuition; simpl in *.
+    - unfold log_matching_hosts in *. intuition. simpl in *.
+      match goal with
+        | H : forall (_ : name) (_ : nat), _ |- In ?e (_ (_ ?h)) =>
+          specialize (H h (eIndex e)); forward H;
+          intuition
+      end.
+      + find_apply_hyp_hyp; omega.
+      + eapply le_trans; [|eapply_prop maxIndex_commitIndex].
+        simpl. omega.
+      + break_exists. intuition.
+        match goal with
+          | _ : eIndex ?e = eIndex ?e' |- _ =>
+            cut (e = e'); [intros; subst; auto|]
+        end.
+        eapply_prop state_machine_safety_host; unfold commit_recorded; intuition eauto;
+        simpl in *; intuition.
+    - unfold log_matching_hosts in *. intuition. simpl in *.
+      match goal with
+        | H : forall (_ : name) (_ : nat), _ |- In ?e (_ (_ ?h)) =>
+          specialize (H h (eIndex e)); forward H;
+          intuition
+      end.
+      + find_apply_hyp_hyp; omega.
+      + eapply le_trans; [|eapply_prop maxIndex_lastApplied].
+        simpl. omega.
+      + break_exists. intuition.
+        match goal with
+          | _ : eIndex ?e = eIndex ?e' |- _ =>
+            cut (e = e'); [intros; subst; auto|]
+        end. 
+        eapply_prop state_machine_safety_host; unfold commit_recorded; intuition eauto;
+        simpl in *; intuition.
+  Qed.
   
   Lemma doGenericServer_applied_entries :
     forall ps h sigma os st' ms,
@@ -228,8 +289,46 @@ Section AppliedEntriesMonotonic.
       doGenericServer h (sigma h) = (os, st', ms) ->
       exists es, applied_entries (update sigma h st') = (applied_entries sigma) ++ es.
   Proof.
-  Admitted.
-
+    intros.
+    unfold doGenericServer in *. break_let. find_inversion.
+    use_applyEntries_spec. subst. simpl in *. unfold raft_data in *.
+    simpl in *.
+    break_if; [|rewrite applied_entries_safe_update; simpl in *; eauto using app_nil_r].
+    do_bool.
+    match goal with
+      | |- context [update ?sigma ?h ?st] => pose proof applied_entries_update sigma h st
+    end.
+    simpl in *. concludes. intuition.
+    - find_rewrite. eauto using app_nil_r.
+    - pose proof applied_entries_cases sigma.
+      intuition; repeat find_rewrite; eauto.
+      match goal with | H : exists _, _ |- _ => destruct H as [h'] end.
+      repeat find_rewrite.
+      find_apply_lem_hyp argmax_elim. intuition.
+      match goal with
+        | H : forall _: name, _ |- _ =>
+          specialize (H h'); conclude H ltac:(eauto using all_fin_all)
+      end.
+      rewrite_update. simpl in *.
+      update_destruct_hyp; subst; rewrite_update; simpl in *.
+      + apply rev_exists_thing.
+        erewrite removeAfterIndex_le with (i := lastApplied (sigma h')) (j := commitIndex (sigma h')); [|omega].
+        eauto using removeAfterIndex_partition.
+      + apply rev_exists_thing.
+        match goal with
+          | _ : ?h <> ?h' |- exists _, removeAfterIndex ?l (commitIndex (?sigma ?h)) = _ =>
+            pose proof removeAfterIndex_partition (removeAfterIndex l (commitIndex (sigma h)))
+                 (lastApplied (sigma h'))
+        end. break_exists_exists.
+        repeat match goal with | H : applied_entries _ = _ |- _ => clear H end.
+        find_rewrite. f_equal.
+        erewrite <- removeAfterIndex_le; eauto.
+        find_copy_apply_lem_hyp logs_sorted_invariant. unfold logs_sorted in *.
+        intuition. pose proof in_logs h h'.
+        eapply removeAfterIndex_same_sufficient; eauto;
+        intros;
+        eapply_prop_hyp In raft_intermediate_reachable; intuition eauto.
+  Qed.
 
   Theorem applied_entries_monotonic' :
     forall failed net failed' net' os,
