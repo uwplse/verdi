@@ -1043,7 +1043,22 @@ Section CommonTheorems.
     unfold applied_entries in *.
     break_match; simpl in *; intuition eauto.
   Qed.
+
+  Lemma removeAfterIndex_partition :
+    forall l x,
+      exists l',
+        l = l' ++ removeAfterIndex l x.
+  Proof.
+    intros; induction l; simpl in *; intuition eauto using app_nil_r.
+    break_exists. break_if; [exists nil; eauto|].
+    do_bool.
+    match goal with
+      | l : list entry, e : entry |- _ =>
+        solve [exists (e :: l); simpl in *; f_equal; auto]
+    end.
+  Qed.
   
+
   Lemma doLeader_appliedEntries :
   forall sigma h os st' ms,
     doLeader (sigma h) h = (os, st', ms) ->
