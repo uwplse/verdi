@@ -962,8 +962,9 @@ Section CommonTheorems.
        (exists h', 
           argmax (fun h => lastApplied (sigma h)) (all_fin N) = Some h' /\
           lastApplied (sigma h') >= lastApplied st))
-       \/
-      applied_entries (update sigma h st) = (rev (removeAfterIndex (log st) (lastApplied st))).
+      \/
+      (argmax (fun h' => lastApplied (update sigma h st h')) (all_fin N) = Some h /\
+       applied_entries (update sigma h st) = (rev (removeAfterIndex (log st) (lastApplied st)))).
   Proof.
     intros.
     unfold applied_entries in *.
