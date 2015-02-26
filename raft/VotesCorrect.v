@@ -11,6 +11,8 @@ Require Import Net.
 Require Import RaftState.
 Require Import Raft.
 Require Import RaftRefinement.
+Require Import CommonTheorems.
+
 Require Import VerdiTactics.
 
 Section VotesCorrect.
@@ -273,17 +275,19 @@ Section VotesCorrect.
     repeat find_inversion; repeat find_rewrite; simpl in *;
     intuition eauto.
   Qed.
-      
+
   Lemma votes_correct_do_generic_server :
     refined_raft_net_invariant_do_generic_server votes_correct.
   Proof.
     unfold refined_raft_net_invariant_do_generic_server, votes_correct. intros.
     assert (gd = fst (nwState net h) /\
-            d = snd (nwState net h)) by (intuition; find_rewrite; reflexivity).
+            d = snd (nwState net h))
+      by (intuition; find_rewrite; reflexivity).
     match goal with H : nwState _ _ = _ |- _ => clear H end.
     split_votes_correct; unfold doGenericServer, advanceCommitIndex in *;
     repeat break_match; intuition;
     simpl in *; repeat find_higher_order_rewrite; repeat break_match;
+    use_applyEntries_spec;
     repeat find_inversion; repeat find_rewrite; simpl in *;
     intuition eauto.
   Qed.

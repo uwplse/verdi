@@ -578,7 +578,9 @@ Section Sorted.
       log st' = log st.
   Proof.
     intros. unfold doGenericServer in *.
-    repeat break_match; find_inversion; subst; auto.
+    repeat break_match; find_inversion;
+    use_applyEntries_spec; simpl in *;
+    subst; auto.
   Qed.
 
   Lemma doGenericServer_packets :

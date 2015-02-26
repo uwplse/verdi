@@ -11,9 +11,9 @@ Require Import RaftState.
 Require Import Raft.
 Require Import RaftRefinement.
 Require Import CandidatesVoteForSelves.
-Require Import VotesCorrect.
 Require Import VerdiTactics.
 Require Import CommonTheorems.
+Require Import VotesCorrect.
 
 Section CroniesCorrect.
   
@@ -55,7 +55,7 @@ Section CroniesCorrect.
 
   Definition cronies_correct net :=
     votes_received_cronies net /\ cronies_votes net /\ votes_nw net /\ votes_received_leaders net.
-
+ 
   Lemma handleClientRequest_rvr :
     forall h net ps client id c out d l p t v,
       handleClientRequest h (snd (nwState net h)) client id c = (out, d, l) ->
@@ -537,6 +537,7 @@ Section CroniesCorrect.
     repeat break_match; find_inversion; simpl in *; intuition.
   Qed.
 
+
   Lemma cronies_correct_do_generic_server :
     refined_raft_net_invariant_do_generic_server cronies_correct.
   Proof.
@@ -554,6 +555,7 @@ Section CroniesCorrect.
           clear H;
           subst
       end;
+      use_applyEntries_spec; subst; simpl in *;
       intuition eauto.
     - unfold cronies_votes in *. intros.
       simpl in *. find_higher_order_rewrite.
@@ -573,7 +575,8 @@ Section CroniesCorrect.
     - unfold votes_received_leaders in *. intros.
       simpl in *. find_higher_order_rewrite.
       unfold doGenericServer in *.
-      repeat break_match; repeat find_inversion; subst; simpl in *; eauto;
+      repeat break_match; repeat find_inversion; subst; simpl in *;
+      use_applyEntries_spec; subst; simpl in *; eauto;
       match goal with
         | H : nwState ?x1 ?x2 = (?x, ?y) |- _ =>
           assert (y = (snd (nwState x1 x2))) by (rewrite H; reflexivity);

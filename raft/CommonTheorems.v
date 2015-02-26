@@ -1046,6 +1046,19 @@ Section CommonTheorems.
       unfold doLeader in *. repeat break_match; find_inversion; auto.
   Qed.
 
+  Lemma applyEntries_spec :
+    forall es h st os st',
+      applyEntries h st es = (os, st') ->
+      exists d cc,
+        st' = {[ {[ st with stateMachine := d ]} with clientCache := cc ]}.
+  Proof.
+    induction es; intros; simpl in *; intuition.
+    - find_inversion. destruct st'; repeat eexists; eauto.
+    - unfold applyEntry in *.
+      repeat break_match; repeat find_inversion;
+      find_apply_hyp_hyp; break_exists; repeat eexists; eauto.
+  Qed.
+
     
 End CommonTheorems.
 
@@ -1056,3 +1069,8 @@ Notation is_append_entries m :=
 Notation is_request_vote_reply m :=
   (exists t r,
      m = RequestVoteReply t r).
+
+Ltac use_applyEntries_spec :=
+  match goal with
+    | H : context [applyEntries] |- _ => eapply applyEntries_spec in H; eauto; break_exists
+  end.

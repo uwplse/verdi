@@ -764,7 +764,9 @@ Section CandidateEntries.
   Proof.
     unfold doGenericServer.
     intros.
-    repeat break_match; repeat find_inversion; auto.
+    repeat break_match; repeat find_inversion;
+    use_applyEntries_spec; subst; simpl in *;
+    auto.
   Qed.
 
   Lemma doGenericServer_preserves_candidateEntries :

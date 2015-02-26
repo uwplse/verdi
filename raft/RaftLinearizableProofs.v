@@ -13,9 +13,8 @@ Require Import CommonTheorems.
 Require Import Linearizability.
 Require Import RaftLinearizableDefinitions.
 Require Import OutputImpliesApplied.
-Require Import AppliedImpliesInput.
-Require Import LogUniqueKeys.
 Require Import UniqueIndices.
+Require Import AppliedImpliesInput.
 
 Section RaftLinearizableProofs.
   Context {orig_base_params : BaseParams}.
@@ -357,34 +356,6 @@ Section RaftLinearizableProofs.
     - apply in_or_app. intuition eauto.
   Qed.
 
-  Lemma NoDup_applied_entries :
-    forall failed net tr,
-      input_correct tr ->
-      step_f_star step_f_init (failed, net) tr ->
-      NoDup (map (fun e => (eClient e, eId e)) (applied_entries (nwState net))).
-  Proof.
-    intros.
-    find_copy_apply_lem_hyp unique_keys_invariant_invariant; auto.
-    find_apply_lem_hyp step_f_star_raft_intermediate_reachable.
-    find_apply_lem_hyp UniqueIndices_invariant.
-    unfold UniqueIndices, unique_keys_invariant in *. break_and.
-    unfold applied_entries.
-    break_match.
-    - match goal with
-        | [ H : context [argmax] |- _ ] => clear H
-      end.
-      rewrite map_rev.
-      apply NoDup_rev.
-      eapply subseq_NoDup.
-      + apply subseq_map.
-        apply removeAfterIndex_subseq.
-      + unfold unique_keys_host in *. break_and.
-        eapply NoDup_map_map with (g := eIndex).
-        * intros. eapply H4; eauto.
-        * eapply_prop uniqueIndices_host_invariant.
-    - simpl. constructor.
-  Qed.
-
   Lemma get_IR_input_of_log_to_IR :
     forall env log,
       get_IR_input_keys _ (log_to_IR env log) =
@@ -452,14 +423,11 @@ Section RaftLinearizableProofs.
         break_exists. congruence.
       + (* NoDup op input *)
         auto using import_preserves_NoDup.
-      + (* NoDup IR input *)
-        rewrite get_IR_input_of_log_to_IR.
-        eauto using NoDup_applied_entries.
+      + (* NoDup IR input *) admit.
       + (* NoDup op output *)
         admit.
       + (* NoDup IR output *)
-        rewrite get_IR_output_of_log_to_IR.
-        eauto using NoDup_applied_entries.
+        admit.
     - admit.
   Qed.
 End RaftLinearizableProofs.

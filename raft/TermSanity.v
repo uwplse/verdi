@@ -134,7 +134,8 @@ Section TermSanity.
        (forall m, In m ms -> ~ is_append_entries (snd m))).
   Proof.
     intros. unfold doGenericServer in *.
-    break_match; find_inversion; subst; intuition.
+    repeat break_match; find_inversion; subst; intuition;
+    use_applyEntries_spec; subst; simpl in *; auto.
   Qed.
 
   Lemma no_entries_past_current_term_do_generic_server :

@@ -8,6 +8,7 @@ Require Import Sorting.Permutation.
 Require Import Util.
 Require Import Net.
 Require Import Raft.
+Require Import CommonTheorems.
 Require Import VerdiTactics.
 
 Section CandidatesVoteForSelves.
@@ -29,8 +30,9 @@ Section CandidatesVoteForSelves.
 
   Ltac t :=
     repeat break_match;
-      simpl in *; try find_inversion; rewrite_state;
-      repeat break_if; subst; eauto; simpl in *; try discriminate.
+    simpl in *; try find_inversion; rewrite_state;
+    try use_applyEntries_spec;
+    repeat break_if; subst; eauto; simpl in *; try discriminate.
   
   Theorem candidates_vote_for_selves_do_leader :
     raft_net_invariant_do_leader (candidates_vote_for_selves).
@@ -93,7 +95,7 @@ Section CandidatesVoteForSelves.
   Proof.
     unfold raft_net_invariant_do_generic_server, candidates_vote_for_selves. intros.
     unfold doGenericServer in *.
-    t.
+    t; eauto.
   Qed.
   
   Lemma candidates_vote_for_selves_state_same_packet_subset :

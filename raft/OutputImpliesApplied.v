@@ -174,12 +174,13 @@ Section OutputImpliesApplied.
     intros. unfold in_output_list in *.
     match goal with | H : exists _, _ |- _ => destruct H as [o] end.
     unfold doGenericServer in *. break_let. simpl in *.
-    find_inversion. simpl in *. find_eapply_lem_hyp applyEntries_In; eauto.
-    break_exists_exists. intuition.
+    find_inversion. simpl in *. find_copy_eapply_lem_hyp applyEntries_In; eauto.
+    use_applyEntries_spec; subst; simpl in *.
+    eexists; intuition eauto.
     find_apply_lem_hyp In_rev.
     find_apply_lem_hyp filter_In.
     intuition. repeat (do_bool; intuition).
-    break_if; simpl in *; do_bool; [|omega].
+    break_if; simpl in *; do_bool; [|try omega].
     match goal with
       | |- context [update ?st ?h ?st'] =>
         pose proof applied_entries_update st h st'

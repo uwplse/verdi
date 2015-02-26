@@ -111,7 +111,9 @@ Section CroniesTerm.
       currentTerm st' = currentTerm st.
   Proof.
     intros. unfold doGenericServer in *.
-    repeat break_match; repeat find_inversion; auto.
+    repeat break_match; repeat find_inversion;
+    use_applyEntries_spec; subst; simpl in *;
+    auto.
   Qed.
   
   Lemma cronies_term_do_generic_server :

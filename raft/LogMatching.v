@@ -761,8 +761,10 @@ Ltac assert_do_leader :=
     intros. subst.
     unfold doGenericServer in *.
     break_let.
-    repeat find_inversion.
-    eapply log_matching_state_same_packet_subset; eauto; intros; simpl in *.
+    repeat find_inversion; 
+      eapply log_matching_state_same_packet_subset; eauto; intros;
+      use_applyEntries_spec; subst;
+      simpl in *.
     - find_higher_order_rewrite. rewrite if_sum_bool_fun_comm.
       simpl. break_if; subst; auto.
     - find_apply_hyp_hyp. intuition.

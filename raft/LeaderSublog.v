@@ -548,12 +548,15 @@ Section LeaderSublog.
     unfold raft_net_invariant_do_generic_server.
     intros.
     unfold leader_sublog_invariant, leader_sublog_nw_invariant,
-    leader_sublog_host_invariant, doGenericServer, applyEntries in *.
+    leader_sublog_host_invariant, doGenericServer in *.
     intuition idtac; simpl in *.
     - repeat find_higher_order_rewrite; repeat break_match; repeat find_inversion;
+      use_applyEntries_spec;
       subst; simpl in *;
-      intuition eauto; try solve_by_inversion.
+      intuition eauto;
+      try solve_by_inversion.
     - repeat find_higher_order_rewrite; repeat break_match; repeat find_inversion;
+      use_applyEntries_spec;
       subst; simpl in *;
       intuition eauto;
       find_apply_hyp_hyp; intuition eauto; subst; try discriminate.
