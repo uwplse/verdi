@@ -1504,3 +1504,37 @@ Proof.
              end; omega.
 Qed.
 
+Section remove_all.
+  Variable (A : Type).
+  Hypothesis (A_eq_dec : forall x y : A, {x = y} + {x <> y}).
+
+  Fixpoint remove_all (to_delete l : list A) : list A :=
+    match to_delete with
+      | [] => l
+      | d :: ds => remove_all ds (remove A_eq_dec d l)
+    end.
+
+  Lemma in_remove_all_was_in :
+    forall ds l x,
+      In x (remove_all ds l) ->
+      In x l.
+  Proof.
+    induction ds; intros; simpl in *; intuition.
+    eauto using in_remove.
+  Qed.
+
+  Lemma in_remove_all_preserve :
+    forall ds l x,
+      ~ In x ds ->
+      In x l ->
+      In x (remove_all ds l).
+  Proof.
+    induction ds; intros; simpl in *.
+    - auto.
+    - apply IHds.
+      + intuition.
+      + apply remove_preserve; intuition.
+  Qed.
+End remove_all.
+
+Arguments in_remove_all_was_in : clear implicits.

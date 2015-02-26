@@ -31,18 +31,26 @@ Section RaftLinearizableProofs.
     decide equality; auto using eq_nat_dec.
   Qed.
 
+  Definition op_eq_dec : forall x y : op key, {x = y} + {x <> y}.
+  Proof.
+    decide equality; auto using key_eq_dec.
+  Qed.
+
+
   Fixpoint import (tr : list (name * (raft_input + list raft_output)))
   : list (op key) :=
     match tr with
       | [] => []
       | (_, (inl (ClientRequest c id cmd))) :: xs =>
-        I (c, id) :: import xs
+        I (c, id) :: remove op_eq_dec (I (c, id)) (import xs)
       | (_, (inr l)) :: xs =>
-        filterMap (fun x =>
-                     match x with
-                       | ClientResponse c id cmd => Some (O (c, id))
-                       | _ => None
-                     end) l ++ import xs
+        let os := dedup op_eq_dec
+                        (filterMap (fun x =>
+                               match x with
+                                 | ClientResponse c id cmd => Some (O (c, id))
+                                 | _ => None
+                               end) l)
+        in os ++ remove_all op_eq_dec os (import xs)
       | _ :: xs => import xs
     end.
 
@@ -190,15 +198,18 @@ Section RaftLinearizableProofs.
     - find_apply_hyp_hyp. break_exists_exists.
       intuition.
     - simpl in *. intuition; try congruence.
+      find_apply_lem_hyp in_remove.
       find_apply_hyp_hyp. break_exists_exists.
       intuition.
     - do_in_app. intuition.
-      + find_apply_lem_hyp In_filterMap.
+      + find_apply_lem_hyp in_dedup_was_in.
+        find_apply_lem_hyp In_filterMap.
         break_exists. intuition.
         break_match; try congruence.
         find_inversion.
         repeat eexists; intuition eauto.
-      + find_apply_hyp_hyp. break_exists_exists.
+      + find_apply_lem_hyp in_remove_all_was_in.
+        find_apply_hyp_hyp. break_exists_exists.
         intuition.
   Qed.
 
@@ -214,11 +225,15 @@ Section RaftLinearizableProofs.
       eauto 10.
     - simpl in *. intuition.
       + find_inversion. simpl. eauto 10.
-      + find_apply_hyp_hyp. break_exists. eauto 10.
+      + find_apply_lem_hyp in_remove.
+        find_apply_hyp_hyp. break_exists. eauto 10.
     - do_in_app. intuition.
-      + find_eapply_lem_hyp In_filterMap. break_exists. break_and.
+      + find_apply_lem_hyp in_dedup_was_in.
+        find_eapply_lem_hyp In_filterMap. break_exists. break_and.
         break_match; discriminate.
-      + find_apply_hyp_hyp. break_exists. eauto 10.
+      + find_eapply_lem_hyp in_remove_all_was_in.
+
+find_apply_hyp_hyp. break_exists. eauto 10.
   Qed.
 
   Lemma in_applied_entries_in_IR :
@@ -258,11 +273,14 @@ Section RaftLinearizableProofs.
     intros.
     induction tr; simpl in *; intuition.
     repeat break_match; intuition; subst; simpl in *; intuition; try congruence;
-    do_in_app; intuition eauto.
-    find_apply_lem_hyp In_filterMap.
-    break_exists; break_match; intuition; try congruence.
-    subst. find_inversion.
-    find_apply_lem_hyp In_get_output'. break_exists; congruence.
+    try do_in_app; intuition eauto.
+    - find_apply_lem_hyp in_remove; auto.
+    - find_apply_lem_hyp in_dedup_was_in; auto.
+      find_apply_lem_hyp In_filterMap.
+      break_exists; break_match; intuition; try congruence.
+      subst. find_inversion.
+      find_apply_lem_hyp In_get_output'. break_exists; congruence.
+    - find_apply_lem_hyp in_remove_all_was_in. auto.
   Qed.
 
   Lemma IRO_in_IR_in_log :
@@ -279,30 +297,6 @@ Section RaftLinearizableProofs.
     - eexists. eexists. intuition; eauto.
     - find_apply_hyp_hyp. break_exists_exists. intuition.
     - find_apply_hyp_hyp. break_exists_exists. intuition.
-  Qed.
-
-  Lemma import_preserves_NoDup :
-    forall tr,
-      input_correct tr ->
-      NoDup (get_op_input_keys _ (import tr)).
-  Proof.
-    unfold input_correct, get_op_input_keys.
-    induction tr; intros; simpl in *.
-    - auto.
-    - repeat break_match; subst.
-      + auto.
-      + simpl. invc H. constructor; auto.
-        intro. apply H2.
-        find_apply_lem_hyp In_filterMap. break_exists. break_and.
-        break_match; try discriminate. find_inversion.
-        find_apply_lem_hyp in_import_in_trace_I. break_exists.
-
-        eapply filterMap_In; eauto. auto.
-      + rewrite filterMap_app.
-        rewrite filterMap_of_filterMap.
-        rewrite filterMap_all_None; auto.
-        intros.
-        repeat break_match; congruence.
   Qed.
 
   Lemma get_output'_In :
@@ -324,11 +318,22 @@ Section RaftLinearizableProofs.
     induction tr; intros; simpl in *.
     - discriminate.
     - repeat break_match; subst; simpl; intuition eauto.
+      + right. apply remove_preserve; try discriminate. eauto.
       + find_inversion. apply in_or_app. left.
         find_apply_lem_hyp get_output'_In.
+        apply dedup_In.
         eapply filterMap_In; eauto.
         simpl. now rewrite <- surjective_pairing.
-      + apply in_or_app. eauto.
+      + apply in_or_app. right.
+        apply in_remove_all_preserve.
+        * intro. find_apply_lem_hyp in_dedup_was_in.
+          find_apply_lem_hyp In_filterMap.
+          break_exists. break_and.
+          break_match; try discriminate.
+          find_inversion.
+          find_apply_lem_hyp In_get_output'.
+          break_exists. congruence.
+        * eauto.
   Qed.
 
   Lemma IRU_in_IR_in_log :
@@ -356,7 +361,20 @@ Section RaftLinearizableProofs.
     induction tr; intros; simpl in *; intuition; subst.
     - rewrite <- surjective_pairing. intuition.
     - break_match; simpl; eauto.
-    - apply in_or_app. intuition eauto.
+      subst.
+      destruct (key_eq_dec (n, n0) k).
+      + subst. auto.
+      + right. apply remove_preserve.
+        * congruence.
+        * eauto.
+    - apply in_or_app.
+      right.
+      apply in_remove_all_preserve.
+      + intro. find_apply_lem_hyp in_dedup_was_in.
+        find_apply_lem_hyp In_filterMap.
+        break_exists. break_and.
+        break_match; try discriminate.
+      + eauto.
   Qed.
 
   Lemma get_IR_input_of_log_to_IR :
@@ -425,7 +443,7 @@ Section RaftLinearizableProofs.
         find_apply_lem_hyp import_get_output.
         break_exists. congruence.
       + (* NoDup op input *)
-        auto using import_preserves_NoDup.
+        admit.
       + (* NoDup IR input *) admit.
       + (* NoDup op output *)
         admit.
