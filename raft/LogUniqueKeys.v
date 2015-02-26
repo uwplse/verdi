@@ -13,6 +13,7 @@ Require Import TraceRelations.
 Require Import Raft.
 Require Import CommonTheorems.
 Require Import RaftLinearizableDefinitions.
+Require Import StateTraceInvariant.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
@@ -58,6 +59,25 @@ Section LogUniqueKeys.
     unique_keys_invariant step_m_init [].
   Admitted.
 
+  Lemma UK_deliver :
+    RT_deliver unique_keys_invariant input_correct.
+  Admitted.
+
+  Lemma UK_input :
+    RT_input unique_keys_invariant input_correct.
+  Admitted.
+
+  Lemma UK_state_same_pkt_subset :
+    forall net net' tr,
+      (forall h, nwState net' h = nwState net h) ->
+      (forall p, In p (nwPackets net') -> In p (nwPackets net)) ->
+      unique_keys_invariant net tr ->
+      unique_keys_invariant net' tr.
+  Admitted.
+
+  Lemma UK_reboot :
+    RT_reboot unique_keys_invariant input_correct.
+  Admitted.
 
   Lemma unique_keys_invariant_invariant :
     forall failed net tr,
@@ -67,8 +87,19 @@ Section LogUniqueKeys.
   Proof.
     intros.
     eapply state_trace_invariant_invariant with (R := unique_keys_invariant)
-                                                (trace_wf := input_correct); eauto.
-    - admit.
-    - admit.
+                                                (T := input_correct); eauto.
+    - eauto using input_correct_snoc_inv.
+    - auto using unique_keys_init.
+    - auto using UK_deliver.
+    - auto using UK_input.
+    - unfold RT_drop. intros.
+      eapply UK_state_same_pkt_subset with (net := net0); eauto.
+    - unfold RT_dup. intros.
+      eapply UK_state_same_pkt_subset with (net := net0); eauto.
+      simpl.
+      intuition.
+      + subst. eauto.
+      + congruence.
+    - auto using UK_reboot.
   Qed.
 End LogUniqueKeys.
