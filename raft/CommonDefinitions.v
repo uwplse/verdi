@@ -50,4 +50,7 @@ Section CommonDefinitions.
         rev (removeAfterIndex (log (sigma h)) (lastApplied (sigma h)))
       | None => []
     end.
+
+    Definition uniqueIndices (xs : list entry) : Prop :=
+    NoDup (map eIndex xs).
 End CommonDefinitions.

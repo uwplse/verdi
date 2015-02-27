@@ -24,9 +24,6 @@ Section CommonTheorems.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
-  Definition uniqueIndices (xs : list entry) : Prop :=
-    NoDup (map eIndex xs).
-
   Lemma uniqueIndices_elim_eq :
     forall xs x y,
       uniqueIndices xs ->
