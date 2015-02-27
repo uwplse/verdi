@@ -12,14 +12,17 @@ Require Import Raft.
 Require Import CommonTheorems.
 Require Import Linearizability.
 Require Import RaftLinearizableDefinitions.
-Require Import OutputImpliesApplied.
-Require Import UniqueIndices.
-Require Import AppliedImpliesInput.
+Require Import OutputImpliesAppliedInterface.
+Require Import UniqueIndicesInterface.
+Require Import AppliedImpliesInputInterface.
 
 Section RaftLinearizableProofs.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
+
+  Context {oiai : output_implies_applied_interface}.
+  Context {aiii : applied_implies_input_interface}.
 
   Definition key : Type := nat * nat.
 
