@@ -9,17 +9,22 @@ Require Import Util.
 Require Import Net.
 Require Import RaftState.
 Require Import Raft.
-Require Import RaftRefinement.
+Require Import RaftRefinementInterface.
 Require Import CandidatesVoteForSelves.
 Require Import VerdiTactics.
 Require Import CommonTheorems.
-Require Import VotesCorrect.
+Require Import VotesCorrectInterface.
 
-Section CroniesCorrect.
-  
+Require Import CroniesCorrectInterface.
+
+Section CroniesCorrectProof.
+
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
+
+  Context {rri : raft_refinement_interface}.
+  Context {vci : votes_correct_interface}.
 
   Lemma candidates_vote_for_selves_l_invariant :
     forall (net : network),
@@ -27,35 +32,11 @@ Section CroniesCorrect.
       candidates_vote_for_selves (deghost net).
   Proof.
     intros.
+
     eapply lift_prop; [exact candidates_vote_for_selves_invariant|eauto].
   Qed.
 
-  Definition votes_received_cronies net :=
-    forall h crony,
-      In crony (votesReceived (snd (nwState net h))) ->
-      (type (snd (nwState net h)) = Leader \/ type (snd (nwState net h)) = Candidate) ->
-      In crony (cronies (fst (nwState net h))
-                        (currentTerm (snd (nwState net h)))).
-      
-  Definition cronies_votes net :=
-    forall t candidate crony,
-      In crony (cronies (fst (nwState net candidate)) t) ->
-      In (t, candidate) (votes (fst (nwState net crony))).
 
-  Definition votes_nw net :=
-    forall p t,
-      pBody p = RequestVoteReply t true ->
-      In p (nwPackets net) ->
-      In (t, pDst p) (votes (fst (nwState net (pSrc p)))).
-
-  Definition votes_received_leaders net :=
-    forall h,
-      type (snd (nwState net h)) = Leader ->
-      wonElection (dedup name_eq_dec (votesReceived (snd (nwState net h)))) = true.
-
-  Definition cronies_correct net :=
-    votes_received_cronies net /\ cronies_votes net /\ votes_nw net /\ votes_received_leaders net.
- 
   Lemma handleClientRequest_rvr :
     forall h net ps client id c out d l p t v,
       handleClientRequest h (snd (nwState net h)) client id c = (out, d, l) ->
@@ -122,7 +103,7 @@ Section CroniesCorrect.
     repeat find_inversion; subst; simpl in *; find_apply_hyp_hyp;
     in_crush; congruence.
   Qed.
-  
+
   Lemma cronies_correct_client_request :
     refined_raft_net_invariant_client_request cronies_correct.
   Proof.
@@ -198,7 +179,7 @@ Section CroniesCorrect.
       repeat break_match; find_inversion; subst; simpl in *;
       try discriminate; eauto.
   Qed.
-  
+
   Lemma cronies_correct_append_entries_reply :
     refined_raft_net_invariant_append_entries_reply cronies_correct.
   Proof.
@@ -288,7 +269,7 @@ Section CroniesCorrect.
     unfold handleRequestVoteReply, advanceCurrentTerm in *.
     repeat break_match; simpl in *; subst; simpl in *; do_bool; intuition.
   Qed.
-  
+
   Lemma handleRequestVoteReply_leader :
     forall h st src t v st',
       handleRequestVoteReply h st src t v = st' ->
@@ -462,7 +443,7 @@ Section CroniesCorrect.
     unfold doLeader, advanceCommitIndex in *.
     repeat break_match; find_inversion; intuition.
   Qed.
-      
+
 
   Lemma do_leader_rvr :
     forall st h os st' ms p t ps ps',
@@ -478,7 +459,7 @@ Section CroniesCorrect.
     simpl in *; find_apply_hyp_hyp; intuition.
     in_crush. congruence.
   Qed.
-  
+
   Lemma cronies_correct_do_leader :
     refined_raft_net_invariant_do_leader cronies_correct.
   Proof.
@@ -583,7 +564,7 @@ Section CroniesCorrect.
             clear H; subst
       end; intuition eauto.
   Qed.
-      
+
   Lemma cronies_correct_state_same_packet_subset :
     refined_raft_net_invariant_state_same_packet_subset cronies_correct.
   Proof.
@@ -598,7 +579,7 @@ Section CroniesCorrect.
     - unfold votes_received_leaders in *. intros.
       repeat find_reverse_higher_order_rewrite. eauto.
   Qed.
-  
+
   Lemma cronies_correct_reboot :
     refined_raft_net_invariant_reboot cronies_correct.
   Proof.
@@ -667,17 +648,9 @@ Section CroniesCorrect.
     - apply cronies_correct_reboot.
   Qed.
 
-  Lemma won_election_cronies :
-    forall net h,
-      cronies_correct net ->
-      type (snd (nwState net h)) = Leader ->
-      wonElection (dedup name_eq_dec (cronies (fst (nwState net h))
-                                              (currentTerm (snd (nwState net h))))) = true.
+  Instance cci : cronies_correct_interface.
   Proof.
-    intros.
-    unfold cronies_correct in *; intuition.
-    eapply wonElection_no_dup_in;
-      eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
+    split.
+    auto using cronies_correct_invariant.
   Qed.
-
-End CroniesCorrect.
+End CroniesCorrectProof.
