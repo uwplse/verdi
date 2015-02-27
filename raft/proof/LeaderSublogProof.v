@@ -11,17 +11,29 @@ Require Import Net.
 Require Import Raft.
 Require Import VerdiTactics.
 Require Import CommonTheorems.
-Require Import OneLeaderPerTerm.
+Require Import OneLeaderPerTermInterface.
+
+Require Import CandidateEntriesInterface.
+Require Import RaftRefinementInterface.
+Require Import VotesCorrectInterface.
+Require Import CroniesCorrectInterface.
 
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
 
+Require Import LeaderSublogInterface.
 
-Section LeaderSublog.
+Section LeaderSublogProof.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
+
+  Context {rri : raft_refinement_interface}.
+  Context {cei : candidate_entries_interface}.
+  Context {vci : votes_correct_interface}.
+  Context {cci : cronies_correct_interface}.
+  Context {olpti : one_leader_per_term_interface}.
 
   Ltac prove_in :=
     match goal with
@@ -33,27 +45,6 @@ Section LeaderSublog.
         assert (In p (nwPackets net)) by (repeat find_rewrite; intuition)
     end.
 
-
-  Definition leader_sublog_host_invariant (net : network) :=
-    forall leader e h,
-      type (nwState net leader) = Leader ->
-      In e (log (nwState net h)) ->
-      eTerm e = currentTerm (nwState net leader) ->
-      In e (log (nwState net leader)).
-
-  Definition leader_sublog_nw_invariant (net : network) :=
-    forall leader p t leaderId prevLogIndex prevLogTerm entries leaderCommit e,
-      type (nwState net leader) = Leader ->
-      In p (nwPackets net) ->
-      pBody p = AppendEntries t leaderId prevLogIndex prevLogTerm
-                              entries leaderCommit ->
-      In e entries ->
-      eTerm e = currentTerm (nwState net leader) ->
-      In e (log (nwState net leader)).
-
-  Definition leader_sublog_invariant (net : network) :=
-    leader_sublog_host_invariant net /\
-    leader_sublog_nw_invariant net.
 
   Notation is_append_entries m :=
     (exists t n prevT prevI entries c,
@@ -93,7 +84,7 @@ Section LeaderSublog.
       pose proof H1 leader.
       pose proof H2 leader; concludes.
       pose proof H3 leader. intuition.
-      symmetry in H13. 
+      symmetry in H13.
       repeat find_rewrite.
       eapply H11; simpl in *; repeat find_rewrite; eauto.
       assert (is_append_entries (pBody p)) by (repeat eexists; eauto).
@@ -148,7 +139,7 @@ Section LeaderSublog.
       exfalso.
       match goal with
         | H : raft_intermediate_reachable _ |- _ =>
-          apply one_leader_per_term_invariant in H
+          eapply one_leader_per_term_invariant in H
       end.
       assert (leader = h) by (eapply_prop one_leader_per_term; eauto).
       intuition.
@@ -228,10 +219,6 @@ Section LeaderSublog.
       find_apply_hyp_hyp; intuition eauto; subst; try discriminate.
   Qed.
 
-  Require Import CandidateEntries.
-  Require Import RaftRefinement.
-  Require Import VotesCorrect.
-  Require Import CroniesCorrect.
 
   Definition CandidateEntriesLowered net e h :=
       currentTerm (nwState net h) = eTerm e ->
@@ -561,7 +548,7 @@ Section LeaderSublog.
       intuition eauto;
       find_apply_hyp_hyp; intuition eauto; subst; try discriminate.
   Qed.
-  
+
   Lemma leader_sublog_state_same_packet_subset :
     raft_net_invariant_state_same_packet_subset
       leader_sublog_invariant.
@@ -595,7 +582,7 @@ Section LeaderSublog.
     leader_sublog_host_invariant, leader_sublog_nw_invariant;
     intuition.
   Qed.
-    
+
   Theorem leader_sublog_invariant_invariant :
     forall net,
       raft_intermediate_reachable net ->
@@ -615,5 +602,10 @@ Section LeaderSublog.
     - apply leader_sublog_state_same_packet_subset.
     - apply leader_sublog_reboot.
   Qed.
-  
-End LeaderSublog.
+
+  Instance lsi : leader_sublog_interface.
+  Proof.
+    split.
+    auto using leader_sublog_invariant_invariant.
+  Qed.
+End LeaderSublogProof.

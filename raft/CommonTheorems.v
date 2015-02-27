@@ -13,17 +13,16 @@ Require Import Net.
 Require Import RaftState.
 Require Import Raft.
 Require Import VerdiTactics.
-Require Import UpdateLemmas.
 
+Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+
+Require Export CommonDefinitions.
 
 Section CommonTheorems.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
-
-  Definition uniqueIndices (xs : list entry) : Prop :=
-    NoDup (map eIndex xs).
 
   Lemma uniqueIndices_elim_eq :
     forall xs x y,
@@ -36,16 +35,6 @@ Section CommonTheorems.
     unfold uniqueIndices.
     eauto using NoDup_map_elim.
   Qed.
-
-  Fixpoint sorted log :=
-    match log with
-      | [] => True
-      | e :: es =>
-        (forall e',
-           In e' es ->
-           eIndex e > eIndex e' /\ eTerm e >= eTerm e') /\
-        sorted es
-    end.
 
   Lemma sorted_cons :
     forall xs a,
@@ -460,10 +449,10 @@ Section CommonTheorems.
         match goal with
           | H: forall _, _ < _ <= _ current -> _, H' : In _ current |- _ =>
             specialize (H i); apply maxIndex_is_max in H'; auto; forward H; intuition
-        end. 
+        end.
         break_exists. exists x. intuition.
         apply in_or_app. right. subst.
-        eapply removeAfterIndex_le_In; eauto. 
+        eapply removeAfterIndex_le_In; eauto.
       + pose proof maxIndex_app new (removeAfterIndex current prev). intuition.
         * find_rewrite.
           unfold contiguous_range_exact_lo in *. intuition.
@@ -541,15 +530,6 @@ Section CommonTheorems.
     pose proof findAtIndex_index _ _ _ H.
     eapply uniqueIndices_elim_eq; eauto.
   Qed.
-
-  Definition entries_match entries entries' :=
-    forall e e' e'',
-      eIndex e = eIndex e' ->
-      eTerm e = eTerm e' ->
-      In e entries ->
-      In e' entries' ->
-      eIndex e'' <= eIndex e ->
-      (In e'' entries <-> In e'' entries').
 
   Definition entries_match' entries entries' :=
     forall e e' e'',
@@ -684,7 +664,7 @@ Section CommonTheorems.
     unfold handleRequestVoteReply.
     intros. repeat break_match; simpl; auto using advanceCurrentTerm_same_lastApplied.
   Qed.
-  
+
   Lemma findAtIndex_elim :
     forall l i e,
       findAtIndex l i = Some e ->
@@ -780,14 +760,14 @@ Section CommonTheorems.
     unfold handleAppendEntries in *.
     repeat (break_match; repeat (find_inversion; simpl in *)); auto using advanceCurrentTerm_same_lastApplied.
   Qed.
-  
+
   Definition mEntries p :=
     match p with
       | AppendEntries _ _ _ _ entries _ => Some entries
       | _ => None
     end.
 
-  
+
   Definition term_of msg :=
     match msg with
       | RequestVote t _ _ _ => Some t
@@ -829,7 +809,7 @@ Section CommonTheorems.
     find_eapply_lem_hyp subset_length;
       eauto using name_eq_dec, wonElection_length.
   Qed.
-  
+
   Lemma wonElection_exists_voter :
     forall l,
       wonElection l = true ->
@@ -842,17 +822,6 @@ Section CommonTheorems.
     simpl. eauto.
   Qed.
 
-  Fixpoint argmax {A : Type} (f : A -> nat) (l : list A) : option A :=
-    match l with
-      | a :: l' => match argmax f l' with
-                    | Some a' => if f a' <=? f a then
-                                  Some a
-                                else
-                                  Some a'
-                    | None => Some a
-                  end
-      | [] => None
-    end.
 
   Lemma argmax_fun_ext :
     forall A (f : A -> nat) g l,
@@ -905,7 +874,7 @@ Section CommonTheorems.
   Proof.
     intros. find_apply_lem_hyp argmax_elim. intuition.
   Qed.
-  
+
   Lemma argmax_one_different :
     forall A (A_eq_dec : forall x y : A, {x = y} + {x <> y}) f g (l : list A) a,
       (forall x, In x l -> a <> x -> f x = g x) ->
@@ -935,14 +904,8 @@ Section CommonTheorems.
       + pose proof H a0; pose proof H a1; intuition. repeat find_rewrite.
         specialize (H3 a1). intuition. omega.
   Qed.
-  
 
-  Definition applied_entries (sigma : name -> raft_data) : (list entry) :=
-    match argmax (fun h => lastApplied (sigma h)) (all_fin N) with
-      | Some h =>
-        rev (removeAfterIndex (log (sigma h)) (lastApplied (sigma h)))
-      | None => []
-    end.
+
 
   Ltac update_destruct :=
     match goal with
@@ -954,12 +917,12 @@ Section CommonTheorems.
     | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
     end.
 
-  
+
   Lemma applied_entries_update :
     forall sigma h st,
       lastApplied st >= lastApplied (sigma h) ->
       (applied_entries (update sigma h st) = applied_entries sigma /\
-       (exists h', 
+       (exists h',
           argmax (fun h => lastApplied (sigma h)) (all_fin N) = Some h' /\
           lastApplied (sigma h') >= lastApplied st))
       \/
@@ -1007,8 +970,8 @@ Section CommonTheorems.
     subst. clean.
     f_equal. update_destruct; subst; rewrite_update; repeat find_rewrite; auto.
   Qed.
-    
-    
+
+
   Lemma applied_entries_log_lastApplied_same :
     forall sigma sigma',
       (forall h, log (sigma' h) = log (sigma h)) ->
@@ -1057,7 +1020,7 @@ Section CommonTheorems.
         solve [exists (e :: l); simpl in *; f_equal; auto]
     end.
   Qed.
-  
+
 
   Lemma doLeader_appliedEntries :
   forall sigma h os st' ms,
@@ -1085,7 +1048,37 @@ Section CommonTheorems.
       find_apply_hyp_hyp; break_exists; repeat eexists; eauto.
   Qed.
 
-    
+  Functional Scheme div2_ind := Induction for div2 Sort Prop.
+
+  Theorem div2_correct' :
+    forall n,
+      n <= div2 n + S (div2 n).
+  Proof.
+    intro n. functional induction (div2 n); omega.
+  Qed.
+
+  Theorem div2_correct :
+    forall c a b,
+      a > div2 c ->
+      b > div2 c ->
+      a + b > c.
+  Proof.
+    intros n. functional induction (div2 n); intros; try omega.
+    specialize (IHn0 (pred a) (pred b)). omega.
+  Qed.
+
+  Lemma wonElection_one_in_common :
+    forall l l',
+      wonElection (dedup name_eq_dec l) = true ->
+      wonElection (dedup name_eq_dec l') = true ->
+      exists h, In h l /\ In h l'.
+  Proof.
+    intros. unfold wonElection in *. do_bool.
+    cut (exists h, In h (dedup name_eq_dec l) /\ In h (dedup name_eq_dec l'));
+      [intros; break_exists; exists x; intuition eauto using in_dedup_was_in|].
+    eapply pigeon with (l := nodes); eauto using all_fin_all, all_fin_NoDup, NoDup_dedup, name_eq_dec, div2_correct.
+  Qed.
+
 End CommonTheorems.
 
 Notation is_append_entries m :=

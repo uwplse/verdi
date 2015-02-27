@@ -6,24 +6,21 @@ Require Import VerdiTactics.
 Require Import Util.
 Require Import Net.
 Require Import Raft.
-Require Import RaftRefinement.
+Require Import RaftRefinementInterface.
 
 Require Import CommonTheorems.
-
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
-Section CroniesTerm.
+Require Import CroniesTermInterface.
+
+Section CroniesTermProof.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
-  Definition cronies_term (net : network) :=
-    forall h h' t,
-      In h (cronies (fst (nwState net h')) t) ->
-      t <= currentTerm (snd (nwState net h')).
-
+  Context {rri : raft_refinement_interface}.
 
   Ltac update_destruct :=
     match goal with
@@ -38,7 +35,7 @@ Section CroniesTerm.
     intros. unfold handleClientRequest in *.
     break_match; find_inversion; intuition.
   Qed.
-  
+
   Lemma cronies_term_client_request :
     refined_raft_net_invariant_client_request cronies_term.
   Proof.
@@ -88,7 +85,7 @@ Section CroniesTerm.
     intros. unfold doLeader in *.
     repeat break_match; repeat find_inversion; auto.
   Qed.
-  
+
   Lemma cronies_term_do_leader :
     refined_raft_net_invariant_do_leader cronies_term.
   Proof.
@@ -101,7 +98,7 @@ Section CroniesTerm.
     match goal with
       | H : nwState ?net ?h = (?g, ?st) |- _ =>
         replace g with (fst (nwState net h)) in *; [|rewrite H; auto];
-        replace st with (snd (nwState net h)) in *; [|rewrite H; auto] 
+        replace st with (snd (nwState net h)) in *; [|rewrite H; auto]
     end; eauto.
   Qed.
 
@@ -115,7 +112,7 @@ Section CroniesTerm.
     use_applyEntries_spec; subst; simpl in *;
     auto.
   Qed.
-  
+
   Lemma cronies_term_do_generic_server :
     refined_raft_net_invariant_do_generic_server cronies_term.
   Proof.
@@ -128,7 +125,7 @@ Section CroniesTerm.
     match goal with
       | H : nwState ?net ?h = (?g, ?st) |- _ =>
         replace g with (fst (nwState net h)) in *; [|rewrite H; auto];
-        replace st with (snd (nwState net h)) in *; [|rewrite H; auto] 
+        replace st with (snd (nwState net h)) in *; [|rewrite H; auto]
     end; eauto.
   Qed.
 
@@ -141,7 +138,7 @@ Section CroniesTerm.
     unfold handleAppendEntries, advanceCurrentTerm in *.
     repeat break_match; find_inversion; simpl in *;
     do_bool; auto.
-  Qed.    
+  Qed.
 
   Lemma update_elections_data_appendEntries_spec :
     forall h st t n pli plt es ci st' e t',
@@ -152,8 +149,8 @@ Section CroniesTerm.
     intros.
     unfold update_elections_data_appendEntries in *.
     repeat break_match; repeat find_rewrite; subst; simpl in *; auto.
-  Qed.    
-  
+  Qed.
+
   Lemma cronies_term_append_entries :
     refined_raft_net_invariant_append_entries cronies_term.
   Proof.
@@ -174,9 +171,9 @@ Section CroniesTerm.
     intros.
     unfold handleAppendEntriesReply, advanceCurrentTerm in *.
     repeat break_match; try find_inversion; subst; simpl in *;
-    do_bool; intuition. 
+    do_bool; intuition.
   Qed.
-  
+
 
   Lemma cronies_term_append_entries_reply :
     refined_raft_net_invariant_append_entries_reply cronies_term.
@@ -209,8 +206,8 @@ Section CroniesTerm.
     intros.
     unfold update_elections_data_requestVote in *.
     repeat break_match; repeat find_rewrite; subst; simpl in *; auto.
-  Qed.    
-  
+  Qed.
+
   Lemma cronies_term_request_vote :
     refined_raft_net_invariant_request_vote cronies_term.
   Proof.
@@ -237,7 +234,7 @@ Section CroniesTerm.
     do_bool; intuition.
   Qed.
 
-  
+
   Lemma cronies_term_request_vote_reply :
     refined_raft_net_invariant_request_vote_reply cronies_term.
   Proof.
@@ -278,11 +275,11 @@ Section CroniesTerm.
     unfold refined_raft_net_invariant_reboot, cronies_term, reboot.
     intros. simpl in *. repeat find_higher_order_rewrite.
     update_destruct; subst; rewrite_update; eauto.
-    simpl in *. 
+    simpl in *.
      match goal with
       | H : nwState ?net ?h = (?g, ?st) |- _ =>
         replace g with (fst (nwState net h)) in *; [|rewrite H; auto];
-        replace st with (snd (nwState net h)) in *; [|rewrite H; auto] 
+        replace st with (snd (nwState net h)) in *; [|rewrite H; auto]
      end; eauto.
   Qed.
 
@@ -293,7 +290,7 @@ Section CroniesTerm.
     intros.
     repeat find_reverse_higher_order_rewrite. eauto.
   Qed.
-  
+
   Theorem cronies_term_invariant :
     forall net,
       refined_raft_intermediate_reachable net ->
@@ -312,5 +309,10 @@ Section CroniesTerm.
     - apply cronies_term_state_same_packet_subset.
     - apply cronies_term_reboot.
   Qed.
-    
-End CroniesTerm.
+
+  Instance cti : cronies_term_interface.
+  Proof.
+    split.
+    auto using cronies_term_invariant.
+  Qed.
+End CroniesTermProof.

@@ -1456,3 +1456,51 @@ Proof.
       auto using in_map.
     + auto.
 Qed.
+
+Lemma plus_gt_0 :
+  forall a b,
+    a + b > 0 ->
+    a > 0 \/ b > 0.
+Proof.
+  intros.
+  destruct (eq_nat_dec a 0); intuition.
+Qed.
+
+Lemma pigeon :
+  forall A (A_eq_dec : forall a a': A, {a = a'} + {a <> a'}) (l : list A) sub1 sub2,
+    (forall a, In a sub1 -> In a l) ->
+    (forall a, In a sub2 -> In a l) ->
+    NoDup l ->
+    NoDup sub1 ->
+    NoDup sub2 ->
+    length sub1 + length sub2 > length l ->
+    exists a, In a sub1 /\ In a sub2.
+Proof.
+  induction l.
+  intros.
+  + simpl in *. find_apply_lem_hyp plus_gt_0. intuition.
+    * destruct sub1; simpl in *; [omega|].
+      specialize (H a). intuition.
+    * destruct sub2; simpl in *; [omega|].
+      specialize (H0 a). intuition.
+  + intros. simpl in *.
+    destruct (in_dec A_eq_dec a sub1);
+      destruct (in_dec A_eq_dec a sub2); eauto;
+      specialize (IHl (remove A_eq_dec a sub1) (remove A_eq_dec a sub2));
+      cut (exists a0, In a0 (remove A_eq_dec a sub1) /\ In a0 (remove A_eq_dec a sub2));
+      try solve [intros; break_exists;
+                 intuition eauto using in_remove];
+      apply IHl; try solve [
+                       intros; find_copy_apply_lem_hyp in_remove;
+                       find_apply_hyp_hyp; intuition; subst; exfalso; eapply remove_In; eauto];
+      eauto using remove_NoDup; try solve_by_inversion;
+      repeat match goal with
+               | H : ~ In a ?sub |- _ =>
+                 assert (length (remove A_eq_dec a sub) = length sub)
+                   by eauto using remove_length_not_in; clear H
+               | H : In a ?sub |- _ =>
+                 assert (length (remove A_eq_dec a sub) >= length sub - 1)
+                   by eauto using remove_length_ge; clear H
+             end; omega.
+Qed.
+

@@ -13,41 +13,15 @@ Require Import Raft.
 Require Import VerdiTactics.
 Require Import CommonTheorems.
 
-Require Import TermSanity.
+Require Import TermSanityInterface.
+Require Import SortedInterface.
 
-Section Sorted.
+Section SortedProof.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
-  Definition logs_sorted_host net :=
-    forall h,
-      sorted (log (nwState net h)).
-
-  Definition logs_sorted_nw net :=
-    forall p t n prevT prevI entries c,
-      In p (nwPackets net) ->
-      (pBody p) = AppendEntries t n prevT prevI entries c ->
-      sorted entries.
-
-  Definition packets_gt_prevIndex net :=
-    forall p t n pli plt entries c e,
-      In p (nwPackets net) ->
-      (pBody p) = AppendEntries t n pli plt entries c ->
-      In e entries ->
-      eIndex e > pli.
-
-  Definition packets_ge_prevTerm net :=
-    forall p t n pli plt entries c e,
-      In p (nwPackets net) ->
-      (pBody p) = AppendEntries t n pli plt entries c ->
-      In e entries ->
-      eTerm e >= plt.
-
-                   
-  Definition logs_sorted net :=
-    logs_sorted_host net /\ logs_sorted_nw net /\
-    packets_gt_prevIndex net /\ packets_ge_prevTerm net.
+  Context {tsi : term_sanity_interface}.
 
   Theorem logs_sorted_init :
     raft_net_invariant_init logs_sorted.
@@ -259,7 +233,7 @@ Section Sorted.
     - subst. exfalso. match goal with H : _ |- _ => apply H end.
       repeat eexists; eauto.
   Qed.
-  
+
   Theorem handleTimeout_not_is_append_entries :
     forall h st st' ps p,
       handleTimeout h st = (st', ps) ->
@@ -383,7 +357,7 @@ Section Sorted.
         find_eapply_hyp_goal; [in_crush|eauto|eauto];
         simpl in *; eauto.
   Qed.
-  
+
   Theorem logs_sorted_append_entries :
     raft_net_invariant_append_entries logs_sorted.
   Proof.
@@ -546,7 +520,7 @@ Section Sorted.
       eapply sorted_index_term; eauto.
       omega.
   Qed.
-  
+
   Theorem logs_sorted_do_leader :
     raft_net_invariant_do_leader logs_sorted.
   Proof.
@@ -571,7 +545,7 @@ Section Sorted.
       intuition eauto.
   Qed.
 
-  
+
   Lemma doGenericServer_log :
     forall h st os st' ps,
       doGenericServer h st = (os, st', ps) ->
@@ -660,4 +634,10 @@ Section Sorted.
     - apply logs_sorted_reboot.
   Qed.
 
-End Sorted.
+  Instance si : sorted_interface.
+  Proof.
+    split.
+    eauto using handleAppendEntries_logs_sorted.
+    auto using logs_sorted_invariant.
+  Qed.
+End SortedProof.

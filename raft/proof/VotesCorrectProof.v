@@ -10,44 +10,19 @@ Require Import Util.
 Require Import Net.
 Require Import RaftState.
 Require Import Raft.
-Require Import RaftRefinement.
+Require Import RaftRefinementInterface.
 Require Import CommonTheorems.
 
 Require Import VerdiTactics.
 
+Require Import VotesCorrectInterface.
+
 Section VotesCorrect.
-  
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
-  Definition one_vote_per_term net :=
-    forall h t n n',
-      In (t, n) (votes (fst (nwState net h))) ->
-      In (t, n') (votes (fst (nwState net h))) ->
-      n = n'.
-
-  Definition votes_currentTerm_votedFor_correct net :=
-    forall h t n,
-      In (t, n) (votes (fst (nwState net h))) ->
-      currentTerm (snd (nwState net h)) = t ->
-      votedFor (snd (nwState net h)) = Some n.
-
-  Definition currentTerm_votedFor_votes_correct net :=
-    forall h t n,
-      (currentTerm (snd (nwState net h)) = t /\
-       votedFor (snd (nwState net h)) = Some n) ->
-      In (t, n) (votes (fst (nwState net h))).
-
-
-  Definition votes_le_currentTerm net :=
-    forall h t n,
-      In (t, n) (votes (fst (nwState net h))) ->
-      t <= currentTerm (snd (nwState net h)).
-
-  Definition votes_correct net :=
-    one_vote_per_term net /\ votes_currentTerm_votedFor_correct net /\
-    currentTerm_votedFor_votes_correct net /\ votes_le_currentTerm net.
+  Context {rri : raft_refinement_interface}.
 
   Ltac split_votes_correct :=
     intuition; [ unfold one_vote_per_term in *
@@ -67,7 +42,7 @@ Section VotesCorrect.
     unfold handleClientRequest in *;
     break_match; find_inversion; simpl in *; eauto.
   Qed.
-  
+
   Lemma votes_correct_timeout :
     refined_raft_net_invariant_timeout votes_correct.
   Proof.
@@ -78,7 +53,7 @@ Section VotesCorrect.
     - break_let.
       repeat break_match; eauto; simpl in *;
       intuition; repeat find_inversion; eauto; simpl in *;
-      try solve 
+      try solve
           [find_inversion;
             exfalso;
             unfold votes_le_currentTerm in *; find_apply_hyp_hyp;
@@ -149,7 +124,7 @@ Section VotesCorrect.
   Proof.
     intros. unfold advanceCurrentTerm in *. break_if; simpl in *; do_bool; omega.
   Qed.
-  
+
   Lemma handleRequestVote_currentTerm_monotonic :
     forall pDst t cid lli llt d d' m,
       handleRequestVote pDst d t cid lli llt = (d', m) ->
@@ -195,7 +170,7 @@ Section VotesCorrect.
       intros; repeat find_higher_order_rewrite;
       repeat break_match; subst; simpl in *;
       repeat find_rewrite;
-      intuition eauto; 
+      intuition eauto;
       unfold raft_data in *; repeat find_rewrite; repeat tuple_inversion;
       find_apply_lem_hyp handleRequestVote_currentTerm_votedFor; intuition;
       try solve [
@@ -227,7 +202,7 @@ Section VotesCorrect.
     unfold handleRequestVoteReply, advanceCurrentTerm in *; repeat break_match;
     subst; do_bool; intuition.
   Qed.
-  
+
   Lemma votes_correct_request_vote_reply :
     refined_raft_net_invariant_request_vote_reply votes_correct.
   Proof.
@@ -299,7 +274,7 @@ Section VotesCorrect.
     unfold votes_correct in *. split_votes_correct;
       intros; repeat find_reverse_higher_order_rewrite; eauto.
   Qed.
-  
+
   Lemma votes_correct_reboot :
     refined_raft_net_invariant_reboot votes_correct.
   Proof.
@@ -340,5 +315,11 @@ Section VotesCorrect.
     - apply votes_correct_do_generic_server.
     - apply votes_correct_state_same_packet_subset.
     - apply votes_correct_reboot.
+  Qed.
+
+  Instance vci : votes_correct_interface.
+  Proof.
+    split.
+    auto using votes_correct_invariant.
   Qed.
 End VotesCorrect.

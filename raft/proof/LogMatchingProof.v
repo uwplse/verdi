@@ -12,77 +12,24 @@ Require Import Raft.
 Require Import VerdiTactics.
 
 Require Import CommonTheorems.
-Require Import Sorted.
-Require Import UniqueIndices.
-Require Import LeaderSublog.
+Require Import SortedInterface.
+Require Import UniqueIndicesInterface.
+Require Import LeaderSublogInterface.
 
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
 
-Section LogMatching.
+Require Import LogMatchingInterface.
+
+Section LogMatchingProof.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
-  Definition log_matching_hosts (net : network) : Prop :=
-    (forall h h', entries_match (log (nwState net h)) (log (nwState net h'))) /\
-    (forall h i,
-       1 <= i <= maxIndex (log (nwState net h)) ->
-       exists e,
-         eIndex e = i /\
-         In e (log (nwState net h))) /\
-    (forall h e,
-       In e (log (nwState net h)) ->
-       eIndex e > 0).
-
-
-  Definition log_matching_nw (net : network) : Prop :=
-    forall p t leaderId prevLogIndex prevLogTerm entries leaderCommit,
-      In p (nwPackets net) ->
-      pBody p = AppendEntries t leaderId prevLogIndex prevLogTerm entries leaderCommit ->
-      (forall h e1 e2,
-         In e1 entries ->
-         In e2 (log (nwState net h)) ->
-         eIndex e1 = eIndex e2 ->
-         eTerm e1 = eTerm e2 ->
-         (forall e3,
-           eIndex e3 <= eIndex e1 ->
-           In e3 entries ->
-           In e3 (log (nwState net h))) /\
-         (prevLogIndex <> 0 ->
-          exists e4,
-            eIndex e4 = prevLogIndex /\
-            eTerm e4 = prevLogTerm /\
-            In e4 (log (nwState net h)))) /\
-      (forall i,
-         prevLogIndex < i <= maxIndex entries ->
-         exists e,
-           eIndex e = i /\
-           In e entries) /\
-      (forall e,
-         In e entries ->
-         prevLogIndex < eIndex e) /\
-      (forall p' t' leaderId' prevLogIndex' prevLogTerm' entries' leaderCommit',
-         In p' (nwPackets net) ->
-         pBody p' = AppendEntries t' leaderId' prevLogIndex' prevLogTerm' entries' leaderCommit' ->
-         (forall e1 e2,
-            In e1 entries ->
-            In e2 entries' ->
-            eIndex e1 = eIndex e2 ->
-            eTerm e1 = eTerm e2 ->
-            (forall e3,
-               prevLogIndex' < eIndex e3 <= eIndex e1 ->
-               In e3 entries ->
-               In e3 entries') /\
-            (forall e3,
-               In e3 entries ->
-               eIndex e3 = prevLogIndex' ->
-               eTerm e3 = prevLogTerm') /\
-            (prevLogIndex <> 0 -> prevLogIndex = prevLogIndex' -> prevLogTerm = prevLogTerm'))).
-
-  Definition log_matching (net : network) : Prop :=
-    log_matching_hosts net /\ log_matching_nw net.
+  Context {si : sorted_interface}.
+  Context {lsi : leader_sublog_interface}.
+  Context {uii : unique_indices_interface}.
 
   Theorem handleAppendEntries_entries_in :
     forall h s t n prevT prevI entries c d m e,
@@ -342,7 +289,7 @@ Section LogMatching.
             | H : logs_sorted_host _ |- _ => specialize (H leaderId)
           end. repeat concludes. omega.
         * { concludes. break_exists. intuition. eexists; intuition eauto.
-            - break_match. 
+            - break_match.
               + f_equal. eapply findAtIndex_uniq_equal; eauto. repeat find_rewrite; auto.
               + exfalso. eapply findAtIndex_None; eauto.
                 unfold logs_sorted in *. intuition.
@@ -455,7 +402,7 @@ Section LogMatching.
           match goal with
             | H : forall _, _ -> In _ ?es -> In _ ?es' |- eTerm ?e = eTerm ?e' =>
               assert (In e es') by (apply H; auto; omega)
-          end. 
+          end.
           match goal with
             | _ : eIndex ?x = eIndex ?y |- context [ ?y ] =>
               cut (x = y); [intros; subst; intuition|]
@@ -545,7 +492,7 @@ Section LogMatching.
     unfold doLeader in *.
     repeat break_match; find_inversion; auto.
   Qed.
-  
+
   Lemma do_leader_log_matching :
     raft_net_invariant_do_leader log_matching.
   Proof.
@@ -761,7 +708,7 @@ Ltac assert_do_leader :=
     intros. subst.
     unfold doGenericServer in *.
     break_let.
-    repeat find_inversion; 
+    repeat find_inversion;
       eapply log_matching_state_same_packet_subset; eauto; intros;
       use_applyEntries_spec; subst;
       simpl in *.
@@ -793,7 +740,7 @@ Ltac assert_do_leader :=
       leader_sublog_host_invariant net ->
       logs_sorted_host net ->
       type (nwState net h) = Leader ->
-      entries_match 
+      entries_match
         ((mkEntry h client id (S (maxIndex (log (nwState net h)))) (currentTerm (nwState net h)) c)
            :: (log (nwState net h)))
         (log (nwState net h')).
@@ -845,7 +792,7 @@ Ltac assert_do_leader :=
             H' : Net.pBody ?p = AppendEntries _ _ _ _ ?xs _ |- _ ] =>
         eapply H in H'; clear H; eauto; intuition
     end.
-  
+
 
   Ltac pbody_massage :=
     match goal with
@@ -1147,7 +1094,7 @@ Ltac assert_do_leader :=
         find_apply_lem_hyp removeAfterIndex_In_le; intuition.
         find_apply_hyp_hyp. omega.
       + find_apply_lem_hyp findAtIndex_elim.
-        intuition. subst. 
+        intuition. subst.
         use_log_matching_nw_host. intuition.
         break_exists. intuition.
         find_copy_apply_lem_hyp removeAfterIndex_In_le; intuition.
@@ -1218,7 +1165,7 @@ Ltac assert_do_leader :=
       | H : is_append_entries _ -> False |- _ =>
         exfalso; apply H; repeat eexists; eauto; repeat find_rewrite; simpl in *; eauto
     end.
-  
+
   Ltac ensure_pbody p :=
     try match goal with
           | _ : pBody p = AppendEntries _ _ _ _ _ _ |- _ =>
@@ -1226,7 +1173,7 @@ Ltac assert_do_leader :=
           | H : context [AppendEntries ?t ?lid ?pli ?plt ?e ?lc] |- _ =>
             assert (pBody p = AppendEntries t lid pli plt e lc) by eauto
         end.
-  
+
   Ltac use_nw p :=
     ensure_pbody p;
     match goal with
@@ -1283,7 +1230,7 @@ Ltac assert_do_leader :=
     end;
     repeat ensure_sorted.
 
-  
+
   Lemma handleAppendEntries_log_matching :
     raft_net_invariant_append_entries log_matching.
   Proof.
@@ -1425,7 +1372,7 @@ Ltac assert_do_leader :=
             + unfold log_matching_hosts in *. intuition eauto.
         }
       + (* nw *)
-        { 
+        {
         unfold log_matching_nw.
         intuition; prep_packets.
         - break_if; subst.
@@ -1461,7 +1408,7 @@ Ltac assert_do_leader :=
                           end
                       end
                   end.
-                  
+
                   repeat do_elim.
 
                   match goal with
@@ -1647,4 +1594,10 @@ Ltac assert_do_leader :=
       intros. find_higher_order_rewrite. auto.
     - exact log_matching_reboot.
   Qed.
-End LogMatching.
+
+  Instance lmi : log_matching_interface.
+  Proof.
+    split.
+    auto using log_matching_invariant.
+  Qed.
+End LogMatchingProof.

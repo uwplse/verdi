@@ -14,15 +14,20 @@ Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 Require Import Raft.
 Require Import CommonTheorems.
 Require Import StateMachineSafety.
-Require Import Sorted.
-Require Import UniqueIndices.
-Require Import LogMatching.
+Require Import SortedInterface.
+Require Import UniqueIndicesInterface.
+Require Import LogMatchingInterface.
 
-Section AppliedEntriesMonotonic.
+Require Import AppliedEntriesMonotonicInterface.
+
+Section AppliedEntriesMonotonicProof.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
+  Context {si : sorted_interface}.
+  Context {lmi : log_matching_interface}.
+  Context {uii : unique_indices_interface}.
 
   Theorem handleAppendEntries_log :
     forall h st t n pli plt es ci st' ps,
@@ -81,7 +86,6 @@ Section AppliedEntriesMonotonic.
     copy_eapply H H'
   end.
 
-  
   Lemma handleMessage_applied_entries :
     forall net h h' m st' ms,
       raft_intermediate_reachable net ->
@@ -106,7 +110,7 @@ Section AppliedEntriesMonotonic.
         find_copy_apply_lem_hyp logs_sorted_invariant.
         unfold logs_sorted in *. intuition.
         apply removeAfterIndex_same_sufficient; eauto.
-        * intros. 
+        * intros.
           eapply_prop_hyp state_machine_safety_nw In;
             unfold commit_recorded in *;
             simpl in *; repeat (forwards; eauto; concludes).
@@ -139,7 +143,7 @@ Section AppliedEntriesMonotonic.
         find_copy_apply_lem_hyp logs_sorted_invariant.
         unfold logs_sorted in *. intuition.
         apply removeAfterIndex_same_sufficient; eauto.
-        * intros. 
+        * intros.
           copy_eapply_prop_hyp state_machine_safety_nw In;
             unfold commit_recorded in *;
             simpl in *; repeat (forwards; [intuition eauto; omega|]; concludes).
@@ -195,7 +199,31 @@ Section AppliedEntriesMonotonic.
     break_match; find_inversion; subst; auto.
   Qed.
 
-  
+
+  Theorem handleTimeout_log :
+    forall h st out st' ps,
+      handleTimeout h st = (out, st', ps) ->
+      log st' = log st.
+  Proof.
+    intros. unfold handleTimeout, tryToBecomeLeader in *.
+    break_match; find_inversion; subst; auto.
+  Qed.
+
+  Theorem handleClientRequest_log :
+    forall h st client id c out st' ps,
+      handleClientRequest h st client id c = (out, st', ps) ->
+      ps = [] /\
+      (log st' = log st \/
+       exists e,
+         log st' = e :: log st /\
+         eIndex e = S (maxIndex (log st)) /\
+         eTerm e = currentTerm st).
+  Proof.
+    intros. unfold handleClientRequest in *.
+    break_match; find_inversion; subst; intuition.
+    simpl in *. eauto.
+  Qed.
+
   Lemma handleInput_applied_entries :
     forall net h inp os st' ms,
       raft_intermediate_reachable net ->
@@ -278,11 +306,11 @@ Section AppliedEntriesMonotonic.
         match goal with
           | _ : eIndex ?e = eIndex ?e' |- _ =>
             cut (e = e'); [intros; subst; auto|]
-        end. 
+        end.
         eapply_prop state_machine_safety_host; unfold commit_recorded; intuition eauto;
         simpl in *; intuition.
   Qed.
-  
+
   Lemma doGenericServer_applied_entries :
     forall ps h sigma os st' ms,
       raft_intermediate_reachable (mkNetwork ps sigma) ->
@@ -380,7 +408,7 @@ Section AppliedEntriesMonotonic.
       apply applied_entries_log_lastApplied_same;
         intros; unfold reboot in *; break_if; simpl; auto.
   Qed.
-  
+
   Theorem applied_entries_monotonic :
     forall e failed net failed' net' os,
       raft_intermediate_reachable net ->
@@ -391,5 +419,11 @@ Section AppliedEntriesMonotonic.
     intros. find_eapply_lem_hyp applied_entries_monotonic'; eauto.
     break_exists. find_rewrite. in_crush.
   Qed.
-  
-End AppliedEntriesMonotonic.
+
+  Instance aemi : applied_entries_monotonic_interface.
+  Proof.
+    split.
+    exact applied_entries_monotonic.
+  Qed.
+
+End AppliedEntriesMonotonicProof.

@@ -12,27 +12,12 @@ Require Import Raft.
 Require Import VerdiTactics.
 Require Import CommonTheorems.
 
-Section TermSanity.
+Require Import TermSanityInterface.
+
+Section TermSanityProof.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
-
-  
-  Definition no_entries_past_current_term_host net :=
-    forall (h : name) e,
-      In e (log (nwState net h)) ->
-      eTerm e <= currentTerm (nwState net h).
-
-  Definition no_entries_past_current_term_nw net :=
-    forall e p t leaderId prevLogIndex prevLogTerm entries leaderCommit,
-      In p (nwPackets net) ->
-      pBody p = AppendEntries t leaderId prevLogIndex prevLogTerm entries leaderCommit ->
-      In e entries ->
-      eTerm e <= t.
-
-  Definition no_entries_past_current_term net :=
-    no_entries_past_current_term_host net /\
-    no_entries_past_current_term_nw net.
 
 
   Theorem no_entries_past_current_term_nw_packets_unchanged :
@@ -85,7 +70,7 @@ Section TermSanity.
     - subst. exfalso. match goal with H : _ |- _ => apply H end.
       repeat eexists; eauto.
   Qed.
-  
+
   Theorem no_entries_past_current_term_init :
     raft_net_invariant_init (no_entries_past_current_term).
   Proof.
@@ -105,7 +90,7 @@ Section TermSanity.
     intros. unfold doLeader in *.
     repeat break_match; find_inversion; subst; auto.
   Qed.
-    
+
   Theorem no_entries_past_current_term_do_leader :
     raft_net_invariant_do_leader (no_entries_past_current_term).
   Proof.
@@ -159,7 +144,7 @@ Section TermSanity.
     intros. unfold handleClientRequest in *.
     break_match; find_inversion; subst; intuition.
   Qed.
-  
+
   Lemma no_entries_past_current_term_client_request :
     raft_net_invariant_client_request (no_entries_past_current_term).
   Proof.
@@ -187,7 +172,7 @@ Section TermSanity.
     repeat break_match; find_inversion; subst; intuition;
     do_in_map; subst; simpl in *; congruence.
   Qed.
-  
+
   Lemma no_entries_past_current_term_timeout :
     raft_net_invariant_timeout no_entries_past_current_term.
   Proof.
@@ -217,7 +202,7 @@ Section TermSanity.
     repeat break_match; try find_inversion; subst; simpl in *; intuition;
     do_bool; intuition; try solve [break_exists; congruence];
     in_crush; eauto using removeAfterIndex_in.
-  Qed.    
+  Qed.
 
   Lemma no_entries_past_current_term_append_entries :
     raft_net_invariant_append_entries no_entries_past_current_term.
@@ -334,7 +319,7 @@ Section TermSanity.
       end.
       eapply_prop no_entries_past_current_term_nw; eauto.
   Qed.
-  
+
   Lemma handleAppendEntriesReply_spec :
     forall h st h' t es r st' ms,
       handleAppendEntriesReply h st h' t es r = (st', ms) ->
@@ -370,7 +355,7 @@ Section TermSanity.
     do_bool; intuition; try solve [break_exists; congruence];
     in_crush; eauto using removeAfterIndex_in.
   Qed.
-  
+
   Lemma no_entries_past_current_term_request_vote :
     raft_net_invariant_request_vote no_entries_past_current_term.
   Proof.
@@ -398,7 +383,7 @@ Section TermSanity.
     intros. find_apply_lem_hyp handleRequestVoteReply_spec.
     intuition eauto using no_entries_past_current_term_unaffected_0.
   Qed.
-  
+
   Lemma no_entries_past_current_term_state_same_packet_subset :
     raft_net_invariant_state_same_packet_subset no_entries_past_current_term.
   Proof.
@@ -413,7 +398,7 @@ Section TermSanity.
   Lemma no_entries_past_current_term_reboot :
     raft_net_invariant_reboot no_entries_past_current_term.
   Proof.
-    unfold raft_net_invariant_reboot, 
+    unfold raft_net_invariant_reboot,
     no_entries_past_current_term, no_entries_past_current_term_host,
     no_entries_past_current_term_nw, reboot.
     intuition.
@@ -441,4 +426,10 @@ Section TermSanity.
     - apply no_entries_past_current_term_state_same_packet_subset.
     - apply no_entries_past_current_term_reboot.
   Qed.
-End TermSanity.
+
+  Instance tsi : term_sanity_interface.
+  Proof.
+    split.
+    auto using no_entries_past_current_term_invariant.
+  Qed.
+End TermSanityProof.
