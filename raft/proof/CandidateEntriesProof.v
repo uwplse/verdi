@@ -6,27 +6,29 @@ Require Import VerdiTactics.
 Require Import Util.
 Require Import Net.
 Require Import Raft.
-Require Import RaftRefinement.
+Require Import RaftRefinementInterface.
 
 Require Import CommonTheorems.
-Require Import CroniesCorrect.
-Require Import VotesCorrect.
-Require Import TermSanity.
-Require Import CroniesTerm.
+Require Import CroniesCorrectInterface.
+Require Import VotesCorrectInterface.
+Require Import TermSanityInterface.
+Require Import CroniesTermInterface.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
-Section CandidateEntries.
+Require Import CandidateEntriesInterface.
+
+Section CandidateEntriesProof.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
-  Definition candidateEntries e (sigma : name -> _) :=
-    exists h,
-      wonElection (dedup name_eq_dec (cronies (fst (sigma h)) (eTerm e))) = true /\
-      (currentTerm (snd (sigma h)) = eTerm e ->
-       type (snd (sigma h)) <> Candidate).
+  Context {rri : raft_refinement_interface}.
+  Context {cti : cronies_term_interface}.
+  Context {tsi : term_sanity_interface}.
+  Context {vci : votes_correct_interface}.
+  Context {cci : cronies_correct_interface}.
 
   Lemma candidateEntries_ext :
     forall e sigma sigma',
@@ -35,26 +37,11 @@ Section CandidateEntries.
       candidateEntries e sigma'.
   Proof.
     unfold candidateEntries.
-    firstorder.
-    exists x; intuition;
+    intuition.
+    break_exists_exists.
+    intuition;
     repeat find_higher_order_rewrite; auto.
   Qed.
-
-  Definition candidateEntries_host_invariant sigma :=
-    (forall h e, In e (log (snd (sigma h))) ->
-                 candidateEntries e sigma).
-
-  Definition candidateEntries_nw_invariant net :=
-    forall p t leaderId prevLogIndex prevLogTerm entries leaderCommit,
-      In p (nwPackets net) ->
-      pBody p = AppendEntries t leaderId prevLogIndex prevLogTerm
-                              entries leaderCommit ->
-      forall e,
-        In e entries ->
-        candidateEntries e (nwState net).
-
-  Definition CandidateEntries net : Prop :=
-    candidateEntries_host_invariant (nwState net) /\ candidateEntries_nw_invariant net.
 
   Lemma handleClientRequest_spec :
     forall h d client id c out d' l,
@@ -85,7 +72,8 @@ Section CandidateEntries.
       candidateEntries e st'.
   Proof.
     unfold candidateEntries.
-    firstorder. eexists.
+    intuition. break_exists. break_and.
+    eexists.
     repeat find_higher_order_rewrite.
     eauto.
   Qed.
@@ -308,7 +296,7 @@ Section CandidateEntries.
     repeat break_match; try find_inversion; subst; simpl in *; intuition;
     do_bool; intuition; try solve [break_exists; congruence];
     in_crush; eauto using removeAfterIndex_in.
-  Qed.    
+  Qed.
 
 
   Lemma handleAppendEntries_term_same_or_type_follower :
@@ -435,7 +423,7 @@ Section CandidateEntries.
               _ : pBody ?p = _ |- _] =>
         assert (In p (nwPackets net)) by (repeat find_rewrite; intuition)
     end.
-  
+
   Lemma candidate_entries_append_entries_reply :
     refined_raft_net_invariant_append_entries_reply CandidateEntries.
   Proof.
@@ -609,7 +597,7 @@ Section CandidateEntries.
       candidateEntries e (update (nwState net) h
                                (update_elections_data_requestVoteReply h h' t r (nwState net h),
                                 st')).
-  Proof. 
+  Proof.
   unfold candidateEntries.
     intros. break_exists. break_and.
     exists x.
@@ -659,7 +647,7 @@ Section CandidateEntries.
       end. find_apply_lem_hyp handleRequestVoteReply_spec. intuition.
       repeat find_rewrite. intuition.
   Qed.
-  
+
   Lemma candidate_entries_request_vote_reply :
     refined_raft_net_invariant_request_vote_reply CandidateEntries.
     red. unfold CandidateEntries. intros. intuition.
@@ -687,6 +675,17 @@ Section CandidateEntries.
       eapply handleRequestVoteReply_preserves_candidate_entries; eauto.
   Qed.
 
+  Lemma doLeader_st :
+    forall st h os st' ms,
+      doLeader st h = (os, st', ms) ->
+      votesReceived st' = votesReceived st /\
+      currentTerm st' = currentTerm st /\
+      type st' = type st.
+  Proof.
+    intros.
+    unfold doLeader, advanceCommitIndex in *.
+    repeat break_match; find_inversion; intuition.
+  Qed.
 
   Lemma doLeader_preserves_candidateEntries :
     forall net gd d h os d' ms e,
@@ -769,6 +768,17 @@ Section CandidateEntries.
     auto.
   Qed.
 
+  Lemma doGenericServer_spec :
+    forall h d os d' ms,
+      doGenericServer h d = (os, d', ms) ->
+      (log d' = log d /\ currentTerm d' = currentTerm d /\
+       (forall m, In m ms -> ~ is_append_entries (snd m))).
+  Proof.
+    intros. unfold doGenericServer in *.
+    repeat break_match; find_inversion; subst; intuition;
+    use_applyEntries_spec; subst; simpl in *; auto.
+  Qed.
+
   Lemma doGenericServer_preserves_candidateEntries :
     forall net gd d h os d' ms e,
       nwState net h = (gd, d) ->
@@ -782,7 +792,7 @@ Section CandidateEntries.
     repeat (rewrite update_fun_comm; simpl in * );
     update_destruct; subst; rewrite_update; auto;
     repeat find_rewrite; simpl; auto.
-    - find_copy_apply_lem_hyp TermSanity.doGenericServer_spec. break_and. auto.
+    - find_copy_apply_lem_hyp doGenericServer_spec. break_and. auto.
     - eauto using doGenericServer_same_type.
   Qed.
 
@@ -798,7 +808,7 @@ Section CandidateEntries.
       repeat find_higher_order_rewrite.
       my_update_destruct; subst; rewrite_update.
       + simpl in *.
-        find_copy_apply_lem_hyp TermSanity.doGenericServer_spec. break_and.
+        find_copy_apply_lem_hyp doGenericServer_spec. break_and.
         find_rewrite.
         repeat match goal with
         | [ H : nwState ?net ?h = (_, ?d), H' : context [ log ?d ] |- _ ] =>
@@ -813,7 +823,7 @@ Section CandidateEntries.
       intuition.
       + eauto using doGenericServer_preserves_candidateEntries.
       + do_in_map.
-        find_copy_apply_lem_hyp TermSanity.doGenericServer_spec. break_and.
+        find_copy_apply_lem_hyp doGenericServer_spec. break_and.
         subst. simpl in *.
         find_apply_hyp_hyp.
         exfalso.
@@ -922,4 +932,10 @@ Section CandidateEntries.
     - apply candidate_entries_state_same_packet_subset.
     - apply candidate_entries_reboot.
   Qed.
-End CandidateEntries.
+
+  Instance cei : candidate_entries_interface.
+  Proof.
+    split.
+    auto using candidate_entries_invariant.
+  Qed.
+End CandidateEntriesProof.
