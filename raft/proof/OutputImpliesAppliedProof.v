@@ -11,23 +11,28 @@ Require Import TraceRelations.
 
 Require Import Raft.
 Require Import CommonTheorems.
-Require Import LogMatching.
+Require Import LogMatchingInterface.
 Require Import StateMachineSafety.
-Require Import AppliedEntriesMonotonic.
+Require Import AppliedEntriesMonotonicInterface.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+
+Require Import SortedInterface.
+
+Require Import OutputImpliesAppliedInterface.
 
 Section OutputImpliesApplied.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
-  Variables client id : nat.
+  Context {lmi : log_matching_interface}.
+  Context {si : sorted_interface}.
+  Context {aemi : applied_entries_monotonic_interface}.
 
-  Definition in_output_list (os : list raft_output) :=
-    exists o,
-      In (ClientResponse client id o) os.
+  Section inner.
+  Variables client id : nat.
 
   Definition is_client_response (out : raft_output) : bool :=
     match out with
@@ -36,7 +41,7 @@ Section OutputImpliesApplied.
     end.
 
   Definition in_output_list_dec (os : list raft_output) :
-    {in_output_list os} + {~ in_output_list os}.
+    {in_output_list client id os} + {~ in_output_list client id os}.
   Proof.
     unfold in_output_list.
     destruct (find is_client_response os) eqn:?.
@@ -48,14 +53,9 @@ Section OutputImpliesApplied.
       find_apply_lem_hyp Bool.andb_false_elim. intuition; do_bool; congruence.
   Qed.
 
-  Definition in_output (tr : list (name * (raft_input + list raft_output))) : Prop :=
-    exists os h,
-      In (h, inr os) tr /\
-      in_output_list os.
-
   Theorem in_output_dec :
     forall tr : list (name * (raft_input + list raft_output)),
-      {in_output tr} + {~ in_output tr}.
+      {in_output client id tr} + {~ in_output client id tr}.
   Proof.
     unfold in_output.
     intros.
@@ -85,9 +85,9 @@ Section OutputImpliesApplied.
 
   Lemma in_output_changed :
     forall tr o,
-      ~in_output tr ->
-      in_output (tr ++ o) ->
-      in_output o.
+      ~in_output client id tr ->
+      in_output client id (tr ++ o) ->
+      in_output client id o.
   Proof.
     intros. unfold in_output in *.
     break_exists_exists.
@@ -97,8 +97,8 @@ Section OutputImpliesApplied.
 
   Lemma in_output_list_split :
     forall l l',
-      in_output_list (l ++ l') ->
-      in_output_list l \/ in_output_list l'.
+      in_output_list client id (l ++ l') ->
+      in_output_list client id l \/ in_output_list client id l'.
   Proof.
     intros.
     unfold in_output_list in *.
@@ -106,7 +106,7 @@ Section OutputImpliesApplied.
   Qed.
 
   Lemma in_output_list_empty :
-    ~ in_output_list [].
+    ~ in_output_list client id [].
   Proof.
     intuition.
     unfold in_output_list in *.
@@ -116,7 +116,7 @@ Section OutputImpliesApplied.
   Lemma doLeader_in_output_list :
     forall st h out st' m,
       doLeader st h = (out, st', m) ->
-      ~ in_output_list out.
+      ~ in_output_list client id out.
   Proof.
     intros. unfold doLeader, advanceCommitIndex in *.
     repeat break_match; find_inversion; intuition eauto using in_output_list_empty.
@@ -125,24 +125,18 @@ Section OutputImpliesApplied.
   Lemma handleInput_in_output_list :
     forall st h i out st' m,
       handleInput h i st = (out, st', m) ->
-      ~ in_output_list out.
+      ~ in_output_list client id out.
   Proof.
     intros. unfold handleInput, handleTimeout, handleClientRequest, tryToBecomeLeader in *.
     repeat break_match; find_inversion; intuition eauto using in_output_list_empty;
     unfold in_output_list in *; break_exists; simpl in *; intuition; congruence.
   Qed.
-  
-  Definition in_applied_entries (net : network) : Prop :=
-    exists e,
-      eClient e = client /\
-      eId e = id /\
-      In e (applied_entries (nwState net)).
 
   Ltac update_destruct :=
     match goal with
       | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
     end.
-  
+
   Lemma applyEntries_In :
     forall l h st os st' o,
       applyEntries h st l = (os, st') ->
@@ -166,7 +160,7 @@ Section OutputImpliesApplied.
     forall net h os st' ms,
       raft_intermediate_reachable net ->
       doGenericServer h (nwState net h) = (os, st', ms) ->
-      in_output_list os ->
+      in_output_list client id os ->
       exists e : entry,
         eClient e = client /\
         eId e = id /\ In e (applied_entries (update (nwState net) h st')).
@@ -220,18 +214,18 @@ Section OutputImpliesApplied.
       intuition.
       eauto using removeAfterIndex_le_In.
   Qed.
-  
+
   Lemma output_implies_in_applied_entries :
     forall failed net failed' net' o,
       raft_intermediate_reachable net ->
-      step_f (failed, net) (failed', net') o ->
-      in_output o ->
-      in_applied_entries net'.
+      @step_f _ _ failure_params (failed, net) (failed', net') o ->
+      in_output client id o ->
+      in_applied_entries client id net'.
   Proof.
     intros.
     invcs H0; simpl in *;
     try match goal with
-          | _ : in_output [] |- _ =>
+          | _ : in_output _ _ [] |- _ =>
             unfold in_output in *; break_exists; simpl in *; intuition
         end.
     - unfold in_output in *.
@@ -292,9 +286,9 @@ Section OutputImpliesApplied.
   Instance TR : TraceRelation step_f :=
     {
       init := step_f_init;
-      T := in_output ;
-      T_dec := in_output_dec;
-      R := fun s => in_applied_entries (snd s)
+      T := in_output client id ;
+      T_dec := in_output_dec ;
+      R := fun s => in_applied_entries client id (snd s)
     }.
   Proof.
   - intros.
@@ -315,10 +309,19 @@ Section OutputImpliesApplied.
   Theorem output_implies_applied :
     forall failed net tr,
       step_f_star step_f_init (failed, net) tr ->
-      in_output tr ->
-      in_applied_entries net.
+      in_output client id tr ->
+      in_applied_entries client id net.
   Proof.
     intros. pose proof (trace_relations_work (failed, net) tr).
     concludes. intuition.
+  Qed.
+
+  End inner.
+
+  Instance oiai : output_implies_applied_interface.
+  Proof.
+    split.
+    intros.
+    eapply output_implies_applied; eauto.
   Qed.
 End OutputImpliesApplied.
