@@ -834,6 +834,18 @@ Section Linearizability.
       + intuition.
   Qed.
 
+  Lemma get_op_output_keys_sound :
+    forall k l,
+      In k (get_op_output_keys l) ->
+      In (O k) l.
+  Proof.
+    induction l; intros.
+    - auto.
+    - simpl in *. rewrite get_op_output_keys_defn in *. break_match; simpl in *.
+      + subst. auto.
+      + intuition congruence.
+  Qed.
+
   Lemma get_op_input_keys_on_Os_nil :
     forall l,
       (forall o, In o l -> exists k, o = O k) ->
@@ -852,6 +864,19 @@ Section Linearizability.
   Proof.
     intros.
     unfold get_op_input_keys.
+    apply filterMap_NoDup_inj; auto.
+    intros.
+    repeat break_match; try discriminate.
+    subst. congruence.
+  Qed.
+
+  Lemma get_op_output_keys_preserves_NoDup :
+    forall l,
+      NoDup l ->
+      NoDup (get_op_output_keys l).
+  Proof.
+    intros.
+    unfold get_op_output_keys.
     apply filterMap_NoDup_inj; auto.
     intros.
     repeat break_match; try discriminate.

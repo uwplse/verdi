@@ -427,6 +427,31 @@ find_apply_hyp_hyp. break_exists. eauto 10.
           subst. find_inversion. eauto.
   Qed.
 
+  Lemma NoDup_output_import :
+    forall tr,
+      NoDup (get_op_output_keys key (import tr)).
+  Proof.
+    induction tr; intros.
+    - constructor.
+    - simpl. repeat break_match; subst.
+      + auto.
+      + rewrite get_op_output_keys_defn.
+        eapply subseq_NoDup; eauto.
+        apply subseq_get_op_output_keys.
+        apply subseq_remove.
+      + rewrite get_op_output_keys_app.
+        apply NoDup_disjoint_append.
+        * apply get_op_output_keys_preserves_NoDup.
+          apply NoDup_dedup.
+        * eapply subseq_NoDup; eauto.
+          eapply subseq_get_op_output_keys.
+          apply subseq_remove_all.
+          apply subseq_refl.
+        * intros. intro.
+          repeat find_apply_lem_hyp get_op_output_keys_sound.
+          eapply in_remove_all_not_in; eauto.
+  Qed.
+
   Theorem raft_linearizable :
     forall failed net tr,
       input_correct tr ->
@@ -477,7 +502,7 @@ find_apply_hyp_hyp. break_exists. eauto 10.
       + (* NoDup IR input *)
         admit.
       + (* NoDup op output *)
-        admit.
+        apply NoDup_output_import.
       + (* NoDup IR output *)
         admit.
     - admit.
