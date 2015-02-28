@@ -397,6 +397,34 @@ find_apply_hyp_hyp. break_exists. eauto 10.
     repeat rewrite get_IR_output_keys_defn; auto using f_equal.
   Qed.
 
+
+  Lemma NoDup_input_import :
+    forall tr,
+      NoDup (get_op_input_keys key (import tr)).
+  Proof.
+    induction tr; intros.
+    - constructor.
+    - simpl. repeat break_match; subst.
+      + auto.
+      + rewrite get_op_input_keys_defn. constructor; auto.
+        * intro. find_apply_lem_hyp get_op_input_keys_sound.
+          eapply remove_In; eauto.
+        * eapply subseq_NoDup; eauto.
+          eapply subseq_get_op_input_keys.
+          auto using subseq_remove.
+      + rewrite get_op_input_keys_app.
+        apply NoDup_disjoint_append.
+        * apply get_op_input_keys_preserves_NoDup.
+          apply NoDup_dedup.
+        * eapply subseq_NoDup; eauto.
+          eapply subseq_get_op_input_keys.
+          apply subseq_remove_all.
+          apply subseq_refl.
+        * intros. intro.
+          repeat find_apply_lem_hyp get_op_input_keys_sound.
+          eapply in_remove_all_not_in; eauto.
+  Qed.
+
   Theorem raft_linearizable :
     forall failed net tr,
       input_correct tr ->
@@ -443,8 +471,9 @@ find_apply_hyp_hyp. break_exists. eauto 10.
         find_apply_lem_hyp import_get_output.
         break_exists. congruence.
       + (* NoDup op input *)
+        apply NoDup_input_import.
+      + (* NoDup IR input *)
         admit.
-      + (* NoDup IR input *) admit.
       + (* NoDup op output *)
         admit.
       + (* NoDup IR output *)

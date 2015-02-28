@@ -378,6 +378,17 @@ Proof.
       * eauto.
 Qed.
 
+Lemma subseq_remove :
+  forall A A_eq_dec (x : A) xs,
+    subseq (remove A_eq_dec x xs) xs.
+Proof.
+  induction xs; intros; simpl.
+  - auto.
+  - repeat break_match; auto.
+    + intuition congruence.
+    + find_inversion. auto.
+Qed.
+
 Theorem NoDup_Permutation_NoDup :
   forall A (l l' : list A),
     NoDup l ->
@@ -1536,5 +1547,49 @@ Section remove_all.
       + apply remove_preserve; intuition.
   Qed.
 End remove_all.
-
 Arguments in_remove_all_was_in : clear implicits.
+
+Lemma filterMap_NoDup_inj :
+  forall A B (f : A -> option B) l,
+    (forall x1 x2 y,
+       f x1 = Some y ->
+       f x2 = Some y ->
+       x1 = x2) ->
+    NoDup l ->
+    NoDup (filterMap f l).
+Proof.
+  induction l; intros.
+  - constructor.
+  - simpl. invc H0.
+    break_match; auto.
+    constructor; auto.
+    intro.
+    find_apply_lem_hyp In_filterMap. break_exists. break_and.
+    assert (a = x) by eauto.
+    subst. contradiction.
+Qed.
+
+Lemma subseq_remove_all :
+  forall A A_eq_dec (ds l l' : list A),
+    subseq l l' ->
+    subseq (remove_all A_eq_dec ds l) l'.
+Proof.
+  induction ds; intros.
+  - simpl. auto.
+  - simpl. apply IHds.
+    eapply subseq_trans.
+    apply subseq_remove.
+    auto.
+Qed.
+
+Lemma in_remove_all_not_in :
+  forall A A_eq_dec ds l x,
+    In x (remove_all (A:=A) A_eq_dec ds l) ->
+    In x ds ->
+    False.
+Proof.
+  induction ds; intros; simpl in *; intuition.
+  - subst. find_apply_lem_hyp in_remove_all_was_in.
+    eapply remove_In; eauto.
+  - eauto.
+Qed.
