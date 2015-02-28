@@ -413,16 +413,18 @@ find_apply_hyp_hyp. break_exists. eauto 10.
           eapply subseq_get_op_input_keys.
           auto using subseq_remove.
       + rewrite get_op_input_keys_app.
-        apply NoDup_disjoint_append.
-        * apply get_op_input_keys_preserves_NoDup.
-          apply NoDup_dedup.
-        * eapply subseq_NoDup; eauto.
+        rewrite get_op_input_keys_on_Os_nil.
+        * simpl.
+          eapply subseq_NoDup; eauto.
           eapply subseq_get_op_input_keys.
           apply subseq_remove_all.
           apply subseq_refl.
-        * intros. intro.
-          repeat find_apply_lem_hyp get_op_input_keys_sound.
-          eapply in_remove_all_not_in; eauto.
+        * intros.
+          find_apply_lem_hyp in_dedup_was_in.
+          find_apply_lem_hyp In_filterMap.
+          break_exists.  break_and.
+          break_match; try discriminate.
+          subst. find_inversion. eauto.
   Qed.
 
   Theorem raft_linearizable :

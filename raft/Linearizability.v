@@ -834,6 +834,17 @@ Section Linearizability.
       + intuition.
   Qed.
 
+  Lemma get_op_input_keys_on_Os_nil :
+    forall l,
+      (forall o, In o l -> exists k, o = O k) ->
+      get_op_input_keys l = [].
+  Proof.
+    induction l; intros; simpl in *; intuition.
+    rewrite get_op_input_keys_defn.
+    pose proof H a. concludes. break_exists. subst.
+    auto.
+  Qed.
+
   Lemma get_op_input_keys_preserves_NoDup :
     forall l,
       NoDup l ->
