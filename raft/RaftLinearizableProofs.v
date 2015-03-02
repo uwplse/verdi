@@ -19,6 +19,7 @@ Require Import OutputImpliesAppliedInterface.
 Require Import UniqueIndicesInterface.
 Require Import AppliedImpliesInputInterface.
 Require Import CausalOrderPreservedInterface.
+Require Import InputBeforeOutputInterface.
 
 Section RaftLinearizableProofs.
   Context {orig_base_params : BaseParams}.
@@ -28,6 +29,7 @@ Section RaftLinearizableProofs.
   Context {oiai : output_implies_applied_interface}.
   Context {aiii : applied_implies_input_interface}.
   Context {copi : causal_order_preserved_interface}.
+  Context {iboi : input_before_output_interface}.
 
   Definition key : Type := nat * nat.
 
@@ -709,14 +711,53 @@ find_apply_hyp_hyp. break_exists. eauto 10.
         right. intuition. congruence.
   Qed.
 
+  Lemma input_before_output_import :
+    forall tr k,
+      before_func (is_input_with_key (fst k) (snd k))
+                  (is_output_with_key (fst k) (snd k)) tr ->
+      before (I k) (O k) (import tr).
+  Proof.
+    intros; induction tr; simpl in *; intuition.
+    - repeat break_match; subst; simpl in *; intuition; try congruence.
+      repeat (do_bool; intuition).
+      destruct k; subst; simpl in *; intuition.
+    - repeat break_match; subst; simpl in *; intuition; try congruence.
+      + destruct k.
+        match goal with
+          | |- context [ I (?x, ?y) = I (?x', ?y') ] =>
+            destruct (op_eq_dec (I (x, y)) (I (x', y')))
+        end; subst; intuition.
+        right.
+        intuition; try congruence.
+        apply before_remove_if; intuition.
+      + break_if; try congruence. 
+        apply before_app_if; [apply before_remove_all_if|]; auto.
+        * intuition. find_apply_lem_hyp in_dedup_was_in.
+          find_apply_lem_hyp In_filterMap. break_exists.
+          break_match; intuition; congruence.
+        * intuition.
+          match goal with
+            | H : _ -> False |- False => apply H
+          end.
+          find_apply_lem_hyp in_dedup_was_in.
+          find_apply_lem_hyp In_filterMap.
+          break_exists. intuition. break_match; try congruence.
+          find_inversion.
+          unfold key_in_output_list. simpl.
+          eexists; eauto.
+  Qed.
+        
   Lemma I_before_O :
     forall failed net tr k,
       step_f_star step_f_init (failed, net) tr ->
       In (O k) (import tr) ->
       before (I k) (O k) (import tr).
   Proof.
-    
-  Admitted.
+    intros.
+    find_apply_lem_hyp in_import_in_trace_O.
+    find_eapply_lem_hyp output_implies_input_before_output; eauto.
+    eauto using input_before_output_import.
+  Qed.
 
   Lemma get_IR_input_keys_log_to_IR :
     forall l env_o,
