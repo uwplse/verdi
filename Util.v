@@ -1641,6 +1641,17 @@ Proof.
   break_if; subst; simpl in *; intuition eauto.
 Qed.
 
+
+Lemma before_remove_if :
+  forall A (x : A) y l x' dec,
+    before x y l ->
+    x <> x' ->
+    before x y (remove dec x' l).
+Proof.
+  induction l; intros; simpl in *; intuition;
+  break_if; subst; simpl in *; intuition eauto.
+Qed.
+
 Lemma remove_all_nil :
   forall A dec ys,
     remove_all (A := A) dec ys [] = [].
@@ -1674,11 +1685,31 @@ Proof.
     + repeat find_rewrite. simpl in *. intuition eauto.
 Qed.
 
+Lemma before_remove_all_if :
+  forall A x y l xs dec,
+    before x y l ->
+    ~ In x xs ->
+    before (A := A) x y (remove_all dec xs l).
+Proof.
+  induction l; intros; simpl in *; intuition;
+  pose proof remove_all_cons dec xs a l; subst; intuition;
+  repeat find_rewrite; simpl in *; intuition.
+Qed.
+
 Lemma before_app :
   forall A x y l' l,
     before (A := A) x y (l' ++ l) ->
     ~ In x l' ->
     before (A := A) x y l.
+Proof.
+  induction l'; intros; simpl in *; intuition.
+Qed.
+
+Lemma before_app_if :
+  forall A x y l' l,
+    before (A := A) x y l ->
+    ~ In y l' ->
+    before (A := A) x y (l' ++ l).
 Proof.
   induction l'; intros; simpl in *; intuition.
 Qed.
