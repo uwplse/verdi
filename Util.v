@@ -1665,3 +1665,14 @@ Lemma before_app :
 Proof.
   induction l'; intros; simpl in *; intuition.
 Qed.
+
+Lemma before_antisymmetric :
+  forall A x y l,
+    before (A := A) x y l ->
+    before y x l ->
+    x = y.
+Proof.
+  intros.
+  induction l; simpl in *; intuition; congruence.
+Qed.
+  
