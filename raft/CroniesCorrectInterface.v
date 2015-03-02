@@ -6,8 +6,6 @@ Require Import RaftState.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 
-Require Import CommonTheorems.
-
 Section CroniesCorrectInterface.
 
   Context {orig_base_params : BaseParams}.
@@ -39,20 +37,6 @@ Section CroniesCorrectInterface.
 
   Definition cronies_correct net :=
     votes_received_cronies net /\ cronies_votes net /\ votes_nw net /\ votes_received_leaders net.
-
-  Lemma won_election_cronies :
-    forall net h,
-      cronies_correct net ->
-      type (snd (nwState net h)) = Leader ->
-      wonElection (dedup name_eq_dec (cronies (fst (nwState net h))
-                                              (currentTerm (snd (nwState net h))))) = true.
-  Proof.
-    intros.
-    unfold cronies_correct in *; intuition.
-    eapply wonElection_no_dup_in;
-      eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
-  Qed.
-
 
   Class cronies_correct_interface : Prop :=
     {

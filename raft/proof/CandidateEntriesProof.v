@@ -78,6 +78,19 @@ Section CandidateEntriesProof.
     eauto.
   Qed.
 
+  Lemma won_election_cronies :
+    forall net h,
+      cronies_correct net ->
+      type (snd (nwState net h)) = Leader ->
+      wonElection (dedup name_eq_dec (cronies (fst (nwState net h))
+                                              (currentTerm (snd (nwState net h))))) = true.
+  Proof.
+    intros.
+    unfold cronies_correct in *; intuition.
+    eapply wonElection_no_dup_in;
+      eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
+  Qed.
+
   Lemma candidate_entries_client_request :
     refined_raft_net_invariant_client_request CandidateEntries.
   Proof.
