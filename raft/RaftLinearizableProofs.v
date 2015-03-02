@@ -553,7 +553,34 @@ find_apply_hyp_hyp. break_exists. eauto 10.
       before (O k) (I k') (import tr) ->
       output_before_input (fst k) (snd k) (fst k') (snd k') tr.
   Proof.
-  Admitted.
+    induction tr; intros; simpl in *; intuition.
+    repeat break_match; subst; simpl in *; intuition eauto; try congruence;
+    unfold output_before_input; simpl in *; intuition.
+    - right. intuition.
+      + apply Bool.andb_false_iff.
+        destruct k'.  simpl in *.
+        match goal with
+          | _ : I (?x, ?y) = I (?x', ?y') -> False |- _ =>
+            destruct (eq_nat_dec x x'); destruct (eq_nat_dec y y')
+        end; subst; intuition.
+        * right. do_bool. intuition.
+        * left. do_bool. intuition.
+        * left. do_bool. intuition.
+      + apply IHtr. eauto using before_remove.
+    - break_if; intuition. right.
+      intuition. find_apply_lem_hyp before_app; [find_apply_lem_hyp before_remove_all|]; intuition eauto.
+      + find_apply_lem_hyp in_dedup_was_in.
+        find_apply_lem_hyp In_filterMap.
+        break_exists. intuition. break_match; congruence.
+      + find_apply_lem_hyp in_dedup_was_in.
+        find_apply_lem_hyp In_filterMap.
+        break_exists.
+        intuition. break_match; try congruence.
+        subst. find_inversion. simpl in *.
+        match goal with
+          | H : _ -> False |- False => apply H
+        end. eexists; eauto.
+  Qed.
 
   Lemma entries_ordered_before_log_to_IR :
     forall k k' net tr,
