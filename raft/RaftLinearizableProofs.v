@@ -206,6 +206,28 @@ Section RaftLinearizableProofs.
     eauto using deduplicate_log'_In_if.
   Qed.
 
+  Lemma deduplicate_log'_In_key :
+    forall x l k ks,
+      In x (deduplicate_log' l (k :: ks)) ->
+      key_of x <> k.
+  Proof.
+    induction l; simpl in *; intuition.
+    subst. repeat break_match; subst; repeat find_rewrite; simpl in *; intuition eauto; subst; intuition.
+    match goal with
+      | H :context [?x :: ?y :: ?ks] |- _ =>
+        rewrite deduplicate_log'_keys_perm with (ks' := y :: x :: ks) in H by constructor
+    end. eauto.
+  Qed.
+
+  Lemma deduplicate_log'_In_elim :
+    forall x l k ks,
+      In x (deduplicate_log' l (k :: ks)) ->
+      In x (deduplicate_log' l ks) /\ key_of x <> k.
+  Proof.
+    intros. intuition eauto using deduplicate_log'_In'.
+    find_apply_lem_hyp deduplicate_log'_In_key. congruence.
+  Qed.
+  
   Fixpoint log_to_IR (env_o : key -> option output) (log : list entry) {struct log} : list (IR key) :=
     match log with
       | [] => []
@@ -694,6 +716,86 @@ find_apply_hyp_hyp. break_exists. eauto 10.
   Proof.
   Admitted.
 
+  Lemma get_IR_input_keys_log_to_IR :
+    forall l env_o,
+      get_IR_input_keys key (log_to_IR env_o l) =
+      map (fun e => (eClient e, eId e)) l.
+  Proof.
+    intros. induction l; simpl in *; intuition.
+    repeat break_match; subst; compute; simpl; f_equal; auto.
+  Qed.
+
+  Lemma get_IR_output_keys_log_to_IR :
+    forall l env_o,
+      get_IR_output_keys key (log_to_IR env_o l) =
+      map (fun e => (eClient e, eId e)) l.
+  Proof.
+    intros. induction l; simpl in *; intuition.
+    repeat break_match; subst; compute; simpl; f_equal; auto.
+  Qed.
+  
+  Lemma deduplicate_log'_filter :
+    forall l k ks,
+      deduplicate_log' l (k :: ks) =
+      filter (fun e => negb (andb (beq_nat (eClient e) (fst k))
+                                 (beq_nat (eId e) (snd k)))) (deduplicate_log' l ks).
+  Proof.
+    induction l; intros; simpl in *; intuition.
+    - repeat (break_match; subst; simpl in *; intuition eauto).
+      + apply IHl.
+      + repeat (do_bool; intuition).
+      + rewrite filter_true_id; auto.
+        intros. apply Bool.negb_true_iff.
+        do_bool.
+        find_apply_lem_hyp deduplicate_log'_In_key.
+        unfold key_of in *. intuition.
+        match goal with
+          | _ : (?x, ?y) = (?x', ?y') -> False |- _ =>
+            destruct (eq_nat_dec x x'); destruct (eq_nat_dec y y')
+        end; do_bool; repeat find_rewrite; intuition.
+        * right. do_bool. congruence.
+        * left. do_bool. congruence.
+        * left. do_bool. congruence.
+      + f_equal.
+        match goal with
+          | |- context [?x :: ?y :: ?ks] =>
+            rewrite deduplicate_log'_keys_perm with (ks' := y :: x :: ks) by constructor
+        end. intuition eauto.
+      + exfalso. repeat (do_bool; intuition).
+        unfold key_of in *. destruct k. simpl in *.
+        repeat find_rewrite. congruence.
+  Qed.
+  
+  Lemma NoDup_input_log :
+    forall l env_o,
+      NoDup (get_IR_input_keys key (log_to_IR env_o (deduplicate_log l))).
+  Proof.
+    intros.
+    rewrite get_IR_input_keys_log_to_IR.
+    induction l; simpl in *; constructor.
+    - intuition.
+      do_in_map.
+      find_apply_lem_hyp deduplicate_log'_In_elim.
+      unfold key_of in *. intuition.
+    - rewrite deduplicate_log'_filter.
+      eauto using NoDup_map_filter.
+  Qed.
+
+  Lemma NoDup_output_log :
+    forall l env_o,
+      NoDup (get_IR_output_keys key (log_to_IR env_o (deduplicate_log l))).
+  Proof.
+    intros.
+    rewrite get_IR_output_keys_log_to_IR.
+    induction l; simpl in *; constructor.
+    - intuition.
+      do_in_map.
+      find_apply_lem_hyp deduplicate_log'_In_elim.
+      unfold key_of in *. intuition.
+    - rewrite deduplicate_log'_filter.
+      eauto using NoDup_map_filter.
+  Qed.
+  
   Theorem raft_linearizable :
     forall failed net tr,
       input_correct tr ->
@@ -754,11 +856,11 @@ find_apply_hyp_hyp. break_exists. eauto 10.
       + (* NoDup op input *)
         apply NoDup_input_import.
       + (* NoDup IR input *)
-        admit.
+        apply NoDup_input_log.
       + (* NoDup op output *)
         apply NoDup_output_import.
       + (* NoDup IR output *)
-        admit.
+        apply NoDup_output_log.
     - admit.
   Qed.
 End RaftLinearizableProofs.
