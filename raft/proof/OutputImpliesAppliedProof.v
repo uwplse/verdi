@@ -14,6 +14,7 @@ Require Import CommonTheorems.
 Require Import LogMatchingInterface.
 Require Import StateMachineSafety.
 Require Import AppliedEntriesMonotonicInterface.
+Require Import TraceUtil.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
@@ -34,14 +35,14 @@ Section OutputImpliesApplied.
   Section inner.
   Variables client id : nat.
 
-  Theorem in_output_dec :
+  Theorem key_in_output_trace_dec :
     forall tr : list (name * (raft_input + list raft_output)),
-      {in_output client id tr} + {~ in_output client id tr}.
+      {key_in_output_trace client id tr} + {~ key_in_output_trace client id tr}.
   Proof.
-    unfold in_output.
+    unfold key_in_output_trace.
     intros.
     destruct (find (fun p => match snd p with
-                               | inr l => match find (is_client_response client id) l with
+                               | inr l => match find (is_client_response_with_key client id) l with
                                             | Some x => true
                                             | None => false
                                           end
@@ -50,7 +51,7 @@ Section OutputImpliesApplied.
     - find_apply_lem_hyp find_some. break_and.
       repeat break_match; try discriminate.
       find_apply_lem_hyp find_some. break_and.
-      unfold is_client_response, in_output_list in *.
+      unfold is_client_response_with_key, key_in_output_list in *.
       break_match; try discriminate. do_bool. break_and. do_bool. subst.
       left. exists l, (fst p).
       find_reverse_rewrite. rewrite <- surjective_pairing.
@@ -58,7 +59,7 @@ Section OutputImpliesApplied.
     - right. intro. break_exists. break_and.
       find_eapply_lem_hyp find_none; eauto.
       simpl in *. break_match; try discriminate.
-      unfold in_output_list in *. break_exists.
+      unfold key_in_output_list in *. break_exists.
       find_eapply_lem_hyp find_none; eauto.
       simpl in *. find_apply_lem_hyp Bool.andb_false_elim.
       intuition (do_bool; congruence).
@@ -66,51 +67,51 @@ Section OutputImpliesApplied.
 
   Lemma in_output_changed :
     forall tr o,
-      ~in_output client id tr ->
-      in_output client id (tr ++ o) ->
-      in_output client id o.
+      ~ key_in_output_trace client id tr ->
+      key_in_output_trace client id (tr ++ o) ->
+      key_in_output_trace client id o.
   Proof.
-    intros. unfold in_output in *.
+    intros. unfold key_in_output_trace in *.
     break_exists_exists.
     intuition. do_in_app; intuition.
     exfalso. eauto.
   Qed.
 
-  Lemma in_output_list_split :
+  Lemma key_in_output_list_split :
     forall l l',
-      in_output_list client id (l ++ l') ->
-      in_output_list client id l \/ in_output_list client id l'.
+      key_in_output_list client id (l ++ l') ->
+      key_in_output_list client id l \/ key_in_output_list client id l'.
   Proof.
     intros.
-    unfold in_output_list in *.
+    unfold key_in_output_list in *.
     break_exists; do_in_app; intuition eauto.
   Qed.
 
-  Lemma in_output_list_empty :
-    ~ in_output_list client id [].
+  Lemma key_in_output_list_empty :
+    ~ key_in_output_list client id [].
   Proof.
     intuition.
-    unfold in_output_list in *.
+    unfold key_in_output_list in *.
     break_exists; intuition.
   Qed.
 
-  Lemma doLeader_in_output_list :
+  Lemma doLeader_key_in_output_list :
     forall st h out st' m,
       doLeader st h = (out, st', m) ->
-      ~ in_output_list client id out.
+      ~ key_in_output_list client id out.
   Proof.
     intros. unfold doLeader, advanceCommitIndex in *.
-    repeat break_match; find_inversion; intuition eauto using in_output_list_empty.
+    repeat break_match; find_inversion; intuition eauto using key_in_output_list_empty.
   Qed.
 
-  Lemma handleInput_in_output_list :
+  Lemma handleInput_key_in_output_list :
     forall st h i out st' m,
       handleInput h i st = (out, st', m) ->
-      ~ in_output_list client id out.
+      ~ key_in_output_list client id out.
   Proof.
     intros. unfold handleInput, handleTimeout, handleClientRequest, tryToBecomeLeader in *.
-    repeat break_match; find_inversion; intuition eauto using in_output_list_empty;
-    unfold in_output_list in *; break_exists; simpl in *; intuition; congruence.
+    repeat break_match; find_inversion; intuition eauto using key_in_output_list_empty;
+    unfold key_in_output_list in *; break_exists; simpl in *; intuition; congruence.
   Qed.
 
   Ltac update_destruct :=
@@ -137,16 +138,16 @@ Section OutputImpliesApplied.
       break_exists_exists; intuition.
   Qed.
 
-  Lemma doGenericServer_in_output_list :
+  Lemma doGenericServer_key_in_output_list :
     forall net h os st' ms,
       raft_intermediate_reachable net ->
       doGenericServer h (nwState net h) = (os, st', ms) ->
-      in_output_list client id os ->
+      key_in_output_list client id os ->
       exists e : entry,
         eClient e = client /\
         eId e = id /\ In e (applied_entries (update (nwState net) h st')).
   Proof.
-    intros. unfold in_output_list in *.
+    intros. unfold key_in_output_list in *.
     match goal with | H : exists _, _ |- _ => destruct H as [o] end.
     unfold doGenericServer in *. break_let. simpl in *.
     find_inversion. simpl in *. find_copy_eapply_lem_hyp applyEntries_In; eauto.
@@ -200,24 +201,24 @@ Section OutputImpliesApplied.
     forall failed net failed' net' o,
       raft_intermediate_reachable net ->
       @step_f _ _ failure_params (failed, net) (failed', net') o ->
-      in_output client id o ->
+      key_in_output_trace client id o ->
       in_applied_entries client id net'.
   Proof.
     intros.
     invcs H0; simpl in *;
     try match goal with
-          | _ : in_output _ _ [] |- _ =>
-            unfold in_output in *; break_exists; simpl in *; intuition
+          | _ : key_in_output_trace _ _ [] |- _ =>
+            unfold key_in_output_trace in *; break_exists; simpl in *; intuition
         end.
-    - unfold in_output in *.
+    - unfold key_in_output_trace in *.
       break_exists; simpl in *; intuition.
       find_inversion.
       unfold in_applied_entries in *. simpl in *.
       unfold RaftNetHandler in *.
       repeat break_let. repeat find_inversion. simpl in *.
       find_eapply_lem_hyp RIR_handleMessage; eauto.
-      find_apply_lem_hyp in_output_list_split.
-      intuition; [|exfalso; eapply doLeader_in_output_list; eauto].
+      find_apply_lem_hyp key_in_output_list_split.
+      intuition; [|exfalso; eapply doLeader_key_in_output_list; eauto].
       match goal with
         | _ : doLeader ?st ?h = _, _ : doGenericServer _ ?d = _ |- _ =>
           replace st with ((update (nwState net) h st) h) in *;
@@ -232,19 +233,19 @@ Section OutputImpliesApplied.
           H : doGenericServer ?h ?r = _ |- _ =>
           replace r with (nwState (mkNetwork ps st) h) in H by (simpl in *; rewrite_update; auto)
       end.
-      find_eapply_lem_hyp doGenericServer_in_output_list; [|idtac|eauto]; eauto.
+      find_eapply_lem_hyp doGenericServer_key_in_output_list; [|idtac|eauto]; eauto.
       break_exists_exists. intuition. simpl in *.
       find_rewrite_lem update_overwrite. auto.
-    - unfold in_output in *.
+    - unfold key_in_output_trace in *.
       break_exists; simpl in *; intuition; find_inversion.
       unfold in_applied_entries in *. simpl in *.
       unfold RaftInputHandler in *.
       repeat break_let. repeat find_inversion. simpl in *.
       find_copy_eapply_lem_hyp RIR_handleInput; eauto.
-      find_apply_lem_hyp in_output_list_split.
-      intuition; [exfalso; eapply handleInput_in_output_list; eauto|].
-      find_apply_lem_hyp in_output_list_split.
-      intuition; [|exfalso; eapply doLeader_in_output_list; eauto].
+      find_apply_lem_hyp key_in_output_list_split.
+      intuition; [exfalso; eapply handleInput_key_in_output_list; eauto|].
+      find_apply_lem_hyp key_in_output_list_split.
+      intuition; [|exfalso; eapply doLeader_key_in_output_list; eauto].
       match goal with
         | _ : doLeader ?st ?h = _, _ : doGenericServer _ ?d = _ |- _ =>
           replace st with ((update (nwState net) h st) h) in *;
@@ -259,7 +260,7 @@ Section OutputImpliesApplied.
           H : doGenericServer ?h ?r = _ |- _ =>
           replace r with (nwState (mkNetwork ps st) h) in H by (simpl in *; rewrite_update; auto)
       end.
-      find_eapply_lem_hyp doGenericServer_in_output_list; [|idtac|eauto]; eauto.
+      find_eapply_lem_hyp doGenericServer_key_in_output_list; [|idtac|eauto]; eauto.
       break_exists_exists. intuition. simpl in *.
       find_rewrite_lem update_overwrite. auto.
   Qed.
@@ -267,8 +268,8 @@ Section OutputImpliesApplied.
   Instance TR : TraceRelation step_f :=
     {
       init := step_f_init;
-      T := in_output client id ;
-      T_dec := in_output_dec ;
+      T := key_in_output_trace client id ;
+      T_dec := key_in_output_trace_dec ;
       R := fun s => in_applied_entries client id (snd s)
     }.
   Proof.
@@ -277,7 +278,7 @@ Section OutputImpliesApplied.
     break_exists; eexists; intuition eauto.
     destruct s; destruct s'; eapply applied_entries_monotonic; eauto.
     eauto using refl_trans_1n_n1_trace, step_f_star_raft_intermediate_reachable.
-  - unfold in_output in *. intuition.
+  - unfold key_in_output_trace in *. intuition.
     break_exists; intuition.
   - intros.
     destruct s as [failed net].
@@ -290,7 +291,7 @@ Section OutputImpliesApplied.
   Theorem output_implies_applied :
     forall failed net tr,
       step_f_star step_f_init (failed, net) tr ->
-      in_output client id tr ->
+      key_in_output_trace client id tr ->
       in_applied_entries client id net.
   Proof.
     intros. pose proof (trace_relations_work (failed, net) tr).

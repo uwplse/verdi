@@ -7,7 +7,7 @@ Require Import Util.
 
 Require Import Raft.
 Require Import CommonDefinitions.
-Require Import OutputImpliesAppliedInterface.
+Require Import TraceUtil.
 
 Section CausalOrderPreserved.
   Context {orig_base_params : BaseParams}.
@@ -17,20 +17,8 @@ Section CausalOrderPreserved.
   Section inner.
   Variables client id client' id' : nat.
 
-  Definition is_output (trace_entry : (name * (raft_input + list raft_output))) :=
-    match trace_entry with
-      | (_, inr os) => if in_output_list_dec client id os then true else false
-      | _ => false
-    end.
-
-  Definition is_input (trace_entry : (name * (raft_input + list raft_output))) :=
-    match trace_entry with
-      | (_, inl (ClientRequest c i _)) => andb (beq_nat client' c) (beq_nat id' i)
-      | _ => false
-    end.
-
   Definition output_before_input (tr : list (name * (raft_input + list raft_output))) :=
-    before_func is_output is_input tr.
+    before_func (is_output_with_key client id) (is_input_with_key client' id') tr.
 
   Definition has_key (c : nat) (i : nat) (e : entry) :=
     match e with

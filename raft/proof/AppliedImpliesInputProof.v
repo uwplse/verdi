@@ -11,6 +11,7 @@ Require Import TraceRelations.
 
 Require Import Raft.
 Require Import CommonTheorems.
+Require Import TraceUtil.
 Require Import OutputImpliesAppliedInterface.
 
 Require Import UpdateLemmas.
@@ -34,7 +35,7 @@ Section AppliedImpliesInputProof.
         eClient e = client ->
         eId e = id ->
         In e (applied_entries (nwState net)) ->
-        in_input client id tr.
+        key_in_input_trace client id tr.
     Admitted.
   End inner.
 

@@ -12,6 +12,7 @@ Require Import VerdiTactics.
 
 Require Import Raft.
 Require Import CommonTheorems.
+Require Import TraceUtil.
 Require Import Linearizability.
 Require Import RaftLinearizableDefinitions.
 Require Import OutputImpliesAppliedInterface.
@@ -714,6 +715,7 @@ find_apply_hyp_hyp. break_exists. eauto 10.
       In (O k) (import tr) ->
       before (I k) (O k) (import tr).
   Proof.
+    
   Admitted.
 
   Lemma get_IR_input_keys_log_to_IR :
@@ -833,7 +835,7 @@ find_apply_hyp_hyp. break_exists. eauto 10.
         destruct k as [c id].
         find_apply_lem_hyp deduplicate_log_In_if.
         find_eapply_lem_hyp applied_implies_input; eauto.
-        unfold in_input in *. break_exists. break_and.
+        unfold key_in_input_trace in *. break_exists. break_and.
         eauto using trace_I_in_import.
       + (* before preserved *)
         intros.
