@@ -1611,3 +1611,55 @@ Proof.
     eapply remove_In; eauto.
   - eauto.
 Qed.
+
+Lemma before_remove :
+  forall A x y l y' dec,
+    before (A := A) x y (remove dec y' l) ->
+    y <> y' ->
+    before x y l.
+Proof.
+  induction l; intros; simpl in *; intuition.
+  break_if; subst; simpl in *; intuition eauto.
+Qed.
+
+Lemma remove_all_nil :
+  forall A dec ys,
+    remove_all (A := A) dec ys [] = [].
+Proof.
+  intros. induction ys; simpl in *; intuition.
+Qed.
+
+Lemma remove_all_cons :
+  forall A dec ys a l,
+    (remove_all (A := A) dec ys (a :: l) = remove_all dec ys l /\
+     In a ys) \/
+    (remove_all (A := A) dec ys (a :: l) = a :: (remove_all dec ys l) /\
+     ~In a ys).
+Proof.
+  induction ys; intros; simpl in *; intuition.
+  break_if; subst; simpl in *; intuition.
+  specialize (IHys a0 (remove dec a l)). intuition.
+Qed.
+
+Lemma before_remove_all :
+  forall A x y l ys dec,
+    before (A := A) x y (remove_all dec ys l) ->
+    ~ In y ys ->
+    before x y l.
+Proof.
+  induction l; intros; simpl in *; intuition.
+  - rewrite remove_all_nil in *. simpl in *. intuition.
+  - pose proof remove_all_cons dec ys a l. intuition.
+    + repeat find_rewrite. right. intuition eauto.
+      subst; intuition.
+    + repeat find_rewrite. simpl in *. intuition eauto.
+Qed.
+
+Lemma before_app :
+  forall A x y l' l,
+    before (A := A) x y (l' ++ l) ->
+    ~ In x l' ->
+    before (A := A) x y l.
+Proof.
+  induction l'; intros; simpl in *; intuition.
+Qed.
