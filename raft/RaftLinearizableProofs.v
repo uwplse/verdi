@@ -557,7 +557,7 @@ find_apply_hyp_hyp. break_exists. eauto 10.
     repeat break_match; subst; simpl in *; intuition eauto; try congruence;
     unfold output_before_input; simpl in *; intuition.
     - right. intuition.
-      + apply Bool.andb_false_iff.
+      + do_bool.
         destruct k'.  simpl in *.
         match goal with
           | _ : I (?x, ?y) = I (?x', ?y') -> False |- _ =>
