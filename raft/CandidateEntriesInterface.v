@@ -6,7 +6,6 @@ Require Import Net.
 
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonTheorems.
 
 Section CandidateEntriesInterface.
   Context {orig_base_params : BaseParams}.
