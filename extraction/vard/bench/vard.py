@@ -23,10 +23,12 @@ class Client(object):
     
     response_re = re.compile(r'Response\W+([/A-Za-z0-9]+|-)\W+([/A-Za-z0-9]+|-)\W+([/A-Za-z0-9]+|-)')
 
-    def __init__(self, host, port):
+    def __init__(self, host, port, client_id):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((host, port))
-
+        self.client_id = client_id
+        self.request_id = 0
+        
     def deserialize(self, data):
         if data == '-':
             return None
@@ -38,7 +40,8 @@ class Client(object):
         return str(arg)
 
     def send_command(self, cmd, arg1=None, arg2=None, arg3=None):
-        self.sock.send(cmd + ' ' + ' '.join(map(self.serialize, (arg1, arg2, arg3))))
+        self.sock.send(str(self.client_id) + ' ' + str(self.request_id) + ' ' + cmd + ' ' + ' '.join(map(self.serialize, (arg1, arg2, arg3))))
+        self.request_id += 1
 
     def process_response(self):
         data = self.sock.recv(256).strip()

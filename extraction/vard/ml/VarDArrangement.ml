@@ -27,6 +27,7 @@ module VarDArrangement (M : VardParams) = struct
   type output = VarDRaft.raft_output
   type msg = VarDRaft.msg
   type res = (VarDRaft.raft_output list * raft_data0) * ((VarDRaft.name * VarDRaft.msg) list)
+  type request_id = (int * int)
   let debug = M.debug
   let init x = Obj.magic (init_handlers0 vard_base_params vard_one_node_params raft_params x)
   let handleIO (n : name) (inp : input) (st : state) = Obj.magic (vard_raft_multi_params.input_handlers (Obj.magic n) (Obj.magic inp) (Obj.magic st))
@@ -53,11 +54,11 @@ module VarDArrangement (M : VardParams) = struct
 
   let serialize out =
     match (Obj.magic out) with
-    | NotLeader id ->
-       (id, "NotLeader\n")
-    | ClientResponse (id, o) ->
+    | NotLeader (client, id) ->
+       ((client, id), "NotLeader\n")
+    | ClientResponse (client, id, o) ->
        let Response (k, value, old) = (Obj.magic o) in
-       (id,
+       ((client, id),
         match (value, old) with
         | Some v, Some o -> sprintf "Response %s %s %s\n"
                                     (string_of_char_list k)
@@ -73,24 +74,25 @@ module VarDArrangement (M : VardParams) = struct
 
   let deserialize_input i =
     let inp = String.trim i in
-    let r = regexp "\\([A-Z]+\\) +\\([/A-za-z0-9]+\\|-\\) +\\([/A-za-z0-9]+\\|-\\) +\\([/A-za-z0-9]+\\|-\\)[^/A-za-z0-9]*" in
+    let r = regexp "\\([0-9]+\\) \\([0-9]+\\) \\([A-Z]+\\) +\\([/A-za-z0-9]+\\|-\\) +\\([/A-za-z0-9]+\\|-\\) +\\([/A-za-z0-9]+\\|-\\)[^/A-za-z0-9]*" in
     if string_match r inp 0 then
       (match (matched_group 1 inp, matched_group 2 inp,
-              matched_group 3 inp, matched_group 4 inp) with
-       | ("GET", k, _, _) -> Some (Get (char_list_of_string k))
-       | ("DEL", k, _, _) -> Some (Del (char_list_of_string k))
-       | ("PUT", k, v, _) -> Some (Put ((char_list_of_string k), (char_list_of_string v)))
-       | ("CAD", k, o, _) -> Some (CAD (char_list_of_string k, char_list_of_string o))
-       | ("CAS", k, "-", v) -> Some (CAS ((char_list_of_string k), None, (char_list_of_string v)))
-       | ("CAS", k, o, v) -> Some (CAS ((char_list_of_string k), Some (char_list_of_string o), (char_list_of_string v)))
+              matched_group 3 inp, matched_group 4 inp,
+              matched_group 5 inp, matched_group 6 inp) with
+       | (c, i, "GET", k, _, _) -> Some (int_of_string c, int_of_string i, Get (char_list_of_string k))
+       | (c, i, "DEL", k, _, _) -> Some (int_of_string c, int_of_string i, Del (char_list_of_string k))
+       | (c, i, "PUT", k, v, _) -> Some (int_of_string c, int_of_string i, Put ((char_list_of_string k), (char_list_of_string v)))
+       | (c, i, "CAD", k, o, _) -> Some (int_of_string c, int_of_string i, CAD (char_list_of_string k, char_list_of_string o))
+       | (c, i, "CAS", k, "-", v) -> Some (int_of_string c, int_of_string i, CAS ((char_list_of_string k), None, (char_list_of_string v)))
+       | (c, i, "CAS", k, o, v) -> Some (int_of_string c, int_of_string i, CAS ((char_list_of_string k), Some (char_list_of_string o), (char_list_of_string v)))
        | _ -> None)
     else
       (print_endline "No match" ; None)
 
-  let deserialize id inp =
+  let deserialize inp =
     match (deserialize_input inp) with
-    | Some input ->
-       Some (ClientRequest (id, (Obj.magic input)))
+    | Some (client, id, input) ->
+       Some ((client, id), (ClientRequest (client, id, (Obj.magic input))))
     | None -> None
 
   let debugRecv s (other, m) =
