@@ -1175,6 +1175,24 @@ Proof.
   induction xs; intros; simpl in *; intuition.
 Qed.
 
+Fixpoint before_func {A: Type} (f : A -> bool) (g : A -> bool) (l : list A) : Prop :=
+  match l with
+    | [] => False
+    | a :: l' =>
+      f a = true \/
+      (g a = false /\ before_func f g l')
+  end.
+
+Definition before_func_dec :
+  forall A f g (l : list A),
+    {before_func f g l} + {~ before_func f g l}.
+Proof.
+  intros. induction l.
+  - simpl in *. intuition.
+  - simpl in *.
+    destruct (f a); destruct (g a); intuition.
+Qed.
+
 Lemma if_decider_true :
   forall A B (P : A -> Prop) (dec : forall x, {P x} + {~ P x}) a (b1 b2 : B),
     P a ->
