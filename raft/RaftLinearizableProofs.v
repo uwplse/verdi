@@ -15,6 +15,7 @@ Require Import RaftLinearizableDefinitions.
 Require Import OutputImpliesAppliedInterface.
 Require Import UniqueIndicesInterface.
 Require Import AppliedImpliesInputInterface.
+Require Import CausalOrderPreservedInterface.
 
 Section RaftLinearizableProofs.
   Context {orig_base_params : BaseParams}.
@@ -23,6 +24,7 @@ Section RaftLinearizableProofs.
 
   Context {oiai : output_implies_applied_interface}.
   Context {aiii : applied_implies_input_interface}.
+  Context {copi : causal_order_preserved_interface}.
 
   Definition key : Type := nat * nat.
 
@@ -452,6 +454,22 @@ find_apply_hyp_hyp. break_exists. eauto 10.
           eapply in_remove_all_not_in; eauto.
   Qed.
 
+  Lemma before_import_output_before_input :
+    forall k k' tr,
+      before (O k) (I k') (import tr) ->
+      output_before_input (fst k) (snd k) (fst k') (snd k') tr.
+  Proof.
+  Admitted.
+
+  Lemma entries_ordered_before_log_to_IR :
+    forall k k' net tr,
+      In (O k) (import tr) ->
+      entries_ordered (fst k) (snd k) (fst k') (snd k') net ->
+      before (IRO k) (IRI k')
+             (log_to_IR (get_output tr) (applied_entries (nwState net))).
+  Proof.
+  Admitted.
+
   Theorem raft_linearizable :
     forall failed net tr,
       input_correct tr ->
@@ -488,7 +506,8 @@ find_apply_hyp_hyp. break_exists. eauto 10.
         unfold in_input in *. break_exists. break_and.
         eauto using trace_I_in_import.
       + (* before preserved *)
-        admit.
+        eauto using before_In, before_import_output_before_input, causal_order_preserved,
+        entries_ordered_before_log_to_IR.
       + (* I before O *)
         admit.
       + (* In IRU -> not In O *)
