@@ -274,6 +274,23 @@ Proof.
     + auto.
 Qed.
 
+
+Lemma NoDup_map_filter :
+  forall A B (f : A -> B) g l,
+    NoDup (map f l) ->
+    NoDup (map f (filter g l)).
+Proof.
+  intros. induction l; simpl in *.
+  - constructor.
+  - match goal with | H : NoDup _ |- _ => invcs H end.
+    intuition.
+    break_if; simpl in *; intuition.
+    constructor; intuition.
+    match goal with | H : _ -> False |- False => apply H end.
+    do_in_map. apply in_map_iff.
+    find_apply_lem_hyp filter_In. intuition.
+    eauto.
+Qed.
     
 
 Lemma filter_true_id : forall A (f : A -> bool) xs,
