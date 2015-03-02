@@ -10,7 +10,7 @@ Require Import Net.
 Require Import RaftState.
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CandidatesVoteForSelves.
+Require Import CandidatesVoteForSelvesInterface.
 Require Import VerdiTactics.
 Require Import CommonTheorems.
 Require Import VotesCorrectInterface.
@@ -25,6 +25,7 @@ Section CroniesCorrectProof.
 
   Context {rri : raft_refinement_interface}.
   Context {vci : votes_correct_interface}.
+  Context {cvfsi : candidates_vote_for_selves_interface}.
 
   Lemma candidates_vote_for_selves_l_invariant :
     forall (net : network),

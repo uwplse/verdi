@@ -11,15 +11,12 @@ Require Import Raft.
 Require Import CommonTheorems.
 Require Import VerdiTactics.
 
-Section CandidatesVoteForSelves.
+Require Import CandidatesVoteForSelvesInterface.
+
+Section CandidatesVoteForSelvesProof.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
-
-  Definition candidates_vote_for_selves net :=
-    forall h,
-      type (nwState net h) = Candidate ->
-      votedFor (nwState net h) = Some h.
 
   Ltac rewrite_state :=
     match goal with
@@ -33,7 +30,7 @@ Section CandidatesVoteForSelves.
     simpl in *; try find_inversion; rewrite_state;
     try use_applyEntries_spec;
     repeat break_if; subst; eauto; simpl in *; try discriminate.
-  
+
   Theorem candidates_vote_for_selves_do_leader :
     raft_net_invariant_do_leader (candidates_vote_for_selves).
   Proof.
@@ -89,7 +86,7 @@ Section CandidatesVoteForSelves.
     unfold handleRequestVoteReply, advanceCurrentTerm in *.
     t.
   Qed.
-  
+
   Lemma candidates_vote_for_selves_do_generic_server :
     raft_net_invariant_do_generic_server candidates_vote_for_selves.
   Proof.
@@ -97,7 +94,7 @@ Section CandidatesVoteForSelves.
     unfold doGenericServer in *.
     t; eauto.
   Qed.
-  
+
   Lemma candidates_vote_for_selves_state_same_packet_subset :
     raft_net_invariant_state_same_packet_subset candidates_vote_for_selves.
   Proof.
@@ -119,7 +116,7 @@ Section CandidatesVoteForSelves.
     unfold raft_net_invariant_init, candidates_vote_for_selves, step_m_init.
     simpl in *. intros; discriminate.
   Qed.
-    
+
   Theorem candidates_vote_for_selves_invariant :
     forall net,
       raft_intermediate_reachable net ->
@@ -139,5 +136,10 @@ Section CandidatesVoteForSelves.
     - apply candidates_vote_for_selves_state_same_packet_subset.
     - apply candidates_vote_for_selves_reboot.
   Qed.
-  
-End CandidatesVoteForSelves.
+
+  Instance cvfsi : candidates_vote_for_selves_interface.
+  Proof.
+    split.
+    exact candidates_vote_for_selves_invariant.
+  Qed.
+End CandidatesVoteForSelvesProof.
