@@ -3,6 +3,8 @@ Import ListNotations.
 Require Import Arith.
 Require Import Nat.
 Require Import Omega.
+Require Import Sorting.Permutation.
+
 
 Require Import Net.
 Require Import Util.
@@ -110,7 +112,101 @@ Section RaftLinearizableProofs.
       | _ :: xs => get_output xs k
     end.
 
-  Fixpoint log_to_IR (env_o : key -> option output) (log : list entry) : list (IR key) :=
+  Definition key_of (e : entry) :=
+    (eClient e, eId e).
+  
+  Fixpoint deduplicate_log' (log : list entry) (ks : list key) : list entry :=
+    match log with
+      | [] => []
+      | e :: es => if (@in_dec key key_eq_dec (key_of e) ks) then
+                    deduplicate_log' es ks
+                  else
+                    e :: deduplicate_log' es ((key_of e) :: ks)
+    end.
+
+  Definition deduplicate_log l := deduplicate_log' l [].
+
+  Lemma deduplicate_log'_keys_perm :
+    forall l ks ks',
+      Permutation ks ks' ->
+      deduplicate_log' l ks =
+      deduplicate_log' l ks'.
+  Proof.
+    induction l; intros; simpl in *; intuition.
+    repeat break_match; subst; simpl in *; intuition.
+    - exfalso; eauto using Permutation_in.
+    - exfalso; eauto using Permutation_in, Permutation_sym.
+    - f_equal. apply IHl. constructor. auto.
+  Qed.
+  
+  Lemma deduplicate_log'_In :
+    forall x l k ks,
+      In x (deduplicate_log' l ks) ->
+      key_of x <> k ->
+      In x (deduplicate_log' l (k :: ks)).
+  Proof.
+    induction l; simpl in *; intuition.
+    repeat break_match; simpl in *; intuition.
+    - subst. congruence.
+    - repeat find_rewrite. auto.
+    - right.
+      match goal with
+        | |- context [?x :: ?y :: ?ks] =>
+          rewrite deduplicate_log'_keys_perm with (ks' := y :: x :: ks) by constructor
+      end. eauto.
+  Qed.
+
+  Lemma deduplicate_log'_In' :
+    forall x l k ks,
+      In x (deduplicate_log' l (k :: ks)) ->
+      In x (deduplicate_log' l ks).
+  Proof.
+    induction l; simpl in *; intuition.
+    repeat break_match; simpl in *; intuition eauto.
+    - subst. eauto.
+    - right.
+      match goal with
+        | H :context [?x :: ?y :: ?ks] |- _ =>
+          rewrite deduplicate_log'_keys_perm with (ks' := y :: x :: ks) in H by constructor
+      end. eauto.
+  Qed.
+  
+  Lemma deduplicate_log_In :
+    forall l e,
+      In e l ->
+      exists e',
+        eClient e' = eClient e /\
+        eId e' = eId e /\
+        In e' (deduplicate_log l).
+  Proof.
+    intros. induction l; simpl in *; intuition.
+    - subst. eexists; intuition eauto.
+    - break_exists. destruct (key_eq_dec (key_of a) (key_of x)).
+      + find_inversion. 
+        exists a; intuition.
+      + intuition.
+        exists x; intuition.
+        right. apply deduplicate_log'_In; eauto.
+  Qed.
+
+  Lemma deduplicate_log'_In_if :
+    forall l e ks,
+      In e (deduplicate_log' l ks) ->
+      In e l.
+  Proof.
+    intros. induction l; simpl in *; intuition.
+    break_if; simpl in *; intuition. eauto using deduplicate_log'_In'.
+  Qed.
+
+  Lemma deduplicate_log_In_if :
+    forall l e,
+      In e (deduplicate_log l) ->
+      In e l.
+  Proof.
+    eauto using deduplicate_log'_In_if.
+  Qed.
+
+  Fixpoint log_to_IR (env_o : key -> option output) (log : list entry) {struct log} : list (IR key) :=
     match log with
       | [] => []
       | mkEntry h client id index term input :: log' =>
@@ -119,7 +215,7 @@ Section RaftLinearizableProofs.
            | Some _ => [IRI (client, id); IRO (client, id)]
          end) ++ log_to_IR env_o log'
     end.
-
+  
   Lemma log_to_IR_good_trace :
     forall env_o log,
       good_trace _ (log_to_IR env_o log).
@@ -139,8 +235,6 @@ Section RaftLinearizableProofs.
 
   Definition execute_log (log : list entry) : (list (input * output) * data) :=
     execute_log' log init [].
-
-
 
   Lemma fst_execute_log' :
     forall log st tr,
@@ -466,7 +560,7 @@ find_apply_hyp_hyp. break_exists. eauto 10.
       In (O k) (import tr) ->
       entries_ordered (fst k) (snd k) (fst k') (snd k') net ->
       before (IRO k) (IRI k')
-             (log_to_IR (get_output tr) (applied_entries (nwState net))).
+             (log_to_IR (get_output tr) (deduplicate_log (applied_entries (nwState net)))).
   Proof.
   Admitted.
 
@@ -480,9 +574,9 @@ find_apply_hyp_hyp. break_exists. eauto 10.
         step_1_star init st tr1.
   Proof.
     intros.
-    exists (log_to_IR (get_output tr) (applied_entries (nwState net))).
-    exists (fst (execute_log (applied_entries (nwState net)))).
-    exists (snd (execute_log (applied_entries (nwState net)))).
+    exists (log_to_IR (get_output tr) (deduplicate_log (applied_entries (nwState net)))).
+    exists (fst (execute_log (deduplicate_log (applied_entries (nwState net))))).
+    exists (snd (execute_log (deduplicate_log (applied_entries (nwState net))))).
     intuition eauto using execute_log_correct.
     - eapply equivalent_intro; eauto using log_to_IR_good_trace, key_eq_dec.
       + (* In O -> In IRO *)
@@ -492,6 +586,9 @@ find_apply_hyp_hyp. break_exists. eauto 10.
         unfold in_applied_entries in *.
         break_exists. intuition.
         destruct k; simpl in *.
+        find_apply_lem_hyp deduplicate_log_In.
+        break_exists. intuition.
+        repeat find_rewrite.
         eapply in_applied_entries_in_IR; eauto.
         apply import_get_output. auto.
       + (* In IRO -> In O *)
@@ -502,6 +599,7 @@ find_apply_hyp_hyp. break_exists. eauto 10.
         intros.
         find_apply_lem_hyp IRU_in_IR_in_log. break_exists. break_and.
         destruct k as [c id].
+        find_apply_lem_hyp deduplicate_log_In_if.
         find_eapply_lem_hyp applied_implies_input; eauto.
         unfold in_input in *. break_exists. break_and.
         eauto using trace_I_in_import.
