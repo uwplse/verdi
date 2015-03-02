@@ -41,7 +41,7 @@ Section OutputImpliesApplied.
     unfold in_output.
     intros.
     destruct (find (fun p => match snd p with
-                               | inr l => match find is_client_response l with
+                               | inr l => match find (is_client_response client id) l with
                                             | Some x => true
                                             | None => false
                                           end
