@@ -582,12 +582,115 @@ find_apply_hyp_hyp. break_exists. eauto 10.
         end. eexists; eauto.
   Qed.
 
+  Lemma has_key_true_key_of :
+    forall c i e,
+      has_key c i e = true ->
+      key_of e = (c, i).
+  Proof.
+    intros. unfold has_key, key_of in *.
+    break_match. subst. simpl in *. repeat (do_bool; intuition).
+  Qed.
+
+  Lemma key_of_has_key_true :
+    forall c i e,
+      key_of e = (c, i) ->
+      has_key c i e = true.
+  Proof.
+    intros. unfold has_key, key_of in *.
+    break_match. subst. simpl in *. find_inversion. repeat (do_bool; intuition).
+  Qed.
+  
+  Lemma has_key_false_key_of :
+    forall c i e,
+      has_key c i e = false ->
+      key_of e <> (c, i).
+  Proof.
+    intros. unfold has_key, key_of in *.
+    break_match. subst. simpl in *. repeat (do_bool; intuition); congruence.
+  Qed.
+
+  Lemma key_of_has_key_false :
+    forall c i e,
+      key_of e <> (c, i) ->
+      has_key c i e = false.
+  Proof.
+    intros. unfold has_key, key_of in *.
+    break_match. subst. simpl in *. repeat (do_bool; intuition).
+    match goal with
+      | _ : (?x, ?y) = (?x', ?y') -> False |- _ =>
+        destruct (eq_nat_dec x x'); destruct (eq_nat_dec y y')
+    end; subst; intuition.
+    - right. do_bool. congruence.
+    - left. do_bool. congruence.
+    - left. do_bool. congruence.
+  Qed.
+
+  Lemma deduplicate_log'_before_func :
+    forall l k k' k'' ks,
+      before_func (has_key (fst k) (snd k)) (has_key (fst k') (snd k')) (deduplicate_log' l ks) ->
+      k'' <> k ->
+      before_func (has_key (fst k) (snd k)) (has_key (fst k') (snd k')) (deduplicate_log' l (k'' :: ks)).
+  Proof.
+    induction l; intros; simpl in *; intuition.
+    repeat break_match; simpl in *; intuition.
+    - subst. find_apply_lem_hyp has_key_true_key_of. destruct k; subst; intuition.
+    - subst. auto.
+    - right.
+      match goal with
+        | |- context [?x :: ?y :: ?ks] =>
+          rewrite deduplicate_log'_keys_perm with (ks' := y :: x :: ks) by constructor
+      end. eauto.
+  Qed.
+  
+  Lemma before_func_deduplicate :
+    forall k k' l,
+      before_func (has_key (fst k) (snd k)) (has_key (fst k') (snd k')) l ->
+      before_func (has_key (fst k) (snd k)) (has_key (fst k') (snd k')) (deduplicate_log l).
+  Proof.
+    intros. induction l; simpl in *; intuition.
+    destruct (has_key (fst k) (snd k) a) eqn:?; intuition.
+    right. intuition.
+    apply deduplicate_log'_before_func; eauto.
+    find_apply_lem_hyp has_key_false_key_of.
+    destruct k; simpl in *; intuition.
+  Qed.
+
   Lemma entries_ordered_before_log_to_IR :
     forall k k' net tr,
       In (O k) (import tr) ->
+      k <> k' ->
       entries_ordered (fst k) (snd k) (fst k') (snd k') net ->
       before (IRO k) (IRI k')
              (log_to_IR (get_output tr) (deduplicate_log (applied_entries (nwState net)))).
+  Proof.
+    intros. unfold entries_ordered in *.
+    remember (applied_entries (nwState net)) as l; clear Heql.
+    find_apply_lem_hyp before_func_deduplicate.
+    remember (deduplicate_log l) as l'; clear Heql'. clear l. rename l' into l.
+    induction l; simpl in *; intuition.
+    - repeat break_match; subst; simpl in *; repeat (do_bool; intuition).
+      + destruct k; simpl in *; subst. right. intuition.
+        find_inversion. simpl in *. intuition.
+      + exfalso. destruct k; subst; simpl in *.
+        find_apply_lem_hyp import_get_output. break_exists. congruence.
+    - repeat break_match; subst; simpl in *; repeat (do_bool; intuition).
+      + right. destruct k'. simpl in *. intuition; try congruence.
+        destruct (key_eq_dec k (eClient, eId)); subst; intuition.
+        right. intuition; congruence.
+      + right. destruct k'. simpl in *. intuition; try congruence.
+        destruct (key_eq_dec k (eClient, eId)); subst; intuition.
+        right. intuition; congruence.
+      + right. intuition; [find_inversion; simpl in *; intuition|].
+        right. intuition. congruence.
+      + right. intuition; [find_inversion; simpl in *; intuition|].
+        right. intuition. congruence.
+  Qed.
+
+  Lemma I_before_O :
+    forall failed net tr k,
+      step_f_star step_f_init (failed, net) tr ->
+      In (O k) (import tr) ->
+      before (I k) (O k) (import tr).
   Proof.
   Admitted.
 
@@ -631,10 +734,17 @@ find_apply_hyp_hyp. break_exists. eauto 10.
         unfold in_input in *. break_exists. break_and.
         eauto using trace_I_in_import.
       + (* before preserved *)
-        eauto using before_In, before_import_output_before_input, causal_order_preserved,
-        entries_ordered_before_log_to_IR.
+        intros.
+        assert (k <> k').
+        * intuition. subst.
+          find_copy_apply_lem_hyp before_In.
+          find_eapply_lem_hyp I_before_O; eauto.
+          find_eapply_lem_hyp before_antisymmetric; auto.
+          congruence.
+        * eauto using before_In, before_import_output_before_input, causal_order_preserved,
+          entries_ordered_before_log_to_IR.
       + (* I before O *)
-        admit.
+        intros. eauto using I_before_O.
       + (* In IRU -> not In O *)
         intros.
         find_apply_lem_hyp IRU_in_IR_in_log. break_exists. break_and.
