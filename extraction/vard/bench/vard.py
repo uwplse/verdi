@@ -1,5 +1,8 @@
 import socket
 import re
+import uuid
+
+MAX_ID = 2**31
 
 class LeaderChanged(Exception):
     pass
@@ -23,10 +26,10 @@ class Client(object):
     
     response_re = re.compile(r'Response\W+([/A-Za-z0-9]+|-)\W+([/A-Za-z0-9]+|-)\W+([/A-Za-z0-9]+|-)')
 
-    def __init__(self, host, port, client_id):
+    def __init__(self, host, port):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((host, port))
-        self.client_id = client_id
+        self.client_id = uuid.uuid4().int % MAX_ID
         self.request_id = 0
         
     def deserialize(self, data):
