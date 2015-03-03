@@ -13,7 +13,7 @@ Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 Require Import Raft.
 Require Import CommonTheorems.
-Require Import StateMachineSafety.
+Require Import StateMachineSafetyInterface.
 Require Import SortedInterface.
 Require Import UniqueIndicesInterface.
 Require Import LogMatchingInterface.
@@ -28,6 +28,7 @@ Section AppliedEntriesMonotonicProof.
   Context {si : sorted_interface}.
   Context {lmi : log_matching_interface}.
   Context {uii : unique_indices_interface}.
+  Context {smsi : state_machine_safety_interface}.
 
   Theorem handleAppendEntries_log :
     forall h st t n pli plt es ci st' ps,

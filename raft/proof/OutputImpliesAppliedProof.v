@@ -12,7 +12,7 @@ Require Import TraceRelations.
 Require Import Raft.
 Require Import CommonTheorems.
 Require Import LogMatchingInterface.
-Require Import StateMachineSafety.
+Require Import StateMachineSafetyInterface.
 Require Import AppliedEntriesMonotonicInterface.
 Require Import TraceUtil.
 
@@ -31,6 +31,7 @@ Section OutputImpliesApplied.
   Context {lmi : log_matching_interface}.
   Context {si : sorted_interface}.
   Context {aemi : applied_entries_monotonic_interface}.
+  Context {smsi : state_machine_safety_interface}.
 
   Section inner.
   Variables client id : nat.

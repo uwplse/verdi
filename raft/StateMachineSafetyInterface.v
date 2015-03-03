@@ -46,11 +46,13 @@ Section StateMachineSafety.
     state_machine_safety_host net /\ state_machine_safety_nw net /\
     maxIndex_lastApplied net /\ maxIndex_commitIndex net.
 
-  Theorem state_machine_safety_invariant :
-    forall net,
-      raft_intermediate_reachable net ->
-      state_machine_safety net.
-  Admitted.
+  Class state_machine_safety_interface : Prop :=
+    {
+      state_machine_safety_invariant :
+        forall net,
+          raft_intermediate_reachable net ->
+          state_machine_safety net
+    }.
 
 End StateMachineSafety.
          
