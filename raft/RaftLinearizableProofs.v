@@ -854,6 +854,22 @@ Section RaftLinearizableProofs.
     simpl. constructor.
   Qed.
 
+  Definition input_correct (tr : list (name * (raft_input + list raft_output))) : Prop :=
+    (forall client id i i' h h',
+       In (h, inl (ClientRequest client id i)) tr ->
+       In (h', inl (ClientRequest client id i')) tr ->
+       i = i').
+
+  Lemma in_input_trace_get_input :
+    forall tr e,
+      input_correct tr ->
+      in_input_trace (eClient e) (eId e) (eInput e) tr ->
+      get_input tr (eClient e, eId e) = Some (eInput e).
+  Proof.
+    unfold in_input_trace, input_correct.
+    induction tr; intros; break_exists; simpl in *; intuition; subst;
+    repeat break_match; intuition; subst; eauto 10 using f_equal.
+  Qed.
 
   Theorem raft_linearizable :
     forall failed net tr,
@@ -921,7 +937,11 @@ Section RaftLinearizableProofs.
       + (* NoDup IR output *)
         apply NoDup_output_log.
     - apply exported_execute_log.
-      + admit.
+      + intros.
+        find_apply_lem_hyp deduplicate_log_In_if.
+        apply in_input_trace_get_input.
+        * auto.
+        * eapply applied_implies_input; eauto.
       + admit.
   Qed.
 End RaftLinearizableProofs.
