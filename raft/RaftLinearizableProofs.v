@@ -871,6 +871,7 @@ Section RaftLinearizableProofs.
     unfold in_input_trace, input_correct.
     induction tr; intros; break_exists; simpl in *; intuition; subst;
     repeat break_match; intuition; subst; eauto 10 using f_equal.
+  Qed.
 
   Lemma get_output_in_output_trace :
     forall tr client id o,
@@ -913,6 +914,22 @@ Section RaftLinearizableProofs.
              end. f_equal. intuition eauto.
   Qed.
 
+  Lemma applied_entries_applied_implies_input_state :
+    forall net e,
+      In e (applied_entries (nwState net)) ->
+      applied_implies_input_state (eClient e) (eId e) (eInput e) net.
+  Proof.
+    intros.
+    red. exists e.
+    intuition.
+    - red. auto.
+    - unfold applied_entries in *. break_match.
+      + find_apply_lem_hyp in_rev.
+        find_apply_lem_hyp removeAfterIndex_in.
+        eauto.
+      + simpl in *. intuition.
+  Qed.
+
   Theorem raft_linearizable :
     forall failed net tr,
       input_correct tr ->
@@ -950,8 +967,10 @@ Section RaftLinearizableProofs.
         destruct k as [c id].
         find_apply_lem_hyp deduplicate_log_In_if.
         find_eapply_lem_hyp applied_implies_input; eauto.
-        unfold in_input_trace in *. break_exists.
-        eauto using trace_I_in_import.
+        * unfold in_input_trace in *. break_exists.
+          eauto using trace_I_in_import.
+        * simpl in *. subst.
+          auto using applied_entries_applied_implies_input_state.
       + (* before preserved *)
         intros.
         assert (k <> k').
@@ -984,6 +1003,7 @@ Section RaftLinearizableProofs.
         apply in_input_trace_get_input.
         * auto.
         * eapply applied_implies_input; eauto.
+          auto using applied_entries_applied_implies_input_state.
       + intros.
         find_apply_lem_hyp get_output_in_output_trace.
         find_eapply_lem_hyp output_correct; eauto.
