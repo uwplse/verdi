@@ -69,9 +69,9 @@ Section AppliedImpliesInputProof.
 
     Lemma aiis_intro_packet :
       forall client id i net e p es,
+        mEntries (pBody p) = Some es ->
         In p (nwPackets net) ->
         correct_entry client id i e ->
-        mEntries (pBody p) = Some es ->
         In e es ->
         applied_implies_input_state client id i net.
     Proof.
@@ -229,7 +229,11 @@ Section AppliedImpliesInputProof.
                 eauto using handleInputs_aais.
             }
           * exfalso. eauto using aiis_intro_packet.
-      - admit.
+      - unfold applied_implies_input_state in H2.
+        break_exists. intuition. break_exists; simpl in *.
+        + exfalso; eauto  using aiis_intro_state.
+        + break_exists. break_and. simpl in *.
+          exfalso. eauto using aiis_intro_packet.
       - admit.
       - congruence.
       - admit.
