@@ -133,10 +133,11 @@ Section OutputImpliesApplied.
     - simpl in *.
       find_inversion; simpl in *; intuition.
     - simpl in *. repeat break_let.
-      break_if; find_inversion; simpl in *; intuition;
-      try find_inversion; eauto;
-      find_eapply_lem_hyp IHl; eauto;
-      break_exists_exists; intuition.
+      repeat break_match; find_inversion; simpl in *; intuition;
+      try find_inversion; simpl in *; try do_in_app; intuition eauto;
+      try solve [find_eapply_lem_hyp IHl; eauto;
+                 break_exists_exists; intuition];
+      try do_in_map; find_inversion; eexists; eauto.
   Qed.
 
   Lemma doGenericServer_key_in_output_list :

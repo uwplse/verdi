@@ -310,7 +310,7 @@ Section Raft.
 
   Definition applyEntry st e :=
     let (out, d) := handler (eInput e) (stateMachine st) in
-    (out, {[ {[ st with clientCache := assoc_set eq_nat_dec (clientCache st) (eClient e) (eId e, out) ]}
+    ([out], {[ {[ st with clientCache := assoc_set eq_nat_dec (clientCache st) (eClient e) (eId e, out) ]}
              with stateMachine := d ]}).
 
   Fixpoint applyEntries h (st : raft_data) entries : (list raft_output * raft_data) :=
@@ -320,14 +320,17 @@ Section Raft.
         let (out, st) :=
             match getLastId st (eClient e) with
               | Some (id, o) =>
-                if (eId e) <=? id then
-                  (o, st)
+                if eId e <? id then
+                  ([], st)
                 else
-                  applyEntry st e
+                  if eId e =? id then
+                    ([o], st)
+                  else
+                    applyEntry st e
               | None => applyEntry st e
             end in
         let out := if name_eq_dec (eAt e) h then
-                     [ClientResponse (eClient e) (eId e) out]
+                     map (fun o => ClientResponse (eClient e) (eId e) o) out
                    else
                      [] in
         let (out', state) := applyEntries h st es in
