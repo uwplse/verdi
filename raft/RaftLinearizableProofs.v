@@ -14,7 +14,6 @@ Require Import Raft.
 Require Import CommonTheorems.
 Require Import TraceUtil.
 Require Import Linearizability.
-Require Import RaftLinearizableDefinitions.
 Require Import OutputImpliesAppliedInterface.
 Require Import UniqueIndicesInterface.
 Require Import AppliedImpliesInputInterface.
