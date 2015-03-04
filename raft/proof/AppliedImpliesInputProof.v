@@ -230,11 +230,17 @@ Section AppliedImpliesInputProof.
             }
           * exfalso. eauto using aiis_intro_packet.
       - unfold applied_implies_input_state in H2.
-        break_exists. intuition. break_exists; simpl in *.
+        break_exists. intuition; break_exists; simpl in *.
         + exfalso; eauto  using aiis_intro_state.
-        + break_exists. break_and. simpl in *.
+        + break_and. simpl in *.
           exfalso. eauto using aiis_intro_packet.
-      - admit.
+      - unfold applied_implies_input_state in H2.
+        break_exists. intuition; break_exists; simpl in *.
+        + exfalso; eauto  using aiis_intro_state.
+        + intuition.
+          * subst. exfalso. eauto using aiis_intro_packet.
+          * exfalso. apply H1. eapply aiis_intro_packet; eauto.
+            congruence.
       - congruence.
       - admit.
     Qed.
