@@ -374,12 +374,97 @@ Section AppliedImpliesInputProof.
           exfalso. eauto using aiis_intro_packet.
     Qed.
 
+    Definition aiis_host (net : network) : Prop :=
+      exists h e,
+        correct_entry client id i e /\
+        In e (log (nwState net h)).
+
+    Lemma name_dec :
+      forall (P : name -> Prop)
+             (P_dec : forall x, {P x} + {~P x}),
+        {exists x, P x} + {~ exists x, P x}.
+    Proof.
+      intros.
+      destruct (find (fun x => if P_dec x then true else false) nodes) eqn:?.
+      - find_apply_lem_hyp find_some. intuition. break_if; try discriminate.
+        eauto.
+      - right. intro. break_exists.
+        eapply find_none with (x := x) in Heqo; auto using all_names_nodes.
+        break_if; congruence.
+    Defined.
+
+    Definition correct_entry_dec (e : entry) :
+      {correct_entry client id i e} +
+      {~ correct_entry client id i e}.
+      unfold correct_entry.
+      destruct (eq_nat_dec (eClient e) client),
+               (eq_nat_dec (eId e) id),
+               (input_eq_dec (eInput e) i); intuition.
+    Defined.
+
+    Definition exists_dec :
+      forall A (P : A -> Prop)
+             (P_dec : forall x, {P x} + {~ P x}) l,
+        {exists x, P x /\ In x l} +
+        {~ exists x, P x /\ In x l}.
+      intros.
+      destruct (find (fun e => if P_dec e then true else false) l) eqn:?.
+      - find_apply_lem_hyp find_some. intuition. break_if; try discriminate. eauto.
+      - right. intro. break_exists. intuition.
+        eapply find_none with (x := x) in Heqo; eauto.
+        break_if; congruence.
+    Defined.
+
+    Definition aiis_host_dec (net : network) :
+      {aiis_host net} + {~aiis_host net}.
+      unfold aiis_host.
+      simpl.
+      apply name_dec.
+      intros.
+      apply exists_dec.
+      apply correct_entry_dec.
+    Defined.
+
+    Definition aiis_packet (net : network) : Prop :=
+      exists p,
+        (exists es,
+           (exists e,
+              correct_entry client id i e /\
+              In e es) /\
+           mEntries (pBody p) = Some es) /\
+        In p (nwPackets net).
+
+    Definition aiis_packet_dec (net : network) : {aiis_packet net} + {~aiis_packet net}.
+      unfold aiis_packet.
+      apply exists_dec.
+      intros.
+      destruct (pBody x);
+        try solve [right; intro; break_exists; intuition; discriminate].
+      simpl.
+      destruct (exists_dec _ _ correct_entry_dec l0); eauto.
+      right. intro. break_exists. break_and. find_inversion. auto.
+    Defined.
+
+    Definition applied_implies_input_state_dec (net : network) :
+      {applied_implies_input_state client id i net} +
+      {~ applied_implies_input_state client id i net}.
+      unfold applied_implies_input_state.
+      destruct (aiis_host_dec net).
+      - unfold aiis_host in *.
+        left. repeat (break_exists; intuition). eauto 10.
+      - destruct (aiis_packet_dec net).
+        + unfold aiis_packet in *.
+          left. repeat (break_exists; intuition). eauto 10.
+        + unfold aiis_host, aiis_packet in *.
+          right. intro. repeat (break_exists; intuition); eauto 10.
+    Defined.
+
     Instance ITR : InverseTraceRelation step_f :=
       { init := step_f_init;
         R := fun s => applied_implies_input_state client id i (snd s);
         T := in_input_trace client id i
       }.
-    - intros. admit.  (* decidable R *)
+    - intros. apply applied_implies_input_state_dec.
     - intros.
       unfold in_input_trace in *. break_exists_exists.
       intuition.
