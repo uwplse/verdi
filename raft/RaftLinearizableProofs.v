@@ -18,6 +18,7 @@ Require Import OutputImpliesAppliedInterface.
 Require Import UniqueIndicesInterface.
 Require Import AppliedImpliesInputInterface.
 Require Import CausalOrderPreservedInterface.
+Require Import OutputCorrectInterface.
 Require Import InputBeforeOutputInterface.
 
 Section RaftLinearizableProofs.
@@ -29,6 +30,7 @@ Section RaftLinearizableProofs.
   Context {aiii : applied_implies_input_interface}.
   Context {copi : causal_order_preserved_interface}.
   Context {iboi : input_before_output_interface}.
+  Context {oci : output_correct_interface}.
 
 
   Definition op_eq_dec : forall x y : op key, {x = y} + {x <> y}.
@@ -869,6 +871,46 @@ Section RaftLinearizableProofs.
     unfold in_input_trace, input_correct.
     induction tr; intros; break_exists; simpl in *; intuition; subst;
     repeat break_match; intuition; subst; eauto 10 using f_equal.
+
+  Lemma get_output_in_output_trace :
+    forall tr client id o,
+      get_output tr (client, id) = Some o ->
+      in_output_trace client id o tr.
+  Proof.
+    intros. induction tr; simpl in *; try congruence.
+    repeat break_let. subst.
+    repeat break_match; simpl in *; intuition; subst;
+    try solve [unfold in_output_trace in *;break_exists_exists; intuition].
+    find_inversion. find_apply_lem_hyp get_output'_In.
+    repeat eexists; eauto; in_crush.
+  Qed.
+
+  Lemma deduplicate_partition :
+    forall l ks xs e ys xs' e' ys',
+      deduplicate_log' l ks = xs ++ e :: ys ->
+      deduplicate_log' l ks = xs' ++ e' :: ys' ->
+      eClient e = eClient e' ->
+      eId e = eId e' ->
+      xs = xs'.
+  Proof.
+    induction l; intros; simpl in *.
+    - destruct xs; simpl in *; congruence.
+    - break_if; simpl in *; intuition eauto.
+      destruct xs; destruct xs'; simpl in *; intuition eauto;
+      try solve
+          [exfalso;
+            repeat match goal with
+                     | H : _ :: _ = _ :: _ |- _ => invcs H
+                   end;
+            match goal with
+              | _ : deduplicate_log' ?l (?k :: ?ks) = _ ++ ?e :: _ |- _ =>
+                pose proof deduplicate_log'_In_key e l k ks
+            end; forwards; unfold key; [repeat find_rewrite; in_crush|];
+            concludes;
+            unfold key_of in *; repeat find_rewrite; congruence].
+      repeat match goal with
+                | H : _ :: _ = _ :: _ |- _ => invcs H
+             end. f_equal. intuition eauto.
   Qed.
 
   Theorem raft_linearizable :
@@ -942,6 +984,19 @@ Section RaftLinearizableProofs.
         apply in_input_trace_get_input.
         * auto.
         * eapply applied_implies_input; eauto.
-      + admit.
+      + intros.
+        find_apply_lem_hyp get_output_in_output_trace.
+        find_eapply_lem_hyp output_correct; eauto.
+        break_exists. intuition.
+        find_eapply_lem_hyp deduplicate_partition; eauto.
+        subst.
+        repeat find_rewrite.
+        find_apply_lem_hyp app_inv_head. find_inversion.
+        unfold execute_log in *.
+        rewrite execute_log'_app in *. simpl in *.
+        repeat break_let. repeat find_inversion.
+        rewrite rev_app_distr in *. simpl in *.
+        unfold value in *. find_inversion.
+        repeat find_rewrite. find_inversion. auto.
   Qed.
 End RaftLinearizableProofs.
