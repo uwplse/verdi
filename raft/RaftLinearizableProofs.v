@@ -278,8 +278,7 @@ Section RaftLinearizableProofs.
         find_eapply_lem_hyp In_filterMap. break_exists. break_and.
         break_match; discriminate.
       + find_eapply_lem_hyp in_remove_all_was_in.
-
-find_apply_hyp_hyp. break_exists. eauto 10.
+        find_apply_hyp_hyp. break_exists. eauto 10.
   Qed.
 
   Lemma in_applied_entries_in_IR :
