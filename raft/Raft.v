@@ -19,7 +19,8 @@ Set Implicit Arguments.
 Class RaftParams (orig_base_params : BaseParams)
   := {
       N : nat ;
-      input_eq_dec : forall x y : input, {x = y} + {x <> y}
+      input_eq_dec : forall x y : input, {x = y} + {x <> y} ;
+      output_eq_dec : forall x y : output, {x = y} + {x <> y}
     }.
 
 Section Raft.

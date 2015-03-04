@@ -6,7 +6,8 @@ Section VarDRaft.
   Instance raft_params : RaftParams vard_base_params :=
     {
       N := 3;
-      input_eq_dec := input_eq_dec
+      input_eq_dec := input_eq_dec;
+      output_eq_dec := output_eq_dec
     }.
 
   Definition vard_raft_base_params := base_params.
