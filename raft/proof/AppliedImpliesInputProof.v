@@ -249,6 +249,39 @@ Section AppliedImpliesInputProof.
       - find_erewrite_lem handleAppendEntriesReply_same_log. eauto using aiis_intro_state.
     Qed.
 
+    Lemma handleRequestVote_doesn't_send_AE :
+      forall h st t n lli llt d m,
+        handleRequestVote h st t n lli llt = (d, m) ->
+        ~ is_append_entries m.
+    Proof.
+      intros.
+      unfold handleRequestVote in *.
+      repeat (break_match; repeat (find_inversion; simpl in *));
+        intro; break_exists; discriminate.
+    Qed.
+
+    Lemma handleAppendEntriesReply_doesn't_send_AE :
+      forall n st src t es b st' l,
+        handleAppendEntriesReply n st src t es b = (st', l) ->
+        forall x,
+          In x l ->
+          ~ is_append_entries (snd x).
+    Proof.
+      intros.
+      unfold handleAppendEntriesReply in *.
+      repeat (break_match; repeat (find_inversion; simpl in *)); intuition.
+    Qed.
+
+    Lemma handleAppendEntries_doesn't_send_AE :
+      forall n st t i l t' l' l'' st' m,
+        handleAppendEntries n st t i l t' l' l'' = (st', m) ->
+        ~ is_append_entries m.
+    Proof.
+      unfold handleAppendEntries.
+      intros.
+      repeat break_match; find_inversion; intro; break_exists; discriminate.
+    Qed.
+
     Lemma handleMessage_sends_log :
       forall client id i net p d' ms m es e,
         In p (nwPackets net) ->
@@ -258,7 +291,16 @@ Section AppliedImpliesInputProof.
         mEntries (snd m) = Some es ->
         In e es ->
         In e (log (nwState net (pDst p))).
-    Admitted.
+    Proof.
+      intros.
+      destruct (pBody p) eqn:?; simpl in *; repeat break_let; repeat find_inversion;
+      simpl in *; intuition; subst; simpl in *.
+      - exfalso. eapply handleRequestVote_doesn't_send_AE; eauto using mEntries_some_is_applied_entries.
+      - exfalso. eapply handleAppendEntries_doesn't_send_AE; eauto using mEntries_some_is_applied_entries.
+      - exfalso.
+        eapply handleAppendEntriesReply_doesn't_send_AE;
+          eauto using mEntries_some_is_applied_entries.
+    Qed.
 
     Lemma applied_implies_input_in_input_trace :
       forall net failed net' failed' tr,
