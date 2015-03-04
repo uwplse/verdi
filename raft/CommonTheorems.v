@@ -1079,6 +1079,51 @@ Section CommonTheorems.
     eapply pigeon with (l := nodes); eauto using all_fin_all, all_fin_NoDup, NoDup_dedup, name_eq_dec, div2_correct.
   Qed.
 
+  Lemma fst_execute_log' :
+    forall log st tr,
+      fst (execute_log' log st tr) = tr ++ fst (execute_log' log st []).
+  Proof.
+    induction log; intros.
+    - simpl. rewrite app_nil_r. auto.
+    - simpl. break_let. rewrite IHlog. rewrite app_ass. simpl.
+      rewrite IHlog with (tr := [(eInput a, o)]).
+      auto.
+  Qed.
+
+  Lemma snd_execute_log' :
+    forall log st tr,
+      snd (execute_log' log st tr) = snd (execute_log' log st []).
+  Proof.
+    induction log; intros.
+    - auto.
+    - simpl. break_let. rewrite IHlog.
+      rewrite IHlog with (tr := [(eInput a, o)]).
+      auto.
+  Qed.
+
+  Lemma execute_log_correct' :
+    forall log st,
+      step_1_star st (snd (execute_log' log st []))
+                  (fst (execute_log' log st [])).
+  Proof.
+    induction log; intros.
+    - simpl. constructor.
+    - simpl. break_let.
+      rewrite fst_execute_log'.
+      rewrite snd_execute_log'.
+      unfold step_1_star in *.
+      econstructor.
+      + constructor. eauto.
+      + auto.
+  Qed.
+
+  Lemma execute_log_correct :
+    forall log,
+      step_1_star init (snd (execute_log log))
+                  (fst (execute_log log)).
+  Proof.
+    intros. apply execute_log_correct'.
+  Qed.
 End CommonTheorems.
 
 Notation is_append_entries m :=
