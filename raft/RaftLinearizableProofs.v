@@ -763,7 +763,100 @@ find_apply_hyp_hyp. break_exists. eauto 10.
     - rewrite deduplicate_log'_filter.
       eauto using NoDup_map_filter.
   Qed.
-  
+
+  Lemma exported_snoc_IO :
+    forall env_i env_o ir tr i o k,
+      exported env_i env_o ir tr ->
+      env_i k = Some i ->
+      env_o k = Some o ->
+      exported env_i env_o (ir ++ [IRI k; IRO k]) (tr ++ [(i, o)]).
+  Admitted.
+
+  Lemma exported_snoc_IU :
+    forall env_i env_o ir tr i k o,
+      exported env_i env_o ir tr ->
+      env_i k = Some i ->
+      env_o k = None ->
+      exported env_i env_o (ir ++ [IRI k; IRU k]) (tr ++ [(i, o)]).
+  Admitted.
+
+  Lemma execute_log'_app :
+    forall xs ys st tr,
+      execute_log' (xs ++ ys) st tr =
+      let (tr', st') := execute_log' xs st tr in
+      execute_log' ys st' tr'.
+  Proof.
+    induction xs; intros.
+    - auto.
+    - simpl in *. repeat break_let.
+      rewrite IHxs. break_let. find_inversion. auto.
+  Qed.
+
+  Lemma log_to_IR_app :
+    forall xs ys env,
+      log_to_IR env (xs ++ ys) = log_to_IR env xs ++ log_to_IR env ys.
+  Proof.
+    induction xs; intros; simpl; intuition.
+    repeat break_match; subst; simpl; auto using f_equal.
+  Qed.
+
+  Lemma exported_execute_log' :
+    forall env_i env_o l es tr st,
+      (forall e, In e l -> env_i (eClient e, eId e) = Some (eInput e)) ->
+      (forall xs ys e tr' st' o o0 st'',
+         l = xs ++ e :: ys ->
+         execute_log' xs st tr = (tr', st') ->
+         handler (eInput e) st' = (o, st'') ->
+         env_o (eClient e, eId e) = Some o0 ->
+         o = o0) ->
+      execute_log es = (tr, st) ->
+      exported env_i env_o (log_to_IR env_o es) tr ->
+      exported env_i env_o (log_to_IR env_o (es ++ l)) (fst (execute_log' l st tr)).
+  Proof.
+    induction l using rev_ind; intros; simpl in *.
+    - rewrite app_nil_r.  auto.
+    - rewrite execute_log'_app. simpl. repeat break_let.
+      simpl.
+      eapply_prop_hyp execute_log execute_log; auto.
+      + find_rewrite. simpl in *.
+        rewrite <- app_ass.
+        rewrite log_to_IR_app.
+        simpl.
+        specialize (H x). concludes.
+        specialize (H0 l [] x l0 d).
+        break_match; subst; simpl in *.
+        rewrite app_nil_r.
+        break_match.
+        * specialize (H0 o o0 d0). repeat concludes.
+          apply exported_snoc_IO; congruence.
+        * apply exported_snoc_IU; auto.
+      + intros. apply H. intuition.
+      + intros. subst. eapply H0 with (ys0 := ys ++ [x]).
+        rewrite app_ass. simpl. eauto.
+        eauto.
+        eauto.
+        eauto.
+  Qed.
+
+  Lemma exported_execute_log :
+    forall env_i env_o l,
+      (forall e, In e l -> env_i (eClient e, eId e) = Some (eInput e)) ->
+      (forall xs ys e tr' st' o o0 st'',
+         l = xs ++ e :: ys ->
+         execute_log xs  = (tr', st') ->
+         handler (eInput e) st' = (o, st'') ->
+         env_o (eClient e, eId e) = Some o0 ->
+         o = o0) ->
+      exported env_i env_o (log_to_IR env_o l) (fst (execute_log l)).
+  Proof.
+    intros.
+    unfold execute_log.
+    change (log_to_IR env_o l) with (log_to_IR env_o ([] ++ l)).
+    eapply exported_execute_log'; eauto.
+    simpl. constructor.
+  Qed.
+
+
   Theorem raft_linearizable :
     forall failed net tr,
       input_correct tr ->
@@ -829,6 +922,8 @@ find_apply_hyp_hyp. break_exists. eauto 10.
         apply NoDup_output_import.
       + (* NoDup IR output *)
         apply NoDup_output_log.
-    - admit.
+    - apply exported_execute_log.
+      + admit.
+      + admit.
   Qed.
 End RaftLinearizableProofs.
