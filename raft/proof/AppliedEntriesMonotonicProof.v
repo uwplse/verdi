@@ -423,8 +423,9 @@ Section AppliedEntriesMonotonicProof.
 
   Instance aemi : applied_entries_monotonic_interface.
   Proof.
-    split.
-    exact applied_entries_monotonic.
+    split;
+    eauto using applied_entries_monotonic,
+                applied_entries_monotonic'.
   Qed.
 
 End AppliedEntriesMonotonicProof.
