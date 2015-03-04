@@ -196,14 +196,58 @@ Section AppliedImpliesInputProof.
           * exfalso. eauto using aiis_intro_state.
     Qed.
 
+    Theorem handleAppendEntries_log :
+      forall h st t n pli plt es ci st' ps,
+        handleAppendEntries h st t n pli plt es ci = (st', ps) ->
+        log st' = log st \/
+        log st' = es \/
+        (exists e,
+           In e (log st) /\
+           eIndex e = pli /\
+           eTerm e = plt) /\
+        log st' = es ++ (removeAfterIndex (log st) pli).
+    Proof.
+      intros. unfold handleAppendEntries in *.
+      break_if; [find_inversion; subst; eauto|].
+      break_if; [find_inversion; subst; eauto|].
+      break_match; [|find_inversion; subst; eauto].
+      break_if; [find_inversion; subst; eauto|].
+      find_inversion; subst; simpl in *.
+      right. right.
+      find_apply_lem_hyp findAtIndex_elim. intuition.
+      do_bool. eauto.
+    Qed.
+
+    Lemma mEntries_intro :
+      forall m t n l t' es l',
+        m = AppendEntries t n l t' es l' ->
+        mEntries m = Some es.
+    Proof.
+      unfold mEntries. intros. subst. auto.
+    Qed.
+
     Lemma handleMessage_aais :
       forall client id i net p d' ms e,
+        ~ applied_implies_input_state client id i net ->
         In p (nwPackets net) ->
         handleMessage (pSrc p) (pDst p) (pBody p) (nwState net (pDst p)) = (d', ms) ->
         correct_entry client id i e ->
         In e (log d') ->
-        In e (log (nwState net (pDst p))).
-    Admitted.
+        False.
+    Proof.
+      intros.
+      destruct (pBody p) eqn:?; simpl in *; repeat break_let; repeat find_inversion.
+      - find_erewrite_lem handleRequestVote_same_log. eauto using aiis_intro_state.
+      - find_erewrite_lem handleRequestVoteReply_same_log. eauto using aiis_intro_state.
+      - find_apply_lem_hyp handleAppendEntries_log. intuition; find_rewrite.
+        + eauto using aiis_intro_state.
+        + subst. eauto using mEntries_intro, aiis_intro_packet.
+        + do_in_app. intuition.
+          * eauto using mEntries_intro, aiis_intro_packet.
+          * find_apply_lem_hyp removeAfterIndex_in.
+            eauto using aiis_intro_state.
+      - find_erewrite_lem handleAppendEntriesReply_same_log. eauto using aiis_intro_state.
+    Qed.
 
     Lemma handleMessage_sends_log :
       forall client id i net p d' ms m es e,
