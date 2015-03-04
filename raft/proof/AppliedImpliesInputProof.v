@@ -35,7 +35,7 @@ Section AppliedImpliesInputProof.
         eClient e = client ->
         eId e = id ->
         In e (applied_entries (nwState net)) ->
-        key_in_input_trace client id tr.
+        in_input_trace client id (eInput e) tr.
     Admitted.
   End inner.
 

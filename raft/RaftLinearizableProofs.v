@@ -893,7 +893,7 @@ Section RaftLinearizableProofs.
         destruct k as [c id].
         find_apply_lem_hyp deduplicate_log_In_if.
         find_eapply_lem_hyp applied_implies_input; eauto.
-        unfold key_in_input_trace in *. break_exists. break_and.
+        unfold in_input_trace in *. break_exists.
         eauto using trace_I_in_import.
       + (* before preserved *)
         intros.

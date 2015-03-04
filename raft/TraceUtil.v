@@ -41,9 +41,9 @@ Section TraceUtil.
       In (h, inr os) tr /\
       key_in_output_list client id os.
 
-  Definition key_in_input_trace (client id : nat)
+  Definition in_input_trace (client id : nat) (i : input)
              (tr : list (name * (raft_input + list raft_output))) : Prop :=
-      exists h i,
+      exists h,
         In (h, inl (ClientRequest client id i)) tr.
   
   Definition is_output_with_key (client id : nat)
