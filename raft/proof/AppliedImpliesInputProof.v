@@ -196,6 +196,26 @@ Section AppliedImpliesInputProof.
           * exfalso. eauto using aiis_intro_state.
     Qed.
 
+    Lemma handleMessage_aais :
+      forall client id i net p d' ms e,
+        In p (nwPackets net) ->
+        handleMessage (pSrc p) (pDst p) (pBody p) (nwState net (pDst p)) = (d', ms) ->
+        correct_entry client id i e ->
+        In e (log d') ->
+        In e (log (nwState net (pDst p))).
+    Admitted.
+
+    Lemma handleMessage_sends_log :
+      forall client id i net p d' ms m es e,
+        In p (nwPackets net) ->
+        handleMessage (pSrc p) (pDst p) (pBody p) (nwState net (pDst p)) = (d', ms) ->
+        correct_entry client id i e ->
+        In m ms ->
+        mEntries (snd m) = Some es ->
+        In e es ->
+        In e (log (nwState net (pDst p))).
+    Admitted.
+
     Lemma applied_implies_input_in_input_trace :
       forall net failed net' failed' tr,
         raft_intermediate_reachable net ->
@@ -208,7 +228,23 @@ Section AppliedImpliesInputProof.
       match goal with
         | [ H : context [step_f _ _ _ ] |- _ ] => invcs H
       end.
-      - admit.
+      - unfold RaftNetHandler in *. repeat break_let. subst. find_inversion.
+        find_apply_lem_hyp applied_implies_input_update_split.
+        break_exists. intuition; break_exists.
+        + find_erewrite_lem doLeader_same_log.
+          find_erewrite_lem doGenericServer_log.
+          exfalso. eauto using aiis_intro_state, handleMessage_aais.
+        + exfalso. eauto using aiis_intro_state.
+        + intuition. do_in_app. intuition.
+          * do_in_map. subst. simpl in *.
+            { repeat (do_in_app; intuition).
+              - exfalso. eauto using aiis_intro_state, handleMessage_sends_log.
+              - exfalso. eauto using doGenericServer_packets.
+              - find_eapply_lem_hyp doLeader_messages; eauto.
+                find_erewrite_lem doGenericServer_log.
+                exfalso. eauto using aiis_intro_state, handleMessage_aais.
+            }
+          * exfalso. eauto using aiis_intro_packet.
       - unfold RaftInputHandler in *. repeat break_let. subst. find_inversion.
         find_apply_lem_hyp applied_implies_input_update_split.
         break_exists. intuition; break_exists.
