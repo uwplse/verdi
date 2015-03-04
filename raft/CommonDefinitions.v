@@ -86,4 +86,10 @@ Section CommonDefinitions.
       end.
 
     Definition deduplicate_log l := deduplicate_log' l [].
+
+    Definition mEntries p :=
+      match p with
+        | AppendEntries _ _ _ _ entries _ => Some entries
+        | _ => None
+      end.
 End CommonDefinitions.

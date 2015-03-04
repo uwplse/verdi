@@ -761,13 +761,6 @@ Section CommonTheorems.
     repeat (break_match; repeat (find_inversion; simpl in *)); auto using advanceCurrentTerm_same_lastApplied.
   Qed.
 
-  Definition mEntries p :=
-    match p with
-      | AppendEntries _ _ _ _ entries _ => Some entries
-      | _ => None
-    end.
-
-
   Definition term_of msg :=
     match msg with
       | RequestVote t _ _ _ => Some t
