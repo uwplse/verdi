@@ -31,12 +31,6 @@ Section RaftLinearizableProofs.
   Context {copi : causal_order_preserved_interface}.
   Context {iboi : input_before_output_interface}.
 
-  Definition key : Type := nat * nat.
-
-  Definition key_eq_dec : forall x y : key, {x = y} + {x <> y}.
-  Proof.
-    decide equality; auto using eq_nat_dec.
-  Qed.
 
   Definition op_eq_dec : forall x y : op key, {x = y} + {x <> y}.
   Proof.
@@ -115,20 +109,7 @@ Section RaftLinearizableProofs.
       | _ :: xs => get_output xs k
     end.
 
-  Definition key_of (e : entry) :=
-    (eClient e, eId e).
   
-  Fixpoint deduplicate_log' (log : list entry) (ks : list key) : list entry :=
-    match log with
-      | [] => []
-      | e :: es => if (@in_dec key key_eq_dec (key_of e) ks) then
-                    deduplicate_log' es ks
-                  else
-                    e :: deduplicate_log' es ((key_of e) :: ks)
-    end.
-
-  Definition deduplicate_log l := deduplicate_log' l [].
-
   Lemma deduplicate_log'_keys_perm :
     forall l ks ks',
       Permutation ks ks' ->
@@ -250,16 +231,6 @@ Section RaftLinearizableProofs.
     - repeat break_match; simpl in *; constructor; auto.
   Qed.
 
-  Fixpoint execute_log' (log : list entry) (st : data) (l : list (input * output))
-  : (list (input * output) * data) :=
-    match log with
-      | [] => (l, st)
-      | e :: log' => let '(o, st') := handler (eInput e) st in
-                    execute_log' log' st' (l ++ [(eInput e, o)])
-    end.
-
-  Definition execute_log (log : list entry) : (list (input * output) * data) :=
-    execute_log' log init [].
 
   Lemma fst_execute_log' :
     forall log st tr,
