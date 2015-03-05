@@ -12,7 +12,6 @@ Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 
-Add LoadPath "raft".
 Require Import Raft.
 Require Import CommonTheorems.
 Require Import StateMachineSafetyInterface.
@@ -85,8 +84,7 @@ Section AppliedEntriesMonotonicProof.
         simpl in *. intuition;
           try (subst a; f_equal; eauto using Permutation_cons_inv).
         repeat find_apply_hyp_hyp. intuition.
-        find_eapply_lem_hyp gt_trans; [| eassumption].
-        find_apply_lem_hyp gt_irrefl. contradiction.
+        omega.
   Qed.
 
   Lemma removeAfterIndex_same_sufficient :
