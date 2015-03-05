@@ -3,6 +3,7 @@ Import ListNotations.
 Require Import Arith.
 Require Import Nat.
 Require Import Omega.
+Require Import Permutation.
 
 Require Import Net.
 Require Import Util.
@@ -11,6 +12,7 @@ Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 
+Add LoadPath "raft".
 Require Import Raft.
 Require Import CommonTheorems.
 Require Import StateMachineSafetyInterface.
@@ -65,6 +67,28 @@ Section AppliedEntriesMonotonicProof.
       end. intuition.
   Qed.
 
+  Lemma sorted_Permutation_eq :
+    forall l l',
+      sorted l ->
+      sorted l' ->
+      Permutation l l' ->
+      l = l'.
+  Proof.
+    induction l; intros.
+    - symmetry. apply Permutation_nil. assumption.
+    - destruct l'.
+      + apply Permutation_nil. apply Permutation_sym. assumption.
+      + simpl in *. intuition.
+        find_copy_eapply_lem_hyp Permutation_in; intuition.
+        find_copy_apply_lem_hyp Permutation_sym.
+        find_copy_eapply_lem_hyp Permutation_in; intuition.
+        simpl in *. intuition;
+          try (subst a; f_equal; eauto using Permutation_cons_inv).
+        repeat find_apply_hyp_hyp. intuition.
+        find_eapply_lem_hyp gt_trans; [| eassumption].
+        find_apply_lem_hyp gt_irrefl. contradiction.
+  Qed.
+
   Lemma removeAfterIndex_same_sufficient :
     forall x l l',
       sorted l ->
@@ -77,8 +101,12 @@ Section AppliedEntriesMonotonicProof.
             In e l) ->
       removeAfterIndex l' x = removeAfterIndex l x.
   Proof.
-    intros.
-    admit.
+    intros. apply sorted_Permutation_eq;
+      try (apply removeAfterIndex_sorted; assumption).
+    apply NoDup_Permutation;
+      try (apply NoDup_removeAfterIndex; apply sorted_NoDup; assumption).
+    split; intros; apply removeAfterIndex_le_In;
+        eauto using removeAfterIndex_In_le, removeAfterIndex_in.
   Qed.
 
   Ltac copy_eapply_prop_hyp P Q :=
