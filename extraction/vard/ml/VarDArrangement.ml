@@ -55,22 +55,31 @@ module VarDArrangement (M : VardParams) = struct
   let serialize out =
     match (Obj.magic out) with
     | NotLeader (client, id) ->
-       ((client, id), "NotLeader\n")
+       ((client, id), sprintf "NotLeader %s %s" (string_of_int client) (string_of_int id))
     | ClientResponse (client, id, o) ->
        let Response (k, value, old) = (Obj.magic o) in
        ((client, id),
         match (value, old) with
-        | Some v, Some o -> sprintf "Response %s %s %s\n"
-                                    (string_of_char_list k)
-                                    (string_of_char_list v)
-                                    (string_of_char_list o)
-        | Some v, None -> sprintf "Response %s %s -\n"
-                                  (string_of_char_list k)
-                                  (string_of_char_list v)
-        | None, Some o -> sprintf "Response %s - %s\n"
-                                  (string_of_char_list k)
-                                  (string_of_char_list o)
-        | None, None -> sprintf "Response %s - -\n" (string_of_char_list k))
+        | Some v, Some o -> sprintf "Response %s %s %s %s %s"
+                                   (string_of_int client)
+                                   (string_of_int id)
+                                   (string_of_char_list k)
+                                   (string_of_char_list v)
+                                   (string_of_char_list o)
+        | Some v, None -> sprintf "Response %s %s %s %s -"
+                                 (string_of_int client)
+                                 (string_of_int id)
+                                 (string_of_char_list k)
+                                 (string_of_char_list v)
+        | None, Some o -> sprintf "Response %s %s %s - %s"
+                                 (string_of_int client)
+                                 (string_of_int id)
+                                 (string_of_char_list k)
+                                 (string_of_char_list o)
+        | None, None -> sprintf "Response %s %s %s - -"
+                               (string_of_int client)
+                               (string_of_int id)
+                               (string_of_char_list k))
 
   let deserialize_input i =
     let inp = String.trim i in

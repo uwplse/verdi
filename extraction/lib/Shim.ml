@@ -117,7 +117,7 @@ module Shim (A: ARRANGEMENT) = struct
     sendto env.usock (M.to_string msg []) (denote env nm)
 
   let respond_to_client sock r =
-    ignore (Unix.send sock r 0 (String.length r) [])
+    ignore (Unix.send sock (r ^ "\n") 0 (String.length r) [])
 
   let output env o =
     let (id, s) = A.serialize o in
@@ -148,10 +148,22 @@ module Shim (A: ARRANGEMENT) = struct
     let (client_sock, _) = accept env.isock in
     env.csocks <- client_sock :: env.csocks
 
+  let read_from_socket sock len =
+    let buf = String.make len '\x00' in
+    try
+      let _ = recv sock buf 0 len [MSG_PEEK] in
+      let msg_len = (String.index buf '\n') + 1 in
+      let buf2 = String.make msg_len '\x00' in
+      printf "doing 2nd recv with len %d\n" msg_len;
+      let _ = recv sock buf2 0 msg_len [] in
+      buf
+    with
+      Not_found -> ""
+    | Unix_error _ -> ""
+
   let input_step client_sock env nm s =
     let len = 1024 in
-    let buf = String.make len '\x00' in
-    let _ = recv client_sock buf 0 len [] in
+    let buf = read_from_socket client_sock len in
     let d = A.deserialize buf in
     match d with
     | Some (id, inp) ->
