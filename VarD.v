@@ -37,7 +37,7 @@ Proof.
   auto using key_eq_dec, value_eq_dec, val_eq_dec.
 Defined.
 
-Theorem output_eq_dec : forall x y: input, {x = y} + {x <> y}.
+Theorem output_eq_dec : forall x y: output, {x = y} + {x <> y}.
 Proof.
   decide equality;
   auto using key_eq_dec, value_eq_dec, val_eq_dec.
