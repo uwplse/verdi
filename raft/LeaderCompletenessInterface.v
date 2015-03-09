@@ -23,7 +23,7 @@ Section LeaderCompleteness.
     exists h e',
       eTerm e' <= t /\
       directly_committed net e' /\
-      eIndex e < eIndex e' /\
+      eIndex e <= eIndex e' /\
       In e (log (snd (nwState net h))) /\
       In e' (log (snd (nwState net h))).
       
