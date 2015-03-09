@@ -23,7 +23,7 @@ Section RaftRefinementInterface.
                               votesWithLog : list (term * name * list entry) ;
                               cronies : term -> list name ;
                               leaderLogs : list (term * list entry) ;
-                              appendEntriesReplies : list (term * entry)
+                              allEntries : list (term * entry)
                             }.
 
   Definition update_elections_data_requestVote (me : name) (src : name) t candidateId lastLogIndex lastLogTerm st :=
@@ -36,7 +36,7 @@ Section RaftRefinementInterface.
            votesWithLog := (currentTerm st', cid, log st') :: votesWithLog (fst st) ;
            cronies := cronies (fst st) ;
            leaderLogs := leaderLogs (fst st) ;
-           appendEntriesReplies := appendEntriesReplies (fst st)
+           allEntries := allEntries (fst st)
         |}
       | None => fst st
     end.
@@ -54,7 +54,7 @@ Section RaftRefinementInterface.
                        else
                          cronies (fst st) tm) ;
            leaderLogs := leaderLogs (fst st) ;
-           appendEntriesReplies := appendEntriesReplies (fst st)
+           allEntries := allEntries (fst st)
         |}
       | Leader =>
         {| votes := votes (fst st) ;
@@ -68,7 +68,7 @@ Section RaftRefinementInterface.
                            (currentTerm st', log st') :: leaderLogs (fst st)
                          else
                            leaderLogs (fst st) ;
-           appendEntriesReplies := appendEntriesReplies (fst st)
+           allEntries := allEntries (fst st)
         |}
     end.
 
@@ -84,7 +84,7 @@ Section RaftRefinementInterface.
            votesWithLog := votesWithLog (fst st) ;
            cronies := cronies (fst st) ;
            leaderLogs := leaderLogs (fst st) ;
-           appendEntriesReplies := (map (fun e => (t, e)) entries) ++ appendEntriesReplies (fst st)
+           allEntries := (map (fun e => (t, e)) entries) ++ allEntries (fst st)
         |}
       | _ => fst st
     end.
@@ -116,15 +116,31 @@ Section RaftRefinementInterface.
              else
                cronies (fst st) ;
            leaderLogs := leaderLogs (fst st) ;
-           appendEntriesReplies := appendEntriesReplies (fst st)
+           allEntries := allEntries (fst st)
         |}
       | None => fst st
     end.
 
+
+  Definition update_elections_data_client_request (me : name) st client id c : electionsData :=
+    let '(_, st', _) := handleClientRequest me (snd st) client id c in
+    if length (log (snd st)) <? length (log st') then
+      match (log st') with
+        | e :: _ => 
+          {| votes := votes (fst st) ;
+             votesWithLog := votesWithLog (fst st) ;
+             cronies := cronies (fst st) ;
+             leaderLogs := leaderLogs (fst st) ;
+             allEntries := (currentTerm st', e) :: allEntries (fst st)
+        |}
+        | [] => fst st
+      end
+    else fst st.
+
   Definition update_elections_data_input (me : name) (inp : raft_input) st : electionsData :=
     match inp with
       | Timeout => update_elections_data_timeout me st
-      | _ => fst st
+      | ClientRequest client id c => update_elections_data_client_request me st client id c
     end.
 
   Instance elections_ghost_params : GhostFailureParams failure_params :=
@@ -132,7 +148,7 @@ Section RaftRefinementInterface.
       ghost_data := electionsData ;
       ghost_init := {| votes := [] ; votesWithLog := []; cronies := fun _ => [];
                  leaderLogs := [] ;
-                 appendEntriesReplies := [] |} ;
+                 allEntries := [] |} ;
       ghost_net_handlers := update_elections_data_net ;
       ghost_input_handlers := update_elections_data_input
     }.
@@ -193,7 +209,7 @@ Section RaftRefinementInterface.
   Definition refined_raft_net_invariant_client_request (P : network -> Prop) :=
     forall h net st' ps' gd out d l client id c,
       handleClientRequest h (snd (nwState net h)) client id c = (out, d, l) ->
-      gd = fst (nwState net h) ->
+      gd = update_elections_data_client_request h (nwState net h) client id c ->
       P net ->
       refined_raft_intermediate_reachable net ->
       (forall h', st' h' = update (nwState net) h (gd, d) h') ->

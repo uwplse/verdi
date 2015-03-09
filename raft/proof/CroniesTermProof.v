@@ -39,11 +39,13 @@ Section CroniesTermProof.
   Lemma cronies_term_client_request :
     refined_raft_net_invariant_client_request cronies_term.
   Proof.
-    unfold refined_raft_net_invariant_client_request, cronies_term.
+    unfold refined_raft_net_invariant_client_request, cronies_term,
+    update_elections_data_client_request in *.
     intros. subst. simpl in *. repeat find_higher_order_rewrite.
     update_destruct; subst; rewrite_update; eauto.
     simpl in *. find_apply_lem_hyp handleClientRequest_spec.
-    find_rewrite. eauto.
+    repeat find_rewrite.
+    repeat break_match; simpl in *; eauto.
   Qed.
   (*   H : handleTimeout h' (snd (nwState net h')) = (out, d, l)
        In h0 (cronies (update_elections_data_timeout h' (nwState net h')) t)

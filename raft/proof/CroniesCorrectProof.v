@@ -112,17 +112,21 @@ Section CroniesCorrectProof.
     unfold cronies_correct in *; intuition.
     - unfold votes_received_cronies, handleClientRequest in *. intros.
       simpl in *. repeat find_higher_order_rewrite.
-      repeat break_match; find_inversion; subst; simpl in *; eauto; discriminate.
+      unfold update_elections_data_client_request in *.
+      repeat break_match; find_inversion; subst; simpl in *; eauto; try congruence.
     - unfold cronies_votes in *. intros.
       simpl in *. repeat find_higher_order_rewrite.
+      unfold update_elections_data_client_request in *.
       repeat break_match; subst; simpl in *; eauto.
     - unfold votes_nw in *. intros. simpl in *.
       assert (In p (nwPackets net)) by eauto using handleClientRequest_rvr.
       repeat find_apply_hyp_hyp.
       repeat find_higher_order_rewrite.
+      unfold update_elections_data_client_request in *.
       repeat break_match; subst; repeat find_rewrite; simpl in *; intuition.
     - unfold votes_received_leaders in *. intros. simpl in *. repeat find_higher_order_rewrite.
       unfold handleClientRequest in *.
+      unfold update_elections_data_client_request in *.
       repeat break_match; find_inversion; subst; simpl in *; eauto.
   Qed.
 

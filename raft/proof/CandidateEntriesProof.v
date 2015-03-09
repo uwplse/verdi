@@ -101,25 +101,29 @@ Section CandidateEntriesProof.
       intros; simpl in *.
       eapply candidateEntries_ext; try eassumption.
       repeat find_higher_order_rewrite.
-
+      unfold update_elections_data_client_request in *. repeat break_let. simpl in *.
       destruct (name_eq_dec h0 h); subst.
       + rewrite_update.
-        simpl in *.
+        unfold update_elections_data_client_request in *. repeat break_let. simpl in *.
+        simpl in *. find_inversion.
         find_apply_lem_hyp handleClientRequest_spec; intuition eauto.
         find_apply_hyp_hyp.
         intuition.
         * rewrite_update.
           eapply candidateEntries_same; eauto; intuition;
           destruct (name_eq_dec h0 h); subst; rewrite_update; auto.
+          repeat break_match; simpl; auto.
         * find_apply_lem_hyp cronies_correct_invariant.
           unfold candidateEntries. exists h.
           intuition; rewrite_update; simpl in *; try congruence.
           repeat find_rewrite. simpl in *.
-          eauto using won_election_cronies.
+          repeat break_match; simpl; eauto using won_election_cronies.
       + rewrite_update.
         find_apply_lem_hyp handleClientRequest_spec.
         eapply candidateEntries_same; eauto; intuition;
-        destruct (name_eq_dec h1 h); subst; rewrite_update; auto.
+        destruct (name_eq_dec h1 h); subst; rewrite_update; auto;
+        tuple_inversion; repeat find_rewrite;
+        repeat break_match; simpl; auto.
     - unfold candidateEntries_nw_invariant in *.
       intros. simpl in *.
       eapply candidateEntries_ext; try eassumption.
@@ -130,6 +134,7 @@ Section CandidateEntriesProof.
       eapply_prop_hyp candidateEntries AppendEntries; eauto.
       + eapply candidateEntries_same; eauto; intuition;
         destruct (name_eq_dec h h0); subst; rewrite_update; auto.
+        unfold update_elections_data_client_request; repeat break_match; simpl; auto.
       + find_apply_hyp_hyp. intuition.
   Qed.
 

@@ -38,9 +38,10 @@ Section VotesCorrect.
     refined_raft_net_invariant_client_request votes_correct.
   Proof.
     unfold refined_raft_net_invariant_client_request, votes_correct.
+    unfold update_elections_data_client_request.
     split_votes_correct; start_proof;
     unfold handleClientRequest in *;
-    break_match; find_inversion; simpl in *; eauto.
+    repeat break_match; find_inversion; simpl in *; eauto.
   Qed.
 
   Lemma votes_correct_timeout :
