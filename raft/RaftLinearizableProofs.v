@@ -764,13 +764,17 @@ Section RaftLinearizableProofs.
       eauto using NoDup_map_filter.
   Qed.
 
+  Hint Constructors exported.
+
   Lemma exported_snoc_IO :
     forall env_i env_o ir tr i o k,
       exported env_i env_o ir tr ->
       env_i k = Some i ->
       env_o k = Some o ->
       exported env_i env_o (ir ++ [IRI k; IRO k]) (tr ++ [(i, o)]).
-  Admitted.
+  Proof.
+    induction 1; intros; simpl; auto.
+  Qed.
 
   Lemma exported_snoc_IU :
     forall env_i env_o ir tr i k o,
@@ -778,7 +782,9 @@ Section RaftLinearizableProofs.
       env_i k = Some i ->
       env_o k = None ->
       exported env_i env_o (ir ++ [IRI k; IRU k]) (tr ++ [(i, o)]).
-  Admitted.
+  Proof.
+    induction 1; intros; simpl; auto.
+  Qed.
 
   Lemma execute_log'_app :
     forall xs ys st tr,
