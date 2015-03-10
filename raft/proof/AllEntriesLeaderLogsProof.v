@@ -7,6 +7,9 @@ Require Import Net.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 
+Require Import UpdateLemmas.
+Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+
 Require Import AllEntriesLeaderLogsInterface.
 
 Section AllEntriesLeaderLogs.
@@ -29,9 +32,104 @@ Section AllEntriesLeaderLogs.
     refined_raft_net_invariant_timeout all_entries_leader_logs.
   Admitted.
 
+  Ltac update_destruct :=
+    match goal with
+      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
+    end.
+
+  Lemma leader_without_missing_entry_state_ext :
+    forall sigma sigma' ps,
+      leader_without_missing_entry (mkNetwork ps sigma) ->
+      (forall x, sigma' x = sigma x) ->
+      leader_without_missing_entry (mkNetwork ps sigma').
+  Proof.
+    unfold leader_without_missing_entry.
+    intuition.
+    find_higher_order_rewrite.
+    eapply_prop_hyp In In. intuition.
+    right.
+    break_exists_exists.
+    find_higher_order_rewrite.
+    auto.
+  Qed.
+
+  Lemma handleAppendEntries_sends_AER :
+    forall {h st t n pli plt es ci st'} (P : forall m : msg, handleAppendEntries h st t n pli plt es ci = (st', m) -> Prop),
+
+      (forall status H,
+         (status = false -> st' = st) ->
+         (status = true ->
+          (log st' = es ++ removeAfterIndex (log st) pli \/
+           log st' = es)) ->
+         P (AppendEntriesReply (currentTerm st) es status) H) ->
+      forall m H,
+        P m H.
+  Proof.
+    unfold handleAppendEntries.
+    intros.
+    repeat break_match;
+      match goal with
+        | [ H : (_,_) = (_,_) |- _ ] => inv H
+      end;
+      apply H; intuition; try discriminate.
+  Qed.
+
+  Lemma handleAppendEntries_sends_AER' :
+    forall {h st t n pli plt es ci st'} (P : forall m : msg, handleAppendEntries h st t n pli plt es ci = (st', m) -> Prop),
+      (forall status H,
+         P (AppendEntriesReply (currentTerm st) es status) H) ->
+      forall m H,
+        P m H.
+  Proof.
+    unfold handleAppendEntries.
+    intros.
+    repeat break_match;
+      match goal with
+        | [ H : (_,_) = (_,_) |- _ ] => inv H
+      end;
+      apply H; intuition; try discriminate.
+  Qed.
+
+
   Lemma all_entries_leader_logs_append_entries :
     refined_raft_net_invariant_append_entries all_entries_leader_logs.
+  Proof.
+    unfold refined_raft_net_invariant_append_entries, all_entries_leader_logs.
+    intuition.
+    - eapply leader_without_missing_entry_state_ext; [|eauto].
+      match goal with
+        | [ H : forall _, st' _ = update _ _ _ _ |- _ ] => clear H
+      end.
+      subst.
+
+      unfold leader_without_missing_entry in *.
+      intros.
+      simpl in *.
+      update_destruct.
+      + subst. rewrite_update. simpl in *.
+        unfold update_elections_data_appendEntries in *.
+        unfold handleAppendEntries in *.
+        repeat break_match; repeat find_inversion.
+        * simpl in *. do_in_app.
+          setoid_rewrite update_fun_comm.
+          setoid_rewrite update_fun_comm.
+          simpl.
+          rewrite update_nop_ext' by auto.
+          { intuition.
+            - do_in_map.
+              find_inversion.
+              auto.
+            - do_bool.
+              pose proof H.
+              eapply_prop_hyp In In. intuition.
   Admitted.
+
+
+
+
+
+
 
   Lemma all_entries_leader_logs_append_entries_reply :
     refined_raft_net_invariant_append_entries_reply all_entries_leader_logs.
