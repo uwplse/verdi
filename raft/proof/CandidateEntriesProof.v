@@ -537,6 +537,7 @@ Section CandidateEntriesProof.
         repeat (rewrite update_fun_comm; simpl in * );
         update_destruct; subst; rewrite_update;
         auto using update_elections_data_requestVote_cronies_same.
+    - do_bool. intuition. congruence.
     - unfold candidateEntries in *. break_exists. break_and. exists x.
       simpl.
       split.

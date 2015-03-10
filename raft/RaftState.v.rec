@@ -12,6 +12,7 @@ Section RaftState.
         (* persistent *)
         currentTerm : term;
         votedFor : option name;
+        leaderId : option name;
         log : list entry;
         (* volatile *)
         commitIndex : logIndex;

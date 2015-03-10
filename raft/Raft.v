@@ -90,6 +90,7 @@ Section Raft.
 
   Notation currentTerm         := (RaftState.currentTerm term name entry logIndex serverType data output).
   Notation votedFor            := (RaftState.votedFor term name entry logIndex serverType data output).
+  Notation leaderId            := (RaftState.leaderId term name entry logIndex serverType data output).
   Notation log                 := (RaftState.log term name entry logIndex serverType data output).
   Notation commitIndex         := (RaftState.commitIndex term name entry logIndex serverType data output).
   Notation lastApplied         := (RaftState.lastApplied term name entry logIndex serverType data output).
@@ -147,9 +148,10 @@ Section Raft.
 
   Definition advanceCurrentTerm state newTerm :=
     if newTerm >? (currentTerm state) then
-      {[ {[ {[ state with currentTerm := newTerm ]}
-            with votedFor := None ]}
-         with type := Follower ]}
+      {[ {[ {[ {[ state with currentTerm := newTerm ]}
+               with votedFor := None ]}
+            with type := Follower ]}
+           with leaderId := None ]}
     else
       state.
 
@@ -188,7 +190,7 @@ Section Raft.
     else
       if prevLogIndex == 0 then
         if (haveNewEntries state entries) then
-          ({[ {[ {[ (advanceCurrentTerm state t)
+          ({[ {[ {[ {[ (advanceCurrentTerm state t)
                     with log := entries ]}
                  with commitIndex :=
                    if leaderCommit >? (commitIndex state) then
@@ -196,7 +198,7 @@ Section Raft.
                    else
                      commitIndex state
                ]}
-              with type := Follower ]},
+              with type := Follower ]} with leaderId := Some leaderId ]},
            AppendEntriesReply (currentTerm state) entries true)
         else
           (state, AppendEntriesReply (currentTerm state) entries true)
@@ -209,7 +211,7 @@ Section Raft.
                        if haveNewEntries state entries then
                          let log' := removeAfterIndex (log state) prevLogIndex in
                          let log'' := entries ++ log' in
-                         ({[ {[ {[ (advanceCurrentTerm state t)
+                         ({[ {[ {[ {[ (advanceCurrentTerm state t)
                                    with log := log'' ]}
                                 with commitIndex :=
                                   if leaderCommit >? (commitIndex state) then
@@ -217,7 +219,7 @@ Section Raft.
                                   else
                                     commitIndex state
                               ]} 
-                             with type := Follower ]},
+                             with type := Follower ]} with leaderId := Some leaderId ]},
                           AppendEntriesReply (currentTerm state) entries true)
                        else
                          (state, AppendEntriesReply (currentTerm state) entries true)
@@ -253,7 +255,9 @@ Section Raft.
       (state, RequestVoteReply (currentTerm state) false)
     else
       let state := (advanceCurrentTerm state t) in
-      if moreUpToDate lastLogTerm lastLogIndex (maxTerm (log state)) (maxIndex (log state)) then
+      if andb (if leaderId state then false else true)
+              (moreUpToDate lastLogTerm lastLogIndex (maxTerm (log state)) (maxIndex (log state)))
+      then
         match (votedFor state) with
           | None => ({[ state with votedFor := Some candidateId ]},
                     RequestVoteReply (currentTerm state) true)
@@ -302,9 +306,9 @@ Section Raft.
   Definition handleMessage (src : name) (me : name) (m : msg)
              (state : raft_data) : raft_data * list (name * msg) :=
     match m with
-      | AppendEntries t leaderId prevLogIndex prevLogTerm entries leaderCommit =>
+      | AppendEntries t lid prevLogIndex prevLogTerm entries leaderCommit =>
         let (st, r) :=
-            handleAppendEntries me state t leaderId prevLogIndex prevLogTerm entries leaderCommit
+            handleAppendEntries me state t lid prevLogIndex prevLogTerm entries leaderCommit
         in
         (st, [(src, r)])
       | AppendEntriesReply term entries result => handleAppendEntriesReply me state src term entries result
@@ -449,7 +453,8 @@ Section Raft.
   
   Definition reboot state : raft_data :=
     mkRaft_data (currentTerm state)
-           (votedFor state)
+                (votedFor state)
+                (leaderId state)
            (log state)
            0
            (lastApplied state)
@@ -464,6 +469,7 @@ Section Raft.
 
   Definition init_handlers (_ : name) : raft_data :=
     mkRaft_data 0
+                None
                 None
                 []
                 0
@@ -829,6 +835,7 @@ End Raft.
 
 Notation currentTerm         := (RaftState.currentTerm term name entry logIndex serverType data output).
 Notation votedFor            := (RaftState.votedFor term name entry logIndex serverType data output).
+Notation leaderId            := (RaftState.leaderId term name entry logIndex serverType data output).
 Notation log                 := (RaftState.log term name entry logIndex serverType data output).
 Notation commitIndex         := (RaftState.commitIndex term name entry logIndex serverType data output).
 Notation lastApplied         := (RaftState.lastApplied term name entry logIndex serverType data output).

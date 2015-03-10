@@ -96,8 +96,8 @@ Section RaftRefinementInterface.
         update_elections_data_requestVote me src t src lastLogIndex lastLogTerm st
       | RequestVoteReply t voteGranted =>
         update_elections_data_requestVoteReply me src t voteGranted st
-      | AppendEntries t leaderId prevLogIndex prevLogTerm entries leaderCommit =>
-        update_elections_data_appendEntries me st t leaderId prevLogIndex prevLogTerm entries leaderCommit
+      | AppendEntries t lid prevLogIndex prevLogTerm entries leaderCommit =>
+        update_elections_data_appendEntries me st t lid prevLogIndex prevLogTerm entries leaderCommit
       | _ => fst st
     end.
 
