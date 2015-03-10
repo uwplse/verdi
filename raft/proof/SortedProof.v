@@ -272,13 +272,15 @@ Section SortedProof.
   Proof.
     intros. unfold handleAppendEntries in *.
     break_if; [find_inversion; subst; eauto|].
-    break_if; [find_inversion; subst; eauto|].
-    break_match; [|find_inversion; subst; eauto].
-    break_if; [find_inversion; subst; eauto|].
-    find_inversion; subst; simpl in *.
-    right. right.
-    find_apply_lem_hyp findAtIndex_elim. intuition.
-    do_bool. eauto.
+    break_if; [do_bool; break_if; find_inversion; subst; eauto|].
+    break_if.
+    - break_match; [|find_inversion; subst; eauto].
+      break_if; [find_inversion; subst; eauto|].
+      find_inversion; subst; simpl in *.
+      right. right.
+      find_apply_lem_hyp findAtIndex_elim. intuition.
+      do_bool. eauto.
+    - repeat break_match; find_inversion; subst; eauto.
   Qed.
 
   Ltac find_eapply_hyp_goal :=
