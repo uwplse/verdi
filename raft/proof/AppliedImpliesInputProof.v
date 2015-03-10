@@ -17,6 +17,8 @@ Require Import OutputImpliesAppliedInterface.
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
+Require Import SpecLemmas.
+
 Require Import AppliedImpliesInputInterface.
 
 Section AppliedImpliesInputProof.
@@ -194,28 +196,6 @@ Section AppliedImpliesInputProof.
           * subst. unfold in_input_trace. unfold correct_entry in *.
             break_and. subst. simpl. eauto.
           * exfalso. eauto using aiis_intro_state.
-    Qed.
-
-    Theorem handleAppendEntries_log :
-      forall h st t n pli plt es ci st' ps,
-        handleAppendEntries h st t n pli plt es ci = (st', ps) ->
-        log st' = log st \/
-        log st' = es \/
-        (exists e,
-           In e (log st) /\
-           eIndex e = pli /\
-           eTerm e = plt) /\
-        log st' = es ++ (removeAfterIndex (log st) pli).
-    Proof.
-      intros. unfold handleAppendEntries in *.
-      break_if; [find_inversion; subst; eauto|].
-      break_if; [find_inversion; subst; eauto|].
-      break_match; [|find_inversion; subst; eauto].
-      break_if; [find_inversion; subst; eauto|].
-      find_inversion; subst; simpl in *.
-      right. right.
-      find_apply_lem_hyp findAtIndex_elim. intuition.
-      do_bool. eauto.
     Qed.
 
     Lemma mEntries_intro :
