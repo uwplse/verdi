@@ -174,6 +174,12 @@ Section Raft.
                  nodes)
     ).
 
+  Definition haveNewEntries (state : raft_data) (entries : list entry) :=
+    match findAtIndex (log state) (maxIndex entries) with
+              | None => true
+              | Some e => (negb (beq_nat (maxTerm entries) (eTerm e)))
+    end.
+
   Definition handleAppendEntries (me : name)
              (state : raft_data) (t : term) (leaderId : name) (prevLogIndex : logIndex)
              (prevLogTerm : term) (entries : list entry) (leaderCommit : logIndex) : raft_data * msg :=
@@ -181,34 +187,40 @@ Section Raft.
       (state, AppendEntriesReply (currentTerm state) entries false)
     else
       if prevLogIndex == 0 then
-        ({[ {[ {[ (advanceCurrentTerm state t)
-                  with log := entries ]}
-               with commitIndex :=
-                 if leaderCommit >? (commitIndex state) then
-                   min leaderCommit (maxIndex entries)
-                 else
-                   commitIndex state
-             ]}
-            with type := Follower ]},
-         AppendEntriesReply (currentTerm state) entries true)
+        if (haveNewEntries state entries) then
+          ({[ {[ {[ (advanceCurrentTerm state t)
+                    with log := entries ]}
+                 with commitIndex :=
+                   if leaderCommit >? (commitIndex state) then
+                     min leaderCommit (maxIndex entries)
+                   else
+                     commitIndex state
+               ]}
+              with type := Follower ]},
+           AppendEntriesReply (currentTerm state) entries true)
+        else
+          (state, AppendEntriesReply (currentTerm state) entries true)
       else
         match (findAtIndex (log state) prevLogIndex) with
           | None => (state, AppendEntriesReply (currentTerm state) entries false)
           | Some e => if negb (beq_nat prevLogTerm (eTerm e)) then
                        (state, AppendEntriesReply (currentTerm state) entries false)
                      else
-                       let log' := removeAfterIndex (log state) prevLogIndex in
-                       let log'' := entries ++ log' in
-                       ({[ {[ {[ (advanceCurrentTerm state t)
-                                 with log := log'' ]}
-                              with commitIndex :=
-                                if leaderCommit >? (commitIndex state) then
-                                  min leaderCommit (maxIndex log'')
-                                else
-                                  commitIndex state
-                            ]} 
-                           with type := Follower ]},
-                        AppendEntriesReply (currentTerm state) entries true)
+                       if haveNewEntries state entries then
+                         let log' := removeAfterIndex (log state) prevLogIndex in
+                         let log'' := entries ++ log' in
+                         ({[ {[ {[ (advanceCurrentTerm state t)
+                                   with log := log'' ]}
+                                with commitIndex :=
+                                  if leaderCommit >? (commitIndex state) then
+                                    min leaderCommit (maxIndex log'')
+                                  else
+                                    commitIndex state
+                              ]} 
+                             with type := Follower ]},
+                          AppendEntriesReply (currentTerm state) entries true)
+                       else
+                         (state, AppendEntriesReply (currentTerm state) entries true)
         end.
 
   Definition handleAppendEntriesReply (me : name) state src term entries (result : bool)
