@@ -19,6 +19,8 @@ Require Import SortedInterface.
 Require Import UniqueIndicesInterface.
 Require Import LogMatchingInterface.
 
+Require Import SpecLemmas.
+
 Require Import AppliedEntriesMonotonicInterface.
 
 Section AppliedEntriesMonotonicProof.
@@ -235,21 +237,6 @@ Section AppliedEntriesMonotonicProof.
   Proof.
     intros. unfold handleTimeout, tryToBecomeLeader in *.
     break_match; find_inversion; subst; auto.
-  Qed.
-
-  Theorem handleClientRequest_log :
-    forall h st client id c out st' ps,
-      handleClientRequest h st client id c = (out, st', ps) ->
-      ps = [] /\
-      (log st' = log st \/
-       exists e,
-         log st' = e :: log st /\
-         eIndex e = S (maxIndex (log st)) /\
-         eTerm e = currentTerm st).
-  Proof.
-    intros. unfold handleClientRequest in *.
-    break_match; find_inversion; subst; intuition.
-    simpl in *. eauto.
   Qed.
 
   Lemma handleInput_applied_entries :

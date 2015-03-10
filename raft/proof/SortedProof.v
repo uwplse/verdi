@@ -33,21 +33,6 @@ Section SortedProof.
     intuition; simpl in *; intuition.
   Qed.
 
-  Theorem handleClientRequest_log :
-    forall h st client id c out st' ps,
-      handleClientRequest h st client id c = (out, st', ps) ->
-      ps = [] /\
-      (log st' = log st \/
-       exists e,
-         log st' = e :: log st /\
-         eIndex e = S (maxIndex (log st)) /\
-         eTerm e = currentTerm st).
-  Proof.
-    intros. unfold handleClientRequest in *.
-    break_match; find_inversion; subst; intuition.
-    simpl in *. eauto.
-  Qed.
-
   Theorem handleClientRequest_packets :
     forall h st client id c out st' ps,
       handleClientRequest h st client id c = (out, st', ps) ->

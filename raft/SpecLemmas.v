@@ -1,4 +1,5 @@
 Require Import List.
+Import ListNotations.
 
 Require Import VerdiTactics.
 Require Import Util.
@@ -36,5 +37,23 @@ Section SpecLemmas.
       find_apply_lem_hyp findAtIndex_elim. intuition.
       do_bool. eauto.
     - repeat break_match; find_inversion; subst; eauto.
+  Qed.
+
+  Theorem handleClientRequest_log :
+    forall h st client id c out st' ps,
+      handleClientRequest h st client id c = (out, st', ps) ->
+      ps = [] /\
+      (log st' = log st \/
+       exists e,
+         log st' = e :: log st /\
+         eIndex e = S (maxIndex (log st)) /\
+         eTerm e = currentTerm st /\
+         eClient e = client /\
+         eInput e = c /\
+         eId e = id).
+  Proof.
+    intros. unfold handleClientRequest in *.
+    break_match; find_inversion; subst; intuition.
+    simpl in *. eauto 10.
   Qed.
 End SpecLemmas.

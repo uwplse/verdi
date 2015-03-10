@@ -111,23 +111,6 @@ Section AppliedImpliesInputProof.
       break_match; find_inversion; simpl in *; intuition.
     Qed.
 
-    Theorem handleClientRequest_log :
-      forall h st client id c out st' ps,
-        handleClientRequest h st client id c = (out, st', ps) ->
-        (log st' = log st \/
-         exists e,
-           log st' = e :: log st /\
-           eIndex e = S (maxIndex (log st)) /\
-           eTerm e = currentTerm st /\
-           eClient e = client /\
-           eInput e = c /\
-           eId e = id).
-    Proof.
-      intros. unfold handleClientRequest in *.
-      break_match; find_inversion; subst; intuition.
-      simpl in *. eauto 10.
-    Qed.
-
     Theorem handleTimeout_not_is_append_entries :
       forall h st st' ms m,
         handleTimeout h st = (st', ms) ->
@@ -187,6 +170,7 @@ Section AppliedImpliesInputProof.
       - find_erewrite_lem handleTimeout_log.
         exfalso. eauto using aiis_intro_state.
       - find_eapply_lem_hyp handleClientRequest_log.
+        break_and.
         break_or_hyp.
         + find_rewrite.
           exfalso. eauto using aiis_intro_state.
