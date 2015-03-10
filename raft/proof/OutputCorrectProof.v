@@ -134,6 +134,39 @@ Section OutputCorrect.
     eauto using deduplicate_log'_app.
   Qed.
   
+
+  Lemma in_output_trace_not_nil :
+    forall client id out,
+      in_output_trace client id out [] -> False.
+  Proof.
+    unfold in_output_trace.
+    simpl. intros. break_exists. intuition.
+  Qed.
+
+  Lemma in_output_trace_step_output_correct :
+    forall failed failed' net net' os,
+      in_output_trace client id out os ->
+      step_f (failed, net) (failed', net') os ->
+      exists xs e ys tr' st' i,
+        deduplicate_log (applied_entries (nwState net')) = xs ++ e :: ys /\
+        eClient e = client /\
+        eId e = id /\
+        eInput e = i /\
+        execute_log (xs ++ [e]) = (tr', st') /\
+        hd_error (rev tr') = Some (i, out).
+  Proof.
+    intros.
+    match goal with
+      | [ H : context [ step_f _ _ _ ] |- _ ] => invcs H
+    end.
+    - admit.
+    - admit.
+    - exfalso. eauto using in_output_trace_not_nil.
+    - exfalso. eauto using in_output_trace_not_nil.
+    - exfalso. eauto using in_output_trace_not_nil.
+    - exfalso. eauto using in_output_trace_not_nil.
+  Qed.
+
   Instance TR : TraceRelation step_f :=
     {
       init := step_f_init;
@@ -165,7 +198,8 @@ Section OutputCorrect.
   - intros.
     break_let. subst.
     find_apply_lem_hyp in_output_changed; auto.
-    admit.
+    destruct s.
+    eauto using in_output_trace_step_output_correct.
   Defined.
   End inner.
 End OutputCorrect.
