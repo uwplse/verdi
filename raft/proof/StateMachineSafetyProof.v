@@ -75,7 +75,7 @@ Section StateMachineSafetyProof.
     unfold deghost in *. simpl in *. break_match; eauto.
   Qed.
   
-  Theorem state_machine_safety_invariant :
+  Theorem state_machine_safety_host_invariant :
     forall net,
       refined_raft_intermediate_reachable net ->
       state_machine_safety_host (deghost net).
