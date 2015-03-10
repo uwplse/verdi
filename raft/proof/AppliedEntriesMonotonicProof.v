@@ -45,9 +45,10 @@ Section AppliedEntriesMonotonicProof.
   Proof.
     intros. unfold handleAppendEntries in *.
     break_if; [find_inversion; subst; eauto|].
-    break_if; [find_inversion; subst; do_bool; eauto|].
+    break_if; [do_bool; break_if; find_inversion; subst; eauto|].
     break_match; [|find_inversion; subst; eauto].
     break_if; [find_inversion; subst; eauto|].
+    break_if; [|find_inversion; subst; eauto].
     find_inversion; subst; simpl in *.
     right. right.
     find_apply_lem_hyp findAtIndex_elim.
@@ -139,7 +140,7 @@ Section AppliedEntriesMonotonicProof.
         apply removeAfterIndex_same_sufficient; eauto.
         * intros.
           eapply_prop_hyp state_machine_safety_nw In;
-            unfold commit_recorded in *;
+            unfold commit_recorded in *.
             simpl in *; repeat (forwards; eauto; concludes).
           intuition; omega.
         * intros.
