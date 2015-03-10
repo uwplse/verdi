@@ -169,13 +169,9 @@ Section AppliedImpliesInputProof.
       destruct inp; simpl in *.
       - find_erewrite_lem handleTimeout_log.
         exfalso. eauto using aiis_intro_state.
-      - find_eapply_lem_hyp handleClientRequest_log.
-        break_and.
-        break_or_hyp.
-        + find_rewrite.
-          exfalso. eauto using aiis_intro_state.
-        + break_exists. break_and. subst.
-          find_rewrite. simpl in *.
+      - destruct (log d') using (handleClientRequest_log_ind $(eauto)$).
+        + exfalso. eauto using aiis_intro_state.
+        + simpl in *.
           break_or_hyp.
           * subst. unfold in_input_trace. unfold correct_entry in *.
             break_and. subst. simpl. eauto.

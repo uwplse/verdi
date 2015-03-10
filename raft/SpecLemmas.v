@@ -56,4 +56,23 @@ Section SpecLemmas.
     break_match; find_inversion; subst; intuition.
     simpl in *. eauto 10.
   Qed.
+
+  Lemma handleClientRequest_log_ind :
+    forall {h st client id c out st' ps},
+      handleClientRequest h st client id c = (out, st', ps) ->
+      forall (P : list entry -> Prop),
+        P (log st) ->
+        (forall e, eIndex e = S (maxIndex (log st)) ->
+                   eTerm e = currentTerm st ->
+                   eClient e = client ->
+                   eInput e = c ->
+                   eId e = id ->
+                   P (e :: log st)) ->
+        P (log st').
+  Proof.
+    intros.
+    find_apply_lem_hyp handleClientRequest_log.
+    intuition; repeat find_rewrite; auto.
+    break_exists. intuition. repeat find_rewrite. eauto.
+  Qed.
 End SpecLemmas.

@@ -250,8 +250,9 @@ Section AppliedEntriesMonotonicProof.
     - apply applied_entries_log_lastApplied_update_same;
       eauto using handleTimeout_log, handleTimeout_lastApplied.
     - apply applied_entries_safe_update; eauto using handleClientRequest_lastApplied.
-      find_apply_lem_hyp handleClientRequest_log. intuition; repeat find_rewrite; eauto.
-      break_exists. intuition. repeat find_rewrite.
+
+      destruct (log st') using (handleClientRequest_log_ind $(eauto)$); auto.
+
       simpl in *. break_if; auto.
       exfalso.
       do_bool.
