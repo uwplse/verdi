@@ -859,7 +859,6 @@ Section RaftLinearizableProofs.
     unfold execute_log.
     change (log_to_IR env_o l) with (log_to_IR env_o ([] ++ l)).
     eapply exported_execute_log'; eauto.
-    simpl. constructor.
   Qed.
 
   Definition input_correct (tr : list (name * (raft_input + list raft_output))) : Prop :=
