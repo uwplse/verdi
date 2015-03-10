@@ -92,4 +92,10 @@ Section CommonDefinitions.
         | AppendEntries _ _ _ _ entries _ => Some entries
         | _ => None
       end.
+
+  Definition commit_recorded net h e :=
+    In e (log (nwState net h)) /\
+    (eIndex e <= lastApplied (nwState net h) \/
+     eIndex e <= commitIndex (nwState net h)).
+
 End CommonDefinitions.

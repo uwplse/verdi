@@ -6,6 +6,7 @@ Require Import Util.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 Require Import LeaderCompletenessInterface.
+Require Import CommonDefinitions.
 
 Section CommitRecordedCommitted.
 
@@ -13,14 +14,9 @@ Section CommitRecordedCommitted.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
-  Definition commit_recorded net h e :=
-    In e (log (snd (nwState net h))) /\
-    (eIndex e <= lastApplied (snd (nwState net h)) \/
-     eIndex e <= commitIndex (snd (nwState net h))).
-
   Definition commit_recorded_committed net :=
     forall h e,
-      commit_recorded net h e ->
+      commit_recorded (deghost net) h e ->
       committed net e (currentTerm (snd (nwState net h))).
 
   Class commit_recorded_committed_interface : Prop :=
