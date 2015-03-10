@@ -898,7 +898,87 @@ Section CommonTheorems.
         specialize (H3 a1). intuition. omega.
   Qed.
 
+  Lemma argmin_fun_ext :
+    forall A (f : A -> nat) g l,
+      (forall a, f a = g a) ->
+      argmin f l = argmin g l.
+  Proof.
+    intros. induction l; simpl in *; intuition.
+    find_rewrite. break_match; intuition.
+    repeat find_higher_order_rewrite. auto.
+  Qed.
 
+  Lemma argmin_None :
+    forall A (f : A -> nat) l,
+      argmin f l = None ->
+      l = [].
+  Proof.
+    intros. destruct l; simpl in *; intuition.
+    repeat break_match; congruence.
+  Qed.
+
+  Lemma argmin_elim :
+    forall A (f : A -> nat) l a,
+      argmin f l = Some a ->
+      (In a l /\
+       forall x, In x l -> f a <= f x).
+  Proof.
+    induction l; intros; simpl in *; [congruence|].
+    repeat break_match; find_inversion.
+    - do_bool.
+      match goal with
+        | H : forall _, Some ?a = Some _ -> _ |- _ =>
+          specialize (H a)
+      end. intuition; subst; auto.
+      find_apply_hyp_hyp. omega.
+    - do_bool.
+      match goal with
+        | H : forall _, Some ?a = Some _ -> _ |- _ =>
+          specialize (H a)
+      end. intuition; subst; auto.
+      find_apply_hyp_hyp. omega.
+    - intuition; subst; auto.
+      find_apply_lem_hyp argmin_None.
+      subst. solve_by_inversion.
+  Qed.
+
+  Lemma argmin_in :
+    forall A (f : A -> nat) l a,
+      argmin f l = Some a ->
+      In a l.
+  Proof.
+    intros. find_apply_lem_hyp argmin_elim. intuition.
+  Qed.
+
+  Lemma argmin_one_different :
+    forall A (A_eq_dec : forall x y : A, {x = y} + {x <> y}) f g (l : list A) a,
+      (forall x, In x l -> a <> x -> f x = g x) ->
+      (forall x, In x l -> g x <= f x) ->
+      (argmin g l = argmin f l \/
+       argmin g l = Some a).
+  Proof.
+    intros. induction l; simpl in *; intuition.
+    conclude IHl intuition.
+    conclude IHl intuition. intuition.
+    - find_rewrite. break_match; intuition.
+      repeat break_if; intuition.
+      + do_bool. right.
+        find_apply_lem_hyp argmin_in; intuition.
+        destruct (A_eq_dec a a1); destruct (A_eq_dec a a0); repeat subst; intuition;
+        specialize (H0 a1); specialize (H a0); intuition; repeat find_rewrite; omega.
+      + do_bool. right.
+        find_apply_lem_hyp argmin_in; intuition.
+        destruct (A_eq_dec a a1); destruct (A_eq_dec a a0); repeat subst; intuition.
+        * specialize (H a1); specialize (H0 a0); intuition. repeat find_rewrite. omega.
+        * specialize (H a1); specialize (H0 a0); intuition. repeat find_rewrite. omega.
+    - find_rewrite. repeat break_match; subst; intuition.
+      do_bool.
+      repeat find_apply_lem_hyp argmin_elim; intuition.
+      destruct (A_eq_dec a a1); destruct (A_eq_dec a a0); repeat subst; intuition.
+      + specialize (H a0); specialize (H0 a1); intuition. repeat find_rewrite. omega.
+      + pose proof H a0; pose proof H a1; intuition. repeat find_rewrite.
+        specialize (H3 a1). intuition. omega.
+  Qed.
 
   Ltac update_destruct :=
     match goal with
