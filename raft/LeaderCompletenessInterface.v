@@ -14,7 +14,7 @@ Section LeaderCompleteness.
   Definition directly_committed (net : network) (e : entry) :=
     exists quorum,
       NoDup quorum /\
-      length quorum > div2 N /\
+      length quorum > div2 (length nodes) /\
       forall h,
         In h quorum ->
         In (eTerm e, e) (allEntries (fst (nwState net h))).
