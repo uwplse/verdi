@@ -40,6 +40,7 @@ Section LogMatchingProof.
     intros.
     unfold handleAppendEntries in *.
     break_match; repeat find_inversion; intuition.
+    break_match; repeat find_inversion; intuition;
     break_match; repeat find_inversion; intuition.
     break_match; repeat find_inversion; intuition.
     break_match; repeat find_inversion; intuition.
