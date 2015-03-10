@@ -44,6 +44,17 @@ Section CommonDefinitions.
       | [] => None
     end.
 
+  Fixpoint argmin {A : Type} (f : A -> nat) (l : list A) : option A :=
+    match l with
+      | a :: l' => match argmin f l' with
+                     | Some a' => if f a <=? f a' then
+                                    Some a
+                                  else
+                                    Some a'
+                     | None => Some a
+                   end
+      | [] => None
+    end.
 
   Definition applied_entries (sigma : name -> raft_data) : (list entry) :=
     match argmax (fun h => lastApplied (sigma h)) (all_fin N) with
