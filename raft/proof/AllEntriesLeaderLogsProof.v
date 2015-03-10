@@ -54,44 +54,6 @@ Section AllEntriesLeaderLogs.
     auto.
   Qed.
 
-  Lemma handleAppendEntries_sends_AER :
-    forall {h st t n pli plt es ci st'} (P : forall m : msg, handleAppendEntries h st t n pli plt es ci = (st', m) -> Prop),
-
-      (forall status H,
-         (status = false -> st' = st) ->
-         (status = true ->
-          (log st' = es ++ removeAfterIndex (log st) pli \/
-           log st' = es)) ->
-         P (AppendEntriesReply (currentTerm st) es status) H) ->
-      forall m H,
-        P m H.
-  Proof.
-    unfold handleAppendEntries.
-    intros.
-    repeat break_match;
-      match goal with
-        | [ H : (_,_) = (_,_) |- _ ] => inv H
-      end;
-      apply H; intuition; try discriminate.
-  Qed.
-
-  Lemma handleAppendEntries_sends_AER' :
-    forall {h st t n pli plt es ci st'} (P : forall m : msg, handleAppendEntries h st t n pli plt es ci = (st', m) -> Prop),
-      (forall status H,
-         P (AppendEntriesReply (currentTerm st) es status) H) ->
-      forall m H,
-        P m H.
-  Proof.
-    unfold handleAppendEntries.
-    intros.
-    repeat break_match;
-      match goal with
-        | [ H : (_,_) = (_,_) |- _ ] => inv H
-      end;
-      apply H; intuition; try discriminate.
-  Qed.
-
-
   Lemma all_entries_leader_logs_append_entries :
     refined_raft_net_invariant_append_entries all_entries_leader_logs.
   Proof.
@@ -124,12 +86,6 @@ Section AllEntriesLeaderLogs.
               pose proof H.
               eapply_prop_hyp In In. intuition.
   Admitted.
-
-
-
-
-
-
 
   Lemma all_entries_leader_logs_append_entries_reply :
     refined_raft_net_invariant_append_entries_reply all_entries_leader_logs.
