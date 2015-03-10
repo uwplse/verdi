@@ -14,7 +14,7 @@ Section AllEntriesLeaderLogs.
   Definition leader_without_missing_entry net :=
     forall t e h,
       In (t, e) (allEntries (fst (nwState net h))) ->
-      ~ In e (log (snd (nwState  net h))) ->
+      In e (log (snd (nwState  net h))) \/
       exists t' log' leader,
         t' > t /\
         In (t', log') (leaderLogs (fst (nwState net leader))) /\
