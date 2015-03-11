@@ -201,5 +201,28 @@ Section OutputCorrect.
     destruct s.
     eauto using in_output_trace_step_output_correct.
   Defined.
+
+  Theorem output_correct :
+    forall  failed net tr,
+      step_f_star step_f_init (failed, net) tr ->
+      in_output_trace client id out tr ->
+      exists xs e ys tr' st' i,
+        deduplicate_log (applied_entries (nwState net)) = xs ++ e :: ys /\
+        eClient e = client /\
+        eId e = id /\
+        eInput e = i /\
+        execute_log (xs ++ [e]) = (tr', st') /\
+        hd_error (rev tr') = Some (i, out).
+  Proof.
+    intros. pose proof (trace_relations_work (failed, net) tr).
+    repeat concludes.
+    auto.
+  Qed.
   End inner.
+
+  Instance oci : output_correct_interface.
+  Proof.
+    split.
+    exact output_correct.
+  Qed.
 End OutputCorrect.
