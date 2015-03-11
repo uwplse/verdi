@@ -2,6 +2,7 @@ Require Import List.
 Import ListNotations.
 Require Import Arith.
 Require Import Sumbool.
+Require Import Omega.
 
 Require Import VerdiTactics.
 Require Import Util.
@@ -99,6 +100,66 @@ Section LeaderCompleteness.
     find_inversion; intuition.
   Qed.
 
+  Lemma in_contradicting_leader_logs :
+    forall net nodes t e t' h l,
+      In (t', h, l) (contradicting_leader_logs net nodes t e) ->
+      In (t', l) (contradicting_leader_logs_on_leader (leaderLogs (fst (nwState net h))) t e).
+  Proof.
+    induction nodes; intros; simpl in *; intuition.
+    do_in_app. intuition.
+    do_in_map. find_inversion. rewrite <- surjective_pairing. auto.
+  Qed.
+
+  Lemma in_contradicting_leader_logs_on_leader_in_leaderLog :
+    forall ll t e t' l,
+      In (t', l) (contradicting_leader_logs_on_leader ll t e) ->
+      In (t', l) ll.
+  Proof.
+    induction ll; intros; simpl in *; intuition.
+    repeat break_match; simpl in *; intuition eauto.
+  Qed.
+
+  Lemma in_contradicting_leader_logs_on_leader_not_in_log :
+    forall t' l ll t e,
+      In (t', l) (contradicting_leader_logs_on_leader ll t e) ->
+      In e l -> False.
+  Proof.
+    induction ll; intros; simpl in *; intuition.
+    repeat break_match; simpl in *; intuition eauto.
+    find_inversion. auto.
+  Qed.
+
+  Lemma in_contradicting_leader_logs_on_leader_term_lt :
+    forall t' l ll t e,
+      In (t', l) (contradicting_leader_logs_on_leader ll t e) ->
+      t < t'.
+  Proof.
+    induction ll; intros; simpl in *; intuition.
+    repeat break_match; simpl in *; intuition; repeat find_inversion; eauto.
+  Qed.
+
+  Lemma contradicting_leader_logs_on_leader_complete :
+    forall t e t' l ll,
+      In (t', l) ll ->
+      t < t' ->
+      ~ In e l ->
+      In (t', l) (contradicting_leader_logs_on_leader ll t e).
+  Proof.
+    induction ll; intros; simpl in *; intuition;
+    repeat break_match; repeat find_inversion; simpl in *; intuition.
+  Qed.
+
+  Lemma contradicting_leader_logs_complete :
+    forall net nodes h t e l t',
+      In h nodes ->
+      In (t', l) (contradicting_leader_logs_on_leader (leaderLogs (fst (nwState net h))) t e) ->
+      In (t', h, l) (contradicting_leader_logs net nodes t e).
+  Proof.
+    induction nodes; intros; simpl in *; intuition.
+    apply in_or_app.
+    subst. left. apply in_map_iff. eexists. intuition eauto. simpl. auto.
+  Qed.
+
   Lemma minimal_contradicting_leader_log_elim :
     forall net t e t' h l,
       minimal_contradicting_leader_log net t e = Some (t', h, l) ->
@@ -110,7 +171,18 @@ Section LeaderCompleteness.
            t'' >= t' \/
            In e l'))).
   Proof.
-  Admitted.
+    unfold minimal_contradicting_leader_log.
+    intros.
+    find_apply_lem_hyp argmin_elim. intuition.
+    - eauto using in_contradicting_leader_logs_on_leader_in_leaderLog, in_contradicting_leader_logs.
+    - eauto using in_contradicting_leader_logs, in_contradicting_leader_logs_on_leader_not_in_log.
+    - destruct (le_lt_dec t'' t); auto.
+      destruct (le_lt_dec t' t''); auto.
+      destruct (in_dec entry_eq_dec e l'); auto.
+      find_eapply_lem_hyp contradicting_leader_logs_on_leader_complete; eauto.
+      find_eapply_lem_hyp contradicting_leader_logs_complete; [|solve [apply all_fin_all]].
+      find_apply_hyp_hyp. simpl in *. omega.
+  Qed.
 
   Theorem leader_completeness_directly_committed_invariant :
     forall net,
