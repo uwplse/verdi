@@ -935,7 +935,7 @@ Section RaftLinearizableProofs.
       + simpl in *. intuition.
   Qed.
 
-  Theorem raft_linearizable :
+  Theorem raft_linearizable' :
     forall failed net tr,
       input_correct tr ->
       step_f_star step_f_init (failed, net) tr ->
