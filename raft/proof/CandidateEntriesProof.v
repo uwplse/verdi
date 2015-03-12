@@ -263,7 +263,7 @@ Section CandidateEntriesProof.
 
         find_rewrite_lem update_fun_comm. simpl in *.
         find_rewrite_lem update_fun_comm. simpl in *.
-        erewrite handleTimeout_log_same in * by eauto.
+        find_erewrite_lem handleTimeout_log_same.
 
         find_rewrite_lem_by update_nop_ext' auto.
         find_apply_hyp_hyp.
