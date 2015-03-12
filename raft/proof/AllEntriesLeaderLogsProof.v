@@ -22,7 +22,10 @@ Section AllEntriesLeaderLogs.
 
   Lemma all_entries_leader_logs_init :
     refined_raft_net_invariant_init all_entries_leader_logs.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_init, all_entries_leader_logs.
+    intuition; red; simpl; intuition discriminate.
+  Qed.
 
   Lemma all_entries_leader_logs_client_request :
     refined_raft_net_invariant_client_request all_entries_leader_logs.
@@ -85,6 +88,8 @@ Section AllEntriesLeaderLogs.
             - do_bool.
               pose proof H.
               eapply_prop_hyp In In. intuition.
+              +
+              + right. break_exists_exists. intuition.
   Admitted.
 
   Lemma all_entries_leader_logs_append_entries_reply :
