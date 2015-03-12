@@ -353,3 +353,7 @@ Ltac eapply_prop_hyp P Q :=
     eapply H in H'
   end.
 
+Ltac find_false :=
+  match goal with
+    | H : _ -> False |- _ => exfalso; apply H
+  end.

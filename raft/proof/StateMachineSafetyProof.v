@@ -29,11 +29,6 @@ Section StateMachineSafetyProof.
   Definition lifted_state_machine_safety (net : network) : Prop :=
     state_machine_safety (deghost net).
 
-  Ltac find_false :=
-    match goal with
-      | H : _ -> False |- _ => exfalso; apply H
-    end.
-
   Theorem lift_log_matching :
     forall net,
       refined_raft_intermediate_reachable net ->
