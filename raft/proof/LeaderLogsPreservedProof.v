@@ -71,15 +71,8 @@ Section AllEntriesLeaderLogs.
       | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
     end.
 
-  Lemma update_elections_data_appendEntries_leaderLogs :
-    forall h st t h' pli plt es ci,
-      leaderLogs (update_elections_data_appendEntries h st t h' pli plt es ci) =
-      leaderLogs (fst st).
-  Proof.
-    intros.
-    unfold update_elections_data_appendEntries.
-    repeat break_match; subst; simpl in *; auto.
-  Qed.
+  Ltac destruct_update :=
+    repeat (update_destruct_hyp; subst; rewrite_update).
 
   Ltac prove_in :=
     match goal with
@@ -90,6 +83,17 @@ Section AllEntriesLeaderLogs.
               _ : pBody ?p = _ |- _] =>
         assert (In p (nwPackets net)) by (repeat find_rewrite; intuition)
     end.
+
+  
+  Lemma update_elections_data_appendEntries_leaderLogs :
+    forall h st t h' pli plt es ci,
+      leaderLogs (update_elections_data_appendEntries h st t h' pli plt es ci) =
+      leaderLogs (fst st).
+  Proof.
+    intros.
+    unfold update_elections_data_appendEntries.
+    repeat break_match; subst; simpl in *; auto.
+  Qed.
 
   Lemma mEntries_spec :
     forall body t n pli plt es ci,
@@ -136,31 +140,99 @@ Section AllEntriesLeaderLogs.
     intros. 
     invcs_hyp in_any_log.
     - find_higher_order_rewrite.
-      repeat (update_destruct_hyp; subst; rewrite_update);
+      destruct_update;
         simpl in *;
         try find_rewrite_lem update_elections_data_appendEntries_leaderLogs;
         eauto using handleAppendEntries_in_log_in_any_log.
     - find_higher_order_rewrite.
       find_apply_hyp_hyp.
-      repeat (update_destruct_hyp; subst; rewrite_update);
+      destruct_update;
         simpl in *;
         try find_rewrite_lem update_elections_data_appendEntries_leaderLogs;
         intuition eauto; subst; simpl in *; exfalso;
         eapply handleAppendEntries_no_m_entries; eauto.
     - find_higher_order_rewrite.
-      repeat (update_destruct_hyp; subst; rewrite_update);
+      destruct_update;
         simpl in *;
         repeat find_rewrite_lem update_elections_data_appendEntries_leaderLogs;
         eauto.
   Qed.
 
+  Lemma handleAppendEntriesReply_spec :
+    forall h st from t es s st' ps,
+      handleAppendEntriesReply h st from t es s = (st', ps) ->
+      log st' = log st /\
+      (forall m, In m ps -> mEntries (snd m) = None).
+  Proof.
+    intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; subst; simpl in *; intuition.
+  Qed.
+  
   Lemma leaderLogs_index_lt_entry_append_entries_reply :
     refined_raft_net_invariant_append_entries_reply leaderLogs_index_lt_entry.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_append_entries_reply, leaderLogs_index_lt_entry.
+    intros.
+    invcs_hyp in_any_log.
+    - find_higher_order_rewrite.
+      destruct_update;
+        simpl in *; find_apply_lem_hyp handleAppendEntriesReply_spec; break_and;
+        repeat find_rewrite; eauto.
+    - find_higher_order_rewrite.
+      find_apply_hyp_hyp.
+      destruct_update; simpl in *;
+      intuition eauto; find_apply_lem_hyp handleAppendEntriesReply_spec; break_and;
+      do_in_map; subst; simpl in *; find_apply_hyp_hyp; congruence.
+    - find_higher_order_rewrite; destruct_update;
+      simpl in *; eauto.
+  Qed.
+
+  Lemma handleRequestVote_spec :
+    forall h st t h' pli plt st' m,
+      handleRequestVote h st t h' pli plt = (st', m) ->
+      log st' = log st /\
+      mEntries m = None.
+  Proof.
+    intros.
+    unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; try find_inversion; subst; simpl in *; intuition;
+    do_bool; intuition; try solve [break_exists; congruence];
+    in_crush; eauto using removeAfterIndex_in.
+  Qed.
+  
+  Lemma update_elections_data_requestVote_leaderLogs_same :
+    forall h h' t lli llt st,
+      leaderLogs (update_elections_data_requestVote h h' t h' lli llt st) =
+      leaderLogs (fst st).
+  Proof.
+    unfold update_elections_data_requestVote.
+    intros.
+    repeat break_match; auto.
+  Qed.
 
   Lemma leaderLogs_index_lt_entry_request_vote :
     refined_raft_net_invariant_request_vote leaderLogs_index_lt_entry.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_request_vote, leaderLogs_index_lt_entry.
+    intros.
+    invcs_hyp in_any_log.
+    - find_higher_order_rewrite.
+      destruct_update; simpl in *;
+      find_apply_lem_hyp handleRequestVote_spec; break_and;
+      try find_rewrite_lem update_elections_data_requestVote_leaderLogs_same;
+      repeat find_rewrite; eauto.
+    - find_higher_order_rewrite.
+      destruct_update; simpl in *;
+      find_apply_lem_hyp handleRequestVote_spec; break_and;
+      try find_rewrite_lem update_elections_data_requestVote_leaderLogs_same;
+      find_apply_hyp_hyp; intuition eauto;
+      subst; simpl in *; congruence.
+    - find_higher_order_rewrite.
+      destruct_update; simpl in *;
+      repeat find_rewrite_lem update_elections_data_requestVote_leaderLogs_same;
+      simpl in *;
+      eauto.
+  Qed.
 
   Lemma leaderLogs_index_lt_entry_request_vote_reply :
     refined_raft_net_invariant_request_vote_reply leaderLogs_index_lt_entry.
