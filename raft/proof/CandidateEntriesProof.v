@@ -14,6 +14,8 @@ Require Import VotesCorrectInterface.
 Require Import TermSanityInterface.
 Require Import CroniesTermInterface.
 
+Require Import SpecLemmas.
+
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
