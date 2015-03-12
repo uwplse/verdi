@@ -171,16 +171,6 @@ Section CandidateEntriesProof.
     do_in_map; subst; simpl; eauto.
   Qed.
 
-  Lemma handleTimeout_log_same :
-    forall h d out d' l,
-      handleTimeout h d = (out, d', l) ->
-      log d' = log d.
-  Proof.
-    unfold handleTimeout, tryToBecomeLeader.
-    intros.
-    repeat break_match; repeat find_inversion; auto.
-  Qed.
-
   Lemma handleTimeout_not_leader_inc_term :
     forall h d out d' l,
       handleTimeout h d = (out, d', l) ->

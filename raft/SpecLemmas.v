@@ -75,4 +75,23 @@ Section SpecLemmas.
     intuition; repeat find_rewrite; auto.
     break_exists. intuition. repeat find_rewrite. eauto.
   Qed.
+
+  Lemma handleRequestVote_log :
+    forall h st t candidate lli llt st' m,
+      handleRequestVote h st t candidate lli llt = (st', m) ->
+      log st' = log st.
+  Proof.
+    intros. unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; subst; auto.
+  Qed.
+
+  Lemma handleTimeout_log_same :
+    forall h d out d' l,
+      handleTimeout h d = (out, d', l) ->
+      log d' = log d.
+  Proof.
+    unfold handleTimeout, tryToBecomeLeader.
+    intros.
+    repeat break_match; repeat find_inversion; auto.
+  Qed.
 End SpecLemmas.

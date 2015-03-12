@@ -387,15 +387,6 @@ Section SortedProof.
       intros. find_apply_hyp_hyp. find_rewrite. in_crush.
   Qed.
 
-  Lemma handleRequestVote_log :
-    forall h st t candidate lli llt st' m,
-      handleRequestVote h st t candidate lli llt = (st', m) ->
-      log st' = log st.
-  Proof.
-    intros. unfold handleRequestVote, advanceCurrentTerm in *.
-    repeat break_match; find_inversion; subst; auto.
-  Qed.
-
   Lemma handleRequestVote_packets :
     forall h st t candidate lli llt st' m,
       handleRequestVote h st t candidate lli llt = (st', m) ->
