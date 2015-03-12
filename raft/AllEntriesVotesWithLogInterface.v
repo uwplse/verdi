@@ -11,21 +11,22 @@ Section AllEntriesVotesWithLog.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
-  Definition all_entries_votes_with_log net :=
-    forall t e h t' leader l,
+  Definition allEntries_votesWithLog (net : network) : Prop :=
+    forall t e t' leader h log,
       In (t, e) (allEntries (fst (nwState net h))) ->
-      In (t', leader, l) (votesWithLog (fst (nwState net h))) ->
-      (exists t'' e',
-         t'' > t /\
-         t'' < t' /\
-         In (t'', e') (allEntries (fst (nwState net h)))) \/
-      In e l.
+      In (t', leader, log) (votesWithLog (fst (nwState net h))) ->
+      t < t' ->
+      In e log \/
+      (exists t'' leader' log',
+         In (t'', log') (leaderLogs (fst (nwState net leader'))) /\
+         t < t'' < t' /\
+         ~ In e log').
 
-  Class all_entries_votes_with_log_interface : Prop :=
+  Class allEntries_votesWithLog_interface : Prop :=
     {
-      all_entries_votes_with_log_invariant :
+      allEntries_votesWithLog_invariant :
         forall net,
           refined_raft_intermediate_reachable net ->
-          all_entries_votes_with_log net
+          allEntries_votesWithLog net
     }.
 End AllEntriesVotesWithLog.

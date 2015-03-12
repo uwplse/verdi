@@ -14,6 +14,14 @@ Require Import CommonTheorems.
 Require Import RaftRefinementInterface.
 Require Import LeaderCompletenessInterface.
 Require Import AllEntriesLeaderLogsInterface.
+Require Import PrefixWithinTermInterface.
+Require Import LeaderLogsTermSanityInterface.
+Require Import LeaderLogsPreservedInterface.
+Require Import EveryEntryWasCreatedInterface.
+Require Import LeaderLogsVotesWithLogInterface.
+Require Import AllEntriesVotesWithLogInterface.
+Require Import VotesWithLogSortedInterface.
+Require Import TermsAndIndicesFromOneInterface.
 
 Section LeaderCompleteness.
 
@@ -24,6 +32,14 @@ Section LeaderCompleteness.
   Context {rri : raft_refinement_interface}.
   Context {aelli : all_entries_leader_logs_interface}.
   
+  Context {pwti : prefix_within_term_interface}.
+  Context {lltsi : leaderLogs_term_sanity_interface}.
+  Context {llpi : leaderLogs_preserved_interface}.
+  Context {eewci : every_entry_was_created_interface}.
+  Context {llvwli : leaderLogs_votesWithLog_interface}.
+  Context {aevwli : allEntries_votesWithLog_interface}.
+  Context {vwlsi : votesWithLog_sorted_interface}.
+  Context {taifoi : terms_and_indices_from_one_interface}.
 
   Fixpoint contradicting_leader_logs_on_leader l t e :=
     match l with
@@ -163,7 +179,9 @@ Section LeaderCompleteness.
   Lemma minimal_contradicting_leader_log_elim :
     forall net t e t' h l,
       minimal_contradicting_leader_log net t e = Some (t', h, l) ->
-      (In (t', l) (leaderLogs (fst (nwState net h))) /\
+
+      (t < t' /\
+       In (t', l) (leaderLogs (fst (nwState net h))) /\
        ~ In e l /\
        (forall h' t'' l',
           In (t'', l') (leaderLogs (fst (nwState net h'))) ->
@@ -174,14 +192,32 @@ Section LeaderCompleteness.
     unfold minimal_contradicting_leader_log.
     intros.
     find_apply_lem_hyp argmin_elim. intuition.
-    - eauto using in_contradicting_leader_logs_on_leader_in_leaderLog, in_contradicting_leader_logs.
-    - eauto using in_contradicting_leader_logs, in_contradicting_leader_logs_on_leader_not_in_log.
+    - eauto using in_contradicting_leader_logs_on_leader_term_lt,
+                  in_contradicting_leader_logs.
+    - eauto using in_contradicting_leader_logs,
+                  in_contradicting_leader_logs_on_leader_in_leaderLog.
+    - eauto using in_contradicting_leader_logs,
+                  in_contradicting_leader_logs_on_leader_not_in_log.
     - destruct (le_lt_dec t'' t); auto.
       destruct (le_lt_dec t' t''); auto.
       destruct (in_dec entry_eq_dec e l'); auto.
       find_eapply_lem_hyp contradicting_leader_logs_on_leader_complete; eauto.
       find_eapply_lem_hyp contradicting_leader_logs_complete; [|solve [apply all_fin_all]].
       find_apply_hyp_hyp. simpl in *. omega.
+  Qed.
+
+  Lemma maxTerm_zero_or_entry :
+    forall l,
+      maxTerm l = 0 \/ exists e, In e l /\ eTerm e = maxTerm l.
+  Proof.
+    destruct l; simpl; eauto.
+  Qed.
+
+  Lemma maxIndex_zero_or_entry :
+    forall l,
+      maxIndex l = 0 \/ exists e, In e l /\ eIndex e = maxIndex l.
+  Proof.
+    destruct l; simpl; eauto.
   Qed.
 
   Theorem leader_completeness_directly_committed_invariant :
@@ -194,11 +230,119 @@ Section LeaderCompleteness.
     unfold directly_committed in *.
     destruct (minimal_contradicting_leader_log net (eTerm e) e) eqn:?;
              eauto using minimal_contradicting_leader_log_None.
-    exfalso.
+
     repeat destruct p.
-    find_copy_apply_lem_hyp minimal_contradicting_leader_log_elim.
-  Admitted.
   
+    find_apply_lem_hyp minimal_contradicting_leader_log_elim.
+    match goal with
+      | [ H : exists _, _ |- _ ] => destruct H as [quorum]
+    end.
+    intuition.
+    destruct (le_lt_dec n t).
+    - exfalso.
+      assert (forall e', In e' l -> (eTerm e' < eTerm e) \/ (eTerm e' = eTerm e /\ eIndex e' < eIndex e)).
+      {
+        intros.
+        destruct (lt_eq_lt_dec (eTerm e') (eTerm e)).
+        - intuition. destruct (le_lt_dec (eIndex e) (eIndex e')); auto.
+          assert (exists x, In x quorum).
+          {
+            destruct quorum.
+            - simpl in *. omega.
+            - simpl. eauto.
+          }
+
+          break_exists.
+          assert (prefix_within_term (map snd (allEntries (fst (nwState net x)))) l) by eauto using prefix_within_term_invariant.
+          unfold prefix_within_term in *.
+          exfalso.
+          find_false.
+          match goal with
+            | [ H : _ |- _ ] => eapply H; try eassumption; auto;
+                                [apply in_map_iff; eexists; split; [|eauto]; auto]
+          end.
+        - assert (leaderLogs_term_sanity net) by eauto using leaderLogs_term_sanity_invariant.
+          unfold leaderLogs_term_sanity in *.
+          assert (eTerm e' < n) by eauto.
+          assert (every_entry_was_created net) by eauto using every_entry_was_created_invariant.
+          unfold every_entry_was_created in *.
+          find_insterU. find_insterU. find_insterU. find_insterU.
+          conclude_using eauto.
+          conclude_using eauto.
+          break_exists.
+          find_copy_apply_hyp_hyp. repeat break_or_hyp; try omega.
+          assert (leaderLogs_preserved net) by eauto using leaderLogs_preserved_invariant.
+          unfold leaderLogs_preserved in *.
+          exfalso. eauto.
+      }
+
+      assert (leaderLogs_votesWithLog net) by eauto using leaderLogs_votesWithLog_invariant.
+      unfold leaderLogs_votesWithLog in *.
+      find_apply_hyp_hyp.
+      match goal with
+        | [ H : exists _, _ |- _ ] => destruct H as [quorum']
+      end.
+      break_and.
+
+      assert (NoDup nodes) by eauto using all_fin_NoDup.
+      match goal with
+        | H : NoDup nodes, _ : NoDup ?l1, _ : NoDup ?l2 |- _ =>
+          eapply pigeon with (l := nodes) (sub1 := l1) (sub2 := l2) in H
+      end; eauto using all_fin_all, name_eq_dec, div2_correct.
+
+      match goal with
+        | [ H : exists _, _ |- _ ] => destruct H as [a]
+      end.
+      break_and.
+      find_apply_hyp_hyp.
+      find_apply_hyp_hyp.
+      break_exists. break_and.
+      assert (In e x).
+      {
+        assert (allEntries_votesWithLog net) by eauto using allEntries_votesWithLog_invariant.
+        unfold allEntries_votesWithLog in *.
+        eapply_prop_hyp In In; eauto.
+        break_or_hyp; auto.
+        break_exists. break_and.
+        match goal with
+          | [ H : context [ In _ _ -> _ \/ _ ],
+              H' : In _ _ |- _ ] =>
+            eapply H in H'
+        end.
+        repeat (try break_or_hyp; break_and); try omega.
+        congruence.
+      }
+
+      assert (sorted x) by (eapply votesWithLog_sorted_invariant; eauto).
+
+      assert (maxTerm x >= eTerm e) by eauto using maxTerm_is_max.
+      assert (maxIndex x >= eIndex e) by eauto using maxIndex_is_max.
+      assert (exists e', In e' l /\
+                         eTerm e' = maxTerm l /\
+                         eIndex e' = maxIndex l).
+      {
+        assert (eTerm e >= 1 /\ eIndex e >= 1) by (eapply terms_and_indices_from_one_invariant; eauto).
+        destruct l.
+        - simpl in *.
+          unfold moreUpToDate in *. do_bool.
+          repeat (intuition; do_bool); try omega.
+        - simpl in *. eauto.
+      }
+
+      match goal with
+        | [ H : exists _, _ |- _ ] => destruct H as [e']
+      end.
+      break_and.
+
+      find_apply_hyp_hyp.
+
+      unfold moreUpToDate in *.
+      do_bool; repeat (try break_or_hyp; break_and; do_bool); omega.
+    - match goal with
+        | [ H : context [In], H' : context [In] |- _ ] => apply H in H'; intuition; omega
+      end.
+  Qed.
+
   Lemma leader_completeness_init :
     refined_raft_net_invariant_init leader_completeness.
   Admitted.

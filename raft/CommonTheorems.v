@@ -60,6 +60,19 @@ Section CommonTheorems.
       intros. eauto using subseq_In.
   Qed.
 
+  Theorem maxTerm_is_max :
+    forall l e,
+      sorted l ->
+      In e l ->
+      maxTerm l >= eTerm e.
+  Proof.
+    induction l; intros.
+    - simpl in *. intuition.
+    - simpl in *. intuition.
+      + subst. auto with *.
+      + find_apply_hyp_hyp. omega.
+  Qed.
+
   Theorem maxIndex_is_max :
     forall l e,
       sorted l ->

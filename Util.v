@@ -466,6 +466,7 @@ Ltac do_bool :=
     | [ H : beq_nat _ _ = false |- _ ] => apply beq_nat_false in H
     | [ H : andb _ _ = true |- _ ] => apply Bool.andb_true_iff in H
     | [ H : andb _ _ = false |- _ ] => apply Bool.andb_false_iff in H
+    | [ H : orb _ _ = true |- _ ] => apply Bool.orb_prop in H
     | [ H : negb _ = true |- _ ] => apply Bool.negb_true_iff in H
     | [ H : negb _ = false |- _ ] => apply Bool.negb_false_iff in H
     | [ H : PeanoNat.Nat.ltb _ _ = true |- _ ] => apply ltb_true_lt in H
