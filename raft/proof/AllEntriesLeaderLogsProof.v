@@ -88,7 +88,7 @@ Section AllEntriesLeaderLogs.
             - do_bool.
               pose proof H.
               eapply_prop_hyp In In. intuition.
-              +
+              + admit.
               + right. break_exists_exists. intuition.
   Admitted.
 
