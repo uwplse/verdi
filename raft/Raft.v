@@ -176,11 +176,17 @@ Section Raft.
                  nodes)
     ).
 
-  Definition haveNewEntries (state : raft_data) (entries : list entry) :=
-    match findAtIndex (log state) (maxIndex entries) with
-              | None => true
-              | Some e => (negb (beq_nat (maxTerm entries) (eTerm e)))
+  Definition not_empty {A} (l : list A) :=
+    match l with
+      | [] => false
+      | _ => true
     end.
+
+  Definition haveNewEntries (state : raft_data) (entries : list entry) :=
+    andb (not_empty entries) (match findAtIndex (log state) (maxIndex entries) with
+                                | None => true
+                                | Some e => (negb (beq_nat (maxTerm entries) (eTerm e)))
+                              end).
 
   Definition handleAppendEntries (me : name)
              (state : raft_data) (t : term) (leaderId : name) (prevLogIndex : logIndex)
