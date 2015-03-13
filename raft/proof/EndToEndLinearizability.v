@@ -74,6 +74,17 @@ Require Import AppliedEntriesMonotonicProof.
 Require Import StateMachineSafetyInterface.
 Require Import StateMachineSafetyProof.
 
+Require Import MaxIndexSanityInterface.
+Require Import MaxIndexSanityProof.
+
+Require Import LeaderCompletenessInterface.
+Require Import LeaderCompletenessProof.
+
+Require Import AllEntriesLeaderLogsInterface.
+Require Import AllEntriesLeaderLogsProof.
+
+Require Import CommitRecordedCommittedInterface.
+Require Import CommitRecordedCommittedProof.
 
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
@@ -97,6 +108,10 @@ Hint Extern 4 (@applied_implies_input_interface _ _ _) => apply aiii : typeclass
 Hint Extern 4 (@causal_order_preserved_interface _ _ _) => apply copi : typeclass_instances.
 Hint Extern 4 (@input_before_output_interface _ _ _) => apply iboi : typeclass_instances.
 Hint Extern 4 (@output_correct_interface _ _ _) => apply oci : typeclass_instances.
+Hint Extern 4 (@max_index_sanity_interface _ _ _) => apply misi : typeclass_instances.
+Hint Extern 4 (@leader_completeness_interface _ _ _) => apply lci : typeclass_instances.
+Hint Extern 4 (@all_entries_leader_logs_interface _ _ _) => apply aelli : typeclass_instances.
+Hint Extern 4 (@commit_recorded_committed_interface _ _ _) => apply crci : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
