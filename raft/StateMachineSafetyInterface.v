@@ -28,6 +28,7 @@ Section StateMachineSafety.
       t >= currentTerm (nwState net h) ->
       commit_recorded net h e ->
       (prevLogIndex > eIndex e \/
+       eIndex e > maxIndex entries \/
        In e entries).
 
   Definition state_machine_safety net :=
