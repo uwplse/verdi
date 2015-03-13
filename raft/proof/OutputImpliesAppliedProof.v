@@ -14,6 +14,7 @@ Require Import CommonTheorems.
 Require Import LogMatchingInterface.
 Require Import StateMachineSafetyInterface.
 Require Import AppliedEntriesMonotonicInterface.
+Require Import MaxIndexSanityInterface.
 Require Import TraceUtil.
 
 Require Import UpdateLemmas.
@@ -32,6 +33,7 @@ Section OutputImpliesApplied.
   Context {si : sorted_interface}.
   Context {aemi : applied_entries_monotonic_interface}.
   Context {smsi : state_machine_safety_interface}.
+  Context {misi : max_index_sanity_interface}.
 
   Section inner.
   Variables client id : nat.
@@ -175,8 +177,9 @@ Section OutputImpliesApplied.
       end.
       apply removeAfterIndex_le_In; intuition.
       find_copy_apply_lem_hyp log_matching_invariant.
+      find_copy_apply_lem_hyp max_index_sanity_invariant.
       find_apply_lem_hyp state_machine_safety_invariant.
-      unfold state_machine_safety, log_matching, log_matching_hosts in *.
+      unfold state_machine_safety, log_matching, log_matching_hosts, maxIndex_sanity in *.
       intuition.
       match goal with
         | [ e : entry, H : forall _ _, _ <= _ <= _ -> _, Hm : maxIndex_lastApplied _

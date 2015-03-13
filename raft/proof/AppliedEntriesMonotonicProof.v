@@ -18,6 +18,7 @@ Require Import StateMachineSafetyInterface.
 Require Import SortedInterface.
 Require Import UniqueIndicesInterface.
 Require Import LogMatchingInterface.
+Require Import MaxIndexSanityInterface.
 
 Require Import SpecLemmas.
 
@@ -32,6 +33,7 @@ Section AppliedEntriesMonotonicProof.
   Context {lmi : log_matching_interface}.
   Context {uii : unique_indices_interface}.
   Context {smsi : state_machine_safety_interface}.
+  Context {misi : max_index_sanity_interface}.
 
   Theorem handleAppendEntries_log :
     forall h st t n pli plt es ci st' ps,
@@ -137,8 +139,9 @@ Section AppliedEntriesMonotonicProof.
       + subst.
         find_copy_apply_lem_hyp state_machine_safety_invariant.
         unfold state_machine_safety in *. intuition.
+        find_copy_apply_lem_hyp max_index_sanity_invariant. intuition.
         find_copy_apply_lem_hyp logs_sorted_invariant.
-        unfold logs_sorted in *. intuition.
+        unfold logs_sorted, maxIndex_sanity in *. intuition.
         apply removeAfterIndex_same_sufficient; eauto.
         * intros.
           eapply_prop_hyp state_machine_safety_nw In;
@@ -169,7 +172,8 @@ Section AppliedEntriesMonotonicProof.
           eapply rachet; [symmetry|idtac|idtac|idtac|idtac]; eauto.
       + repeat find_rewrite.
         find_copy_apply_lem_hyp state_machine_safety_invariant.
-        unfold state_machine_safety in *. intuition.
+        find_copy_apply_lem_hyp max_index_sanity_invariant.
+        unfold state_machine_safety, maxIndex_sanity in *. intuition.
         find_copy_apply_lem_hyp logs_sorted_invariant.
         unfold logs_sorted in *. intuition.
         apply removeAfterIndex_same_sufficient; eauto.
@@ -256,10 +260,9 @@ Section AppliedEntriesMonotonicProof.
       simpl in *. break_if; auto.
       exfalso.
       do_bool.
-      find_apply_lem_hyp state_machine_safety_invariant.
-      unfold state_machine_safety in *.
+      find_apply_lem_hyp max_index_sanity_invariant.
+      unfold maxIndex_sanity, maxIndex_lastApplied in *.
       intuition.
-      unfold maxIndex_lastApplied in *.
       match goal with
         | H : forall _, _ |- _ => specialize (H h)
       end. omega.
@@ -292,6 +295,7 @@ Section AppliedEntriesMonotonicProof.
     intros.
     find_copy_apply_lem_hyp log_matching_invariant. unfold log_matching in *.
     find_copy_apply_lem_hyp state_machine_safety_invariant. unfold state_machine_safety in *.
+    find_copy_apply_lem_hyp max_index_sanity_invariant. unfold maxIndex_sanity in *.
     intuition; simpl in *.
     - unfold log_matching_hosts in *. intuition. simpl in *.
       match goal with
