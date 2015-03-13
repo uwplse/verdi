@@ -19,6 +19,8 @@ Require Import SortedInterface.
 Require Import UniqueIndicesInterface.
 Require Import LogMatchingInterface.
 Require Import MaxIndexSanityInterface.
+Require Import CommitRecordedCommittedInterface.
+Require Import LeaderCompletenessInterface.
 
 Require Import SpecLemmas.
 
@@ -34,29 +36,60 @@ Section AppliedEntriesMonotonicProof.
   Context {uii : unique_indices_interface}.
   Context {smsi : state_machine_safety_interface}.
   Context {misi : max_index_sanity_interface}.
+  Context {crci : commit_recorded_committed_interface}.
+  Context {lci : leader_completeness_interface}.
+
+  Lemma haveNewEntries_true :
+    forall st es,
+      haveNewEntries st es = true ->
+      (es <> nil /\
+       (findAtIndex (log st) (maxIndex es) = None \/
+        exists e,
+          findAtIndex (log st) (maxIndex es) = Some e /\
+          eTerm e <> maxTerm es)).
+  Proof.
+    intros.
+    unfold haveNewEntries, not_empty in *.
+    repeat break_match; do_bool; intuition eauto; try congruence.
+    do_bool. eauto.
+  Qed.
 
   Theorem handleAppendEntries_log :
     forall h st t n pli plt es ci st' ps,
       handleAppendEntries h st t n pli plt es ci = (st', ps) ->
       log st' = log st \/
-      (pli = 0 /\ t >= currentTerm st /\ log st' = es) \/
-      (exists e,
+      (es <> nil /\
+        pli = 0 /\ t >= currentTerm st /\ log st' = es /\
+       (findAtIndex (log st) (maxIndex es) = None \/
+        exists e,
+          findAtIndex (log st) (maxIndex es) = Some e /\
+          eTerm e <> maxTerm es)) \/
+      (es <> nil /\
+        exists e,
          In e (log st) /\
          eIndex e = pli /\
          eTerm e = plt) /\
       t >= currentTerm st /\
-      log st' = es ++ (removeAfterIndex (log st) pli).
+      log st' = es ++ (removeAfterIndex (log st) pli) /\
+      (findAtIndex (log st) (maxIndex es) = None \/
+       exists e,
+         findAtIndex (log st) (maxIndex es) = Some e /\
+         eTerm e <> maxTerm es).
   Proof.
     intros. unfold handleAppendEntries in *.
     break_if; [find_inversion; subst; eauto|].
-    break_if; [do_bool; break_if; find_inversion; subst; eauto|].
+    break_if;
+      [do_bool; break_if; find_inversion; subst;
+       try find_apply_lem_hyp haveNewEntries_true;
+       intuition eauto|].
     break_match; [|find_inversion; subst; eauto].
     break_if; [find_inversion; subst; eauto|].
     break_if; [|find_inversion; subst; eauto].
     find_inversion; subst; simpl in *.
     right. right.
     find_apply_lem_hyp findAtIndex_elim.
-    intuition; do_bool; eauto.
+    intuition; do_bool; find_apply_lem_hyp haveNewEntries_true;
+    intuition eauto.
   Qed.
 
   Lemma sorted_NoDup :
@@ -118,6 +151,86 @@ Section AppliedEntriesMonotonicProof.
     copy_eapply H H'
   end.
 
+  Lemma findAtIndex_max_thing :
+    forall net h e i,
+      raft_intermediate_reachable net ->
+      In e (log (nwState net h)) ->
+      eIndex e > i ->
+      1 <= i ->
+      exists e',
+        findAtIndex (log (nwState net h)) i = Some e'.
+  Proof.
+    intros.
+    find_copy_apply_lem_hyp logs_sorted_invariant.
+    pose proof log_matching_invariant.
+    eapply_prop_hyp raft_intermediate_reachable raft_intermediate_reachable.
+    unfold log_matching, log_matching_hosts, logs_sorted in *.
+    intuition.
+    match goal with
+      | H : forall _ _, _ <= _ <= _ -> _ |- _ =>
+        specialize (H h i);
+          conclude H ltac:(intuition; find_apply_lem_hyp maxIndex_is_max; eauto; omega)
+    end.
+    break_exists_exists. intuition. apply findAtIndex_intro; eauto using sorted_uniqueIndices.
+  Qed.
+
+  Lemma maxIndex_non_empty :
+    forall l,
+      l <> nil ->
+      exists e,
+        In e l /\ maxIndex l = eIndex e /\ maxTerm l = eTerm e.
+  Proof.
+    destruct l; intros; simpl in *; eauto; congruence.
+  Qed.
+  
+  Lemma entries_max_thing :
+    forall net p es,
+      raft_intermediate_reachable net ->
+      In p (nwPackets net) ->
+      mEntries (pBody p) = Some es ->
+      es <> nil ->
+      1 <= maxIndex es.
+  Proof.
+    intros.
+    find_apply_lem_hyp maxIndex_non_empty.
+    break_exists; intuition; find_rewrite.
+    find_apply_lem_hyp log_matching_invariant.
+    unfold log_matching, log_matching_nw in *.
+    intuition. destruct (pBody p) eqn:?; simpl in *; try congruence.
+    find_apply_hyp_hyp. intuition. find_inversion.
+    find_apply_hyp_hyp. omega.
+  Qed.
+
+  Lemma deghost_snd :
+    forall net h,
+      snd (nwState net h) = nwState (deghost net) h.
+  Proof.
+    intros. unfold deghost in *. simpl.
+    repeat break_match; subst; simpl.
+    repeat find_rewrite. reflexivity.
+  Qed.
+
+  Lemma lt_committed_committed :
+    forall net e e' t h,
+      log_matching (deghost net) ->
+      committed net e t ->
+      eIndex e' <= eIndex e ->
+      In e (log (snd (nwState net h))) ->
+      In e' (log (snd (nwState net h))) ->
+      committed net e' t.
+  Proof.
+    intros.
+    unfold committed in *.
+    break_exists_exists. intuition.
+    unfold log_matching, log_matching_hosts in *.
+    intuition. unfold entries_match in *.
+    rewrite deghost_snd in *.
+    match goal with
+      | H : forall _ _ _ _ _, _  |- In _ (_ (_ _ ?x)) =>
+        specialize (H h x e e e')
+    end; intuition eauto.
+  Qed.
+  
   Lemma handleMessage_applied_entries :
     forall net h h' m st' ms,
       raft_intermediate_reachable net ->
@@ -144,10 +257,13 @@ Section AppliedEntriesMonotonicProof.
         unfold logs_sorted, maxIndex_sanity in *. intuition.
         apply removeAfterIndex_same_sufficient; eauto.
         * intros.
-          eapply_prop_hyp state_machine_safety_nw In;
+          copy_eapply_prop_hyp state_machine_safety_nw In;
             unfold commit_recorded in *.
             simpl in *; repeat (forwards; eauto; concludes).
-          intuition; omega.
+            intuition; try omega;
+            exfalso;
+            find_eapply_lem_hyp findAtIndex_max_thing; eauto; try break_exists; try congruence;
+            eauto using entries_max_thing.
         * intros.
           find_copy_apply_lem_hyp log_matching_invariant.
           unfold log_matching, log_matching_hosts in *. intuition.
@@ -166,25 +282,39 @@ Section AppliedEntriesMonotonicProof.
             unfold commit_recorded in *;
             simpl in *; repeat (forwards; [intuition eauto; omega|]; concludes).
           match goal with H : _ /\ (_ \/ _) |- _ => clear H end.
-          intuition; [omega|].
-          find_copy_apply_lem_hyp UniqueIndices_invariant.
-          unfold UniqueIndices in *. intuition.
-          eapply rachet; [symmetry|idtac|idtac|idtac|idtac]; eauto.
+          intuition; try omega;
+          [|find_copy_apply_lem_hyp UniqueIndices_invariant;
+             unfold UniqueIndices in *; intuition;
+             eapply rachet; [symmetry|idtac|idtac|idtac|idtac]; eauto].
+          exfalso.
+          find_eapply_lem_hyp findAtIndex_max_thing; eauto; try break_exists; try congruence;
+          eauto using entries_max_thing.
       + repeat find_rewrite.
         find_copy_apply_lem_hyp state_machine_safety_invariant.
         find_copy_apply_lem_hyp max_index_sanity_invariant.
         unfold state_machine_safety, maxIndex_sanity in *. intuition.
         find_copy_apply_lem_hyp logs_sorted_invariant.
         unfold logs_sorted in *. intuition.
-        apply removeAfterIndex_same_sufficient; eauto.
+  Admitted.
+(*        apply removeAfterIndex_same_sufficient; eauto.
         * intros.
           copy_eapply_prop_hyp state_machine_safety_nw In;
             unfold commit_recorded in *;
             simpl in *; repeat (forwards; [intuition eauto; omega|]; concludes).
           match goal with H : _ /\ (_ \/ _) |- _ => clear H end.
-          intuition.
-          apply in_or_app; right.
-          apply removeAfterIndex_le_In; intuition.
+          intuition; try omega.
+          exfalso.
+          subst.
+          break_exists. intuition.
+          find_false.
+          find_apply_lem_hyp maxIndex_non_empty.
+          break_exists. intuition. repeat find_rewrite.
+          f_equal.
+          find_apply_lem_hyp findAtIndex_elim. intuition.
+          eapply uniqueIndices_elim_eq with (xs := log st'); eauto using sorted_uniqueIndices.
+          unfold state_machine_safety_nw in *.
+          eapply_prop_hyp commit_recorded In; intuition; eauto; try omega.
+          unfold commit_recorded. intuition.
         * intros.
           find_apply_lem_hyp in_app_iff. intuition eauto using removeAfterIndex_in.
           find_copy_apply_lem_hyp log_matching_invariant.
@@ -214,7 +344,7 @@ Section AppliedEntriesMonotonicProof.
     - apply applied_entries_log_lastApplied_update_same;
       eauto using handleAppendEntriesReply_same_log, handleAppendEntriesReply_same_lastApplied.
   Qed.
-
+*)
   Theorem handleTimeout_lastApplied :
     forall h st out st' ps,
       handleTimeout h st = (out, st', ps) ->
