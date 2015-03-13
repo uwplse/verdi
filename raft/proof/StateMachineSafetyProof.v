@@ -8,7 +8,7 @@ Require Import CommonTheorems.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 Require Import StateMachineSafetyInterface.
-Require Import CommitRecordedCommitted.
+Require Import CommitRecordedCommittedInterface.
 Require Import LeaderCompletenessInterface.
 Require Import AllEntriesLeaderLogsInterface.
 Require Import LogMatchingInterface.
