@@ -71,6 +71,26 @@ Section SortedProof.
     simpl in *. find_apply_hyp_hyp. intuition eauto.
   Qed.
 
+  Lemma handleClientRequest_logs_sorted :
+    forall h client id c out st l net,
+      handleClientRequest h (nwState net h) client id c = (out, st, l) ->
+      raft_intermediate_reachable net ->
+      logs_sorted_host net ->
+      sorted (log st).
+  Proof.
+    unfold logs_sorted_host.
+    intros.
+    find_apply_lem_hyp handleClientRequest_log. intuition.
+    + repeat find_rewrite. eauto.
+    + find_apply_lem_hyp no_entries_past_current_term_invariant.
+      break_exists; intuition; repeat find_rewrite.
+      simpl. intuition eauto.
+      * find_eapply_lem_hyp maxIndex_is_max; eauto.
+        omega.
+      * unfold no_entries_past_current_term, no_entries_past_current_term_host in *.
+        intuition. simpl in *. find_apply_hyp_hyp. omega.
+  Qed.
+
   Theorem logs_sorted_client_request :
     raft_net_invariant_client_request logs_sorted.
   Proof.
@@ -78,15 +98,7 @@ Section SortedProof.
     - unfold logs_sorted_host in *. simpl in *. intros.
       find_higher_order_rewrite. break_match; eauto.
       subst.
-      find_apply_lem_hyp handleClientRequest_log. intuition.
-      + repeat find_rewrite. eauto.
-      + find_apply_lem_hyp no_entries_past_current_term_invariant.
-        break_exists; intuition; repeat find_rewrite.
-        simpl. intuition eauto.
-        * find_eapply_lem_hyp maxIndex_is_max; eauto.
-          omega.
-        * unfold no_entries_past_current_term, no_entries_past_current_term_host in *.
-          intuition. simpl in *. find_apply_hyp_hyp. omega.
+      eauto using handleClientRequest_logs_sorted.
     - find_apply_lem_hyp handleClientRequest_packets. subst. simpl in *.
       eauto using logs_sorted_nw_packets_unchanged.
     - find_apply_lem_hyp handleClientRequest_packets. subst. simpl in *.
@@ -501,18 +513,6 @@ Section SortedProof.
       intuition eauto.
   Qed.
 
-
-  Lemma doGenericServer_log :
-    forall h st os st' ps,
-      doGenericServer h st = (os, st', ps) ->
-      log st' = log st.
-  Proof.
-    intros. unfold doGenericServer in *.
-    repeat break_match; find_inversion;
-    use_applyEntries_spec; simpl in *;
-    subst; auto.
-  Qed.
-
   Lemma doGenericServer_packets :
     forall h st os st' ps,
       doGenericServer h st = (os, st', ps) ->
@@ -594,6 +594,7 @@ Section SortedProof.
   Proof.
     split.
     eauto using handleAppendEntries_logs_sorted.
+    eauto using handleClientRequest_logs_sorted.
     auto using logs_sorted_invariant.
   Qed.
 End SortedProof.

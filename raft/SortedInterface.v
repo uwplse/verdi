@@ -49,6 +49,12 @@ Section SortedInterface.
           pBody p = AppendEntries t n pli plt es ci ->
           In p (nwPackets net) ->
           sorted (log st');
+      handleClientRequest_logs_sorted :
+        forall h client id c out st l net,
+          handleClientRequest h (nwState net h) client id c = (out, st, l) ->
+          raft_intermediate_reachable net ->
+          logs_sorted_host net ->
+          sorted (log st);
       logs_sorted_invariant :
         forall net,
           raft_intermediate_reachable net ->
