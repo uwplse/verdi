@@ -1134,6 +1134,19 @@ Section CommonTheorems.
       find_apply_hyp_hyp; break_exists; repeat eexists; eauto.
   Qed.
 
+  Lemma applyEntries_spec_ind :
+    forall {es h st os st'},
+      applyEntries h st es = (os, st') ->
+      forall P : raft_data -> Prop,
+        (forall d cc,
+           P {[ {[ st with stateMachine := d ]} with clientCache := cc ]}) ->
+        P st'.
+  Proof.
+    intros.
+    find_apply_lem_hyp applyEntries_spec.
+    break_exists. subst. eauto.
+  Qed.
+
   Functional Scheme div2_ind := Induction for div2 Sort Prop.
 
   Theorem div2_correct' :

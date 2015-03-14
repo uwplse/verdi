@@ -39,6 +39,25 @@ Section SpecLemmas.
     - repeat break_match; find_inversion; subst; eauto.
   Qed.
 
+  Theorem handleAppendEntries_log_ind :
+    forall {h st t n pli plt es ci st' ps},
+      handleAppendEntries h st t n pli plt es ci = (st', ps) ->
+      forall (P : list entry -> Prop),
+        P (log st) ->
+        P es ->
+        (forall e,
+           In e (log st) ->
+           eIndex e = pli ->
+           eTerm e = plt ->
+           P (es ++ (removeAfterIndex (log st) pli))) ->
+        P (log st').
+  Proof.
+    intros.
+    find_apply_lem_hyp handleAppendEntries_log.
+    intuition; find_rewrite; auto.
+    break_exists. intuition eauto.
+  Qed.
+
   Theorem handleClientRequest_log :
     forall h st client id c out st' ps,
       handleClientRequest h st client id c = (out, st', ps) ->
@@ -93,5 +112,16 @@ Section SpecLemmas.
     unfold handleTimeout, tryToBecomeLeader.
     intros.
     repeat break_match; repeat find_inversion; auto.
+  Qed.
+
+  Lemma doGenericServer_log :
+    forall h st os st' ps,
+      doGenericServer h st = (os, st', ps) ->
+      log st' = log st.
+  Proof.
+    intros. unfold doGenericServer in *.
+    repeat break_match; find_inversion;
+    use_applyEntries_spec; simpl in *;
+    subst; auto.
   Qed.
 End SpecLemmas.
