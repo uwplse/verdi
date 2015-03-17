@@ -163,9 +163,11 @@ Section MaxIndexSanity.
     find_copy_apply_lem_hyp state_machine_safety_invariant.
     intuition; simpl in *; find_higher_order_rewrite; update_destruct; auto.
     - erewrite handleAppendEntries_lastApplied by eauto.
+      find_copy_apply_lem_hyp handleAppendEntries_logs_sorted; auto using logs_sorted_invariant;
+      try solve [repeat find_rewrite; intuition].
       destruct (log d) using (handleAppendEntries_log_ind $(eauto)$).
       + eauto.
-      + admit.
+      + admit.  (* use sms nw invariant somehow *)
       + admit.
     - admit.
   Qed.
