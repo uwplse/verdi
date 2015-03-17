@@ -28,6 +28,7 @@ Section StateMachineSafety.
       t >= currentTerm (nwState net h) ->
       commit_recorded net h e ->
       (prevLogIndex > eIndex e \/
+       (prevLogIndex = eIndex e /\ prevLogTerm = eIndex e) \/
        eIndex e > maxIndex entries \/
        In e entries).
 

@@ -344,7 +344,8 @@ Section AppliedEntriesMonotonicProof.
             intuition; try omega;
             exfalso;
             find_eapply_lem_hyp findAtIndex_max_thing; eauto; try break_exists; try congruence;
-            eauto using entries_max_thing.
+            eauto using entries_max_thing;
+            find_apply_lem_hyp logs_contiguous; auto; omega.
         * intros.
           find_copy_apply_lem_hyp log_matching_invariant.
           unfold log_matching, log_matching_hosts in *. intuition.
@@ -383,7 +384,7 @@ Section AppliedEntriesMonotonicProof.
             unfold commit_recorded in *;
             simpl in *; repeat (forwards; [intuition eauto; omega|]; concludes).
           match goal with H : _ /\ (_ \/ _) |- _ => clear H end.
-          intuition; try omega.
+          intuition; try omega; try solve [find_apply_lem_hyp logs_contiguous; auto; omega].
           exfalso.
           subst.
           break_exists. intuition.
@@ -394,7 +395,8 @@ Section AppliedEntriesMonotonicProof.
           find_apply_lem_hyp findAtIndex_elim. intuition.
           eapply uniqueIndices_elim_eq with (xs := log st'); eauto using sorted_uniqueIndices.
           unfold state_machine_safety_nw in *.
-          eapply_prop_hyp commit_recorded In; intuition; eauto; try omega.
+          eapply_prop_hyp commit_recorded In; intuition; eauto; try omega;
+          try solve [find_apply_lem_hyp logs_contiguous; auto; omega].
           unfold commit_recorded. intuition.
       + repeat find_rewrite.
         find_copy_apply_lem_hyp logs_sorted_invariant.
@@ -415,7 +417,7 @@ Section AppliedEntriesMonotonicProof.
           forwards; [unfold commit_recorded in *; intuition eauto|].
           concludes.
           intuition; apply in_app_iff;
-          [right; eapply removeAfterIndex_le_In; eauto; omega|].
+          try solve [right; eapply removeAfterIndex_le_In; eauto; omega];
           exfalso.
           find_eapply_lem_hyp findAtIndex_max_thing; eauto using entries_max_thing.
           break_exists; congruence.
@@ -431,30 +433,36 @@ Section AppliedEntriesMonotonicProof.
           }
         * find_apply_lem_hyp max_index_sanity_invariant.
           unfold maxIndex_sanity in *. intuition.
-        * intros.
-          find_copy_apply_lem_hyp state_machine_safety_invariant.
-          unfold state_machine_safety in *. break_and.
-          copy_eapply_prop_hyp state_machine_safety_nw In; eauto.
-          simpl in *. intuition eauto. forwards; eauto. concludes.
-          forwards; [unfold commit_recorded in *; intuition eauto|].
-          concludes.
-          intuition; apply in_app_iff;
-          [right; eapply removeAfterIndex_le_In; eauto; omega|].
-          subst.
-          find_apply_lem_hyp maxIndex_non_empty.
-          break_exists. intuition. repeat find_rewrite.
-          find_apply_lem_hyp findAtIndex_elim. intuition.
-          find_false. f_equal.
-          eapply uniqueIndices_elim_eq with (xs := log (nwState net h));
-            eauto using sorted_uniqueIndices.
-          unfold state_machine_safety_nw in *.
-          eapply rachet; eauto using sorted_app, sorted_uniqueIndices.
-          copy_eapply_prop_hyp commit_recorded In; intuition; eauto; try omega;
-          unfold commit_recorded; intuition.
-          exfalso.
-          pose proof entries_gt_pli.
-          eapply_prop_hyp AppendEntries AppendEntries;
-            [|idtac|simpl; eauto|]; eauto. omega.
+        * {
+            intros.
+            find_copy_apply_lem_hyp state_machine_safety_invariant.
+            unfold state_machine_safety in *. break_and.
+            copy_eapply_prop_hyp state_machine_safety_nw In; eauto.
+            simpl in *. intuition eauto. forwards; eauto. concludes.
+            forwards; [unfold commit_recorded in *; intuition eauto|].
+            concludes.
+            intuition; apply in_app_iff;
+            try solve [right; eapply removeAfterIndex_le_In; eauto; omega].
+            subst.
+            find_apply_lem_hyp maxIndex_non_empty.
+            break_exists. intuition. repeat find_rewrite.
+            find_apply_lem_hyp findAtIndex_elim. intuition.
+            find_false. f_equal.
+            eapply uniqueIndices_elim_eq with (xs := log (nwState net h));
+              eauto using sorted_uniqueIndices.
+            unfold state_machine_safety_nw in *.
+            eapply rachet; eauto using sorted_app, sorted_uniqueIndices.
+            copy_eapply_prop_hyp commit_recorded In; intuition; eauto; try omega;
+            unfold commit_recorded; intuition.
+            - exfalso.
+              pose proof entries_gt_pli.
+              eapply_prop_hyp AppendEntries AppendEntries;
+                [|idtac|simpl; eauto|]; eauto. omega.
+            -  exfalso.
+              pose proof entries_gt_pli.
+              eapply_prop_hyp AppendEntries AppendEntries;
+                [|idtac|simpl; eauto|]; eauto. omega.
+          }
     - apply applied_entries_log_lastApplied_update_same;
       eauto using handleAppendEntriesReply_same_log, handleAppendEntriesReply_same_lastApplied.
   Qed.
