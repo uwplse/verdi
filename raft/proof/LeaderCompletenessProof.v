@@ -22,6 +22,7 @@ Require Import LeaderLogsVotesWithLogInterface.
 Require Import AllEntriesVotesWithLogInterface.
 Require Import VotesWithLogSortedInterface.
 Require Import TermsAndIndicesFromOneInterface.
+Require Import LeaderLogsLogMatchingInterface.
 
 Section LeaderCompleteness.
 
@@ -40,6 +41,7 @@ Section LeaderCompleteness.
   Context {aevwli : allEntries_votesWithLog_interface}.
   Context {vwlsi : votesWithLog_sorted_interface}.
   Context {taifoi : terms_and_indices_from_one_interface}.
+  Context {lllmi : leaderLogs_entries_match_interface}.
 
   Fixpoint contradicting_leader_logs_on_leader l t e :=
     match l with
@@ -343,68 +345,38 @@ Section LeaderCompleteness.
       end.
   Qed.
 
-  Lemma leader_completeness_init :
-    refined_raft_net_invariant_init leader_completeness.
-  Admitted.
+  Theorem leader_completeness_committed_invariant :
+    forall net,
+      refined_raft_intermediate_reachable net ->
+      leader_completeness_committed net.
+  Proof.
+    unfold leader_completeness_committed, committed.
+    intros.
+    break_exists. break_and.
+    find_copy_apply_lem_hyp leader_completeness_directly_committed_invariant.
+    unfold leader_completeness_directly_committed in *.
 
-  Lemma leader_completeness_client_request :
-    refined_raft_net_invariant_client_request leader_completeness.
-  Admitted.
+    match goal with
+      | [ H : _, H' : directly_committed _ _ |- _ ] => eapply H in H'
+    end; [ | |eauto]; [| omega].
 
-  Lemma leader_completeness_timeout :
-    refined_raft_net_invariant_timeout leader_completeness.
-  Admitted.
+    assert (entries_match (Raft.log (snd (nwState net x))) log) by
+        (eapply leaderLogs_entries_match_invariant; eauto).
 
-  Lemma leader_completeness_append_entries :
-    refined_raft_net_invariant_append_entries leader_completeness.
-  Admitted.
-
-  Lemma leader_completeness_append_entries_reply :
-    refined_raft_net_invariant_append_entries_reply leader_completeness.
-  Admitted.
-
-  Lemma leader_completeness_request_vote :
-    refined_raft_net_invariant_request_vote leader_completeness.
-  Admitted.
-
-  Lemma leader_completeness_request_vote_reply :
-    refined_raft_net_invariant_request_vote_reply leader_completeness.
-  Admitted.
-
-  Lemma leader_completeness_do_leader :
-    refined_raft_net_invariant_do_leader leader_completeness.
-  Admitted.
-
-  Lemma leader_completeness_do_generic_server :
-    refined_raft_net_invariant_do_generic_server leader_completeness.
-  Admitted.
-
-  Lemma leader_completeness_state_same_packet_subset :
-    refined_raft_net_invariant_state_same_packet_subset leader_completeness.
-  Admitted.
-
-  Lemma leader_completeness_reboot :
-    refined_raft_net_invariant_reboot leader_completeness.
-  Admitted.
+    match goal with
+      | [ H : entries_match _ _ |- _ ] => eapply H
+    end; eauto.
+  Qed.
 
   Theorem leader_completeness_invariant :
     forall net,
       refined_raft_intermediate_reachable net ->
       leader_completeness net.
   Proof.
-    intros.
-    apply refined_raft_net_invariant; auto.
-    - apply leader_completeness_init.
-    - apply leader_completeness_client_request.
-    - apply leader_completeness_timeout.
-    - apply leader_completeness_append_entries.
-    - apply leader_completeness_append_entries_reply.
-    - apply leader_completeness_request_vote.
-    - apply leader_completeness_request_vote_reply.
-    - apply leader_completeness_do_leader.
-    - apply leader_completeness_do_generic_server.
-    - apply leader_completeness_state_same_packet_subset.
-    - apply leader_completeness_reboot.
+    unfold leader_completeness.
+    intuition.
+    - auto using leader_completeness_directly_committed_invariant.
+    - auto using leader_completeness_committed_invariant.
   Qed.
 
   Instance lci :  leader_completeness_interface.
