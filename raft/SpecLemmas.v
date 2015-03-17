@@ -1,5 +1,6 @@
 Require Import List.
 Import ListNotations.
+Require Import Min.
 
 Require Import VerdiTactics.
 Require Import Util.
@@ -57,7 +58,26 @@ Section SpecLemmas.
     intuition; find_rewrite; auto.
     break_exists. intuition eauto.
   Qed.
-
+  
+  Theorem handleAppendEntries_spec :
+    forall h st t n pli plt es ci st' ps,
+      handleAppendEntries h st t n pli plt es ci = (st', ps) ->
+      (currentTerm st <= currentTerm st' /\
+       (commitIndex st' = commitIndex st \/ commitIndex st' <= ci) /\
+       (lastApplied st' = lastApplied st) /\
+       (log st' = log st \/
+        log st' = es \/
+        (exists e,
+           In e (log st) /\
+           eIndex e = pli /\
+           eTerm e = plt) /\
+        log st' = es ++ (removeAfterIndex (log st) pli))).
+  Proof.
+    intros. unfold handleAppendEntries, advanceCurrentTerm in *.
+    repeat break_match; do_bool; find_inversion; subst; simpl in *; intuition eauto using le_min_l;
+    right; right; find_apply_lem_hyp findAtIndex_elim; intuition eauto.
+  Qed.
+  
   Theorem handleClientRequest_log :
     forall h st client id c out st' ps,
       handleClientRequest h st client id c = (out, st', ps) ->
