@@ -16,9 +16,9 @@ Section StateMachineSafety'.
   Context {raft_params : RaftParams orig_base_params}.
 
   Definition state_machine_safety_host' net :=
-    forall e e' t,
+    forall e e' t t',
       committed net e t ->
-      committed net e' t ->
+      committed net e' t' ->
       eIndex e = eIndex e' ->
       e = e'.
 
