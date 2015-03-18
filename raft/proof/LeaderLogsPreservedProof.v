@@ -15,7 +15,7 @@ Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 Require Import LeaderLogsPreservedInterface.
 
-Section AllEntriesLeaderLogs.
+Section LeaderLogsPreserved.
 
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
@@ -285,4 +285,7 @@ Section AllEntriesLeaderLogs.
     - apply leaderLogs_index_lt_entry_state_same_packet_subset.
     - apply leaderLogs_index_lt_entry_reboot.
   Qed.
-End AllEntriesLeaderLogs.
+
+  Instance llpi : leaderLogs_preserved_interface.
+  Admitted.
+End LeaderLogsPreserved.

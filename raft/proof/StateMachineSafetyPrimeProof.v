@@ -207,4 +207,13 @@ Section StateMachineSafety'.
       + admit.
       + admit.
   Qed.
+
+  Instance sms'i : state_machine_safety'interface.
+  Proof.
+    split.
+    intuition.
+    split.
+    - auto using state_machine_safety_host'_invariant.
+    - auto using state_machine_safety_nw'_invariant.
+  Qed.
 End StateMachineSafety'.

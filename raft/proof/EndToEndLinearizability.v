@@ -86,6 +86,60 @@ Require Import AllEntriesLeaderLogsProof.
 Require Import CommitRecordedCommittedInterface.
 Require Import CommitRecordedCommittedProof.
 
+Require Import LeaderLogsTermSanityInterface.
+Require Import LeaderLogsTermSanityProof.
+
+Require Import LeaderLogsPreservedInterface.
+Require Import LeaderLogsPreservedProof.
+
+Require Import PrefixWithinTermInterface.
+Require Import PrefixWithinTermProof.
+
+Require Import EveryEntryWasCreatedInterface.
+Require Import EveryEntryWasCreatedProof.
+
+Require Import LeaderLogsVotesWithLogInterface.
+Require Import LeaderLogsVotesWithLogProof.
+
+Require Import AllEntriesVotesWithLogInterface.
+Require Import AllEntriesVotesWithLogProof.
+
+Require Import VotesWithLogSortedInterface.
+Require Import VotesWithLogSortedProof.
+
+Require Import TermsAndIndicesFromOneInterface.
+Require Import TermsAndIndicesFromOneProof.
+
+Require Import LeaderLogsLogMatchingInterface.
+Require Import LeaderLogsLogMatchingProof.
+
+Require Import PrefixWithinTermInterface.
+Require Import PrefixWithinTermProof.
+
+Require Import EveryEntryWasCreatedInterface.
+Require Import EveryEntryWasCreatedProof.
+
+Require Import LeaderLogsVotesWithLogInterface.
+Require Import LeaderLogsVotesWithLogProof.
+
+Require Import AllEntriesVotesWithLogInterface.
+Require Import AllEntriesVotesWithLogProof.
+
+Require Import VotesWithLogSortedInterface.
+Require Import VotesWithLogSortedProof.
+
+Require Import LeaderLogsLogMatchingInterface.
+Require Import LeaderLogsLogMatchingProof.
+
+Require Import StateMachineSafetyPrimeInterface.
+Require Import StateMachineSafetyPrimeProof.
+
+Require Import AppendEntriesRequestLeaderLogsInterface.
+Require Import AppendEntriesRequestLeaderLogsProof.
+
+Require Import LeaderLogsSortedInterface.
+Require Import LeaderLogsSortedProof.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -112,6 +166,18 @@ Hint Extern 4 (@max_index_sanity_interface _ _ _) => apply misi : typeclass_inst
 Hint Extern 4 (@leader_completeness_interface _ _ _) => apply lci : typeclass_instances.
 Hint Extern 4 (@all_entries_leader_logs_interface _ _ _) => apply aelli : typeclass_instances.
 Hint Extern 4 (@commit_recorded_committed_interface _ _ _) => apply crci : typeclass_instances.
+Hint Extern 4 (@leaderLogs_term_sanity_interface _ _ _) => apply lltsi : typeclass_instances.
+Hint Extern 4 (@leaderLogs_preserved_interface _ _ _) => apply llpi : typeclass_instances.
+Hint Extern 4 (@prefix_within_term_interface _ _ _) => apply pwti : typeclass_instances.
+Hint Extern 4 (@every_entry_was_created_interface _ _ _) => apply eewci : typeclass_instances.
+Hint Extern 4 (@leaderLogs_votesWithLog_interface _ _ _) => apply llvwli : typeclass_instances.
+Hint Extern 4 (@allEntries_votesWithLog_interface _ _ _) => apply aevwli : typeclass_instances.
+Hint Extern 4 (@votesWithLog_sorted_interface _ _ _) => apply vwlsi : typeclass_instances.
+Hint Extern 4 (@terms_and_indices_from_one_interface _ _ _) => apply taifoi : typeclass_instances.
+Hint Extern 4 (@leaderLogs_entries_match_interface _ _ _) => apply lllmi : typeclass_instances.
+Hint Extern 4 (@state_machine_safety'interface _ _ _) => apply sms'i : typeclass_instances.
+Hint Extern 4 (@append_entries_leaderLogs_interface _ _ _) => apply aerlli : typeclass_instances.
+Hint Extern 4 (@leaderLogs_sorted_interface _ _ _) => apply llsi : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.

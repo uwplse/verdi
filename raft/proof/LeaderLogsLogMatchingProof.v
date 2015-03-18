@@ -7,6 +7,14 @@ Require Import RaftRefinementInterface.
 
 Require Import CommonDefinitions.
 
+Require Import SpecLemmas.
+
+Require Import UpdateLemmas.
+Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+
+Require Import LogMatchingInterface.
+Require Import LeaderLogsTermSanityInterface.
+
 Require Import LeaderLogsLogMatchingInterface.
 
 Section LeaderLogsLogMatching.
@@ -16,13 +24,58 @@ Section LeaderLogsLogMatching.
   Context {raft_params : RaftParams orig_base_params}.
 
   Context {rri : raft_refinement_interface}.
+  Context {lmi : log_matching_interface}.
+  Context {lltsi : leaderLogs_term_sanity_interface}.
 
   Lemma leaderLogs_entries_match_init :
     refined_raft_net_invariant_init leaderLogs_entries_match_host.
+  Proof.
+    unfold refined_raft_net_invariant_init, leaderLogs_entries_match_host.
+    simpl.
+    intuition.
+  Qed.
+
+  Ltac update_destruct :=
+    match goal with
+      | [ H : context [ update _ ?x _ ?y ] |- _ ] =>
+        destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
+      | [ |- context [ update _ ?x _ ?y ] ] =>
+        destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
+    end.
+
+
+  Lemma update_elections_data_client_request_leaderLogs :
+    forall h st client id c,
+      leaderLogs (update_elections_data_client_request h st client id c) =
+      leaderLogs (fst st).
+  Proof.
+    unfold update_elections_data_client_request in *.
+    intros. repeat break_match; repeat find_inversion; auto.
+  Qed.
+
+  Lemma entries_match_cons_not_in :
+    forall x xs ys,
+      sorted xs ->
+      eIndex x > maxIndex xs ->
+      entries_match xs ys ->
+      ~ In x ys ->
+      entries_match (x :: xs) ys.
+  Proof.
+    unfold entries_match.
+    intuition; simpl in *; intuition; subst; subst.
+    - admit.
   Admitted.
 
   Lemma leaderLogs_entries_match_client_request :
     refined_raft_net_invariant_client_request leaderLogs_entries_match_host.
+  Proof.
+    unfold refined_raft_net_invariant_client_request, leaderLogs_entries_match_host.
+    simpl. intuition. subst. find_higher_order_rewrite.
+    repeat update_destruct.
+    - rewrite update_elections_data_client_request_leaderLogs in *.
+      destruct (log d) using (handleClientRequest_log_ind $(eauto)$).
+      + eauto.
+      + admit.
   Admitted.
 
   Lemma leaderLogs_entries_match_timeout :
