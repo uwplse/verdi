@@ -36,14 +36,12 @@ Section LockServ.
   | Unlock : Msg
   | Locked : Msg.
 
-  Definition Input := Msg.
-  Definition Output := Msg.
-
   Definition Msg_eq_dec : forall a b : Msg, {a = b} + {a <> b}.
     decide equality.
   Qed.
-
-
+    
+  Definition Input := Msg.
+  Definition Output := Msg.
 
   Record Data := mkData { queue : list Client_index ; held : bool }.
 
@@ -84,17 +82,17 @@ Section LockServ.
 
   Definition ServerIOHandler (m : Msg) : Handler Data := nop.
 
-  Definition NetHandler (nm src : Name) (m : Msg) : Handler Data.
-    destruct nm.
-    - exact (ClientNetHandler c m).
-    - exact (ServerNetHandler src m).
-  Defined.
+  Definition NetHandler (nm src : Name) (m : Msg) : Handler Data :=
+    match nm with
+      | Client c => ClientNetHandler c m
+      | Server   => ServerNetHandler src m
+    end.
 
-  Definition InputHandler (nm : Name) (m : Msg) : Handler Data.
-    destruct nm.
-    - exact (ClientIOHandler c m).
-    - exact (ServerIOHandler m).
-  Defined.
+  Definition InputHandler (nm : Name) (m : Msg) : Handler Data :=
+    match nm with
+      | Client c => ClientIOHandler c m
+      | Server   => ServerIOHandler m
+    end.
 
   Ltac handler_unfold :=
     repeat (monad_unfold; unfold NetHandler,
@@ -158,8 +156,6 @@ Section LockServ.
                           runGenHandler_ignore s (InputHandler nm msg)
     }.
 
-
-
   (* This is the fundamental safety property of the system:
        No two different clients can (think they) hold
        the lock at once.
@@ -187,10 +183,7 @@ Section LockServ.
   Proof.
     unfold locks_correct, mutual_exclusion.
     intros.
-    repeat match goal with
-      | [ H : forall _, _ -> _, H' : _ |- _ ] =>
-        apply H in H'
-    end.
+    repeat find_apply_hyp_hyp.
     break_exists.
     find_rewrite. find_inversion.
     auto.
@@ -252,15 +245,13 @@ Section LockServ.
   Proof.
     handler_unfold.
     intros.
-    repeat break_match;
-      repeat match goal with
-               | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
-             end; subst; simpl in *; subst; simpl in *.
+    repeat break_match; repeat tuple_inversion;
+      subst; simpl in *; subst; simpl in *.
     - left. eexists. intuition.
     - left. eexists. intuition.
     - left. eexists. intuition.
-    - subst. auto.
-    - subst. auto.
+    - auto.
+    - auto.
   Qed.
 
   Lemma locks_correct_update_false :
@@ -306,10 +297,7 @@ Section LockServ.
   Proof.
     handler_unfold.
     intros.
-    repeat break_match;
-      repeat match goal with
-               | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
-             end; subst; auto.
+    repeat break_match; repeat tuple_inversion; subst; auto.
   Qed.
 
   Lemma ServerNetHandler_cases :
@@ -329,19 +317,16 @@ Section LockServ.
   Proof.
     handler_unfold.
     intros.
-    repeat break_match;
-      repeat match goal with
-               | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
-             end.
-    - subst. subst. find_apply_lem_hyp null_sound. find_rewrite. simpl.
+    repeat break_match; repeat tuple_inversion; subst.
+    - find_apply_lem_hyp null_sound. find_rewrite. simpl.
       intuition. left. eexists. intuition.
-    - subst. subst. simpl. find_apply_lem_hyp null_false_neq_nil.
+    - simpl. find_apply_lem_hyp null_false_neq_nil.
       intuition. left. eexists. intuition.
-    - subst. subst. simpl. auto.
-    - subst. subst. simpl. destruct st; simpl in *; subst; auto.
-    - subst. subst. simpl in *. intuition.
-    - subst. subst. simpl in *. intuition eauto.
-    - subst. subst. simpl. intuition.
+    - simpl. auto.
+    - simpl. destruct st; simpl in *; subst; auto.
+    - simpl in *. intuition.
+    - simpl in *. intuition eauto.
+    - simpl. intuition.
   Qed.
 
   Definition at_head_of_queue sigma c := (exists t, queue (sigma Server) = c :: t).
@@ -863,4 +848,71 @@ Section LockServ.
   - eauto using LockServ_nwnw_net_handlers_old_new.
   - eauto using LockServ_nwnw_net_handlers_new_new.
   Qed.
+
+  Fixpoint trace_mutual_exclusion_helper (holder : option name) (trace : list (name * (input + list output))) : (option name * Prop) :=
+    match trace with
+      | [] => (holder, True)
+      | (n, (inl Locked)) :: tr' => match trace_mutual_exclusion_helper (Some n) tr' with
+                                      | (nh, p) => (nh, holder = None /\ p)
+                                    end
+      | (n, (inl _)) :: tr' => trace_mutual_exclusion_helper holder tr'
+      | (n, (inr outputs)) :: tr' => match outputs with
+                                       | [] => trace_mutual_exclusion_helper holder tr'
+                                       | [Unlock] => match trace_mutual_exclusion_helper None tr' with
+                                                       | (nh, p) => (nh, holder = Some n /\ p)
+                                                     end
+                                       | _ => (None, False) (* garbage *)
+                                     end
+    end.
+  
+  (*Definition trace_mutual_exclusion (trace : list (name * (input + list output))) : Prop :=
+    trace_mutual_exclusion_helper None trace.*)
+  
+  (*Lemma helper1 :
+    forall cs c,
+      trace_mutual_exclusion cs ->
+      trace_mutual_exclusion (cs ++ [(Client c, inr [])]).
+  Proof.
+    admit.
+  Qed.*)
+  
+  Definition state_holder_none (holder : option name) (st : name -> data) :=
+      (forall n, held (st n) = false) -> holder = None.
+      
+  Definition state_holder_some (holder : option name) st :=
+    forall n,
+      held (st n) = true -> holder = Some n.
+      
+  Lemma state_holder_none_init : forall holder,
+    state_holder_none holder (nwState step_m_init).
+  Proof.
+  Admitted.
+  
+  Lemma state_holder_some_init : forall holder,
+    state_holder_some holder (nwState step_m_init).
+  Admitted.
+    
+  
+  Lemma LockServ_mutual_exclusion_trace :
+    forall st tr holder,
+      (step_m_star step_m_init st tr) ->
+      let (holder', P) := trace_mutual_exclusion_helper holder tr in
+        P /\ state_holder_none holder' (nwState st) /\ state_holder_some holder' (nwState st).
+  Proof.
+    intros. apply refl_trans_1n_n1_trace in H.
+    remember step_m_init as x.
+    induction H.
+    - break_let. simpl in *. find_inversion. intuition.
+      + apply state_holder_none_init.
+      + apply state_holder_some_init.
+    - concludes. break_let. intuition. invc H0.
+      + simpl in *. monad_unfold. repeat break_let. find_inversion.
+        unfold NetHandler in *. break_match.
+         * unfold ClientNetHandler in *. break_match.
+           { monad_unfold. find_inversion. auto using helper1. }
+           { monad_unfold. find_inversion. auto using helper1. }
+           { monad_unfold. find_inversion. unfold trace_mutual_exclusion.
+
+
+
 End LockServ.
