@@ -19,6 +19,7 @@ Require Import UniqueIndicesInterface.
 Require Import AppendEntriesRequestLeaderLogsInterface.
 Require Import LeaderLogsSortedInterface.
 Require Import LeaderLogsLogMatchingInterface.
+Require Import LogsLeaderLogsInterface.
 Require Import SpecLemmas.
 
 Require Import UpdateLemmas.
@@ -40,6 +41,7 @@ Section StateMachineSafety'.
   Context {lsi : sorted_interface}.
   Context {llci : leaderLogs_contiguous_interface}.
   Context {lllmi : leaderLogs_entries_match_interface}.
+  Context {llli : logs_leaderLogs_interface}.
 
   Theorem lift_log_matching :
     forall net,
@@ -249,7 +251,27 @@ Section StateMachineSafety'.
         |]; [idtac].
         find_copy_eapply_lem_hyp entries_contiguous; eauto.
         eapply contiguous_app; eauto using entries_sorted.
-    - admit.
+    - subst.
+      find_copy_eapply_lem_hyp logs_leaderLogs_invariant; eauto.
+      find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
+      break_exists. simpl in *. intuition.
+      + subst.
+        assert (x6 = x2) by admit. (* new invariant *)
+        subst.
+        assert (In e (x7 ++ x2)) by (find_reverse_rewrite; eauto using removeAfterIndex_le_In).
+        do_in_app. intuition.
+        * destruct (lt_eq_lt_dec prevLogIndex (eIndex e)); intuition;
+          try solve [subst; find_apply_hyp_hyp; intuition].
+          destruct (le_gt_dec (eIndex e) (maxIndex (x3 ++ x4))); intuition.
+          right. right. right.
+          (* proof via log matching *)
+          admit.
+        * left.
+          find_apply_lem_hyp maxIndex_is_max; [omega|].
+          find_eapply_lem_hyp leaderLogs_sorted_invariant; eauto.
+      + break_exists. intuition. subst.
+        admit.
+      + subst. admit.
   Qed.
 
   Instance sms'i : state_machine_safety'interface.
