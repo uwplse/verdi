@@ -12,11 +12,13 @@ Require Import RaftRefinementInterface.
 Require Import StateMachineSafetyPrimeInterface.
 Require Import CommitRecordedCommittedInterface.
 Require Import LeaderCompletenessInterface.
+Require Import LeaderLogsContiguousInterface.
 Require Import AllEntriesLeaderLogsInterface.
 Require Import LogMatchingInterface.
 Require Import UniqueIndicesInterface.
 Require Import AppendEntriesRequestLeaderLogsInterface.
 Require Import LeaderLogsSortedInterface.
+Require Import LeaderLogsLogMatchingInterface.
 Require Import SpecLemmas.
 
 Require Import UpdateLemmas.
@@ -36,7 +38,8 @@ Section StateMachineSafety'.
   Context {aerlli : append_entries_leaderLogs_interface}.
   Context {llsi : leaderLogs_sorted_interface}.
   Context {lsi : sorted_interface}.
-
+  Context {llci : leaderLogs_contiguous_interface}.
+  Context {lllmi : leaderLogs_entries_match_interface}.
 
   Theorem lift_log_matching :
     forall net,
@@ -164,6 +167,15 @@ Section StateMachineSafety'.
   Proof. (* by log matching, annoying because of refinement *)
   Admitted.
 
+  Lemma entries_sorted :
+    forall net p t n pli plt es ci,
+      refined_raft_intermediate_reachable net ->
+      In p (nwPackets net) ->
+      pBody p = AppendEntries t n pli plt es ci ->
+      sorted es.
+  Proof. (* by log matching, annoying because of refinement *)
+  Admitted.
+  
   Ltac get_invariant i :=
     match goal with
       | H : refined_raft_intermediate_reachable _ |- _ =>
@@ -177,35 +189,67 @@ Section StateMachineSafety'.
   Proof.
     unfold state_machine_safety_nw'.
     intros.
-    pose proof Compare_dec.lt_eq_lt_dec t' t; intuition; try omega.
+    unfold committed in *. break_exists; intuition.
+    assert (t > eTerm x0 \/ eTerm x0 = t) by admit. intuition.
     - find_copy_apply_lem_hyp append_entries_leaderLogs_invariant.
       copy_eapply_prop_hyp append_entries_leaderLogs AppendEntries; eauto.
       break_exists; break_and.
-      find_copy_eapply_lem_hyp leader_completeness_invariant; eauto.
-      find_copy_apply_lem_hyp leaderLogs_sorted_invariant; eauto.
-      subst. intuition.
-      + left. eapply gt_le_trans; eauto.
+      get_invariant leader_completeness_invariant.
+      get_invariant leaderLogs_sorted_invariant.
+      unfold leaderLogs_sorted in *.
+      unfold leader_completeness in *. break_and.
+      eapply_prop_hyp leader_completeness_directly_committed directly_committed; eauto.
+      repeat conclude_using eauto.
+      get_invariant leaderLogs_entries_match_invariant.
+      unfold leaderLogs_entries_match_host in *.
+      match goal with
+        | _ : In _ (log (snd (nwState _ ?x))),
+              H : In _ (leaderLogs _),
+                  H' : context [ entries_match ] |- _ =>
+          let H'' := fresh "H" in
+          pose proof H as H'';
+          eapply H' with (h := x) in H''
+      end.
+      match goal with
+        | [ _ : In ?e ?l,
+            _ : In ?e' ?l,
+            _ : In ?e' ?l',
+            H : entries_match _ _ |- _ ] =>    
+          specialize(H e' e' e)
+      end; repeat concludes.
+      match goal with
+        | _ : ?P <-> ?Q, _ : ?P |- _ =>
+          assert Q by intuition
+      end.
+      intuition.
+      + left.
+        eapply gt_le_trans; eauto.
         eapply maxIndex_is_max; eauto.
       + break_exists. intuition. subst.
         match goal with
           | |- context [eIndex ?x > eIndex ?e ] =>
-            destruct (Compare_dec.lt_eq_lt_dec (eIndex x3) (eIndex e))
+            destruct (Compare_dec.lt_eq_lt_dec (eIndex x) (eIndex e))
         end; intuition.
         * right. right. right.
           apply in_app_iff. right.
           eapply prefix_contiguous; eauto.
-          find_eapply_lem_hyp entries_contiguous; eauto.
-          admit.
-        * cut (e = x3); [intros; subst; intuition|].
+          find_copy_eapply_lem_hyp entries_contiguous; eauto.
+          eapply contiguous_app; eauto using entries_sorted.
+        * cut (e = x5); [intros; subst; intuition|].
           eapply uniqueIndices_elim_eq; eauto using sorted_uniqueIndices.
-      + admit.
-    - subst.
-      find_copy_apply_lem_hyp append_entries_leaderLogs_invariant.
-      eapply_prop_hyp append_entries_leaderLogs AppendEntries; eauto.
-      break_exists. intuition; subst.
-      + admit.
-      + admit.
-      + admit.
+      + subst. right. right. right.
+        apply in_app_iff. right.
+        get_invariant leaderLogs_contiguous_invariant.
+        unfold leaderLogs_contiguous in *. find_copy_apply_hyp_hyp.
+        eapply prefix_contiguous with (i := 0); eauto;
+        [match goal with
+           | _ : In (_, ?l) (leaderLogs _), H : contiguous_range_exact_lo ?l _ |- _ =>
+             unfold contiguous_range_exact_lo in H; intuition
+         end
+        |]; [idtac].
+        find_copy_eapply_lem_hyp entries_contiguous; eauto.
+        eapply contiguous_app; eauto using entries_sorted.
+    - admit.
   Qed.
 
   Instance sms'i : state_machine_safety'interface.
