@@ -867,8 +867,10 @@ Section LockServ.
     match trace with
       | [] => True
       | (Client n, (inl Unlock)) :: tr' => match holder with
-                                             | Some m => m = n /\ trace_mutual_exclusion' None tr'
-                                             | _ => False
+                                             | Some m => if fin_eq_dec _ n m
+                                                         then trace_mutual_exclusion' None tr'
+                                                         else trace_mutual_exclusion' holder tr'
+                                             | _ => trace_mutual_exclusion' holder tr'
                                            end
       | (n, (inl _)) :: tr' => trace_mutual_exclusion' holder tr'
       | (Client n, (inr [Locked])) :: tr' => trace_mutual_exclusion' (Some n) tr'
@@ -1070,7 +1072,6 @@ Section LockServ.
 
   Lemma trace_mutex'_unlock_extend :
     forall tr h c,
-      last_holder' h tr = Some c ->
       trace_mutual_exclusion' h tr ->
       trace_mutual_exclusion' h (tr ++ [(Client c, inl Unlock)]).
   Proof.
@@ -1079,17 +1080,38 @@ Section LockServ.
 
   Lemma last_holder'_unlock_none :
     forall tr h c,
+      last_holder' h tr = Some c ->
       last_holder' h (tr ++ [(Client c, inl Unlock)]) = None.
   Proof.
     induction tr; intros; simpl in *; repeat break_match; intuition.
+    congruence.
   Qed.
 
   Lemma last_holder_unlock_none :
     forall tr c,
+      last_holder tr = Some c ->
       last_holder (tr ++ [(Client c, inl Unlock)]) = None.
   Proof.
     intros.
-    apply last_holder'_unlock_none.
+    apply last_holder'_unlock_none. auto.
+  Qed.
+
+  Lemma last_holder_some_unlock_inv :
+    forall tr h c n,
+      last_holder' h (tr ++ [(Client c, inl Unlock)]) = Some n ->
+      last_holder' h tr = Some n.
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; subst;
+    intuition; try congruence; eauto.
+  Qed.
+
+  Lemma last_holder'_neq_unlock_extend :
+    forall tr h n c,
+      last_holder' h tr = Some n ->
+      n <> c ->
+      last_holder' h (tr ++ [(Client c, inl Unlock)]) = Some n.
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; subst; try congruence; intuition.
   Qed.
 
   Lemma LockServ_mutual_exclusion_trace :
@@ -1159,16 +1181,23 @@ Section LockServ.
               end.
               apply last_holder'_input_extend; auto. congruence.
             - apply trace_mutex'_unlock_extend; auto.
-            - rewrite last_holder_unlock_none in *. discriminate.
+            - rewrite last_holder_unlock_none in *; auto. discriminate.
             - my_update_destruct; try find_inversion; rewrite_update.
               + discriminate.
               + assert (mutual_exclusion (nwState st))
                        by eauto using mutual_exclusion_invariant, reachable_intro.
                 unfold mutual_exclusion in *.
                 assert (c = n) by eauto. congruence.
-            - admit.
-            - admit.
-            - admit.
+            - apply trace_mutex'_unlock_extend. auto.
+            - rewrite update_nop.
+              find_apply_lem_hyp last_holder_some_unlock_inv.
+              auto.
+            - match goal with
+                | [ H : _ |- _ ] => rewrite update_nop in H
+              end.
+              assert (n <> c) by congruence.
+              find_apply_hyp_hyp.
+              apply last_holder'_neq_unlock_extend; auto.
             - apply trace_mutual_exclusion'_extend_input; auto. congruence.
             - rewrite update_nop_ext. find_apply_lem_hyp last_holder'_input_inv; try congruence.
               auto.
