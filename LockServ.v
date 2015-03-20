@@ -852,8 +852,14 @@ Section LockServ.
   Fixpoint last_holder' (holder : option Client_index) (trace : list (name * (input + list output))) : option Client_index :=
     match trace with
       | [] => holder
+      | (Client n, inl Unlock) :: tr => match holder with
+                                          | None => last_holder' holder tr
+                                          | Some m => if fin_eq_dec _ n m
+                                                      then last_holder' None tr
+                                                      else last_holder' holder tr
+                                        end
+
       | (Client n, inr [Locked]) :: tr => last_holder' (Some n) tr
-      | (Client n, inl Unlock) :: tr => last_holder' None tr
       | (n, _) :: tr => last_holder' holder tr
     end.
 
