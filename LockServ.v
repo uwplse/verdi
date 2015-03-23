@@ -1172,9 +1172,15 @@ Section LockServ.
           }
       + unfold InputHandler in *. break_match.
         * unfold ClientIOHandler in *.
-          { monad_unfold. repeat break_match; repeat find_inversion; intuition.
+          { monad_unfold.
+            repeat break_match; repeat find_inversion; intuition;
+            repeat rewrite snoc_assoc in *;
+            try apply trace_mutex'_no_out_extend;
+            try find_apply_lem_hyp last_holder'_no_out_inv;
+            try (apply last_holder'_no_out_extend; auto).
             - apply trace_mutual_exclusion'_extend_input; auto. congruence.
-            - rewrite update_nop_ext. find_apply_lem_hyp last_holder'_input_inv; try congruence.
+            - rewrite update_nop_ext.
+              find_apply_lem_hyp last_holder'_input_inv; try congruence.
               auto.
             - match goal with
                 | [ H : _ |- _ ] => rewrite update_nop in H
@@ -1208,10 +1214,14 @@ Section LockServ.
           }
         * unfold ServerIOHandler in *.
           monad_unfold. find_inversion.
-          { intuition.
-            - apply trace_mutual_exclusion'_extend_input_server. auto.
-            - rewrite update_nop. find_apply_lem_hyp last_holder'_input_inv_server. auto.
-            - rewrite_update. unfold last_holder. rewrite last_holder'_server_extend.
+          { intuition;
+            repeat rewrite snoc_assoc in *.
+            - apply trace_mutex'_no_out_extend.
+              apply trace_mutual_exclusion'_extend_input_server. auto.
+            - find_apply_lem_hyp last_holder'_no_out_inv.
+              rewrite update_nop. find_apply_lem_hyp last_holder'_input_inv_server. auto.
+            - apply last_holder'_no_out_extend; auto.
+              rewrite_update. unfold last_holder. rewrite last_holder'_server_extend.
               auto.
           }
   Qed.
