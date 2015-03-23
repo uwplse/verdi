@@ -131,6 +131,8 @@ Require Import LeaderLogsContiguousProof.
 Require Import LogsLeaderLogsInterface.
 Require Import LogsLeaderLogsProof.
 
+Require Import OneLeaderLogPerTermInterface.
+Require Import OneLeaderLogPerTermProof.
 
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
@@ -172,6 +174,7 @@ Hint Extern 4 (@append_entries_leaderLogs_interface _ _ _) => apply aerlli : typ
 Hint Extern 4 (@leaderLogs_sorted_interface _ _ _) => apply llsi : typeclass_instances.
 Hint Extern 4 (@leaderLogs_contiguous_interface _ _ _) => apply llci : typeclass_instances.
 Hint Extern 4 (@logs_leaderLogs_interface _ _ _) => apply llli : typeclass_instances.
+Hint Extern 4 (@one_leaderLog_per_term_interface _ _ _) => apply ollpti : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
