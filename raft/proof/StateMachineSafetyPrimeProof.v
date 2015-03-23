@@ -20,6 +20,7 @@ Require Import AppendEntriesRequestLeaderLogsInterface.
 Require Import LeaderLogsSortedInterface.
 Require Import LeaderLogsLogMatchingInterface.
 Require Import LogsLeaderLogsInterface.
+Require Import OneLeaderLogPerTermInterface.
 Require Import SpecLemmas.
 
 Require Import UpdateLemmas.
@@ -42,7 +43,8 @@ Section StateMachineSafety'.
   Context {llci : leaderLogs_contiguous_interface}.
   Context {lllmi : leaderLogs_entries_match_interface}.
   Context {llli : logs_leaderLogs_interface}.
-
+  Context {ollpti : one_leaderLog_per_term_interface}.
+  
   Theorem lift_log_matching :
     forall net,
       refined_raft_intermediate_reachable net ->
@@ -256,7 +258,11 @@ Section StateMachineSafety'.
       find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
       break_exists. simpl in *. intuition.
       + subst.
-        assert (x6 = x2) by admit. (* new invariant *)
+        match goal with
+          | _ : In (_, ?l) (leaderLogs _),
+            _ : In (_, ?l') (leaderLogs _) |- _ =>
+            assert (l = l') by (eapply one_leaderLog_per_term_invariant; eauto)
+        end.
         subst.
         assert (In e (x7 ++ x2)) by (find_reverse_rewrite; eauto using removeAfterIndex_le_In).
         do_in_app. intuition.
