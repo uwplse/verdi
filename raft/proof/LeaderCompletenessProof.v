@@ -13,7 +13,6 @@ Require Import CommonDefinitions.
 Require Import CommonTheorems.
 Require Import RaftRefinementInterface.
 Require Import LeaderCompletenessInterface.
-Require Import AllEntriesLeaderLogsInterface.
 Require Import PrefixWithinTermInterface.
 Require Import LeaderLogsTermSanityInterface.
 Require Import LeaderLogsPreservedInterface.
@@ -31,7 +30,6 @@ Section LeaderCompleteness.
   Context {raft_params : RaftParams orig_base_params}.
 
   Context {rri : raft_refinement_interface}.
-  Context {aelli : all_entries_leader_logs_interface}.
   
   Context {pwti : prefix_within_term_interface}.
   Context {lltsi : leaderLogs_term_sanity_interface}.
