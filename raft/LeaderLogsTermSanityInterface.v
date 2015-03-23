@@ -20,11 +20,20 @@ Section LeaderLogsTermSanity.
       In e log ->
       eTerm e < t.
 
+  Definition leaderLogs_currentTerm_sanity (net : network) : Prop:=
+    forall h t log,
+      In (t, log) (leaderLogs (fst (nwState net h))) ->
+      t <= currentTerm (snd (nwState net h)).
+
   Class leaderLogs_term_sanity_interface : Prop :=
     {
       leaderLogs_term_sanity_invariant :
         forall net,
           refined_raft_intermediate_reachable net ->
-          leaderLogs_term_sanity net
+          leaderLogs_term_sanity net;
+      leaderLogs_currentTerm_invariant :
+        forall net,
+          refined_raft_intermediate_reachable net ->
+          leaderLogs_currentTerm_sanity net
     }.
 End LeaderLogsTermSanity.
