@@ -144,4 +144,22 @@ Section SpecLemmas.
     use_applyEntries_spec; simpl in *;
     subst; auto.
   Qed.
+
+  Lemma handleRequestVoteReply_spec :
+    forall h st h' t r st',
+      st' = handleRequestVoteReply h st h' t r ->
+      log st' = log st /\
+      (forall v, In v (votesReceived st) -> In v (votesReceived st')) /\
+      ((currentTerm st' = currentTerm st /\ type st' = type st)
+       \/ type st' <> Candidate) /\
+      (type st <> Leader /\ type st' = Leader ->
+       (type st = Candidate /\ wonElection (dedup name_eq_dec
+                                                  (votesReceived st')) = true)).
+  Proof.
+    intros.
+    unfold handleRequestVoteReply, advanceCurrentTerm in *.
+    repeat break_match; try find_inversion; subst; simpl in *; intuition;
+    do_bool; intuition; try right; congruence.
+  Qed.
+
 End SpecLemmas.
