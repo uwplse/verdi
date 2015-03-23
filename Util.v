@@ -1107,3 +1107,17 @@ Section assoc.
   Qed.
 End assoc.
 
+Lemma snoc_assoc :
+  forall A (l : list A) x y,
+    l ++ [x; y] = (l ++ [x]) ++ [y].
+Proof.
+  induction l; intros; simpl; intuition.
+  auto using f_equal.
+Qed.
+
+Lemma cons_cons_app :
+  forall A (x y : A),
+    [x; y] = [x] ++ [y].
+Proof.
+  auto.
+Qed.
