@@ -873,7 +873,10 @@ Section LockServ.
                                              | _ => trace_mutual_exclusion' holder tr'
                                            end
       | (n, (inl _)) :: tr' => trace_mutual_exclusion' holder tr'
-      | (Client n, (inr [Locked])) :: tr' => trace_mutual_exclusion' (Some n) tr'
+      | (Client n, (inr [Locked])) :: tr' => match holder with
+                                               | None => trace_mutual_exclusion' (Some n) tr'
+                                               | Some _ => False
+                                             end
       | (_, (inr [])) :: tr' => trace_mutual_exclusion' holder tr'
       | (_, (inr _)) :: tr' => False
     end.
@@ -951,7 +954,7 @@ Section LockServ.
       trace_mutual_exclusion' h (tr ++ [(Client n, inr [Locked])]).
   Proof.
     induction tr; intros; simpl in *.
-    - auto.
+    - subst. auto.
     - simpl in *. repeat break_match; subst; intuition.
   Qed.
 
