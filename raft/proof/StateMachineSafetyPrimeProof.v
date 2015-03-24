@@ -54,6 +54,15 @@ Section StateMachineSafety'.
     eapply lift_prop; eauto using log_matching_invariant.
   Qed.
 
+  Theorem lift_sorted :
+    forall net,
+      refined_raft_intermediate_reachable net ->
+      logs_sorted (deghost net).
+  Proof.
+    intros.
+    eapply lift_prop; eauto using logs_sorted_invariant.
+  Qed.
+
   Theorem lift_entries_match :
     forall net h h',
       refined_raft_intermediate_reachable net ->
@@ -90,7 +99,13 @@ Section StateMachineSafety'.
     forall net h,
       refined_raft_intermediate_reachable net ->
       sorted (log (snd (nwState net h))).
-  Admitted.
+  Proof.
+    intros.
+    find_apply_lem_hyp lift_sorted.
+    unfold logs_sorted, logs_sorted_host in *.
+    intuition.
+    unfold deghost in *. simpl in *. break_match; eauto.
+  Qed.
   
   Theorem state_machine_safety_host'_invariant :
     forall net,
@@ -155,6 +170,7 @@ Section StateMachineSafety'.
       contiguous_range_exact_lo (l1 ++ l2) i ->
       contiguous_range_exact_lo l2 i.
   Proof.
+
   Admitted.
 
   Lemma prefix_contiguous :
