@@ -97,6 +97,15 @@ Section CommonTheorems.
     subst. omega.
   Qed.
 
+  Lemma maxIndex_non_empty :
+    forall l,
+      l <> nil ->
+      exists e,
+        In e l /\ maxIndex l = eIndex e /\ maxTerm l = eTerm e.
+  Proof.
+    destruct l; intros; simpl in *; eauto; congruence.
+  Qed.
+
   Lemma removeAfterIndex_subseq :
     forall l i,
       subseq (removeAfterIndex l i) l.

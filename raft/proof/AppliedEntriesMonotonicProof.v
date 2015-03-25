@@ -197,15 +197,6 @@ Section AppliedEntriesMonotonicProof.
     end.
     break_exists_exists. intuition. apply findAtIndex_intro; eauto using sorted_uniqueIndices.
   Qed.
-
-  Lemma maxIndex_non_empty :
-    forall l,
-      l <> nil ->
-      exists e,
-        In e l /\ maxIndex l = eIndex e /\ maxTerm l = eTerm e.
-  Proof.
-    destruct l; intros; simpl in *; eauto; congruence.
-  Qed.
   
   Lemma entries_max_thing :
     forall net p es,
