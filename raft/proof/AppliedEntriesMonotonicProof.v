@@ -169,12 +169,6 @@ Section AppliedEntriesMonotonicProof.
     eapply rachet with (xs := l'); eauto using sorted_uniqueIndices.
   Qed.
 
-  Ltac copy_eapply_prop_hyp P Q :=
-  match goal with
-  | [ H : context [ P ], H' : context [ Q ] |- _ ] =>
-    copy_eapply H H'
-  end.
-
   Lemma findAtIndex_max_thing :
     forall net h e i,
       raft_intermediate_reachable net ->
