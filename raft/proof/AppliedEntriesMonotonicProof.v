@@ -39,58 +39,6 @@ Section AppliedEntriesMonotonicProof.
   Context {crci : commit_recorded_committed_interface}.
   Context {lci : leader_completeness_interface}.
 
-  Lemma haveNewEntries_true :
-    forall st es,
-      haveNewEntries st es = true ->
-      (es <> nil /\
-       (findAtIndex (log st) (maxIndex es) = None \/
-        exists e,
-          findAtIndex (log st) (maxIndex es) = Some e /\
-          eTerm e <> maxTerm es)).
-  Proof.
-    intros.
-    unfold haveNewEntries, not_empty in *.
-    repeat break_match; do_bool; intuition eauto; try congruence.
-    do_bool. eauto.
-  Qed.
-
-  Theorem handleAppendEntries_log :
-    forall h st t n pli plt es ci st' ps,
-      handleAppendEntries h st t n pli plt es ci = (st', ps) ->
-      log st' = log st \/
-      (es <> nil /\
-        pli = 0 /\ t >= currentTerm st /\ log st' = es /\
-       (findAtIndex (log st) (maxIndex es) = None \/
-        exists e,
-          findAtIndex (log st) (maxIndex es) = Some e /\
-          eTerm e <> maxTerm es)) \/
-      (es <> nil /\
-        exists e,
-         In e (log st) /\
-         eIndex e = pli /\
-         eTerm e = plt) /\
-      t >= currentTerm st /\
-      log st' = es ++ (removeAfterIndex (log st) pli) /\
-      (findAtIndex (log st) (maxIndex es) = None \/
-       exists e,
-         findAtIndex (log st) (maxIndex es) = Some e /\
-         eTerm e <> maxTerm es).
-  Proof.
-    intros. unfold handleAppendEntries in *.
-    break_if; [find_inversion; subst; eauto|].
-    break_if;
-      [do_bool; break_if; find_inversion; subst;
-       try find_apply_lem_hyp haveNewEntries_true;
-       intuition eauto|].
-    break_match; [|find_inversion; subst; eauto].
-    break_if; [find_inversion; subst; eauto|].
-    break_if; [|find_inversion; subst; eauto].
-    find_inversion; subst; simpl in *.
-    right. right.
-    find_apply_lem_hyp findAtIndex_elim.
-    intuition; do_bool; find_apply_lem_hyp haveNewEntries_true;
-    intuition eauto.
-  Qed.
 
   Lemma sorted_NoDup :
     forall l,
@@ -313,7 +261,7 @@ Section AppliedEntriesMonotonicProof.
     - find_copy_eapply_lem_hyp handleAppendEntries_logs_sorted;
       eauto using logs_sorted_invariant.
       apply applied_entries_safe_update; eauto using handleAppendEntries_same_lastApplied.
-      find_apply_lem_hyp handleAppendEntries_log. intuition.
+      find_apply_lem_hyp handleAppendEntries_log_detailed. intuition.
       + repeat find_rewrite. auto.
       + subst.
         find_copy_apply_lem_hyp state_machine_safety_invariant.
