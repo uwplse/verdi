@@ -1,4 +1,5 @@
 Require Import List.
+Import ListNotations.
 Require Import Omega.
 
 Require Import VerdiTactics.
@@ -18,6 +19,8 @@ Require Import LogMatchingInterface.
 Require Import LeaderLogsTermSanityInterface.
 Require Import LeaderLogsSortedInterface.
 Require Import SortedInterface.
+Require Import LeaderLogsSublogInterface.
+Require Import AllEntriesLeaderLogsInterface.
 
 Require Import LeaderLogsLogMatchingInterface.
 
@@ -32,6 +35,8 @@ Section LeaderLogsLogMatching.
   Context {lltsi : leaderLogs_term_sanity_interface}.
   Context {llsi : leaderLogs_sorted_interface}.
   Context {si : sorted_interface}.
+  Context {aelli : all_entries_leader_logs_interface}.
+  Context {llsli : leaderLogs_sublog_interface}.
 
   Lemma leaderLogs_entries_match_init :
     refined_raft_net_invariant_init leaderLogs_entries_match_host.
@@ -59,39 +64,75 @@ Section LeaderLogsLogMatching.
     intros. repeat break_match; repeat find_inversion; auto.
   Qed.
 
-  Lemma entries_match_cons_not_in :
+  Lemma entries_match_cons_gt_maxTerm :
     forall x xs ys,
       sorted xs ->
       sorted ys ->
       eIndex x > maxIndex xs ->
       eTerm x > maxTerm ys ->
       entries_match xs ys ->
-      ~ In x ys ->
       entries_match (x :: xs) ys.
   Proof.
     unfold entries_match.
-    intuition; simpl in *; intuition; subst; subst.
-    - match goal with
-        | [ H : In _ _ |- _ ] => apply maxTerm_is_max in H; [| solve[auto]]
-      end. omega.
-    - repeat match goal with
-        | [ H : In _ _ |- _ ] => apply maxTerm_is_max in H; [| solve[auto]]
-      end. omega.
-    - repeat match goal with
-               | [ H : In _ _ |- _ ] => apply maxIndex_is_max in H; [| solve[auto]]
-             end. omega.
+    intuition; simpl in *; intuition; subst; subst;
+    try match goal with
+        | [ H : In _ _ |- _ ] => apply maxTerm_is_max in H; [| solve[auto]]; omega
+        | [ H : In _ _ |- _ ] => apply maxIndex_is_max in H; [| solve[auto]]; omega
+      end.
     - match goal with
         | [ H : _ |- _ ] => solve [eapply H; eauto]
       end.
-    - find_apply_lem_hyp le_lt_or_eq.
-      intuition;
-      repeat match goal with
-                 | [ H : In _ _ |- _ ] => apply maxTerm_is_max in H; [| solve[auto]]
-               end; omega.
-
     - right. match goal with
-               | [ H : _ |- _ ] => solve [eapply H; eauto]
-             end.
+        | [ H : _ |- _ ] => solve [eapply H; eauto]
+      end.
+  Qed.
+
+  Lemma entries_match_cons_sublog :
+    forall x xs ys,
+      sorted xs ->
+      sorted ys ->
+      eIndex x > maxIndex xs ->
+      entries_match xs ys ->
+      (forall y, In y ys -> eTerm x = eTerm y -> In y xs) ->
+      entries_match (x :: xs) ys.
+  Proof.
+    unfold entries_match.
+    intuition; simpl in *; intuition; subst; subst;
+    try solve [
+         exfalso; try find_apply_hyp_hyp;
+          match goal with
+            | [ H : In _ _ |- _ ] => apply maxIndex_is_max in H; [| solve[auto]]; omega
+          end].
+    - match goal with
+        | [ H : _ |- _ ] => solve [eapply H; eauto]
+      end.
+    - right. match goal with
+        | [ H : _ |- _ ] => solve [eapply H; eauto]
+      end.
+  Qed.
+
+  Lemma entries_match_nil :
+    forall l,
+      entries_match l [].
+  Proof.
+    red.
+    simpl.
+    intuition.
+  Qed.
+
+  Lemma lifted_logs_sorted :
+    forall net h,
+      refined_raft_intermediate_reachable net ->
+      sorted (log (snd (nwState net h))).
+  Proof.
+    intros.
+    pose proof (lift_prop _ logs_sorted_invariant).
+    find_insterU. conclude_using eauto.
+    unfold logs_sorted in *. break_and.
+    unfold logs_sorted_host in *.
+    find_insterU.
+    find_rewrite_lem deghost_spec.
+    eauto.
   Qed.
 
   Lemma leaderLogs_entries_match_client_request :
@@ -103,18 +144,31 @@ Section LeaderLogsLogMatching.
     - rewrite update_elections_data_client_request_leaderLogs in *.
       destruct (log d) using (handleClientRequest_log_ind $(eauto)$).
       + eauto.
-      + apply entries_match_cons_not_in; eauto.
-        * pose proof (lift_prop _ logs_sorted_invariant).
-          find_insterU. conclude_using eauto.
-          unfold logs_sorted in *. break_and.
-          unfold logs_sorted_host in *.
-          find_insterU.
-          find_rewrite_lem deghost_spec.
-          eauto.
+      + destruct ll.
+        * apply entries_match_nil.
+        * { apply entries_match_cons_gt_maxTerm; eauto.
+            - eauto using lifted_logs_sorted.
+            - eapply leaderLogs_sorted_invariant; eauto.
+            - omega.
+            - find_copy_apply_lem_hyp leaderLogs_currentTerm_invariant; auto.
+              find_copy_apply_lem_hyp leaderLogs_term_sanity_invariant.
+              unfold leaderLogs_term_sanity in *.
+              eapply_prop_hyp In In; simpl; eauto. repeat find_rewrite.
+              simpl in *. omega.
+          }
+    - rewrite update_elections_data_client_request_leaderLogs in *.
+      eauto.
+    - destruct (log d) using (handleClientRequest_log_ind $(eauto)$).
+      + eauto.
+      + apply entries_match_cons_sublog; eauto.
+        * eauto using lifted_logs_sorted.
         * eapply leaderLogs_sorted_invariant; eauto.
         * omega.
-        * admit.
-  Admitted.
+        * intros.
+          eapply leaderLogs_sublog_invariant; eauto.
+          simpl in *. congruence.
+    - eauto.
+  Qed.
 
   Lemma leaderLogs_entries_match_timeout :
     refined_raft_net_invariant_timeout leaderLogs_entries_match_host.

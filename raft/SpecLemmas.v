@@ -89,7 +89,8 @@ Section SpecLemmas.
          eTerm e = currentTerm st /\
          eClient e = client /\
          eInput e = c /\
-         eId e = id).
+         eId e = id /\
+         type st = Leader).
   Proof.
     intros. unfold handleClientRequest in *.
     break_match; find_inversion; subst; intuition.
@@ -106,6 +107,7 @@ Section SpecLemmas.
                    eClient e = client ->
                    eInput e = c ->
                    eId e = id ->
+                   type st = Leader ->
                    P (e :: log st)) ->
         P (log st').
   Proof.
