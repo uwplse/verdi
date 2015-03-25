@@ -17,6 +17,7 @@ Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 Require Import SortedInterface.
+Require Import LogMatchingInterface.
 Require Import StateMachineSafetyInterface.
 
 Require Import MaxIndexSanityInterface.
@@ -28,6 +29,7 @@ Section MaxIndexSanity.
 
   Context {si : sorted_interface}.
   Context {smsi : state_machine_safety_interface}.
+  Context {lmi : log_matching_interface}.
 
   Lemma maxIndex_sanity_init :
     raft_net_invariant_init maxIndex_sanity.
@@ -155,20 +157,127 @@ Section MaxIndexSanity.
     intuition; find_rewrite; auto.
   Qed.
 
+  Lemma sorted_maxIndex_app :
+    forall l1 l2,
+      sorted (l1 ++ l2) ->
+      maxIndex l2 <= maxIndex (l1 ++ l2).
+  Proof.
+    induction l1; intros; simpl in *; intuition.
+    destruct l2; intuition. simpl in *.
+    specialize (H0 e). conclude H0 intuition. intuition.
+  Qed.
+  
   Lemma maxIndex_sanity_append_entries :
     raft_net_invariant_append_entries maxIndex_sanity.
   Proof.
     unfold raft_net_invariant_append_entries, maxIndex_sanity, maxIndex_lastApplied, maxIndex_commitIndex.
     intros.
+    find_copy_apply_lem_hyp logs_sorted_invariant.
+    unfold logs_sorted in *; break_and.
     find_copy_apply_lem_hyp state_machine_safety_invariant.
     intuition; simpl in *; find_higher_order_rewrite; update_destruct; auto.
     - erewrite handleAppendEntries_lastApplied by eauto.
       find_copy_apply_lem_hyp handleAppendEntries_logs_sorted; auto using logs_sorted_invariant;
       try solve [repeat find_rewrite; intuition].
-      destruct (log d) using (handleAppendEntries_log_ind $(eauto)$).
+      match goal with
+        | _ : handleAppendEntries ?h ?s ?t ?n ?pli ?plt ?es ?ci = (?s', ?m) |- _ =>
+          pose proof handleAppendEntries_log_detailed
+               h s t n pli plt es ci s' m
+      end.
+      intuition; repeat find_rewrite.
       + eauto.
-      + admit.  (* use sms nw invariant somehow *)
-      + admit.
+      + subst.
+        destruct (le_lt_dec (lastApplied (nwState net (pDst p)))
+                            (maxIndex (log d))); auto.
+        exfalso.
+        assert (In p (nwPackets net)) by (find_rewrite; intuition).
+        find_copy_apply_lem_hyp log_matching_invariant.
+        unfold log_matching, log_matching_hosts in *. intuition.
+        match goal with
+          | H : forall _ _, _ <= _ <= _ -> _ |- _ =>
+            specialize (H (pDst p) (maxIndex (log d))); forward H; intuition
+        end.
+        * find_apply_lem_hyp log_matching_invariant.
+          unfold log_matching, log_matching_nw in *.
+          intuition.
+          eapply_prop_hyp AppendEntries AppendEntries; intuition eauto.
+          find_apply_lem_hyp maxIndex_non_empty.
+          break_exists. intuition.
+          find_apply_hyp_hyp. omega.
+        * eapply le_trans; [|eauto]. omega.
+        * break_exists. intuition.
+          find_eapply_lem_hyp findAtIndex_None; eauto.
+      + subst.
+        destruct (le_lt_dec (lastApplied (nwState net (pDst p)))
+                            (maxIndex (log d))); auto.
+        exfalso.
+        assert (In p (nwPackets net)) by (find_rewrite; intuition).
+        break_exists; intuition. find_apply_lem_hyp findAtIndex_elim; intuition.
+        unfold state_machine_safety, state_machine_safety_nw in *.
+        copy_eapply_prop_hyp In In; eauto;
+        [|unfold commit_recorded; intuition; eauto; omega]. intuition.
+        * subst.
+          find_copy_apply_lem_hyp log_matching_invariant; eauto.
+          omega.
+        * destruct (log d); intuition. simpl in *.
+          intuition; subst; auto.
+          find_apply_hyp_hyp. omega.
+      + destruct (le_lt_dec (lastApplied (nwState net (pDst p))) pli); intuition;
+        [eapply le_trans; [| apply sorted_maxIndex_app]; auto;
+         break_exists; intuition;
+         erewrite maxIndex_removeAfterIndex; eauto|].
+        destruct (le_lt_dec (lastApplied (nwState net (pDst p))) (maxIndex es)); intuition;
+        [match goal with
+           | |- context [ maxIndex (?ll1 ++ ?ll2) ] =>
+             pose proof maxIndex_app ll1 ll2
+         end; intuition|]; [idtac].
+        find_copy_apply_lem_hyp log_matching_invariant.
+        unfold log_matching, log_matching_hosts in *. intuition.
+        match goal with
+          | H : forall _ _, _ <= _ <= _ -> _ |- _ =>
+            specialize (H (pDst p) (maxIndex es)); forward H; intuition
+        end.
+        * find_apply_lem_hyp log_matching_invariant.
+          unfold log_matching, log_matching_nw in *.
+          intuition.
+          eapply_prop_hyp AppendEntries AppendEntries; intuition eauto.
+          find_apply_lem_hyp maxIndex_non_empty.
+          break_exists. intuition.
+          do 2 find_apply_hyp_hyp. omega.
+        * eapply le_trans; [|eauto]. omega.
+        * break_exists. intuition.
+          match goal with
+            | H : findAtIndex _ _ = None |- _ =>
+              eapply findAtIndex_None with (x1 := x) in H
+          end; eauto. congruence.
+      + destruct (le_lt_dec (lastApplied (nwState net (pDst p))) (maxIndex es)); intuition;
+        [match goal with
+           | |- context [ maxIndex (?ll1 ++ ?ll2) ] =>
+             pose proof maxIndex_app ll1 ll2
+         end; intuition|]; [idtac].
+        exfalso.
+        assert (In p (nwPackets net)) by (find_rewrite; intuition).
+        break_exists; intuition. find_apply_lem_hyp findAtIndex_elim; intuition.
+        unfold state_machine_safety, state_machine_safety_nw in *.
+        find_copy_apply_lem_hyp maxIndex_non_empty.
+        break_exists. intuition.
+        match goal with
+          | _ : In ?x es, _ : maxIndex es = eIndex ?x |- _ =>
+            assert (pli < eIndex x) by (eapply log_matching_invariant; eauto)
+        end.
+        copy_eapply_prop_hyp In In; eauto;
+        [|unfold commit_recorded; intuition; eauto; omega]. intuition.
+        * match goal with
+            | H : _ = _ ++ _ |- _ => symmetry in H
+          end.
+          destruct es; intuition;
+          simpl in *;
+          intuition; subst_max; intuition;
+          repeat clean;
+          match goal with
+            | _ : eIndex ?x' = eIndex ?x, H : context [eIndex ?x'] |- _ =>
+              specialize (H x); conclude H ltac:(apply in_app_iff; auto)
+          end; intuition.
     - admit.
   Qed.
 
