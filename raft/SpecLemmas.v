@@ -20,8 +20,8 @@ Section SpecLemmas.
     forall h st t n pli plt es ci st' ps,
       handleAppendEntries h st t n pli plt es ci = (st', ps) ->
       log st' = log st \/
-      log st' = es \/
-      (exists e,
+      (pli = 0 /\ log st' = es) \/
+      (pli <> 0 /\ exists e,
          In e (log st) /\
          eIndex e = pli /\
          eTerm e = plt) /\
@@ -35,8 +35,7 @@ Section SpecLemmas.
       break_if; [find_inversion; subst; eauto|].
       find_inversion; subst; simpl in *.
       right. right.
-      find_apply_lem_hyp findAtIndex_elim. intuition.
-      do_bool. eauto.
+      find_apply_lem_hyp findAtIndex_elim. intuition; do_bool; eauto.
     - repeat break_match; find_inversion; subst; eauto.
   Qed.
 
@@ -45,8 +44,9 @@ Section SpecLemmas.
       handleAppendEntries h st t n pli plt es ci = (st', ps) ->
       forall (P : list entry -> Prop),
         P (log st) ->
-        P es ->
+        (pli = 0 -> P es) ->
         (forall e,
+           pli <> 0 ->
            In e (log st) ->
            eIndex e = pli ->
            eTerm e = plt ->
@@ -55,7 +55,7 @@ Section SpecLemmas.
   Proof.
     intros.
     find_apply_lem_hyp handleAppendEntries_log.
-    intuition; find_rewrite; auto.
+    intuition; subst; try find_rewrite; auto.
     break_exists. intuition eauto.
   Qed.
   
