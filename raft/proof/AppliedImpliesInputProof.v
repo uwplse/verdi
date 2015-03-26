@@ -111,16 +111,6 @@ Section AppliedImpliesInputProof.
       break_match; find_inversion; simpl in *; intuition.
     Qed.
 
-    Theorem handleTimeout_not_is_append_entries :
-      forall h st st' ms m,
-        handleTimeout h st = (st', ms) ->
-        In m ms -> ~ is_append_entries (snd m).
-    Proof.
-      intros. unfold handleTimeout, tryToBecomeLeader in *.
-      break_match; find_inversion; subst; simpl in *; eauto;
-      repeat (do_in_map; subst; simpl in *); intuition; break_exists; congruence.
-    Qed.
-
     Lemma mEntries_some_is_applied_entries :
       forall m es,
         mEntries m = Some es ->

@@ -164,4 +164,14 @@ Section SpecLemmas.
     do_bool; intuition; try right; congruence.
   Qed.
 
+  Theorem handleTimeout_not_is_append_entries :
+    forall h st st' ms m,
+      handleTimeout h st = (st', ms) ->
+      In m ms -> ~ is_append_entries (snd m).
+  Proof.
+    intros. unfold handleTimeout, tryToBecomeLeader in *.
+    break_match; find_inversion; subst; simpl in *; eauto;
+    repeat (do_in_map; subst; simpl in *); intuition; break_exists; congruence.
+  Qed.
+
 End SpecLemmas.
