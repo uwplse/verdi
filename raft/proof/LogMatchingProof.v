@@ -1026,32 +1026,13 @@ Ltac assert_do_leader :=
       pDst p <> h ->
       entries_match es (log (nwState net h)).
   Proof.
-    intros. unfold log_matching, log_matching_nw in *.
-    intuition. use_nw_invariant_keep.
-    unfold entries_match. intuition.
-    - use_log_matching_nw_host. intuition.
-    - use_log_matching_nw_host. intuition.
-      unfold log_matching_hosts in *. intuition.
-        match goal with
-          | [ H : forall _, _ < _ <= _ -> _,
-              _ : eIndex ?e3 <= eIndex _
-                |- _ ] =>
-            specialize (H (eIndex e3));
-              conclude H
-                       ltac:(split; [eauto with *|
-                                     eapply le_trans; eauto; apply maxIndex_is_max; eauto])
-        end.
-        break_exists. intuition.
-
-        match goal with
-          | [ _ : In ?x _,
-              _ : eIndex ?x = eIndex ?e3,
-              _ : eIndex ?e3 <= eIndex _ |- _ ] =>
-            eapply rachet with (x' := x); eauto
-        end.
-        match goal with
-          | [ H : _ |- _ ] => solve [ eapply H; eauto; congruence ]
-        end.
+    intros.
+    unfold log_matching_nw in *. use_nw_invariant_keep.
+    eapply entries_match_scratch; eauto; intuition.
+    unfold log_matching_hosts in *.
+    match goal with
+      | [ H : _ |- _ ] => solve [eapply H; eauto]
+    end.
   Qed.
 
   Lemma handleAppendEntries_spec :

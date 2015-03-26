@@ -1107,6 +1107,62 @@ Section CommonTheorems.
     end.
   Qed.
 
+  Lemma entries_match_scratch :
+    forall es ys plt,
+      sorted es ->
+      uniqueIndices ys ->
+      (forall e1 e2,
+         eIndex e1 = eIndex e2 ->
+         eTerm e1 = eTerm e2 ->
+         In e1 es ->
+         In e2 ys ->
+         (forall e3,
+            eIndex e3 <= eIndex e1 ->
+            In e3 es ->
+            In e3 ys) /\
+         (0 <> 0 ->
+          exists e4,
+            eIndex e4 = 0 /\
+            eTerm e4 = plt /\
+            In e4 ys)) ->
+      (forall i, 0 < i <= maxIndex es -> exists e, eIndex e = i /\ In e es) ->
+      (forall e,
+         In e es ->
+         0 < eIndex e) ->
+      (forall y, In y ys -> 0 < eIndex y) ->
+      entries_match es ys.
+  Proof.
+    intros.
+    unfold entries_match. intuition.
+    - match goal with
+        | [ H : _ |- _ ] => solve [eapply H; eauto]
+      end.
+    - match goal with
+        | [ H : forall _ _, _, H' : eIndex ?e1 = eIndex ?e2 |- _ ] =>
+          specialize (H e1 e2); do 4 concludes
+      end. intuition.
+        match goal with
+          | [ H : forall _, _ < _ <= _ -> _,
+              _ : eIndex ?e3 <= eIndex _
+                |- _ ] =>
+            specialize (H (eIndex e3));
+              conclude H
+                       ltac:(split; [eauto|
+                                     eapply le_trans; eauto; apply maxIndex_is_max; eauto])
+
+        end.
+        break_exists. intuition.
+        match goal with
+          | [ _ : In ?x _,
+              _ : eIndex ?x = eIndex ?e3,
+              _ : eIndex ?e3 <= eIndex _ |- _ ] =>
+            eapply rachet with (x' := x); eauto using sorted_uniqueIndices
+        end.
+        match goal with
+          | [ H : _ |- _ ] => solve [ eapply H; eauto; congruence ]
+        end.
+  Qed.
+
   Ltac use_entries_match :=
     match goal with
       | [ _ : eIndex ?e1 = eIndex ?e2,
