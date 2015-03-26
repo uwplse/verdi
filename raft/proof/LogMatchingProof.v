@@ -721,7 +721,7 @@ Ltac assert_do_leader :=
   Ltac use_entries_match :=
     match goal with
       | [ _ : eIndex ?e1 = eIndex ?e2,
-              H : forall _ _, entries_match _ _
+              H : context [entries_match]
                               |- _ ] =>
         first [ solve [eapply H with (e:=e2)(e':=e1); eauto; congruence] |
                 solve [eapply H with (e:=e1)(e':=e2); eauto; congruence]]
@@ -1087,61 +1087,11 @@ Ltac assert_do_leader :=
       entries_match (es ++ (removeAfterIndex (log (nwState net (pDst p))) pli))
                     (log (nwState net h)).
   Proof.
-    intros. unfold entries_match. intros. split; intros.
-    - unfold log_matching_nw in *. use_nw_invariant.
-      in_crush_start.
-      + use_log_matching_nw_host. intuition eauto.
-      + exfalso.
-        find_apply_lem_hyp removeAfterIndex_In_le; intuition.
-        find_apply_hyp_hyp. omega.
-      + find_apply_lem_hyp findAtIndex_elim.
-        intuition. subst.
-        use_log_matching_nw_host. intuition.
-        break_exists. intuition.
-        find_copy_apply_lem_hyp removeAfterIndex_In_le; intuition.
-        find_apply_lem_hyp removeAfterIndex_in.
-        unfold log_matching_hosts in *. intuition.
-        use_entries_match.
-      + repeat find_apply_lem_hyp removeAfterIndex_in.
-        unfold log_matching_hosts in *. intuition.
-        use_entries_match.
-    - in_crush_start.
-      + destruct (le_lt_dec (eIndex e'') pli).
-        * apply in_or_app. right.
-          apply removeAfterIndex_le_In; auto.
-          do_elim.
-          subst.
-          unfold log_matching_nw in *.
-          use_nw_invariant_keep.
-          use_log_matching_nw_host. intuition.
-          break_exists. intuition.
-          unfold log_matching_hosts in *. intuition.
-          use_entries_match.
-        * apply in_or_app. left.
-          unfold log_matching_nw in *.
-          use_nw_invariant_keep. use_log_matching_nw_host.
-          intuition.
-          match goal with
-            | H : forall _, _ < _ <= _ -> _ |- In ?e _ =>
-              specialize (H (eIndex e))
-          end.
-          intuition. forwards; [eapply le_trans; eauto; apply maxIndex_is_max; eauto|].
-          concludes. break_exists. intuition.
-          match goal with
-            | _: eIndex ?e1 = eIndex ?e2 |- context [ ?e2 ] =>
-              eapply rachet with (x' := e1); eauto
-          end.
-          match goal with
-            | H : forall _, eIndex _ <= eIndex _ -> _ |- _ => apply H
-          end; intuition.
-      + apply in_or_app. right.
-        find_copy_apply_lem_hyp removeAfterIndex_In_le; eauto.
-        apply removeAfterIndex_le_In; [omega|].
-        find_apply_lem_hyp removeAfterIndex_in.
-        unfold log_matching_hosts in *. intuition.
-        use_entries_match.
+    intros.
+    eapply entries_match_append; eauto;
+    try solve [intros; eapply_prop log_matching_nw; eauto].
+    eapply_prop log_matching_hosts.
   Qed.
-
 
   Lemma contiguous_range_exact_lo_weaken_exists :
     forall es lo i,
