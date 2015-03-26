@@ -78,14 +78,17 @@ Section SpecLemmas.
   Theorem handleAppendEntries_log_detailed :
     forall h st t n pli plt es ci st' ps,
       handleAppendEntries h st t n pli plt es ci = (st', ps) ->
-      log st' = log st \/
-      (es <> nil /\
-        pli = 0 /\ t >= currentTerm st /\ log st' = es /\
+      (commitIndex st' = commitIndex st /\ log st' = log st) \/
+      (commitIndex st' = max (commitIndex st) (min ci (maxIndex es)) /\
+       es <> nil /\
+       pli = 0 /\ t >= currentTerm st /\ log st' = es /\
        (findAtIndex (log st) (maxIndex es) = None \/
         exists e,
           findAtIndex (log st) (maxIndex es) = Some e /\
           eTerm e <> maxTerm es)) \/
-      (es <> nil /\
+      (commitIndex st' = max (commitIndex st)
+                             (min ci (maxIndex (es ++ (removeAfterIndex (log st) pli)))) /\
+       es <> nil /\
         exists e,
          In e (log st) /\
          eIndex e = pli /\
@@ -101,8 +104,8 @@ Section SpecLemmas.
     break_if; [find_inversion; subst; eauto|].
     break_if;
       [do_bool; break_if; find_inversion; subst;
-       try find_apply_lem_hyp haveNewEntries_true;
-       intuition eauto|].
+        try find_apply_lem_hyp haveNewEntries_true;
+        intuition eauto|].
     break_match; [|find_inversion; subst; eauto].
     break_if; [find_inversion; subst; eauto|].
     break_if; [|find_inversion; subst; eauto].
