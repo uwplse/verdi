@@ -198,11 +198,8 @@ Section Raft.
         if (haveNewEntries state entries) then
           ({[ {[ {[ {[ (advanceCurrentTerm state t)
                     with log := entries ]}
-                 with commitIndex :=
-                   if leaderCommit >? (commitIndex state) then
-                     min leaderCommit (maxIndex entries)
-                   else
-                     commitIndex state
+                    with commitIndex :=
+                      max (commitIndex state) (min leaderCommit (maxIndex entries))
                ]}
               with type := Follower ]} with leaderId := Some leaderId ]},
            AppendEntriesReply (currentTerm state) entries true)
@@ -220,11 +217,8 @@ Section Raft.
                          ({[ {[ {[ {[ (advanceCurrentTerm state t)
                                    with log := log'' ]}
                                 with commitIndex :=
-                                  if leaderCommit >? (commitIndex state) then
-                                    min leaderCommit (maxIndex log'')
-                                  else
-                                    commitIndex state
-                              ]} 
+                                     max (commitIndex state) (min leaderCommit (maxIndex log''))
+                              ]}
                              with type := Follower ]} with leaderId := Some leaderId ]},
                           AppendEntriesReply (currentTerm state) entries true)
                        else
