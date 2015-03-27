@@ -23,6 +23,7 @@ Require Import SortedInterface.
 Require Import LeaderLogsSublogInterface.
 Require Import AllEntriesLeaderLogsInterface.
 Require Import LeaderLogsContiguousInterface.
+Require Import TermsAndIndicesFromOneInterface.
 
 Require Import LeaderLogsLogMatchingInterface.
 
@@ -40,6 +41,7 @@ Section LeaderLogsLogMatching.
   Context {aelli : all_entries_leader_logs_interface}.
   Context {llsli : leaderLogs_sublog_interface}.
   Context {llci : leaderLogs_contiguous_interface}.
+  Context {taifoi : terms_and_indices_from_one_interface}.
 
   Definition leaderLogs_entries_match_nw (net : network) : Prop :=
     forall h llt ll p t src pli plt es ci,
@@ -293,6 +295,74 @@ Section LeaderLogsLogMatching.
     intros. repeat break_match; auto.
   Qed.
 
+  Lemma lifted_log_matching :
+    forall net,
+      refined_raft_intermediate_reachable net ->
+      log_matching (deghost net).
+  Proof.
+    intros.
+    pose proof (lift_prop _ log_matching_invariant).
+    find_insterU. conclude_using eauto.
+    auto.
+  Qed.
+
+  Lemma lifted_log_matching_nw :
+    forall net,
+      refined_raft_intermediate_reachable net ->
+      forall p t leaderId prevLogIndex prevLogTerm entries leaderCommit,
+        In p (nwPackets net) ->
+        pBody p = AppendEntries t leaderId prevLogIndex prevLogTerm entries leaderCommit ->
+        (forall h e1 e2,
+           In e1 entries ->
+           In e2 (log (snd (nwState net h))) ->
+           eIndex e1 = eIndex e2 ->
+           eTerm e1 = eTerm e2 ->
+           (forall e3,
+              eIndex e3 <= eIndex e1 ->
+              In e3 entries ->
+              In e3 (log (snd (nwState net h)))) /\
+           (prevLogIndex <> 0 ->
+            exists e4,
+              eIndex e4 = prevLogIndex /\
+              eTerm e4 = prevLogTerm /\
+              In e4 (log (snd (nwState net h))))) /\
+        (forall i,
+           prevLogIndex < i <= maxIndex entries ->
+           exists e,
+             eIndex e = i /\
+             In e entries) /\
+        (forall e,
+           In e entries ->
+           prevLogIndex < eIndex e).
+  Proof.
+    intros.
+    find_apply_lem_hyp lifted_log_matching.
+    unfold log_matching, log_matching_nw in *.
+    break_and.
+    match goal with
+      | [ H : forall _ : packet , _ |- _ ] =>
+        insterU H;
+          specialize (H _ _ _ _ _ _);
+          conclude H ltac:(unfold deghost; simpl; eapply in_map_iff; eexists; eauto);
+          conclude H ltac:(simpl; eauto)
+    end.
+    intuition.
+    - rewrite <- deghost_spec with (net0 := net).
+      eapply H3 with (e1:=e1)(e2:=e2); eauto.
+      rewrite deghost_spec.  auto.
+    - rewrite <- deghost_spec with (net0 := net).
+      eapply H3 with (e1:=e1)(e2:=e2); eauto.
+      rewrite deghost_spec.  auto.
+  Qed.
+
+  Ltac use_log_matching_nw :=
+    pose proof (lifted_log_matching_nw _ $(eauto)$);
+    match goal with
+      | [ H : _  |- _ ] =>
+        eapply H; [|eauto];
+        repeat find_rewrite; intuition
+    end.
+
   Lemma leaderLogs_entries_match_append_entries :
     refined_raft_net_invariant_append_entries leaderLogs_entries_match.
   Proof.
@@ -308,20 +378,25 @@ Section LeaderLogsLogMatching.
         update_destruct; rewrite_update;
         try rewrite update_elections_data_appendEntries_leaderLogs in *; eauto.
         destruct (log d) using (handleAppendEntries_log_ind $(eauto)$); eauto.
-        + eapply entries_match_scratch with (plt0 := plt).
+        + subst. eapply entries_match_scratch with (plt0 := plt).
           * eauto using lifted_logs_sorted_nw.
           * apply sorted_uniqueIndices.
             eapply leaderLogs_sorted_invariant; eauto.
-          * subst. eapply_prop leaderLogs_entries_match_nw; eauto.
-          * admit.
-          * admit.
-          * admit.
+          * eapply_prop leaderLogs_entries_match_nw; eauto.
+          * use_log_matching_nw.
+          * use_log_matching_nw.
+          * match goal with
+              | [ H : In _ (leaderLogs _) |- _ ] =>
+                eapply terms_and_indices_from_one_invariant in H; [|solve[auto]]
+            end.
+            unfold terms_and_indices_from_one in *. intros.
+            find_apply_hyp_hyp. intuition.
         + eapply entries_match_append; eauto.
-          * admit.
-          * admit.
-          * admit.
-          * admit.
-          * admit.
+          * eauto using lifted_logs_sorted_host.
+          * eapply leaderLogs_sorted_invariant; eauto.
+          * eauto using lifted_logs_sorted_nw.
+          * use_log_matching_nw.
+          * use_log_matching_nw.
           * eapply findAtIndex_intro; eauto using lifted_logs_sorted_host, sorted_uniqueIndices.
       }
     - (* nw *) admit.
