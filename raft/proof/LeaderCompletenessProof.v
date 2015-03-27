@@ -321,7 +321,11 @@ Section LeaderCompleteness.
                          eTerm e' = maxTerm l /\
                          eIndex e' = maxIndex l).
       {
-        assert (eTerm e >= 1 /\ eIndex e >= 1) by (eapply terms_and_indices_from_one_invariant; eauto).
+        assert (eTerm e >= 1 /\ eIndex e >= 1) by
+            match goal with
+              | [ H : In _ (votesWithLog _) |- _ ] =>
+                solve [eapply terms_and_indices_from_one_invariant in H; eauto]
+            end.
         destruct l.
         - simpl in *.
           unfold moreUpToDate in *. do_bool.

@@ -19,13 +19,22 @@ Section TermsAndIndicesFromOne.
       In e l ->
       eTerm e >= 1 /\ eIndex e >= 1.
 
+  Definition terms_and_indices_from_one_vwl (net : network) : Prop :=
+    forall h t h' log,
+      In (t, h', log) (votesWithLog (fst (nwState net h))) ->
+      terms_and_indices_from_one log.
+
+  Definition terms_and_indices_from_one_ll (net : network) : Prop :=
+    forall h t ll,
+      In (t, ll) (leaderLogs (fst (nwState net h))) ->
+      terms_and_indices_from_one ll.
+
   Class terms_and_indices_from_one_interface : Prop :=
     {
       terms_and_indices_from_one_invariant :
         forall net,
           refined_raft_intermediate_reachable net ->
-          forall h t h' log,
-            In (t, h', log) (votesWithLog (fst (nwState net h))) ->
-            terms_and_indices_from_one log
+          terms_and_indices_from_one_vwl net /\
+          terms_and_indices_from_one_ll net
     }.
 End TermsAndIndicesFromOne.
