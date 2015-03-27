@@ -363,6 +363,16 @@ Section LeaderLogsLogMatching.
         repeat find_rewrite; intuition
     end.
 
+  Lemma handleAppendEntries_doesn't_send_AE :
+    forall n st t i l t' l' l'' st' m,
+      handleAppendEntries n st t i l t' l' l'' = (st', m) ->
+      ~ is_append_entries m.
+  Proof.
+    unfold handleAppendEntries.
+    intros.
+    repeat break_match; find_inversion; intro; break_exists; discriminate.
+  Qed.
+
   Lemma leaderLogs_entries_match_append_entries :
     refined_raft_net_invariant_append_entries leaderLogs_entries_match.
   Proof.
@@ -399,7 +409,20 @@ Section LeaderLogsLogMatching.
           * use_log_matching_nw.
           * eapply findAtIndex_intro; eauto using lifted_logs_sorted_host, sorted_uniqueIndices.
       }
-    - (* nw *) admit.
+    - (* nw *)
+      unfold leaderLogs_entries_match_nw in *.
+      intros. simpl in *. repeat find_higher_order_rewrite.
+      find_rewrite_lem update_fun_comm. simpl in *.
+      find_rewrite_lem update_fun_comm.
+      rewrite update_elections_data_appendEntries_leaderLogs in *.
+      find_erewrite_lem update_nop_ext'.
+      find_apply_hyp_hyp. break_or_hyp.
+      + intuition; match goal with
+            | [ H : _ |- _ ] => solve [eapply H with (p0 := p0); eauto with *]
+          end.
+      + simpl in *.
+        find_copy_apply_lem_hyp handleAppendEntries_doesn't_send_AE.
+        exfalso. eauto 10.
   Qed.
 
   Lemma leaderLogs_entries_match_append_entries_reply :
