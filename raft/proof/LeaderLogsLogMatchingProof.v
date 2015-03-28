@@ -184,19 +184,34 @@ Section LeaderLogsLogMatching.
 
   Lemma leaderLogs_entries_match_nw_packet_set :
     forall net net',
+      leaderLogs_entries_match_nw net ->
       (forall p, In p (nwPackets net') ->
                  is_append_entries (pBody p) ->
                  In p (nwPackets net)) ->
       (forall h, leaderLogs (fst (nwState net' h)) = leaderLogs (fst (nwState net h))) ->
-      leaderLogs_entries_match_nw net ->
       leaderLogs_entries_match_nw net'.
   Proof.
     unfold leaderLogs_entries_match_nw.
     intros.
     eapply_prop_hyp In nwPackets; [|eauto 10].
-    eapply H1; eauto.
-    repeat find_higher_order_rewrite.
-    eauto.
+    match goal with
+      | [ H : _ |- _ ] =>
+        solve [eapply H; eauto;
+               repeat find_higher_order_rewrite;
+               eauto]
+    end.
+  Qed.
+
+  Lemma leaderLogs_entries_match_host_state_same :
+    forall net net',
+      leaderLogs_entries_match_host net ->
+      (forall h, leaderLogs (fst (nwState net' h)) = leaderLogs (fst (nwState net h))) ->
+      (forall h, log (snd (nwState net' h)) = log (snd (nwState net h))) ->
+      leaderLogs_entries_match_host net'.
+  Proof.
+    unfold leaderLogs_entries_match_host.
+    intuition.
+    repeat find_higher_order_rewrite. eauto.
   Qed.
 
   Lemma handleClientRequest_no_send :
@@ -271,10 +286,10 @@ Section LeaderLogsLogMatching.
   Proof.
     unfold refined_raft_net_invariant_timeout, leaderLogs_entries_match.
     intuition.
-    - unfold leaderLogs_entries_match_host in *.
-      intros. simpl in *. repeat find_higher_order_rewrite.
-      repeat update_destruct; rewrite_update;
-      try rewrite update_elections_data_timeout_leaderLogs in *;
+    - eapply leaderLogs_entries_match_host_state_same; eauto;
+      simpl; intros; subst; find_higher_order_rewrite;
+      repeat update_destruct; rewrite_update; auto;
+      try rewrite update_elections_data_timeout_leaderLogs;
       try erewrite handleTimeout_log_same by eauto; eauto.
     - eapply leaderLogs_entries_match_nw_packet_set with (net:=net); intuition.
       + simpl in *. find_apply_hyp_hyp.  intuition.
@@ -304,6 +319,30 @@ Section LeaderLogsLogMatching.
     pose proof (lift_prop _ log_matching_invariant).
     find_insterU. conclude_using eauto.
     auto.
+  Qed.
+
+  Lemma lifted_log_matching_host :
+    forall net,
+      refined_raft_intermediate_reachable net ->
+      (forall h h',
+         entries_match (log (snd (nwState net h))) (log (snd (nwState net h')))) /\
+      (forall h i,
+         1 <= i <= maxIndex (log (snd (nwState net h))) ->
+         exists e, eIndex e = i /\ In e (log (snd (nwState net h)))) /\
+      (forall h e,
+         In e (log (snd (nwState net h))) -> eIndex e > 0).
+  Proof.
+    intros.
+    find_apply_lem_hyp lifted_log_matching.
+    unfold log_matching, log_matching_hosts in *.
+    intuition; repeat rewrite <- deghost_spec with (net0 := net).
+    - auto.
+    - match goal with
+        | [ H : _ |- _ ] => solve [apply H; rewrite deghost_spec; auto]
+      end.
+    - match goal with
+        | [ H : _ |- _ ] => solve [eapply H; rewrite deghost_spec; eauto]
+      end.
   Qed.
 
   Lemma lifted_log_matching_nw :
@@ -425,33 +464,244 @@ Section LeaderLogsLogMatching.
         exfalso. eauto 10.
   Qed.
 
+  Lemma handleAppendEntriesReply_packets :
+    forall h st from t es s st' ps,
+      handleAppendEntriesReply h st from t es s = (st', ps) ->
+      ps = [].
+  Proof.
+    intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; subst; auto.
+  Qed.
+
   Lemma leaderLogs_entries_match_append_entries_reply :
     refined_raft_net_invariant_append_entries_reply leaderLogs_entries_match.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_append_entries_reply, leaderLogs_entries_match.
+    intuition.
+    - eapply leaderLogs_entries_match_host_state_same; eauto; simpl; intros;
+      repeat find_higher_order_rewrite; update_destruct; rewrite_update; auto.
+      erewrite handleAppendEntriesReply_same_log by eauto. auto.
+    - eapply leaderLogs_entries_match_nw_packet_set; eauto; simpl.
+      + intros. find_apply_hyp_hyp. repeat find_rewrite. intuition; [eauto with *|].
+        find_apply_lem_hyp handleAppendEntriesReply_packets. subst. simpl in *. intuition.
+      + intros. repeat find_higher_order_rewrite; update_destruct; rewrite_update; auto; find_rewrite; auto.
+  Qed.
+
+  Lemma leaderLogs_update_elections_data_requestVote :
+    forall h src t ci lli llt st,
+      leaderLogs (update_elections_data_requestVote h src t ci lli llt st) =
+      leaderLogs (fst st).
+  Proof.
+    unfold update_elections_data_requestVote.
+    intros.
+    repeat break_match; repeat find_inversion; auto.
+  Qed.
+
+  Lemma handleRequestVote_packets :
+    forall h st t candidate lli llt st' m,
+      handleRequestVote h st t candidate lli llt = (st', m) ->
+      ~ is_append_entries m.
+  Proof.
+    intros. unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; find_inversion;
+    subst; intuition; break_exists; congruence.
+  Qed.
 
   Lemma leaderLogs_entries_match_request_vote :
     refined_raft_net_invariant_request_vote leaderLogs_entries_match.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_request_vote, leaderLogs_entries_match.
+    intuition.
+    - eapply leaderLogs_entries_match_host_state_same; eauto; simpl; intros;
+      repeat find_higher_order_rewrite; update_destruct; rewrite_update; auto.
+      + now rewrite leaderLogs_update_elections_data_requestVote.
+      + erewrite handleRequestVote_log; eauto.
+    - eapply leaderLogs_entries_match_nw_packet_set; eauto; simpl.
+      + intros. find_apply_hyp_hyp. repeat find_rewrite. intuition; [eauto with *|].
+        find_apply_lem_hyp handleRequestVote_packets. subst. simpl in *. intuition.
+      + intros. repeat find_higher_order_rewrite; update_destruct; rewrite_update; auto.
+        now rewrite leaderLogs_update_elections_data_requestVote.
+  Qed.
+
+  Lemma leaderLogs_update_elections_data_RVR :
+    forall h src t1 v st t2 ll st',
+      handleRequestVoteReply h (snd st) src t1 v = st' ->
+      In (t2, ll) (leaderLogs (update_elections_data_requestVoteReply h src t1 v st)) ->
+      In (t2, ll) (leaderLogs (fst st)) \/
+      (type st' = Leader /\
+       type (snd st) = Candidate /\
+       t2 = currentTerm st' /\
+       ll = log st').
+  Proof.
+    unfold update_elections_data_requestVoteReply.
+    intros.
+    repeat break_match; repeat find_inversion; intuition.
+    simpl in *. intuition.
+    find_inversion. intuition.
+  Qed.
 
   Lemma leaderLogs_entries_match_request_vote_reply :
     refined_raft_net_invariant_request_vote_reply leaderLogs_entries_match.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_request_vote_reply, leaderLogs_entries_match.
+    intuition.
+    - unfold leaderLogs_entries_match_host in *.
+      intros. simpl in *. subst.
+      repeat find_higher_order_rewrite.
+      rewrite update_fun_comm. simpl.
+      rewrite update_fun_comm. simpl.
+      rewrite update_nop_ext' by now rewrite handleRequestVoteReply_same_log.
+      find_rewrite_lem update_fun_comm. simpl in *.
+      update_destruct; rewrite_update; eauto.
+      find_eapply_lem_hyp leaderLogs_update_elections_data_RVR; eauto.
+      intuition eauto.
+      subst.
+      rewrite handleRequestVoteReply_same_log.
+      apply lifted_log_matching_host. auto.
+    - unfold leaderLogs_entries_match_nw in *.
+      intros. simpl in *. subst.
+      repeat find_higher_order_rewrite.
+      find_rewrite_lem update_fun_comm. simpl in *.
+      find_rewrite_lem update_fun_comm.
+      update_destruct; rewrite_update.
+      + find_eapply_lem_hyp leaderLogs_update_elections_data_RVR; eauto.
+        break_or_hyp.
+        * repeat find_reverse_rewrite. eauto.
+        * break_and. subst.
+          rewrite handleRequestVoteReply_same_log.
+          find_rewrite_lem handleRequestVoteReply_same_log.
+          pose proof (lifted_log_matching_nw _ $(eauto)$).
+          repeat find_reverse_rewrite.
+          match goal with
+            | [ H : _, pkt : packet  |- _ ] =>
+              solve [eapply H with (p := pkt); eauto]
+          end.
+      + repeat find_reverse_rewrite. eauto.
+  Qed.
+
+  Lemma doLeader_messages :
+    forall st h os st' ms,
+      doLeader st h = (os, st', ms) ->
+      ms = [] \/
+      ms = map (replicaMessage st' h)
+               (filter (fun h' : name => if name_eq_dec h h' then false else true)
+                       nodes).
+  Proof.
+    unfold doLeader.
+    intros.
+    repeat break_match; repeat find_inversion; auto.
+  Qed.
 
   Lemma leaderLogs_entries_match_do_leader :
     refined_raft_net_invariant_do_leader leaderLogs_entries_match.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_do_leader, leaderLogs_entries_match.
+    intuition.
+    - eapply leaderLogs_entries_match_host_state_same; eauto; simpl; intros;
+      find_higher_order_rewrite; update_destruct; rewrite_update; auto.
+      + find_rewrite. auto.
+      + erewrite doLeader_same_log by eauto. find_rewrite. auto.
+    - unfold leaderLogs_entries_match_nw in *. intros. simpl in *.
+      repeat find_higher_order_rewrite.
+      find_rewrite_lem update_fun_comm. simpl in *.
+      match goal with
+        | [ H : _ |- _ ] =>
+          rewrite update_nop_ext' in H by (find_rewrite; auto)
+      end.
+      find_apply_hyp_hyp. break_or_hyp.
+      + find_reverse_rewrite. eauto.
+      + do_in_map. subst. simpl in *.
+        find_copy_apply_lem_hyp doLeader_messages.
+        break_or_hyp.
+        * simpl in *. intuition.
+        * do_in_map. find_apply_lem_hyp filter_In.
+          break_and. break_if; try discriminate.
+          unfold replicaMessage in *. subst. simpl in *. find_inversion.
+          { intuition.
+            - repeat find_erewrite_lem doLeader_same_log.
+              eapply_prop leaderLogs_entries_match_host; eauto.
+              + match goal with
+                  | [ H : _ |- _ ] => rewrite H
+                end. simpl.
+                eauto using findGtIndex_in.
+              + auto with *.
+              + find_rewrite. simpl. eauto using findGtIndex_in.
+            - find_copy_apply_lem_hyp leaderLogs_contiguous_invariant; auto.
+              unfold contiguous_range_exact_lo in *. break_and.
+              match goal with
+                | [ H : forall _, _ < _ <= _ -> _ |- context [eIndex _ = ?x]] =>
+                  remember (x) as index;
+                  specialize (H index); forward H
+              end.
+              + intuition; auto using neq_0_lt.
+                find_apply_lem_hyp findGtIndex_necessary. break_and.
+                eapply le_trans.
+                * apply lt_le_weak. eauto.
+                * repeat find_rewrite. eapply maxIndex_is_max; auto.
+                  eapply leaderLogs_sorted_invariant; eauto.
+              + concludes. break_exists_exists. intuition.
+                match goal with
+                  | [ H : context [leaderLogs_entries_match_host],
+                     H' : context [leaderLogs] |- _ ] =>
+                    eapply H with (h := src)(e := e1)(e' := e2)(e'' := x) in H'; auto
+                end.
+                * pose proof lifted_logs_sorted_host net src $(auto)$.
+                  repeat find_rewrite. simpl in *.
+                  repeat find_erewrite_lem doLeader_same_log.
+                  erewrite doLeader_same_log by eauto.
+                  erewrite findAtIndex_intro; eauto using sorted_uniqueIndices.
+                * find_apply_lem_hyp findGtIndex_necessary. break_and.
+                  repeat find_erewrite_lem doLeader_same_log.
+                  repeat find_rewrite. simpl in *.
+                  auto.
+                * find_apply_lem_hyp findGtIndex_necessary. break_and.
+                  omega.
+          }
+  Qed.
+
+  Lemma doGenericServer_packets :
+    forall h st os st' ps,
+      doGenericServer h st = (os, st', ps) ->
+      ps = [].
+  Proof.
+    intros. unfold doGenericServer in *.
+    repeat break_match; find_inversion; subst; auto.
+  Qed.
 
   Lemma leaderLogs_entries_match_do_generic_server :
     refined_raft_net_invariant_do_generic_server leaderLogs_entries_match.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_do_generic_server, leaderLogs_entries_match.
+    intuition.
+    - eapply leaderLogs_entries_match_host_state_same; eauto; simpl; intros;
+      find_higher_order_rewrite; update_destruct; rewrite_update; auto.
+      + find_rewrite. auto.
+      + erewrite doGenericServer_log by eauto. find_rewrite. auto.
+    - eapply leaderLogs_entries_match_nw_packet_set; eauto; simpl.
+      + intros. find_apply_hyp_hyp. intuition.
+        find_apply_lem_hyp doGenericServer_packets. subst. simpl in *. intuition.
+      + intros. find_higher_order_rewrite; update_destruct; rewrite_update; auto; find_rewrite; auto.
+  Qed.
 
   Lemma leaderLogs_entries_match_state_same_packet_subset :
     refined_raft_net_invariant_state_same_packet_subset leaderLogs_entries_match.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_state_same_packet_subset, leaderLogs_entries_match.
+    intuition.
+    - eapply leaderLogs_entries_match_host_state_same; eauto; intros; find_higher_order_rewrite; auto.
+    - eapply leaderLogs_entries_match_nw_packet_set; eauto; intros; find_higher_order_rewrite; auto.
+  Qed.
 
   Lemma leaderLogs_entries_match_reboot :
     refined_raft_net_invariant_reboot leaderLogs_entries_match.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_reboot, leaderLogs_entries_match, reboot.
+    intuition.
+    - eapply leaderLogs_entries_match_host_state_same; eauto; intros; find_higher_order_rewrite;
+      update_destruct; rewrite_update; auto; find_rewrite; auto.
+    - eapply leaderLogs_entries_match_nw_packet_set; eauto; try find_rewrite; intuition.
+      find_higher_order_rewrite; update_destruct; rewrite_update; try find_rewrite; auto.
+  Qed.
 
   Lemma leaderLogs_entries_match_invariant :
     forall net,
