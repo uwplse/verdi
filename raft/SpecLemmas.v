@@ -212,4 +212,74 @@ Section SpecLemmas.
     repeat (do_in_map; subst; simpl in *); intuition; break_exists; congruence.
   Qed.
 
+
+  Lemma handleAppendEntries_type :
+    forall h st t n pli plt es ci st' ps,
+      handleAppendEntries h st t n pli plt es ci = (st', ps) ->
+      (type st' = type st /\ currentTerm st' = currentTerm st) \/
+      type st' = Follower.
+  Proof.
+    intros. unfold handleAppendEntries, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; auto.
+  Qed.
+
+  Lemma handleAppendEntriesReply_type :
+    forall h st h' t es r st' ms,
+      handleAppendEntriesReply h st h' t es r = (st', ms) ->
+      (type st' = type st /\ currentTerm st' = currentTerm st) \/
+      type st' = Follower.
+  Proof.
+    intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; auto.
+  Qed.
+
+  Lemma handleRequestVote_type :
+    forall st h h' t lli llt st' m,
+      handleRequestVote h st t h' lli llt = (st', m) ->
+      (type st' = type st /\ currentTerm st' = currentTerm st) \/
+      type st' = Follower.
+  Proof.
+    intros. unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; auto.
+  Qed.
+
+  Lemma handleClientRequest_type :
+    forall h st client id c out st' l,
+      handleClientRequest h st client id c = (out, st', l) ->
+      type st' = type st /\ currentTerm st' = currentTerm st.
+  Proof.
+    intros. unfold handleClientRequest in *.
+    repeat break_match; find_inversion; auto.
+  Qed.
+
+  Lemma handleTimeout_type :
+    forall h st out st' l,
+      handleTimeout h st = (out, st', l) ->
+      (type st' = type st /\ currentTerm st' = currentTerm st) \/
+      type st' = Candidate.
+  Proof.
+    intros. unfold handleTimeout, tryToBecomeLeader in *.
+    repeat break_match; find_inversion; auto.
+  Qed.
+
+  Lemma doGenericServer_type :
+    forall h st os st' ms,
+      doGenericServer h st = (os, st', ms) ->
+      type st' = type st /\ currentTerm st' = currentTerm st.
+  Proof.
+    unfold doGenericServer.
+    intros.
+    repeat break_match; repeat find_inversion;
+    use_applyEntries_spec; subst; simpl in *;
+    auto.
+  Qed.
+
+  Lemma doLeader_type :
+        forall st h os st' ms,
+      doLeader st h = (os, st', ms) ->
+      type st' = type st /\ currentTerm st' = currentTerm st.
+  Proof.
+    intros. unfold doLeader in *.
+    repeat break_match; find_inversion; auto.
+  Qed.
 End SpecLemmas.
