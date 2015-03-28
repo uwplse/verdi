@@ -278,7 +278,7 @@ Section LeadersHaveLeaderLogsStrong.
     start. congruence.
   Qed.
   
-  Instance lhlli : leaders_have_leaderLogs_strong_interface.
+  Instance lhllsi : leaders_have_leaderLogs_strong_interface.
   Proof.
     split.
     intros. eapply refined_raft_net_invariant; eauto.
