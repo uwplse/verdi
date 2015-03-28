@@ -6,17 +6,13 @@ Require Import Net.
 
 Require Import Raft.
 Require Import RaftRefinementInterface.
+Require Export CommonDefinitions.
+Require Export RefinementCommonDefinitions.
 
 Section CandidateEntriesInterface.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
-
-  Definition candidateEntries (e : entry) (sigma : name -> _) : Prop :=
-    exists h : name,
-      wonElection (dedup name_eq_dec (cronies (fst (sigma h)) (eTerm e))) = true /\
-      (currentTerm (snd (sigma h)) = eTerm e ->
-       type (snd (sigma h)) <> Candidate).
 
   Definition candidateEntries_host_invariant sigma :=
     (forall h e, In e (log (snd (sigma h))) ->
