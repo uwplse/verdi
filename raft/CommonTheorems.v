@@ -1376,6 +1376,26 @@ Section CommonTheorems.
   Proof.
     intros. apply execute_log_correct'.
   Qed.
+
+  Lemma contiguous_app :
+    forall l1 l2 i,
+      sorted (l1 ++ l2) ->
+      contiguous_range_exact_lo (l1 ++ l2) i ->
+      contiguous_range_exact_lo l2 i.
+  Proof.
+  Admitted.
+
+  Lemma prefix_contiguous :
+    forall l l' e i,
+      Prefix l' l ->
+      sorted l ->
+      In e l ->
+      eIndex e > i ->
+      contiguous_range_exact_lo l' i ->
+      In e l'.
+  Proof.
+  Admitted.
+
 End CommonTheorems.
 
 Notation is_append_entries m :=

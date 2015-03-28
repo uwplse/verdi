@@ -164,26 +164,6 @@ Section StateMachineSafety'.
         copy_eapply H H'
     end.
 
-  Lemma contiguous_app :
-    forall l1 l2 i,
-      sorted (l1 ++ l2) ->
-      contiguous_range_exact_lo (l1 ++ l2) i ->
-      contiguous_range_exact_lo l2 i.
-  Proof.
-
-  Admitted.
-
-  Lemma prefix_contiguous :
-    forall l l' e i,
-      Prefix l' l ->
-      sorted l ->
-      In e l ->
-      eIndex e > i ->
-      contiguous_range_exact_lo l' i ->
-      In e l'.
-  Proof.
-  Admitted.
-
   Lemma entries_contiguous :
     forall net p t n pli plt es ci,
       refined_raft_intermediate_reachable net ->
