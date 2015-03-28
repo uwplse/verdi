@@ -12,6 +12,7 @@ Require Import CommonDefinitions.
 Require Import CommonTheorems.
 
 Require Import SpecLemmas.
+Require Import RefinementSpecLemmas.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
@@ -83,15 +84,6 @@ Section LeaderLogsLogMatching.
       | [ |- context [ update _ ?x _ ?y ] ] =>
         destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
     end.
-
-  Lemma update_elections_data_client_request_leaderLogs :
-    forall h st client id c,
-      leaderLogs (update_elections_data_client_request h st client id c) =
-      leaderLogs (fst st).
-  Proof.
-    unfold update_elections_data_client_request in *.
-    intros. repeat break_match; repeat find_inversion; auto.
-  Qed.
 
   Lemma entries_match_cons_gt_maxTerm :
     forall x xs ys,
@@ -231,9 +223,9 @@ Section LeaderLogsLogMatching.
     intros.
     split.
     - { unfold leaderLogs_entries_match_host.
-        simpl. intuition. subst. find_higher_order_rewrite.
+        simpl. intuition. subst. repeat find_higher_order_rewrite.
         repeat update_destruct.
-        - rewrite update_elections_data_client_request_leaderLogs in *.
+        - find_rewrite_lem update_elections_data_client_request_leaderLogs.
           destruct (log d) using (handleClientRequest_log_ind $(eauto)$).
           + eauto.
           + destruct ll.
@@ -248,7 +240,7 @@ Section LeaderLogsLogMatching.
                   eapply_prop_hyp In In; simpl; eauto. repeat find_rewrite.
                   simpl in *. omega.
               }
-        - rewrite update_elections_data_client_request_leaderLogs in *.
+        - find_rewrite_lem update_elections_data_client_request_leaderLogs.
           eauto.
         - destruct (log d) using (handleClientRequest_log_ind $(eauto)$).
           + eauto.
@@ -272,15 +264,6 @@ Section LeaderLogsLogMatching.
         now rewrite update_nop_ext' by auto.
   Qed.
 
-  Lemma update_elections_data_timeout_leaderLogs :
-    forall h st,
-      leaderLogs (update_elections_data_timeout h st) = leaderLogs (fst st).
-  Proof.
-    unfold update_elections_data_timeout.
-    intros.
-    repeat break_match; auto.
-  Qed.
-
   Lemma leaderLogs_entries_match_timeout :
     refined_raft_net_invariant_timeout leaderLogs_entries_match.
   Proof.
@@ -300,14 +283,6 @@ Section LeaderLogsLogMatching.
         rewrite update_fun_comm. simpl.
         rewrite update_elections_data_timeout_leaderLogs.
         rewrite update_nop_ext'; auto.
-  Qed.
-
-  Lemma update_elections_data_appendEntries_leaderLogs :
-    forall h st t src pli plt es ci,
-      leaderLogs (update_elections_data_appendEntries h st t src pli plt es ci) = leaderLogs (fst st).
-  Proof.
-    unfold update_elections_data_appendEntries.
-    intros. repeat break_match; auto.
   Qed.
 
   Lemma lifted_log_matching :
@@ -422,7 +397,7 @@ Section LeaderLogsLogMatching.
         intros. simpl in *. repeat find_higher_order_rewrite.
         find_rewrite_lem update_fun_comm. simpl in *.
         find_rewrite_lem update_fun_comm.
-        rewrite update_elections_data_appendEntries_leaderLogs in *.
+        find_rewrite_lem update_elections_data_appendEntries_leaderLogs.
         find_erewrite_lem update_nop_ext'.
         update_destruct; rewrite_update;
         try rewrite update_elections_data_appendEntries_leaderLogs in *; eauto.
@@ -453,7 +428,7 @@ Section LeaderLogsLogMatching.
       intros. simpl in *. repeat find_higher_order_rewrite.
       find_rewrite_lem update_fun_comm. simpl in *.
       find_rewrite_lem update_fun_comm.
-      rewrite update_elections_data_appendEntries_leaderLogs in *.
+      find_rewrite_lem update_elections_data_appendEntries_leaderLogs.
       find_erewrite_lem update_nop_ext'.
       find_apply_hyp_hyp. break_or_hyp.
       + intuition; match goal with
@@ -487,16 +462,6 @@ Section LeaderLogsLogMatching.
       + intros. repeat find_higher_order_rewrite; update_destruct; rewrite_update; auto; find_rewrite; auto.
   Qed.
 
-  Lemma leaderLogs_update_elections_data_requestVote :
-    forall h src t ci lli llt st,
-      leaderLogs (update_elections_data_requestVote h src t ci lli llt st) =
-      leaderLogs (fst st).
-  Proof.
-    unfold update_elections_data_requestVote.
-    intros.
-    repeat break_match; repeat find_inversion; auto.
-  Qed.
-
   Lemma handleRequestVote_packets :
     forall h st t candidate lli llt st' m,
       handleRequestVote h st t candidate lli llt = (st', m) ->
@@ -521,23 +486,6 @@ Section LeaderLogsLogMatching.
         find_apply_lem_hyp handleRequestVote_packets. subst. simpl in *. intuition.
       + intros. repeat find_higher_order_rewrite; update_destruct; rewrite_update; auto.
         now rewrite leaderLogs_update_elections_data_requestVote.
-  Qed.
-
-  Lemma leaderLogs_update_elections_data_RVR :
-    forall h src t1 v st t2 ll st',
-      handleRequestVoteReply h (snd st) src t1 v = st' ->
-      In (t2, ll) (leaderLogs (update_elections_data_requestVoteReply h src t1 v st)) ->
-      In (t2, ll) (leaderLogs (fst st)) \/
-      (type st' = Leader /\
-       type (snd st) = Candidate /\
-       t2 = currentTerm st' /\
-       ll = log st').
-  Proof.
-    unfold update_elections_data_requestVoteReply.
-    intros.
-    repeat break_match; repeat find_inversion; intuition.
-    simpl in *. intuition.
-    find_inversion. intuition.
   Qed.
 
   Lemma leaderLogs_entries_match_request_vote_reply :
