@@ -143,6 +143,10 @@ Require Import LeadersHaveLeaderLogsProof.
 Require Import LeadersHaveLeaderLogsStrongInterface.
 Require Import LeadersHaveLeaderLogsStrongProof.
 
+Require Import NextIndexSanityInterface.
+Require Import NextIndexSanityProof.
+
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -187,6 +191,8 @@ Hint Extern 4 (@one_leaderLog_per_term_interface _ _ _) => apply ollpti : typecl
 Hint Extern 4 (@leaderLogs_sublog_interface _ _ _) => apply llsli : typeclass_instances.
 Hint Extern 4 (@leaders_have_leaderLogs_interface _ _ _) => apply lhlli : typeclass_instances.
 Hint Extern 4 (@leaders_have_leaderLogs_strong_interface _ _ _) => apply lhllsi : typeclass_instances.
+Hint Extern 4 (@nextIndex_sanity_interface _ _ _) => apply nisi : typeclass_instances.
+
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
