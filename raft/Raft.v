@@ -285,16 +285,17 @@ Section Raft.
                         && wonElection (dedup name_eq_dec (src :: votesReceived state)) in
            match (type state) with
              | Candidate => 
-               {[ {[ {[ {[ state
-                           with votesReceived := (if voteGranted then
-                                                    [src]
-                                                  else
-                                                    []) ++ votesReceived state ]}
-                        with type := if won then
-                                       Leader         (* long live the king *)
-                                     else
-                                       type state ]}
-                     with matchIndex := [] ]}
+               {[ {[ {[ {[ {[ state
+                              with votesReceived := (if voteGranted then
+                                                       [src]
+                                                     else
+                                                       []) ++ votesReceived state ]}
+                           with type := if won then
+                                          Leader         (* long live the king *)
+                                        else
+                                          type state ]}
+                        with matchIndex := [] ]}
+                       with nextIndex := [] ]}
                   with electoralVictories :=
                     (if won then
                        [(currentTerm state, src :: votesReceived state, log state)]
