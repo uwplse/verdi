@@ -21,6 +21,7 @@ Require Import LeaderLogsSortedInterface.
 Require Import LeaderLogsLogMatchingInterface.
 Require Import LogsLeaderLogsInterface.
 Require Import OneLeaderLogPerTermInterface.
+Require Import RefinedLogMatchingLemmasInterface.
 Require Import SpecLemmas.
 
 Require Import UpdateLemmas.
@@ -44,6 +45,8 @@ Section StateMachineSafety'.
   Context {lllmi : leaderLogs_entries_match_interface}.
   Context {llli : logs_leaderLogs_interface}.
   Context {ollpti : one_leaderLog_per_term_interface}.
+  Context {rlmli : refined_log_matching_lemmas_interface}.
+
   
   Theorem lift_log_matching :
     forall net,
@@ -173,15 +176,6 @@ Section StateMachineSafety'.
   Proof. (* by log matching, annoying because of refinement *)
   Admitted.
 
-  Lemma entries_sorted :
-    forall net p t n pli plt es ci,
-      refined_raft_intermediate_reachable net ->
-      In p (nwPackets net) ->
-      pBody p = AppendEntries t n pli plt es ci ->
-      sorted es.
-  Proof. (* by log matching, annoying because of refinement *)
-  Admitted.
-
   Lemma exists_deghosted_packet :
     forall net (p : packet (params := raft_refined_multi_params (raft_params := raft_params))),
       In p (nwPackets net) ->
@@ -308,7 +302,7 @@ Section StateMachineSafety'.
           apply in_app_iff. right.
           eapply prefix_contiguous; eauto.
           find_copy_eapply_lem_hyp entries_contiguous; eauto.
-          eapply contiguous_app; eauto using entries_sorted.
+          eapply contiguous_app; eauto. eapply entries_sorted_nw_invariant; eauto.
         * cut (e = x5); [intros; subst; intuition|].
           eapply uniqueIndices_elim_eq; eauto using sorted_uniqueIndices.
       + subst. right. right. right.
@@ -322,7 +316,7 @@ Section StateMachineSafety'.
          end
         |]; [idtac].
         find_copy_eapply_lem_hyp entries_contiguous; eauto.
-        eapply contiguous_app; eauto using entries_sorted.
+        eapply contiguous_app; eauto. eapply entries_sorted_nw_invariant; eauto.
     - subst.
       find_copy_eapply_lem_hyp logs_leaderLogs_invariant; eauto.
       find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
@@ -441,7 +435,8 @@ Section StateMachineSafety'.
           get_invariant leaderLogs_sorted_invariant.
           unfold leaderLogs_sorted in *. find_copy_apply_hyp_hyp.
           eapply prefix_contiguous with (i := (eIndex base_entry)); eauto.
-          eauto using contiguous_app, entries_sorted, entries_contiguous.
+          find_copy_eapply_lem_hyp entries_sorted_nw_invariant; eauto.
+          eauto using contiguous_app, entries_contiguous.
       + subst.
         match goal with
           | _ : In (_, ?l) (leaderLogs _),
@@ -504,7 +499,8 @@ Section StateMachineSafety'.
           get_invariant leaderLogs_sorted_invariant.
           unfold leaderLogs_sorted in *. find_copy_apply_hyp_hyp.
           eapply prefix_contiguous with (i := 0); eauto.
-          eauto using contiguous_app, entries_sorted, entries_contiguous.
+          find_copy_eapply_lem_hyp entries_sorted_nw_invariant; eauto.
+          eauto using contiguous_app, entries_contiguous.
   Qed.
 
   Instance sms'i : state_machine_safety'interface.
