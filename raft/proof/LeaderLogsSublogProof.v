@@ -239,7 +239,7 @@ Section LeaderLogsSublog.
 
   Lemma leaderLogs_candidate_entries_rvr :
     forall net,
-      leaderLogs_candidateEntries (nwState net) ->
+      leaderLogs_candidateEntries net ->
       votes_correct net ->
       cronies_correct net ->
       forall p h t ll e,
