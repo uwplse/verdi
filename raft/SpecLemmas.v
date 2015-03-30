@@ -293,6 +293,35 @@ Section SpecLemmas.
     repeat break_match; find_inversion; auto.
   Qed.
 
+  Lemma doLeader_log :
+    forall st h os st' ms,
+      doLeader st h = (os, st', ms) ->
+      log st' = log st.
+  Proof.
+    unfold doLeader. intros.
+    repeat break_match; find_inversion; simpl in *; auto.
+  Qed.
+
+  Lemma handleAppendEntriesReply_log :
+    forall h st h' t es r st' ms,
+      handleAppendEntriesReply h st h' t es r = (st', ms) ->
+      log st' = log st.
+  Proof.
+    unfold handleAppendEntriesReply, advanceCurrentTerm.
+    intros.
+    repeat break_match; find_inversion; simpl in *; auto.
+  Qed.
+  
+  Lemma handleRequestVoteReply_log :
+    forall h st h' t r st',
+      st' = handleRequestVoteReply h st h' t r ->
+      log st' = log st.
+  Proof.
+    intros.
+    eapply handleRequestVoteReply_spec; eauto.
+  Qed.
+
+
   Lemma handleAppendEntriesReply_packets :
     forall h st from t es s st' ps,
       handleAppendEntriesReply h st from t es s = (st', ps) ->
@@ -301,4 +330,48 @@ Section SpecLemmas.
     intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
     repeat break_match; find_inversion; subst; auto.
   Qed.
+
+  Lemma doGenericServer_packets :
+    forall h st os st' ps,
+      doGenericServer h st = (os, st', ps) ->
+      ps = [].
+  Proof.
+    intros. unfold doGenericServer in *.
+    repeat break_match; find_inversion; simpl in *;
+    subst; auto.
+  Qed.
+  
+  Lemma handleRequestVote_no_append_entries :
+    forall st h h' t lli llt st' m,
+      handleRequestVote h st t h' lli llt = (st', m) ->
+      ~ is_append_entries m.
+  Proof.
+    intros. unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; subst; auto;
+    intuition; break_exists; congruence.
+  Qed.
+
+  Theorem handleClientRequest_no_append_entries :
+    forall h st client id c out st' ps m,
+      handleClientRequest h st client id c = (out, st', ps) ->
+      In m ps ->
+      ~ is_append_entries (snd m).
+  Proof.
+    intros. unfold handleClientRequest in *.
+    repeat break_match; find_inversion; subst; auto;
+    intuition; break_exists; congruence.
+  Qed.
+
+  Lemma handleTimeout_packets :
+    forall h d out d' ps m,
+      handleTimeout h d = (out, d', ps) ->
+      In m ps ->
+      ~ is_append_entries (snd m).
+  Proof.
+    intros. unfold handleTimeout, tryToBecomeLeader in *.
+    repeat break_match; find_inversion; subst; auto;
+    intuition; break_exists;
+    do_in_map; subst; simpl in *; congruence.
+  Qed.
+  
 End SpecLemmas.
