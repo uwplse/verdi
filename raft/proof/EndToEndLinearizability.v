@@ -146,8 +146,8 @@ Require Import LeadersHaveLeaderLogsStrongProof.
 Require Import NextIndexSafetyInterface.
 Require Import NextIndexSafetyProof.
 
-Require Import RefinedLogMatchingInterface.
-Require Import RefinedLogMatchingProof.
+Require Import RefinedLogMatchingLemmasInterface.
+Require Import RefinedLogMatchingLemmasProof.
 
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
