@@ -17,6 +17,7 @@ Require Import CandidateEntriesInterface.
 Require Import RaftRefinementInterface.
 Require Import VotesCorrectInterface.
 Require Import CroniesCorrectInterface.
+Require Import RefinementCommonTheorems.
 
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
@@ -239,28 +240,7 @@ Section LeaderSublogProof.
     rewrite deghost_spec.
 
     apply_prop_hyp candidateEntries_host_invariant In.
-    unfold candidateEntries in *. break_exists. break_and.
-    repeat match goal with
-           | [ H : _ |- _ ] => rewrite deghost_spec in H
-           end.
-    intro.
-    assert (x = h).
-    {
-      match goal with
-      | H : wonElection _ = _ |- _ =>
-        eapply wonElection_one_in_common in H; [|clear H; eauto]
-      end.
-      break_exists. break_and.
-
-      eapply_prop one_vote_per_term;
-        try solve [eapply_prop cronies_votes; eauto].
-      eapply_prop cronies_votes.
-      repeat find_reverse_rewrite.
-      eapply_prop votes_received_cronies; auto.
-    }
-    subst.
-    concludes.
-    contradiction.
+    eapply candidateEntries_wonElection; auto; repeat find_rewrite_lem deghost_spec; eauto.
   Qed.
 
   Lemma candidate_entries_lowered :
@@ -311,40 +291,16 @@ Section LeaderSublogProof.
         In e (log (snd (nwState net h))) ->
         CandidateEntriesLowered_rvr (deghost net) e p.
   Proof.
-    unfold CandidateEntriesLowered_rvr, CandidateEntries, votes_correct, cronies_correct.
+    unfold CandidateEntriesLowered_rvr, CandidateEntries.
     intros. break_and.
     rewrite deghost_spec.
 
     find_apply_lem_hyp deghost_packet_exists.
     break_exists.  break_and. subst.
-    eapply_prop_hyp votes_nw pBody.
 
     apply_prop_hyp candidateEntries_host_invariant In.
-    unfold candidateEntries in *. break_exists. break_and.
-    repeat match goal with
-           | [ H : _ |- _ ] => rewrite deghost_spec in H
-           end.
-    match goal with
-    | H : wonElection _ = _ |- _ =>
-      eapply wonElection_one_in_common in H; [|clear H; eauto]
-    end.
-    break_exists.
-    break_and.
-    simpl in *.
-    intuition.
-    - subst.
-      apply_prop_hyp cronies_votes In.
-      assert (x0 = pDst x) by (eapply_prop one_vote_per_term; eauto).
-      subst. concludes. contradiction.
-    - apply_prop_hyp votes_received_cronies In. concludes.
-      apply_prop_hyp cronies_votes In.
-      apply_prop_hyp cronies_votes In.
-      unfold raft_data in *. unfold raft_refined_base_params, raft_refined_multi_params in *.
-      simpl in *.
-      repeat find_reverse_rewrite.
-      assert (x0 = pDst x) by (eapply_prop one_vote_per_term; eauto).
-      subst.
-      repeat concludes. contradiction.
+    eapply wonElection_candidateEntries_rvr; auto;
+    repeat find_rewrite_lem deghost_spec; eauto.
   Qed.
 
   Lemma candidate_entries_lowered_rvr :
