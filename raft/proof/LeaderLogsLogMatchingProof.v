@@ -439,15 +439,6 @@ Section LeaderLogsLogMatching.
         exfalso. eauto 10.
   Qed.
 
-  Lemma handleAppendEntriesReply_packets :
-    forall h st from t es s st' ps,
-      handleAppendEntriesReply h st from t es s = (st', ps) ->
-      ps = [].
-  Proof.
-    intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
-    repeat break_match; find_inversion; subst; auto.
-  Qed.
-
   Lemma leaderLogs_entries_match_append_entries_reply :
     refined_raft_net_invariant_append_entries_reply leaderLogs_entries_match.
   Proof.

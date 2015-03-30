@@ -292,4 +292,13 @@ Section SpecLemmas.
     intros. unfold doLeader in *.
     repeat break_match; find_inversion; auto.
   Qed.
+
+  Lemma handleAppendEntriesReply_packets :
+    forall h st from t es s st' ps,
+      handleAppendEntriesReply h st from t es s = (st', ps) ->
+      ps = [].
+  Proof.
+    intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; subst; auto.
+  Qed.
 End SpecLemmas.
