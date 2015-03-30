@@ -1396,6 +1396,107 @@ Section CommonTheorems.
   Proof.
   Admitted.
 
+  Lemma cons_contiguous_sorted :
+    forall l i a,
+      sorted (a :: l) ->
+      contiguous_range_exact_lo (a :: l) i ->
+      contiguous_range_exact_lo l i.
+  Proof.
+  Admitted.
+  
+  Lemma removeAfterIndex_contiguous :
+    forall l i i',
+      sorted l ->
+      contiguous_range_exact_lo l i ->
+      contiguous_range_exact_lo (removeAfterIndex l i') i.
+  Proof.
+    induction l; intros; simpl in *; intuition.
+    break_if; auto.
+    do_bool.
+    eapply IHl; eauto.
+    eapply cons_contiguous_sorted; eauto.
+    simpl; intuition.
+  Qed.
+
+
+
+  Lemma sorted_NoDup :
+    forall l,
+      sorted l -> NoDup l.
+  Proof.
+    induction l; intros; simpl in *; auto.
+    - constructor.
+    - constructor; intuition.
+      match goal with
+        | H : forall _, _ |- _ => specialize (H a)
+      end. intuition.
+  Qed.
+
+  Lemma sorted_Permutation_eq :
+    forall l l',
+      sorted l ->
+      sorted l' ->
+      Permutation l l' ->
+      l = l'.
+  Proof.
+    induction l; intros.
+    - symmetry. apply Permutation_nil. assumption.
+    - destruct l'.
+      + apply Permutation_nil. apply Permutation_sym. assumption.
+      + simpl in *. intuition.
+        find_copy_eapply_lem_hyp Permutation_in; intuition.
+        find_copy_apply_lem_hyp Permutation_sym.
+        find_copy_eapply_lem_hyp Permutation_in; intuition.
+        simpl in *. intuition;
+          try (subst a; f_equal; eauto using Permutation_cons_inv).
+        repeat find_apply_hyp_hyp. intuition.
+        omega.
+  Qed.
+
+  Lemma removeAfterIndex_same_sufficient :
+    forall x l l',
+      sorted l ->
+      sorted l' ->
+      (forall e, eIndex e <= x ->
+            In e l ->
+            In e l') ->
+      (forall e, eIndex e <= x ->
+            In e l' ->
+            In e l) ->
+      removeAfterIndex l' x = removeAfterIndex l x.
+  Proof.
+    intros. apply sorted_Permutation_eq;
+      try (apply removeAfterIndex_sorted; assumption).
+    apply NoDup_Permutation;
+      try (apply NoDup_removeAfterIndex; apply sorted_NoDup; assumption).
+    split; intros; apply removeAfterIndex_le_In;
+        eauto using removeAfterIndex_In_le, removeAfterIndex_in.
+  Qed.
+
+  Lemma removeAfterIndex_same_sufficient' :
+    forall x l l',
+      sorted l ->
+      sorted l' ->
+      contiguous_range_exact_lo l 0 ->
+      (forall e, In e l' -> 0 < eIndex e) ->
+      x <= maxIndex l ->
+      (forall e, eIndex e <= x ->
+            In e l ->
+            In e l') ->
+      removeAfterIndex l' x = removeAfterIndex l x.
+  Proof.
+    intros.
+    eapply removeAfterIndex_same_sufficient; eauto.
+    intros.
+    unfold contiguous_range_exact_lo in *. intuition.
+    specialize (H7 (eIndex e)).
+    intuition. find_copy_apply_hyp_hyp.
+    repeat conclude_using omega.
+    break_exists. intuition.
+    symmetry in H9. copy_apply H4 H10; try omega.
+    eapply rachet with (xs := l'); eauto using sorted_uniqueIndices.
+  Qed.
+  
 End CommonTheorems.
 
 Notation is_append_entries m :=
