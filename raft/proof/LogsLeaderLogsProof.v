@@ -21,6 +21,7 @@ Require Import LeaderLogsSortedInterface.
 Require Import LeaderLogsContiguousInterface.
 Require Import LeaderLogsLogMatchingInterface.
 Require Import RefinedLogMatchingLemmasInterface.
+Require Import LeadersHaveLeaderLogsStrongInterface.
 Require Import NextIndexSafetyInterface.
 Require Import SortedInterface.
 
@@ -34,6 +35,7 @@ Section LogsLeaderLogs.
   Context {rlmli : refined_log_matching_lemmas_interface}.
   Context {llci : leaderLogs_contiguous_interface}.
   Context {lllmi : leaderLogs_entries_match_interface}.
+  Context {lhllsi : leaders_have_leaderLogs_strong_interface}.
   Context {nisi : nextIndex_safety_interface}.
   Context {si : sorted_interface}.
 
@@ -237,7 +239,6 @@ Section LogsLeaderLogs.
     do_bool. specialize (H a). intuition. omega.
   Qed.
 
-    
   Lemma removeAfterIndex_in_app :
     forall l l' e,
       In e l ->
@@ -470,38 +471,167 @@ Section LogsLeaderLogs.
   Lemma logs_leaderLogs_inductive_appendEntriesReply :
     refined_raft_net_invariant_append_entries_reply logs_leaderLogs_inductive.
   Proof.
-    admit.
+    red. unfold logs_leaderLogs_inductive. intros. intuition.
+    - find_apply_lem_hyp handleAppendEntriesReply_log. subst.
+      unfold logs_leaderLogs in *. intros.
+      simpl in *.
+      find_higher_order_rewrite; update_destruct; subst; rewrite_update; simpl in *;
+      repeat find_rewrite;
+      find_apply_hyp_hyp; break_exists_exists; intuition;
+      find_higher_order_rewrite; update_destruct; subst; rewrite_update; eauto.
+    - find_eapply_lem_hyp handleAppendEntriesReply_packets. subst.
+      intuition. unfold logs_leaderLogs_nw in *. intros.
+      simpl in *. find_apply_hyp_hyp. intuition.
+      prove_in. copy_eapply_prop_hyp In In; eauto.
+      break_exists_exists; intuition;
+      repeat find_higher_order_rewrite;
+      update_destruct; subst; rewrite_update; eauto.
   Qed.
 
 
   Lemma logs_leaderLogs_inductive_requestVote :
     refined_raft_net_invariant_request_vote logs_leaderLogs_inductive.
   Proof.
-    admit.
+    red. unfold logs_leaderLogs_inductive. intros. intuition.
+    - find_apply_lem_hyp handleRequestVote_log. subst.
+      unfold logs_leaderLogs in *. intros.
+      simpl in *.
+      find_higher_order_rewrite; update_destruct; subst; rewrite_update; simpl in *;
+      repeat find_rewrite;
+      find_apply_hyp_hyp; break_exists_exists; intuition;
+      find_higher_order_rewrite; update_destruct; subst; rewrite_update; eauto;
+      simpl in *; rewrite update_elections_data_requestVote_leaderLogs; eauto.
+    - find_eapply_lem_hyp handleRequestVote_no_append_entries. subst.
+      intuition. unfold logs_leaderLogs_nw in *. intros.
+      simpl in *. find_apply_hyp_hyp. intuition.
+      + prove_in. copy_eapply_prop_hyp In In; eauto.
+        break_exists_exists; intuition;
+        repeat find_higher_order_rewrite;
+        update_destruct; subst; rewrite_update; eauto;
+        simpl in *; rewrite update_elections_data_requestVote_leaderLogs; eauto.
+      + find_false. subst. simpl in *. subst.
+        repeat eexists; eauto.
   Qed.
   
   Lemma logs_leaderLogs_inductive_requestVoteReply :
     refined_raft_net_invariant_request_vote_reply logs_leaderLogs_inductive.
   Proof.
-    admit.
+    red. unfold logs_leaderLogs_inductive. intros. intuition.
+    - subst.
+      unfold logs_leaderLogs in *. intros.
+      simpl in *.
+      find_higher_order_rewrite; update_destruct; subst; rewrite_update; simpl in *;
+      repeat find_rewrite;
+      [match goal with
+        | H : In _ (log _ ) |- _ =>
+          erewrite handleRequestVoteReply_log; eauto;
+          erewrite handleRequestVoteReply_log in H; eauto
+      end|];
+      find_apply_hyp_hyp; break_exists_exists; intuition;
+      find_higher_order_rewrite ; update_destruct; subst; rewrite_update; eauto;
+      simpl in *; apply update_elections_data_requestVoteReply_leaderLogs; eauto.
+    - unfold logs_leaderLogs_nw in *. intros.
+      simpl in *. find_apply_hyp_hyp. intuition.
+      prove_in. copy_eapply_prop_hyp In In; eauto.
+      break_exists_exists; intuition;
+      repeat find_higher_order_rewrite;
+      update_destruct; subst; rewrite_update; eauto;
+      simpl in *; apply update_elections_data_requestVoteReply_leaderLogs; eauto.
   Qed.
 
   Lemma logs_leaderLogs_inductive_clientRequest :
     refined_raft_net_invariant_client_request logs_leaderLogs_inductive.
   Proof.
-    admit.
+    red. unfold logs_leaderLogs_inductive. intros. intuition.
+    - subst.
+      unfold logs_leaderLogs in *. intros.
+      simpl in *.
+      find_higher_order_rewrite; update_destruct; subst; rewrite_update; simpl in *.
+      + find_apply_lem_hyp handleClientRequest_log. intuition; subst; repeat find_rewrite.
+        * find_apply_hyp_hyp; break_exists_exists; intuition;
+          find_higher_order_rewrite; update_destruct; subst; rewrite_update; eauto;
+          simpl in *; rewrite update_elections_data_client_request_leaderLogs; eauto.
+        * {break_exists. intuition. repeat find_rewrite. simpl in *.
+           intuition; subst.
+           - find_apply_lem_hyp leaders_have_leaderLogs_strong_invariant; eauto.
+             break_exists. intuition.
+             unfold ghost_data in *. simpl in *. repeat find_rewrite.
+             match goal with
+               | h : name, _ : _ = ?e :: ?es ++ ?ll |- _ =>
+                 exists h, ll, (e :: x0)
+             end; intuition.
+             + find_higher_order_rewrite; update_destruct; subst; rewrite_update; eauto;
+               simpl in *; rewrite update_elections_data_client_request_leaderLogs; eauto.
+             + break_if; eauto using app_ass; do_bool; omega.
+             + simpl in *. intuition; subst; eauto.
+           - find_copy_apply_lem_hyp maxIndex_is_max; eauto using lift_logs_sorted.
+             find_apply_hyp_hyp. break_exists_exists; intuition;
+             [find_higher_order_rewrite ; update_destruct; subst; rewrite_update; eauto;
+              simpl in *; rewrite update_elections_data_client_request_leaderLogs; eauto|].
+             break_if; do_bool; intuition; omega.
+          }
+      + find_apply_hyp_hyp; break_exists_exists; intuition;
+        find_higher_order_rewrite; update_destruct; subst; rewrite_update; eauto;
+        simpl in *; rewrite update_elections_data_client_request_leaderLogs; eauto.
+    - unfold logs_leaderLogs_nw in *.
+      intros. simpl in *. find_apply_hyp_hyp. intuition.
+      + eapply_prop_hyp In pBody; eauto; break_exists_exists; intuition; subst;
+        repeat find_higher_order_rewrite; update_destruct; subst; rewrite_update; eauto;
+        simpl in *; rewrite update_elections_data_client_request_leaderLogs; eauto.
+      + do_in_map. subst. simpl in *. find_eapply_lem_hyp handleClientRequest_no_append_entries;
+          eauto. intuition. find_false. repeat find_rewrite. repeat eexists; eauto.
   Qed.
   
   Lemma logs_leaderLogs_inductive_timeout :
     refined_raft_net_invariant_timeout logs_leaderLogs_inductive.
   Proof.
-    admit.
+    red. unfold logs_leaderLogs_inductive. intros. intuition.
+    - find_apply_lem_hyp handleTimeout_log_same. subst.
+      unfold logs_leaderLogs in *. intros.
+      simpl in *.
+      find_higher_order_rewrite; update_destruct; subst; rewrite_update; simpl in *;
+      repeat find_rewrite;
+      find_apply_hyp_hyp; break_exists_exists; intuition;
+      find_higher_order_rewrite; update_destruct; subst; rewrite_update; eauto;
+      simpl in *; rewrite update_elections_data_timeout_leaderLogs; eauto.
+    - intuition. unfold logs_leaderLogs_nw in *. intros.
+      simpl in *. find_apply_hyp_hyp. intuition.
+      + copy_eapply_prop_hyp In In; eauto.
+        break_exists_exists; intuition;
+        repeat find_higher_order_rewrite;
+        update_destruct; subst; rewrite_update; eauto;
+        simpl in *; rewrite update_elections_data_timeout_leaderLogs; eauto.
+      + do_in_map. subst. simpl in *.
+        find_eapply_lem_hyp handleTimeout_packets; eauto. intuition.
+        find_false. repeat find_rewrite.
+        repeat eexists; eauto.
   Qed.
 
   Lemma logs_leaderLogs_inductive_doGenericServer :
     refined_raft_net_invariant_do_generic_server logs_leaderLogs_inductive.
   Proof.
-    admit.
+    red. unfold logs_leaderLogs_inductive. intros.
+    match goal with
+      | H : nwState ?net ?h = (?gd, ?d) |- _ =>
+        replace gd with (fst (nwState net h)) in * by (rewrite H; reflexivity);
+          replace d with (snd (nwState net h)) in * by (rewrite H; reflexivity);
+          clear H
+    end.
+    intuition.
+    - find_apply_lem_hyp doGenericServer_log.
+      unfold logs_leaderLogs in *. intros.
+      simpl in *.
+      find_higher_order_rewrite; update_destruct; subst; rewrite_update; simpl in *;
+      repeat find_rewrite;
+      find_apply_hyp_hyp; break_exists_exists; intuition;
+      find_higher_order_rewrite; update_destruct; subst; rewrite_update; eauto.
+    - find_apply_lem_hyp doGenericServer_packets. subst.
+      unfold logs_leaderLogs_nw in *. intros. simpl in *.
+      find_apply_hyp_hyp. intuition.
+      eapply_prop_hyp In In; eauto.
+      break_exists_exists; intuition;
+      repeat find_higher_order_rewrite;
+      update_destruct; subst; rewrite_update; eauto.
   Qed.
 
   Require Import PeanoNat.
@@ -616,6 +746,81 @@ Section LogsLeaderLogs.
       + do_bool. specialize (H1 e); conclude H1 ltac:(apply in_app_iff; intuition).
         omega.
   Qed.
+
+  Lemma findGtIndex_nil :
+    forall l i,
+      (forall e', In e' l -> eIndex e' <= i) ->
+      findGtIndex l i = [].
+  Proof.
+    intros; induction l; simpl in *; intuition.
+    break_if; do_bool; intuition.
+    specialize (H a); intuition. omega.
+  Qed.
+  
+  Lemma findGtIndex_removeAfterIndex_commute :
+    forall l i i',
+      sorted l ->
+      removeAfterIndex (findGtIndex l i) i' =
+      findGtIndex (removeAfterIndex l i') i.
+  Proof.
+    intros. induction l; simpl in *; auto.
+    repeat (break_if; simpl; intuition); do_bool;
+    try congruence.
+    symmetry. apply findGtIndex_nil.
+    intros. find_apply_lem_hyp removeAfterIndex_in.
+    find_apply_hyp_hyp. intuition.
+  Qed.
+
+  Lemma findGtIndex_app_1 :
+    forall l l' i,
+      maxIndex l' <= i ->
+      findGtIndex (l ++ l') i = findGtIndex l i.
+  Proof.
+    induction l; intros; simpl in *; intuition.
+    - destruct l'; simpl in *; intuition.
+      break_if; do_bool; auto; omega.
+    - break_if; do_bool; auto.
+      f_equal. eauto.
+  Qed.
+
+  Lemma findGtIndex_app_2 :
+    forall l l' i,
+      sorted (l ++ l') ->
+      i < maxIndex l' ->
+      findGtIndex (l ++ l') i = l ++ findGtIndex l' i.
+  Proof.
+    induction l; intros; simpl in *; intuition.
+    break_if; do_bool; auto.
+    - f_equal. eauto.
+    - exfalso.
+      destruct l'; simpl in *; intuition.
+      specialize (H1 e); conclude_using intuition; intuition.
+  Qed.
+
+  Lemma thing3 :
+    forall l l' e,
+      sorted (l ++ l') ->
+      (forall e', In e' (l ++ l') -> eIndex e' > 0) ->
+      In e (l ++ l') ->
+      eIndex e <= maxIndex l' ->
+      In e l'.
+  Proof.
+    induction l; intros; simpl in *; intuition.
+    subst. destruct l'; simpl in *; intuition.
+    - exfalso. specialize (H0 e). intuition.
+    - exfalso. specialize (H3 e0). conclude_using intuition.
+      intuition.
+  Qed.
+  
+  Lemma findGtIndex_non_empty :
+    forall l i,
+      i < maxIndex l ->
+      findGtIndex l i <> [].
+  Proof.
+    intros. induction l; simpl in *; intuition.
+    break_if; do_bool; simpl in *; intuition.
+    congruence.
+  Qed.
   
   Lemma logs_leaderLogs_inductive_doLeader :
     refined_raft_net_invariant_do_leader logs_leaderLogs_inductive.
@@ -628,11 +833,21 @@ Section LogsLeaderLogs.
           clear H
     end.
     intuition.
-    - admit.
+    - unfold logs_leaderLogs in *.
+      intros.
+      simpl in *.
+      find_apply_lem_hyp doLeader_log.
+      find_higher_order_rewrite. simpl in *.
+      update_destruct; subst; rewrite_update; simpl in *; repeat find_rewrite;
+      find_apply_hyp_hyp; break_exists_exists; intuition;
+      find_higher_order_rewrite; update_destruct; subst; rewrite_update; eauto.
     - unfold logs_leaderLogs_nw.
       intros. simpl in *. find_apply_hyp_hyp.
       break_or_hyp.
-      + admit.
+      + unfold logs_leaderLogs_nw in *.
+        eapply_prop_hyp pBody pBody; eauto.
+        break_exists_exists; intuition;
+        find_higher_order_rewrite; update_destruct; subst; rewrite_update; eauto.
       + { do_in_map. subst. simpl in *.
           find_eapply_lem_hyp doLeader_spec; eauto. intuition.
           - subst. (* just use host invariant *)
@@ -666,43 +881,9 @@ Section LogsLeaderLogs.
               * find_higher_order_rewrite; update_destruct; subst; rewrite_update; eauto.
               * simpl; auto.
               * rewrite app_nil_r.
-                Lemma findGtIndex_nil :
-                  forall l i,
-                    (forall e', In e' l -> eIndex e' <= i) ->
-                    findGtIndex l i = [].
-                Proof.
-                  intros; induction l; simpl in *; intuition.
-                  break_if; do_bool; intuition.
-                  specialize (H a); intuition. omega.
-                Qed.
-                Lemma findGtIndex_removeAfterIndex_commute :
-                  forall l i i',
-                    sorted l ->
-                    removeAfterIndex (findGtIndex l i) i' =
-                    findGtIndex (removeAfterIndex l i') i.
-                Proof.
-                  intros. induction l; simpl in *; auto.
-                  repeat (break_if; simpl; intuition); do_bool;
-                  try congruence.
-                  symmetry. apply findGtIndex_nil.
-                  intros. find_apply_lem_hyp removeAfterIndex_in.
-                  find_apply_hyp_hyp. intuition.
-                Qed.
                 rewrite findGtIndex_removeAfterIndex_commute; eauto using lift_logs_sorted.
                 unfold ghost_data in *. simpl in *.
                 find_rewrite.
-
-                Lemma findGtIndex_app_1 :
-                  forall l l' i,
-                    maxIndex l' <= i ->
-                    findGtIndex (l ++ l') i = findGtIndex l i.
-                Proof.
-                  induction l; intros; simpl in *; intuition.
-                  - destruct l'; simpl in *; intuition.
-                    break_if; do_bool; auto; omega.
-                  - break_if; do_bool; auto.
-                    f_equal. eauto.
-                Qed.
                 eapply findGtIndex_app_1; omega.
               * eauto using findGtIndex_in.
               * left. intuition.
@@ -743,20 +924,6 @@ Section LogsLeaderLogs.
                 assert (sorted (es ++ ll)) by (repeat find_reverse_rewrite;
                                                apply removeAfterIndex_sorted;
                                                repeat find_rewrite; eauto using lift_logs_sorted).
-                Lemma thing3 :
-                  forall l l' e,
-                    sorted (l ++ l') ->
-                    (forall e', In e' (l ++ l') -> eIndex e' > 0) ->
-                    In e (l ++ l') ->
-                    eIndex e <= maxIndex l' ->
-                    In e l'.
-                Proof.
-                  induction l; intros; simpl in *; intuition.
-                  subst. destruct l'; simpl in *; intuition.
-                  - exfalso. specialize (H0 e). intuition.
-                  - exfalso. specialize (H3 e0). conclude_using intuition.
-                    intuition.
-                Qed.
                 eapply thing3; eauto; try omega. intros.
                 match goal with
                   | |- eIndex ?e > _ =>
@@ -772,19 +939,6 @@ Section LogsLeaderLogs.
               * rewrite findGtIndex_removeAfterIndex_commute; eauto using lift_logs_sorted.
                 unfold ghost_data in *. simpl in *.
                 find_rewrite.
-                Lemma findGtIndex_app_2 :
-                  forall l l' i,
-                    sorted (l ++ l') ->
-                    i < maxIndex l' ->
-                    findGtIndex (l ++ l') i = l ++ findGtIndex l' i.
-                Proof.
-                  induction l; intros; simpl in *; intuition.
-                  break_if; do_bool; auto.
-                  - f_equal. eauto.
-                  - exfalso.
-                    destruct l'; simpl in *; intuition.
-                    specialize (H1 e); conclude_using intuition; intuition.
-                Qed.
                 assert (sorted (es ++ ll)) by (repeat find_reverse_rewrite;
                                                apply removeAfterIndex_sorted;
                                                repeat find_rewrite; eauto using lift_logs_sorted).
@@ -810,15 +964,6 @@ Section LogsLeaderLogs.
                      end. 
                      eapply entries_gt_0_invariant; eauto.
                   - left. intros.
-                    Lemma findGtIndex_non_empty :
-                      forall l i,
-                        i < maxIndex l ->
-                        findGtIndex l i <> [].
-                    Proof.
-                      intros. induction l; simpl in *; intuition.
-                      break_if; do_bool; simpl in *; intuition.
-                      congruence.
-                    Qed.
                     eapply findGtIndex_non_empty; eauto.
                 }
           - exfalso. (* use nextIndex_sanity *)
@@ -831,19 +976,50 @@ Section LogsLeaderLogs.
   Lemma logs_leaderLogs_inductive_init :
     refined_raft_net_invariant_init logs_leaderLogs_inductive.
   Proof.
-    admit.
+    unfold logs_leaderLogs_inductive. red. intuition.
+    - unfold logs_leaderLogs. intros. simpl in *. intuition.
+    - unfold logs_leaderLogs_nw. intros. simpl in *. intuition.
   Qed.
 
   Lemma logs_leaderLogs_inductive_state_same_packets_subset :
     refined_raft_net_invariant_state_same_packet_subset logs_leaderLogs_inductive.
   Proof.
-    admit.
+    red. unfold logs_leaderLogs_inductive. intuition.
+    - unfold logs_leaderLogs in *. intros.
+      repeat find_reverse_higher_order_rewrite.
+      find_apply_hyp_hyp. break_exists_exists; intuition.
+      find_reverse_higher_order_rewrite. auto.
+    - unfold logs_leaderLogs_nw in *. intros.
+      find_apply_hyp_hyp. eapply_prop_hyp pBody pBody; eauto.
+      break_exists_exists; intuition; subst;
+      repeat find_reverse_higher_order_rewrite; auto.
   Qed.
 
   Lemma logs_leaderLogs_inductive_reboot :
     refined_raft_net_invariant_reboot logs_leaderLogs_inductive.
   Proof.
-    admit.
+    red. unfold logs_leaderLogs_inductive. intros.
+    match goal with
+      | H : nwState ?net ?h = (?gd, ?d) |- _ =>
+        replace gd with (fst (nwState net h)) in * by (rewrite H; reflexivity);
+          replace d with (snd (nwState net h)) in * by (rewrite H; reflexivity);
+          clear H
+    end.
+    intuition.
+    - subst. unfold logs_leaderLogs in *. intros.
+      repeat find_reverse_higher_order_rewrite.
+      find_higher_order_rewrite.
+      update_destruct; subst; rewrite_update; unfold reboot in *; simpl in *;
+      find_apply_hyp_hyp; break_exists_exists; intuition;
+      find_higher_order_rewrite; simpl in *; auto;
+      update_destruct; subst; rewrite_update; simpl in *; auto.
+    - unfold logs_leaderLogs_nw in *. intros.
+      find_reverse_rewrite.
+      eapply_prop_hyp pBody pBody; eauto.
+      break_exists_exists; intuition; subst;
+      repeat find_reverse_higher_order_rewrite; auto;
+      repeat find_higher_order_rewrite; simpl in *; auto;
+      update_destruct; subst; rewrite_update; simpl in *; auto.
   Qed.
 
   Theorem logs_leaderLogs_inductive_invariant :
