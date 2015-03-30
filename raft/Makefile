@@ -16,3 +16,5 @@ quick: Makefile.coq
 clean: Makefile.coq
 	$(MAKE) -f Makefile.coq clean
 	rm -rf Makefile.coq
+
+.PHONY: Makefile.coq
