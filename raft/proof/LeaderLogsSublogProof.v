@@ -20,6 +20,12 @@ Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 Require Import LeaderSublogInterface.
 Require Import LeaderLogsTermSanityInterface.
 Require Import EveryEntryWasCreatedInterface.
+Require Import LeaderLogsCandidateEntriesInterface.
+
+Require Import CroniesCorrectInterface.
+Require Import VotesCorrectInterface.
+
+Require Import RefinementCommonTheorems.
 
 Require Import LeaderLogsSublogInterface.
 
@@ -32,6 +38,10 @@ Section LeaderLogsSublog.
   Context {lsi : leader_sublog_interface}.
   Context {lltsi : leaderLogs_term_sanity_interface}.
   Context {eewci : every_entry_was_created_interface}.
+  Context {llcei : leaderLogs_candidate_entries_interface}.
+
+  Context {cci : cronies_correct_interface}.
+  Context {vci : votes_correct_interface}.
 
   Theorem leaderLogs_sublog_init :
     refined_raft_net_invariant_init leaderLogs_sublog.
@@ -81,7 +91,7 @@ Section LeaderLogsSublog.
     start.
     find_rewrite_lem update_elections_data_client_request_leaderLogs.
     find_erewrite_lem update_nop_ext' .
-    update_destruct; rewrite_update.
+    update_destruct.
     - destruct (log d) using (handleClientRequest_log_ind $(eauto)$).
       + eauto.
       + simpl. right. eauto.
@@ -99,9 +109,9 @@ Section LeaderLogsSublog.
     - start.
       find_rewrite_lem update_elections_data_timeout_leaderLogs.
       find_erewrite_lem update_nop_ext' .
-      update_destruct; rewrite_update; eauto.
+      update_destruct; eauto.
       erewrite handleTimeout_log_same by eauto; eauto.
-    - repeat update_destruct; rewrite_update; try congruence.
+    - repeat update_destruct; try congruence.
       + find_rewrite_lem update_elections_data_timeout_leaderLogs.
         eauto.
       + eauto.
@@ -129,10 +139,10 @@ Section LeaderLogsSublog.
     - start.
       find_rewrite_lem update_elections_data_appendEntries_leaderLogs.
       find_erewrite_lem update_nop_ext'.
-      update_destruct; rewrite_update; eauto.
+      update_destruct; eauto.
       erewrite handleAppendEntries_leader by (eauto; congruence).
       eauto.
-    - repeat update_destruct; rewrite_update; try congruence.
+    - repeat update_destruct; try congruence.
       + find_rewrite_lem update_elections_data_appendEntries_leaderLogs.
         eauto.
       + eauto.
@@ -148,10 +158,10 @@ Section LeaderLogsSublog.
     intuition.
     - start.
       find_erewrite_lem update_nop_ext'.
-      update_destruct; rewrite_update; eauto.
+      update_destruct; eauto.
       erewrite handleAppendEntriesReply_same_log by eauto.
       eauto.
-    - repeat update_destruct; rewrite_update; try congruence; eauto.
+    - repeat update_destruct; try congruence; eauto.
   Qed.
 
   Theorem leaderLogs_sublog_request_vote :
@@ -165,10 +175,10 @@ Section LeaderLogsSublog.
     - start.
       find_rewrite_lem leaderLogs_update_elections_data_requestVote.
       find_erewrite_lem update_nop_ext'.
-      update_destruct; rewrite_update; eauto.
+      update_destruct; eauto.
       erewrite handleRequestVote_same_log by eauto.
       eauto.
-    - repeat update_destruct; rewrite_update; try congruence.
+    - repeat update_destruct; try congruence.
       + find_rewrite_lem leaderLogs_update_elections_data_requestVote.
         eauto.
       + eauto.
@@ -202,7 +212,8 @@ Section LeaderLogsSublog.
        log st' = log st) \/
       (currentTerm st' = currentTerm st /\
        log st' = log st /\
-       ((type st = Candidate /\ type st' = Leader) \/ type st' = type st)).
+       ((type st = Candidate /\ type st' = Leader /\ r = true /\ currentTerm st = t /\
+         wonElection (dedup name_eq_dec (h' :: votesReceived st)) = true) \/ type st' = type st)).
   Proof.
     intros.
     unfold handleRequestVoteReply, advanceCurrentTerm in *.
@@ -222,6 +233,27 @@ Section LeaderLogsSublog.
     find_copy_eapply_lem_hyp leaderLogs_term_sanity_invariant; eauto.
     find_eapply_lem_hyp leaderLogs_currentTerm_invariant; eauto.
     omega.
+  Qed.
+
+  Arguments dedup : simpl never.
+
+  Lemma leaderLogs_candidate_entries_rvr :
+    forall net,
+      leaderLogs_candidateEntries (nwState net) ->
+      votes_correct net ->
+      cronies_correct net ->
+      forall p h t ll e,
+        In (t, ll) (leaderLogs (fst (nwState net h))) ->
+        In e ll ->
+        In p (nwPackets net) ->
+        pBody p = RequestVoteReply (eTerm e) true ->
+        currentTerm (snd (nwState net (pDst p))) = eTerm e ->
+        wonElection (dedup name_eq_dec (pSrc p :: votesReceived (snd (nwState net (pDst p))))) = true ->
+        type (snd (nwState net (pDst p))) <> Candidate.
+  Proof.
+    intros.
+    eapply_prop_hyp leaderLogs_candidateEntries In; eauto.
+    eapply wonElection_candidateEntries_rvr; auto. eauto. auto.  auto.
   Qed.
 
   Theorem leaderLogs_sublog_request_vote_reply :
@@ -256,9 +288,27 @@ Section LeaderLogsSublog.
         * exfalso. eauto using contradict_leaderLogs_term_sanity.
         * subst. unfold raft_data in *. repeat find_rewrite. auto.
       + repeat find_rewrite.
-        find_copy_eapply_lem_hyp every_entry_was_created_invariant; eauto.
-        conclude_using eauto. break_exists.
-  Admitted.
+        exfalso.
+        eapply leaderLogs_candidate_entries_rvr; eauto;
+          eauto using leaderLogs_candidate_entries_invariant,
+                      votes_correct_invariant,
+                      cronies_correct_invariant.
+        congruence.
+      + find_eapply_lem_hyp leaderLogs_update_elections_data_RVR; eauto; intuition.
+        * eauto.
+        * subst. unfold raft_data in *. repeat find_rewrite.
+          eapply lifted_leader_sublog_host; eauto.
+      + eauto.
+    - repeat update_destruct.
+      + find_eapply_lem_hyp leaderLogs_update_elections_data_RVR; eauto; intuition.
+        * repeat find_rewrite. eauto.
+        * subst. unfold raft_data in *. repeat find_rewrite. auto.
+      + repeat find_rewrite. eauto.
+      + find_eapply_lem_hyp leaderLogs_update_elections_data_RVR; eauto; intuition.
+        * repeat find_rewrite. eauto.
+        * subst. unfold raft_data in *. repeat find_rewrite. discriminate.
+      + eauto.
+  Qed.
 
   Theorem leaderLogs_sublog_do_leader :
     refined_raft_net_invariant_do_leader leaderLogs_sublog.
