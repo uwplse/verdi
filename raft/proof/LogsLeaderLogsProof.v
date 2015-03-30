@@ -237,33 +237,6 @@ Section LogsLeaderLogs.
     do_bool. specialize (H a). intuition. omega.
   Qed.
 
-  Lemma thing2 :
-    forall l l' i,
-      l <> [] ->
-      Prefix l l' ->
-      sorted l' ->
-      contiguous_range_exact_lo l i ->
-      contiguous_range_exact_lo l' 0 ->
-      l ++ (removeAfterIndex l' i) = l'.
-  Proof.
-    admit.
-  Qed.
-
-  Lemma thing :
-    forall es l l' e e',
-      sorted l ->
-      sorted l' ->
-      entries_match l l' ->
-      es <> [] ->
-      Prefix es l' ->
-      contiguous_range_exact_lo es (eIndex e) ->
-      In e l ->
-      In e' l' ->
-      eIndex e = eIndex e' ->
-      eTerm e = eTerm e' ->
-      es ++ (removeAfterIndex l (eIndex e)) = l'.
-  Proof.
-  Admitted.
     
   Lemma removeAfterIndex_in_app :
     forall l l' e,

@@ -1496,7 +1496,35 @@ Section CommonTheorems.
     symmetry in H9. copy_apply H4 H10; try omega.
     eapply rachet with (xs := l'); eauto using sorted_uniqueIndices.
   Qed.
-  
+
+  Lemma thing2 :
+    forall l l' i,
+      l <> [] ->
+      Prefix l l' ->
+      sorted l' ->
+      contiguous_range_exact_lo l i ->
+      contiguous_range_exact_lo l' 0 ->
+      l ++ (removeAfterIndex l' i) = l'.
+  Proof.
+    admit.
+  Qed.
+
+  Lemma thing :
+    forall es l l' e e',
+      sorted l ->
+      sorted l' ->
+      entries_match l l' ->
+      es <> [] ->
+      Prefix es l' ->
+      contiguous_range_exact_lo es (eIndex e) ->
+      In e l ->
+      In e' l' ->
+      eIndex e = eIndex e' ->
+      eTerm e = eTerm e' ->
+      es ++ (removeAfterIndex l (eIndex e)) = l'.
+  Proof.
+  Admitted.
+    
 End CommonTheorems.
 
 Notation is_append_entries m :=
