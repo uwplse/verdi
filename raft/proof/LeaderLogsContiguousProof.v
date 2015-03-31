@@ -16,6 +16,8 @@ Require Import CommonTheorems.
 Require Import LeaderLogsContiguousInterface.
 Require Import LogMatchingInterface.
 
+Require Import SpecLemmas.
+
 Section LeaderLogsContiguous.
 
   Context {orig_base_params : BaseParams}.
