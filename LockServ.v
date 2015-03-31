@@ -36,14 +36,12 @@ Section LockServ.
   | Unlock : Msg
   | Locked : Msg.
 
-  Definition Input := Msg.
-  Definition Output := Msg.
-
   Definition Msg_eq_dec : forall a b : Msg, {a = b} + {a <> b}.
     decide equality.
   Qed.
-
-
+    
+  Definition Input := Msg.
+  Definition Output := Msg.
 
   Record Data := mkData { queue : list Client_index ; held : bool }.
 
@@ -84,17 +82,17 @@ Section LockServ.
 
   Definition ServerIOHandler (m : Msg) : Handler Data := nop.
 
-  Definition NetHandler (nm src : Name) (m : Msg) : Handler Data.
-    destruct nm.
-    - exact (ClientNetHandler c m).
-    - exact (ServerNetHandler src m).
-  Defined.
+  Definition NetHandler (nm src : Name) (m : Msg) : Handler Data :=
+    match nm with
+      | Client c => ClientNetHandler c m
+      | Server   => ServerNetHandler src m
+    end.
 
-  Definition InputHandler (nm : Name) (m : Msg) : Handler Data.
-    destruct nm.
-    - exact (ClientIOHandler c m).
-    - exact (ServerIOHandler m).
-  Defined.
+  Definition InputHandler (nm : Name) (m : Msg) : Handler Data :=
+    match nm with
+      | Client c => ClientIOHandler c m
+      | Server   => ServerIOHandler m
+    end.
 
   Ltac handler_unfold :=
     repeat (monad_unfold; unfold NetHandler,
@@ -158,8 +156,6 @@ Section LockServ.
                           runGenHandler_ignore s (InputHandler nm msg)
     }.
 
-
-
   (* This is the fundamental safety property of the system:
        No two different clients can (think they) hold
        the lock at once.
@@ -187,10 +183,7 @@ Section LockServ.
   Proof.
     unfold locks_correct, mutual_exclusion.
     intros.
-    repeat match goal with
-      | [ H : forall _, _ -> _, H' : _ |- _ ] =>
-        apply H in H'
-    end.
+    repeat find_apply_hyp_hyp.
     break_exists.
     find_rewrite. find_inversion.
     auto.
@@ -252,15 +245,13 @@ Section LockServ.
   Proof.
     handler_unfold.
     intros.
-    repeat break_match;
-      repeat match goal with
-               | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
-             end; subst; simpl in *; subst; simpl in *.
+    repeat break_match; repeat tuple_inversion;
+      subst; simpl in *; subst; simpl in *.
     - left. eexists. intuition.
     - left. eexists. intuition.
     - left. eexists. intuition.
-    - subst. auto.
-    - subst. auto.
+    - auto.
+    - auto.
   Qed.
 
   Lemma locks_correct_update_false :
@@ -306,10 +297,7 @@ Section LockServ.
   Proof.
     handler_unfold.
     intros.
-    repeat break_match;
-      repeat match goal with
-               | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
-             end; subst; auto.
+    repeat break_match; repeat tuple_inversion; subst; auto.
   Qed.
 
   Lemma ServerNetHandler_cases :
@@ -329,19 +317,16 @@ Section LockServ.
   Proof.
     handler_unfold.
     intros.
-    repeat break_match;
-      repeat match goal with
-               | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
-             end.
-    - subst. subst. find_apply_lem_hyp null_sound. find_rewrite. simpl.
+    repeat break_match; repeat tuple_inversion; subst.
+    - find_apply_lem_hyp null_sound. find_rewrite. simpl.
       intuition. left. eexists. intuition.
-    - subst. subst. simpl. find_apply_lem_hyp null_false_neq_nil.
+    - simpl. find_apply_lem_hyp null_false_neq_nil.
       intuition. left. eexists. intuition.
-    - subst. subst. simpl. auto.
-    - subst. subst. simpl. destruct st; simpl in *; subst; auto.
-    - subst. subst. simpl in *. intuition.
-    - subst. subst. simpl in *. intuition eauto.
-    - subst. subst. simpl. intuition.
+    - simpl. auto.
+    - simpl. destruct st; simpl in *; subst; auto.
+    - simpl in *. intuition.
+    - simpl in *. intuition eauto.
+    - simpl. intuition.
   Qed.
 
   Definition at_head_of_queue sigma c := (exists t, queue (sigma Server) = c :: t).
@@ -862,5 +847,385 @@ Section LockServ.
   - eauto using LockServ_nwnw_input_handlers_new_new.
   - eauto using LockServ_nwnw_net_handlers_old_new.
   - eauto using LockServ_nwnw_net_handlers_new_new.
+  Defined.
+
+  Fixpoint last_holder' (holder : option Client_index) (trace : list (name * (input + list output))) : option Client_index :=
+    match trace with
+      | [] => holder
+      | (Client n, inl Unlock) :: tr => match holder with
+                                          | None => last_holder' holder tr
+                                          | Some m => if fin_eq_dec _ n m
+                                                      then last_holder' None tr
+                                                      else last_holder' holder tr
+                                        end
+
+      | (Client n, inr [Locked]) :: tr => last_holder' (Some n) tr
+      | (n, _) :: tr => last_holder' holder tr
+    end.
+
+  Fixpoint trace_mutual_exclusion' (holder : option Client_index) (trace : list (name * (input + list output))) : Prop :=
+    match trace with
+      | [] => True
+      | (Client n, (inl Unlock)) :: tr' => match holder with
+                                             | Some m => if fin_eq_dec _ n m
+                                                         then trace_mutual_exclusion' None tr'
+                                                         else trace_mutual_exclusion' holder tr'
+                                             | _ => trace_mutual_exclusion' holder tr'
+                                           end
+      | (n, (inl _)) :: tr' => trace_mutual_exclusion' holder tr'
+      | (Client n, (inr [Locked])) :: tr' => match holder with
+                                               | None => trace_mutual_exclusion' (Some n) tr'
+                                               | Some _ => False
+                                             end
+      | (_, (inr [])) :: tr' => trace_mutual_exclusion' holder tr'
+      | (_, (inr _)) :: tr' => False
+    end.
+
+  Definition trace_mutual_exclusion (trace : list (name * (input + list output))) : Prop :=
+    trace_mutual_exclusion' None trace.
+
+  Definition last_holder (trace : list (name * (input + list output))) : option Client_index :=
+    last_holder' None trace.
+
+  Lemma cross_relation :
+    forall (P : network -> list (name * (input + list output)) -> Prop),
+      P step_m_init [] ->
+      (forall st st' tr ev,
+         step_m_star step_m_init st tr ->
+         P st tr ->
+         step_m st st' ev ->
+         P st' (tr ++ ev)) ->
+      forall st tr,
+        step_m_star step_m_init st tr ->
+        P st tr.
+  Proof.
+    intros.
+    find_apply_lem_hyp refl_trans_1n_n1_trace.
+    prep_induction H1.
+    induction H1; intros; subst; eauto.
+    eapply H3; eauto.
+    - apply refl_trans_n1_1n_trace. auto.
+    - apply IHrefl_trans_n1_trace; auto.
+  Qed.
+
+  Lemma trace_mutex'_no_out_extend :
+    forall tr n h,
+      trace_mutual_exclusion' h tr ->
+      trace_mutual_exclusion' h (tr ++ [(n, inr [])]).
+  Proof.
+    induction tr; intuition; unfold trace_mutual_exclusion in *; simpl in *;
+    repeat break_match; subst; intuition.
+  Qed.
+
+  Lemma last_holder'_no_out_inv :
+    forall tr h c n,
+      last_holder' h (tr ++ [(c, inr [])]) = Some n ->
+      last_holder' h tr = Some n.
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; subst; intuition; eauto.
+  Qed.
+
+  Lemma last_holder'_no_out_extend :
+    forall tr h c n,
+      last_holder' h tr = Some n ->
+      last_holder' h (tr ++ [(c, inr [])]) = Some n.
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; subst; intuition.
+  Qed.
+
+  Lemma decomposition_reachable_nw_invariant :
+    forall st tr p,
+      step_m_star step_m_init st tr ->
+      In p (nwPackets st) ->
+      network_invariant (nwState st) p.
+  Proof.
+    pose proof decomposition_invariant.
+    find_apply_lem_hyp inductive_invariant_true_in_reachable.
+    unfold true_in_reachable, reachable in *.
+    intuition.
+    unfold composed_invariant in *.
+    apply H; eauto.
+  Qed.
+
+  Lemma trace_mutex'_locked_extend :
+    forall tr h n,
+      trace_mutual_exclusion' h tr ->
+      last_holder' h tr = None ->
+      trace_mutual_exclusion' h (tr ++ [(Client n, inr [Locked])]).
+  Proof.
+    induction tr; intros; simpl in *.
+    - subst. auto.
+    - simpl in *. repeat break_match; subst; intuition.
+  Qed.
+
+  Lemma reachable_intro :
+    forall a tr,
+      step_m_star step_m_init a tr ->
+      reachable step_m step_m_init a.
+  Proof.
+    unfold reachable.
+    intros. eauto.
+  Qed.
+
+  Lemma locks_correct_locked_invariant :
+    forall st p,
+      reachable step_m step_m_init st ->
+      In p (nwPackets st) ->
+      locks_correct_locked (nwState st) p.
+  Proof.
+    intros.
+    pose proof decomposition_invariant.
+    find_apply_lem_hyp inductive_invariant_true_in_reachable.
+    unfold true_in_reachable in *. apply H1; auto.
+  Qed.
+
+  Lemma locks_correct_invariant :
+    forall st,
+      reachable step_m step_m_init st ->
+      locks_correct (nwState st).
+  Proof.
+    intros.
+    pose proof decomposition_invariant.
+    find_apply_lem_hyp inductive_invariant_true_in_reachable.
+    unfold true_in_reachable in *. apply H0; auto.
+  Qed.
+
+  Lemma mutual_exclusion_invariant :
+    forall st,
+      reachable step_m step_m_init st ->
+      mutual_exclusion (nwState st).
+  Proof.
+    intros.
+    apply locks_correct_implies_mutex.
+    auto using locks_correct_invariant.
+  Qed.
+
+  Lemma last_holder'_locked_some_eq :
+    forall tr h c n,
+      last_holder' h (tr ++ [(Client c, inr [Locked])]) = Some n ->
+      c = n.
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; subst; eauto.
+    congruence.
+  Qed.
+
+  Ltac my_update_destruct :=
+    match goal with
+      | [H : context [ update _ ?x _ ?y ] |- _ ] => destruct (Name_eq_dec x y)
+      | [ |- context [ update _ ?x _ ?y ] ] => destruct (Name_eq_dec x y)
+    end.
+
+  Lemma last_holder'_server_extend :
+    forall tr h i,
+      last_holder' h (tr ++ [(Server, inl i)]) = last_holder' h tr.
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; auto.
+  Qed.
+
+  Lemma last_holder'_locked_extend :
+    forall tr h n,
+      last_holder' h (tr ++ [(Client n, inr [Locked])]) = Some n.
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; auto.
+  Qed.
+
+  Lemma trace_mutual_exclusion'_extend_input :
+    forall tr h c i,
+      i <> Unlock ->
+      trace_mutual_exclusion' h tr ->
+      trace_mutual_exclusion' h (tr ++ [(Client c, inl i)]).
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; intuition.
+  Qed.
+
+  Lemma trace_mutual_exclusion'_extend_input_server :
+    forall tr h i,
+      trace_mutual_exclusion' h tr ->
+      trace_mutual_exclusion' h (tr ++ [(Server, inl i)]).
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; intuition.
+  Qed.
+
+  Lemma last_holder'_input_inv :
+    forall tr h c i n,
+      i <> Unlock ->
+      last_holder' h (tr ++ [(Client c, inl i)]) = Some n ->
+      last_holder' h tr = Some n.
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; auto; try congruence; subst; eauto.
+  Qed.
+
+  Lemma last_holder'_input_inv_server :
+    forall tr h i n,
+      last_holder' h (tr ++ [(Server, inl i)]) = Some n ->
+      last_holder' h tr = Some n.
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; auto; try congruence; subst; eauto.
+  Qed.
+
+  Lemma last_holder'_input_extend :
+    forall tr h c i n,
+      i <> Unlock ->
+      last_holder' h tr = Some n ->
+      last_holder' h (tr ++ [(Client c, inl i)]) = Some n.
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; auto.
+    congruence.
+  Qed.
+
+  Lemma trace_mutex'_unlock_extend :
+    forall tr h c,
+      trace_mutual_exclusion' h tr ->
+      trace_mutual_exclusion' h (tr ++ [(Client c, inl Unlock)]).
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; intuition (auto; try congruence).
+  Qed.
+
+  Lemma last_holder'_unlock_none :
+    forall tr h c,
+      last_holder' h tr = Some c ->
+      last_holder' h (tr ++ [(Client c, inl Unlock)]) = None.
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; intuition.
+    congruence.
+  Qed.
+
+  Lemma last_holder_unlock_none :
+    forall tr c,
+      last_holder tr = Some c ->
+      last_holder (tr ++ [(Client c, inl Unlock)]) = None.
+  Proof.
+    intros.
+    apply last_holder'_unlock_none. auto.
+  Qed.
+
+  Lemma last_holder_some_unlock_inv :
+    forall tr h c n,
+      last_holder' h (tr ++ [(Client c, inl Unlock)]) = Some n ->
+      last_holder' h tr = Some n.
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; subst;
+    intuition; try congruence; eauto.
+  Qed.
+
+  Lemma last_holder'_neq_unlock_extend :
+    forall tr h n c,
+      last_holder' h tr = Some n ->
+      n <> c ->
+      last_holder' h (tr ++ [(Client c, inl Unlock)]) = Some n.
+  Proof.
+    induction tr; intros; simpl in *; repeat break_match; subst; try congruence; intuition.
+  Qed.
+
+  Lemma LockServ_mutual_exclusion_trace :
+    forall st tr,
+      step_m_star step_m_init st tr ->
+      trace_mutual_exclusion tr /\
+      (forall n, last_holder tr = Some n -> held (nwState st (Client n)) = true) /\
+      (forall n, held (nwState st (Client n)) = true -> last_holder tr = Some n).
+  Proof.
+    apply cross_relation; intros.
+    - intuition.
+      + red. red. auto.
+      + unfold last_holder in *. simpl in *. discriminate.
+      + unfold last_holder in *. simpl in *. discriminate.
+    - match goal with
+        | [ H : step_m _ _ _ |- _ ] => invcs H
+      end; monad_unfold; repeat break_let; repeat find_inversion.
+      + unfold NetHandler in *. break_match.
+        * find_apply_lem_hyp ClientNetHandler_cases.
+          break_and.
+          { break_or_hyp.
+            - intuition; subst.
+              + apply trace_mutex'_no_out_extend; auto.
+              + rewrite update_nop_ext.
+                find_apply_lem_hyp last_holder'_no_out_inv.
+                auto.
+              + match goal with
+                  | [ H : _ |- _ ] => rewrite update_nop in H
+                end.
+                find_apply_hyp_hyp.
+                apply last_holder'_no_out_extend. auto.
+            - intuition; subst.
+              + apply trace_mutex'_locked_extend. auto.
+                destruct (last_holder' None tr) eqn:?; auto.
+                find_apply_hyp_hyp.
+                erewrite locked_in_flight_all_clients_false in * by
+                  eauto using locks_correct_locked_invariant, reachable_intro,
+                              locks_correct_invariant.
+                discriminate.
+              + my_update_destruct; try find_inversion; rewrite_update; auto.
+                find_apply_lem_hyp last_holder'_locked_some_eq. congruence.
+              + my_update_destruct; try find_inversion; rewrite_update.
+                * apply last_holder'_locked_extend.
+                * erewrite locked_in_flight_all_clients_false in * by
+                      eauto using locks_correct_locked_invariant, reachable_intro,
+                                  locks_correct_invariant.
+                  discriminate.
+          }
+        * { find_apply_lem_hyp ServerNetHandler_cases. break_and. subst.
+            repeat split.
+            - apply trace_mutex'_no_out_extend. auto.
+            - intros. my_update_destruct; try discriminate.
+              rewrite_update.
+              find_apply_lem_hyp last_holder'_no_out_inv.
+              auto.
+            - intros. my_update_destruct; try discriminate; rewrite_update.
+              apply last_holder'_no_out_extend. auto.
+          }
+      + unfold InputHandler in *. break_match.
+        * unfold ClientIOHandler in *.
+          { monad_unfold.
+            repeat break_match; repeat find_inversion; intuition;
+            repeat rewrite snoc_assoc in *;
+            try apply trace_mutex'_no_out_extend;
+            try find_apply_lem_hyp last_holder'_no_out_inv;
+            try (apply last_holder'_no_out_extend; auto).
+            - apply trace_mutual_exclusion'_extend_input; auto. congruence.
+            - rewrite update_nop_ext.
+              find_apply_lem_hyp last_holder'_input_inv; try congruence.
+              auto.
+            - match goal with
+                | [ H : _ |- _ ] => rewrite update_nop in H
+              end.
+              apply last_holder'_input_extend; auto. congruence.
+            - apply trace_mutex'_unlock_extend; auto.
+            - rewrite last_holder_unlock_none in *; auto. discriminate.
+            - my_update_destruct; try find_inversion; rewrite_update.
+              + discriminate.
+              + assert (mutual_exclusion (nwState st))
+                       by eauto using mutual_exclusion_invariant, reachable_intro.
+                unfold mutual_exclusion in *.
+                assert (c = n) by eauto. congruence.
+            - apply trace_mutex'_unlock_extend. auto.
+            - rewrite update_nop.
+              find_apply_lem_hyp last_holder_some_unlock_inv.
+              auto.
+            - match goal with
+                | [ H : _ |- _ ] => rewrite update_nop in H
+              end.
+              assert (n <> c) by congruence.
+              find_apply_hyp_hyp.
+              apply last_holder'_neq_unlock_extend; auto.
+            - apply trace_mutual_exclusion'_extend_input; auto. congruence.
+            - rewrite update_nop_ext. find_apply_lem_hyp last_holder'_input_inv; try congruence.
+              auto.
+            - match goal with
+                | [ H : _ |- _ ] => rewrite update_nop in H
+              end.
+              apply last_holder'_input_extend; auto. congruence.
+          }
+        * unfold ServerIOHandler in *.
+          monad_unfold. find_inversion.
+          { intuition;
+            repeat rewrite snoc_assoc in *.
+            - apply trace_mutex'_no_out_extend.
+              apply trace_mutual_exclusion'_extend_input_server. auto.
+            - find_apply_lem_hyp last_holder'_no_out_inv.
+              rewrite update_nop. find_apply_lem_hyp last_holder'_input_inv_server. auto.
+            - apply last_holder'_no_out_extend; auto.
+              rewrite_update. unfold last_holder. rewrite last_holder'_server_extend.
+              auto.
+          }
   Qed.
 End LockServ.
