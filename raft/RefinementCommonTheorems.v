@@ -16,10 +16,18 @@ Require Import CroniesCorrectInterface.
 Require Import CommonTheorems.
 Require Import RefinementCommonDefinitions.
 
+Require Import SpecLemmas.
+
+Require Import UpdateLemmas.
+Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+
 Section CommonTheorems.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
+
+  Context {cci : cronies_correct_interface}.
+  Context {vci : votes_correct_interface}.
 
   Lemma candidateEntries_wonElection :
     forall (net : network (params := raft_refined_multi_params))  e h,
@@ -97,5 +105,111 @@ Section CommonTheorems.
       assert (x = pDst p) by (eapply_prop one_vote_per_term; eauto).
       subst.
       repeat concludes. contradiction.
+  Qed.
+
+    Lemma candidateEntries_ext :
+    forall e sigma sigma',
+      (forall h, sigma' h = sigma h) ->
+      candidateEntries e sigma ->
+      candidateEntries e sigma'.
+  Proof.
+    unfold candidateEntries.
+    intuition.
+    break_exists_exists.
+    intuition;
+    repeat find_higher_order_rewrite; auto.
+  Qed.
+
+  Lemma candidateEntries_same :
+    forall (st st' : name -> _) e,
+      candidateEntries e st ->
+      (forall h, cronies (fst (st' h)) = cronies (fst (st h))) ->
+      (forall h, currentTerm (snd (st' h)) = currentTerm (snd (st h))) ->
+      (forall h, type (snd (st' h)) = type (snd (st h))) ->
+      candidateEntries e st'.
+  Proof.
+    unfold candidateEntries.
+    intuition. break_exists. break_and.
+    eexists.
+    repeat find_higher_order_rewrite.
+    eauto.
+  Qed.
+
+  Lemma won_election_cronies :
+    forall net h,
+      cronies_correct net ->
+      type (snd (nwState net h)) = Leader ->
+      wonElection (dedup name_eq_dec (cronies (fst (nwState net h))
+                                              (currentTerm (snd (nwState net h))))) = true.
+  Proof.
+    intros.
+    unfold cronies_correct in *; intuition.
+    eapply wonElection_no_dup_in;
+      eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
+  Qed.
+
+  Ltac my_update_destruct :=
+    match goal with
+      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
+    end.
+
+  Lemma handleRequestVoteReply_preserves_candidate_entries :
+    forall net h h' t r st' e,
+      st' = handleRequestVoteReply h (snd (nwState net h)) h' t r ->
+      refined_raft_intermediate_reachable net ->
+      candidateEntries e (nwState net) ->
+      candidateEntries e (update (nwState net) h
+                               (update_elections_data_requestVoteReply h h' t r (nwState net h),
+                                st')).
+  Proof.
+  unfold candidateEntries.
+    intros. break_exists. break_and.
+    exists x.
+    split.
+    - rewrite update_fun_comm. simpl.
+      rewrite update_fun_comm. simpl.
+      my_update_destruct; subst; rewrite_update; auto.
+      unfold update_elections_data_requestVoteReply in *.
+      repeat break_match; simpl in *; auto.
+      + break_if; simpl in *; repeat find_rewrite; auto.
+         match goal with
+          | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
+            remember (handleRequestVoteReply h st h' t r) as new_state
+         end. find_apply_lem_hyp handleRequestVoteReply_spec. intuition.
+         repeat find_rewrite. intuition.
+      + break_if; simpl in *; find_rewrite; auto.
+        match goal with
+          | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
+            remember (handleRequestVoteReply h st h' t r) as new_state
+        end. find_apply_lem_hyp handleRequestVoteReply_spec. intuition.
+        repeat find_rewrite. intuition.
+      +  break_if; simpl in *; find_rewrite; auto.
+        match goal with
+          | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
+            remember (handleRequestVoteReply h st h' t r) as new_state
+        end. find_apply_lem_hyp handleRequestVoteReply_spec. intuition.
+        repeat find_rewrite. intuition.
+        * find_apply_lem_hyp cronies_correct_invariant.
+          unfold cronies_correct in *. intuition.
+          unfold votes_received_leaders in *.
+          match goal with
+            | H :  Leader = _ |- _ =>
+              symmetry in H
+          end. find_apply_hyp_hyp.
+          eapply wonElection_no_dup_in;
+            eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
+        * destruct (serverType_eq_dec (type (snd (nwState net x))) Leader); intuition.
+          find_apply_lem_hyp cronies_correct_invariant; auto.
+          eapply wonElection_no_dup_in;
+            eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
+    - rewrite update_fun_comm. simpl.
+      rewrite update_fun_comm. simpl.
+      my_update_destruct; subst; rewrite_update; auto.
+      match goal with
+          | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
+            remember (handleRequestVoteReply h st h' t r) as new_state
+      end. find_apply_lem_hyp handleRequestVoteReply_spec. intuition.
+      repeat find_rewrite. intuition.
   Qed.
 End CommonTheorems.
