@@ -257,19 +257,9 @@ Section LeaderLogsSublog.
   Qed.
 
   Theorem leaderLogs_sublog_request_vote_reply :
-    forall xs p ys net st' ps' gd d t v,
-      handleRequestVoteReply (pDst p) (snd (nwState net (pDst p))) (pSrc p) t v = d ->
-      gd = update_elections_data_requestVoteReply (pDst p) (pSrc p) t v (nwState net (pDst p)) ->
-      pBody p = RequestVoteReply t v ->
-      leaderLogs_sublog net ->
-      refined_raft_intermediate_reachable net ->
-      nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
-      (forall p', In p' ps' -> In p' (xs ++ ys)) ->
-      refined_raft_intermediate_reachable (mkNetwork ps' st') ->
-      leaderLogs_sublog (mkNetwork ps' st').
+    refined_raft_net_invariant_request_vote_reply leaderLogs_sublog.
   Proof.
-    unfold leaderLogs_sublog.
+    unfold refined_raft_net_invariant_request_vote_reply, leaderLogs_sublog.
     simpl. intuition.
     repeat find_higher_order_rewrite.
     find_copy_apply_lem_hyp handleRequestVoteReply_RVR_spec.
@@ -312,19 +302,98 @@ Section LeaderLogsSublog.
 
   Theorem leaderLogs_sublog_do_leader :
     refined_raft_net_invariant_do_leader leaderLogs_sublog.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_do_leader, leaderLogs_sublog.
+    simpl. intuition.
+    repeat find_higher_order_rewrite.
+    find_copy_apply_lem_hyp doLeader_type.
+    intuition.
+    repeat match goal with
+             | [ H : _ |- _ ] =>
+               rewrite update_fun_comm with (f := fst) in H
+             | [ H : _ |- _ ] =>
+               rewrite update_fun_comm with (f := snd) in H
+             | [ H : _ |- _ ] =>
+               rewrite update_fun_comm with (f := leaderLogs) in H
+           end.
+      rewrite update_fun_comm with (f := snd).
+      simpl in *.
+      rewrite update_fun_comm.
+      rewrite update_nop_ext' by (find_apply_lem_hyp doLeader_same_log; repeat find_rewrite; auto).
+      find_rewrite_lem update_fun_comm.
+      match goal with
+        | H : _ |- _ => rewrite update_nop_ext' in H by (repeat find_rewrite; auto)
+      end.
+      match goal with
+          | H : context [ type ] |- _ =>
+            rewrite update_fun_comm in H;
+              rewrite update_nop_ext' in H by (repeat find_rewrite; auto)
+      end.
+      match goal with
+        | H : _ |- _ => rewrite update_nop_ext' in H by (repeat find_rewrite; auto)
+      end.
+      eauto.
+  Qed.
+
 
   Theorem leaderLogs_sublog_do_generic_server :
     refined_raft_net_invariant_do_generic_server leaderLogs_sublog.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_do_generic_server, leaderLogs_sublog.
+    simpl. intuition.
+    repeat find_higher_order_rewrite.
+    find_copy_apply_lem_hyp doGenericServer_type.
+    intuition.
+    repeat match goal with
+             | [ H : _ |- _ ] =>
+               rewrite update_fun_comm with (f := fst) in H
+             | [ H : _ |- _ ] =>
+               rewrite update_fun_comm with (f := snd) in H
+             | [ H : _ |- _ ] =>
+               rewrite update_fun_comm with (f := leaderLogs) in H
+           end.
+      rewrite update_fun_comm with (f := snd).
+      simpl in *.
+      rewrite update_fun_comm.
+      rewrite update_nop_ext' by (find_apply_lem_hyp doGenericServer_log; repeat find_rewrite; auto).
+      find_rewrite_lem update_fun_comm.
+      match goal with
+        | H : _ |- _ => rewrite update_nop_ext' in H by (repeat find_rewrite; auto)
+      end.
+      match goal with
+          | H : context [ type ] |- _ =>
+            rewrite update_fun_comm in H;
+              rewrite update_nop_ext' in H by (repeat find_rewrite; auto)
+      end.
+
+      match goal with
+        | H : _ |- _ => rewrite update_nop_ext' in H by (repeat find_rewrite; auto)
+      end.
+      eauto.
+  Qed.
 
   Theorem leaderLogs_sublog_state_same_packet_subset :
     refined_raft_net_invariant_state_same_packet_subset leaderLogs_sublog.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_state_same_packet_subset, leaderLogs_sublog.
+    intuition.
+    repeat find_reverse_higher_order_rewrite.
+    eauto.
+  Qed.
 
   Theorem leaderLogs_sublog_reboot :
     refined_raft_net_invariant_reboot leaderLogs_sublog.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_reboot, leaderLogs_sublog.
+    unfold reboot.
+    simpl. intuition.
+    repeat find_higher_order_rewrite.
+    subst.
+    repeat update_destruct; simpl in *; try discriminate;
+    match goal with
+      | [ H : _, H' : _ |- _ ] => solve [eapply H; eauto; rewrite H'; eauto]
+    end.
+  Qed.
 
   Theorem leaderLogs_sublog_invariant :
     forall net,
@@ -339,13 +408,7 @@ Section LeaderLogsSublog.
     - apply leaderLogs_sublog_append_entries.
     - apply leaderLogs_sublog_append_entries_reply.
     - apply leaderLogs_sublog_request_vote.
-    - unfold refined_raft_net_invariant_request_vote_reply.
-      intros.
-      eapply leaderLogs_sublog_request_vote_reply; eauto.
-      eapply RRIR_handleMessage; eauto.
-      + repeat find_rewrite. simpl. eauto.
-      + intros. repeat find_higher_order_rewrite.
-        simpl. repeat f_equal. auto.
+    - apply leaderLogs_sublog_request_vote_reply.
     - apply leaderLogs_sublog_do_leader.
     - apply leaderLogs_sublog_do_generic_server.
     - apply leaderLogs_sublog_state_same_packet_subset.
