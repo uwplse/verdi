@@ -57,16 +57,6 @@ Section MaxIndexSanity.
     repeat break_match; find_inversion; auto.
   Qed.
 
-  Lemma handleClientRequest_commitIndex :
-    forall h st client id c out st' l,
-      handleClientRequest h st client id c = (out, st', l) ->
-      commitIndex st' = commitIndex st.
-  Proof.
-    unfold handleClientRequest.
-    intros.
-    repeat break_match; find_inversion; auto.
-  Qed.
-
   Lemma handleClientRequest_maxIndex :
     forall h st client id c out st' l,
       handleClientRequest h st client id c = (out, st', l) ->
@@ -97,22 +87,6 @@ Section MaxIndexSanity.
       + eauto with *.
       + eapply handleClientRequest_logs_sorted; eauto.
         apply logs_sorted_invariant. auto.
-  Qed.
-
-  Lemma handleTimeout_lastApplied :
-    forall h st out st' l,
-      handleTimeout h st = (out, st', l) ->
-      lastApplied st' = lastApplied st.
-  Proof.
-    unfold handleTimeout, tryToBecomeLeader; intros; repeat break_match; repeat find_inversion; auto.
-  Qed.
-
-  Lemma handleTimeout_commitIndex :
-    forall h st out st' l,
-      handleTimeout h st = (out, st', l) ->
-      commitIndex st' = commitIndex st.
-  Proof.
-    unfold handleTimeout, tryToBecomeLeader; intros; repeat break_match; repeat find_inversion; auto.
   Qed.
 
   Lemma maxIndex_sanity_timeout :
@@ -370,16 +344,6 @@ Section MaxIndexSanity.
           end; intuition.
   Qed.
 
-  Lemma handleAppendEntriesReply_same_commitIndex :
-    forall n st src t es b st' l,
-      handleAppendEntriesReply n st src t es b = (st', l) ->
-      commitIndex st' = commitIndex st.
-  Proof.
-    unfold handleAppendEntriesReply, advanceCurrentTerm.
-    intros.
-    repeat break_match; repeat find_inversion; auto.
-  Qed.
-
   Lemma maxIndex_sanity_append_entries_reply :
     raft_net_invariant_append_entries_reply maxIndex_sanity.
   Proof.
@@ -394,16 +358,6 @@ Section MaxIndexSanity.
       auto.
   Qed.
 
-  Lemma handleRequestVote_same_commitIndex :
-    forall n st t c li lt st' ms,
-      handleRequestVote n st t c li lt = (st', ms) ->
-      commitIndex st' = commitIndex st.
-  Proof.
-    unfold handleRequestVote, advanceCurrentTerm.
-    intros.
-    repeat break_match; repeat find_inversion; auto.
-  Qed.
-
   Lemma maxIndex_sanity_request_vote :
     raft_net_invariant_request_vote maxIndex_sanity.
   Proof.
@@ -416,14 +370,6 @@ Section MaxIndexSanity.
     - erewrite handleRequestVote_same_log by eauto.
       erewrite handleRequestVote_same_commitIndex by eauto.
       auto.
-  Qed.
-
-  Lemma handleRequestVoteReply_same_commitIndex :
-    forall n st src t v,
-      commitIndex (handleRequestVoteReply n st src t v) = commitIndex st.
-  Proof.
-    unfold handleRequestVoteReply, advanceCurrentTerm.
-    intros. repeat break_match; simpl; auto.
   Qed.
 
   Lemma maxIndex_sanity_request_vote_reply :
@@ -569,17 +515,6 @@ Section MaxIndexSanity.
       eapply applyEntries_spec_ind; eauto.
   Qed.
 
-
-  Lemma doGenericServer_commitIndex :
-    forall h st out st' ms,
-      doGenericServer h st = (out, st', ms) ->
-      commitIndex st' = commitIndex st.
-  Proof.
-    unfold doGenericServer.
-    intros.
-    repeat break_match; repeat find_inversion; simpl;
-    eapply applyEntries_spec_ind; eauto.
-  Qed.
 
   Lemma maxIndex_sanity_do_generic_server :
     raft_net_invariant_do_generic_server maxIndex_sanity.

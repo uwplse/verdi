@@ -322,25 +322,6 @@ Section AppliedEntriesMonotonicProof.
       eauto using handleAppendEntriesReply_same_log, handleAppendEntriesReply_same_lastApplied.
   Qed.
 
-  Theorem handleTimeout_lastApplied :
-    forall h st out st' ps,
-      handleTimeout h st = (out, st', ps) ->
-      lastApplied st' = lastApplied st.
-  Proof.
-    intros. unfold handleTimeout, tryToBecomeLeader in *.
-    break_match; find_inversion; subst; auto.
-  Qed.
-
-  Theorem handleClientRequest_lastApplied:
-  forall h st client id c out st' ps,
-    handleClientRequest h st client id c = (out, st', ps) ->
-    lastApplied st' = lastApplied st.
-  Proof.
-    intros. unfold handleClientRequest in *.
-    break_match; find_inversion; subst; auto.
-  Qed.
-
-
   Theorem handleTimeout_log :
     forall h st out st' ps,
       handleTimeout h st = (out, st', ps) ->
