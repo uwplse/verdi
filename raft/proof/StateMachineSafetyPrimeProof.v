@@ -10,7 +10,6 @@ Require Import Raft.
 Require Import SortedInterface.
 Require Import RaftRefinementInterface.
 Require Import StateMachineSafetyPrimeInterface.
-Require Import CommitRecordedCommittedInterface.
 Require Import LeaderCompletenessInterface.
 Require Import LeaderLogsContiguousInterface.
 Require Import AllEntriesLeaderLogsInterface.
@@ -33,7 +32,6 @@ Section StateMachineSafety'.
   Context {raft_params : RaftParams orig_base_params}.
 
   Context {rri : raft_refinement_interface}.
-  Context {crci : commit_recorded_committed_interface}.
   Context {lci : leader_completeness_interface}.
   Context {aelli : all_entries_leader_logs_interface}.
   Context {lmi : log_matching_interface}.
