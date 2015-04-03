@@ -349,7 +349,11 @@ Section RaftRefinementInterface.
           (forall net, raft_intermediate_reachable net -> P net);
       deghost_spec :
         forall (net : @network _ raft_refined_multi_params) h,
-          nwState (deghost net) h = snd (nwState net h)
+          nwState (deghost net) h = snd (nwState net h);
+      simulation_1 :
+        forall net,
+          refined_raft_intermediate_reachable net ->
+          raft_intermediate_reachable (deghost net)
     }.
 
 End RaftRefinementInterface.
