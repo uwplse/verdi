@@ -300,7 +300,7 @@ Section StateMachineSafety'.
         end; intuition.
         * right. right. right.
           apply in_app_iff. right.
-          eapply prefix_contiguous; eauto.
+          eapply prefix_contiguous; eauto. admit.
           find_copy_eapply_lem_hyp entries_contiguous; eauto.
           eapply contiguous_app; eauto. eapply entries_sorted_nw_invariant; eauto.
         * cut (e = x5); [intros; subst; intuition|].
@@ -310,7 +310,7 @@ Section StateMachineSafety'.
         get_invariant leaderLogs_contiguous_invariant.
         unfold leaderLogs_contiguous in *. find_copy_apply_hyp_hyp.
         eapply prefix_contiguous with (i := 0); eauto;
-        [match goal with
+        [admit|match goal with
            | _ : In (_, ?l) (leaderLogs _), H : contiguous_range_exact_lo ?l _ |- _ =>
              unfold contiguous_range_exact_lo in H; intuition
          end
@@ -434,7 +434,7 @@ Section StateMachineSafety'.
           unfold leaderLogs_contiguous in *. find_copy_apply_hyp_hyp.
           get_invariant leaderLogs_sorted_invariant.
           unfold leaderLogs_sorted in *. find_copy_apply_hyp_hyp.
-          eapply prefix_contiguous with (i := (eIndex base_entry)); eauto.
+          eapply prefix_contiguous with (i := (eIndex base_entry)); eauto. admit.
           find_copy_eapply_lem_hyp entries_sorted_nw_invariant; eauto.
           eauto using contiguous_app, entries_contiguous.
       + subst.
@@ -498,7 +498,7 @@ Section StateMachineSafety'.
           unfold leaderLogs_contiguous in *. find_copy_apply_hyp_hyp.
           get_invariant leaderLogs_sorted_invariant.
           unfold leaderLogs_sorted in *. find_copy_apply_hyp_hyp.
-          eapply prefix_contiguous with (i := 0); eauto.
+          eapply prefix_contiguous with (i := 0); eauto. admit.
           find_copy_eapply_lem_hyp entries_sorted_nw_invariant; eauto.
           eauto using contiguous_app, entries_contiguous.
   Qed.

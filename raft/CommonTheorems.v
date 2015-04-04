@@ -1452,24 +1452,40 @@ Section CommonTheorems.
     intros. apply execute_log_correct'.
   Qed.
 
-  Lemma contiguous_app :
-    forall l1 l2 i,
-      sorted (l1 ++ l2) ->
-      contiguous_range_exact_lo (l1 ++ l2) i ->
-      contiguous_range_exact_lo l2 i.
+  Lemma contiguous_nil :
+    forall i,
+      contiguous_range_exact_lo [] i.
   Proof.
-  Admitted.
+    unfold contiguous_range_exact_lo. intuition.
+    - simpl in *. omega.
+    - contradiction.
+  Qed.
 
-  Lemma prefix_contiguous :
-    forall l l' e i,
-      Prefix l' l ->
-      sorted l ->
-      In e l ->
-      eIndex e > i ->
-      contiguous_range_exact_lo l' i ->
-      In e l'.
+  Lemma contiguous_index_singleton :
+    forall i a,
+      contiguous_range_exact_lo [a] i ->
+      eIndex a = S i.
   Proof.
-  Admitted.
+    intros. unfold contiguous_range_exact_lo in *. intuition.
+    find_insterU. concludes. find_insterU. concludes. break_exists.
+    simpl in *. intuition. subst. auto.
+  Qed.
+
+  Lemma contiguous_index_adjacent :
+    forall l i a b,
+      sorted (a :: b :: l) ->
+      contiguous_range_exact_lo (a :: b :: l) i ->
+      eIndex a = S (eIndex b) /\ eIndex a > i.
+  Proof.
+    intros. unfold contiguous_range_exact_lo in *. intuition.
+    assert (i < S (eIndex b) <= eIndex a).
+      simpl in *. intuition. specialize (H0 b). concludes. intuition.
+    specialize (H1 (S (eIndex b))). concludes.
+    break_exists. simpl In in *. intuition; subst.
+    - auto.
+    - omega.
+    - simpl in *. intuition. specialize (H x). concludes. omega.
+  Qed.
 
   Lemma cons_contiguous_sorted :
     forall l i a,
@@ -1477,7 +1493,68 @@ Section CommonTheorems.
       contiguous_range_exact_lo (a :: l) i ->
       contiguous_range_exact_lo l i.
   Proof.
-  Admitted.
+    induction l; intros.
+    - apply contiguous_nil.
+    - eapply contiguous_index_adjacent in H; eauto.
+      unfold contiguous_range_exact_lo in *. break_and.
+      intuition. simpl maxIndex in *. specialize (H0 i0).
+      assert (i < i0 <= eIndex a0) by omega.
+      concludes. break_exists. intuition. simpl in *. intuition; subst.
+      + omega.
+      + exists x. intuition.
+      + exists x. intuition.
+  Qed.
+
+  Lemma contiguous_app :
+    forall l1 l2 i,
+      sorted (l1 ++ l2) ->
+      contiguous_range_exact_lo (l1 ++ l2) i ->
+      contiguous_range_exact_lo l2 i.
+  Proof.
+    induction l1; intros.
+    - auto.
+    - simpl ((a :: l1) ++ l2) in *.
+      find_apply_lem_hyp cons_contiguous_sorted; auto.
+      simpl in *. intuition.
+  Qed.
+
+  Lemma prefix_sorted :
+    forall l l',
+      sorted l ->
+      Prefix l' l ->
+      sorted l'.
+  Proof.
+    induction l; intros.
+    - find_apply_lem_hyp Prefix_nil. subst. auto.
+    - destruct l'.
+      + auto.
+      + simpl. split.
+        * intros. simpl in *. break_and. find_eapply_lem_hyp Prefix_in; eauto.
+          find_insterU. econcludes. subst. intuition.
+        * apply IHl; simpl in *; intuition.
+  Qed.
+
+  Lemma prefix_contiguous :
+    forall l l' e i,
+      l' <> [] ->
+      Prefix l' l ->
+      sorted l ->
+      In e l ->
+      eIndex e > i ->
+      contiguous_range_exact_lo l' i ->
+      In e l'.
+  Proof.
+    induction l; intros.
+    - contradiction.
+    - destruct l'; try congruence.
+      find_copy_apply_lem_hyp prefix_sorted; auto. simpl in *. intuition.
+      + left. subst. reflexivity.
+      + right. subst. destruct l'.
+        * find_apply_lem_hyp contiguous_index_singleton.
+          specialize (H0 e). concludes. omega.
+        * eapply IHl; try discriminate; eauto. eapply cons_contiguous_sorted; eauto.
+          simpl in *. intuition.
+  Qed.
   
   Lemma removeAfterIndex_contiguous :
     forall l i i',
@@ -1581,13 +1658,34 @@ Section CommonTheorems.
       contiguous_range_exact_lo l' 0 ->
       l ++ (removeAfterIndex l' i) = l'.
   Proof.
-    admit.
+    induction l; try congruence; intros.
+    destruct l'; simpl.
+    - contradiction.
+    - simpl Prefix in *. intuition. subst a. f_equal. break_if.
+      + do_bool. unfold contiguous_range_exact_lo in *.
+        intuition. find_insterU. simpl in *. conclude_using eauto.
+        omega.
+      + destruct l.
+        { do_bool. simpl in *. find_apply_lem_hyp contiguous_index_singleton. destruct l'.
+          - reflexivity.
+          - simpl. intuition. find_insterU. concludes. intuition. find_rewrite. break_if.
+            + reflexivity.
+            + do_bool. omega. }
+        { apply IHl; try discriminate; auto.
+          - find_apply_lem_hyp cons_contiguous_sorted.
+            + firstorder.
+            + eauto using Prefix_cons, prefix_sorted.
+          - find_apply_lem_hyp cons_contiguous_sorted.
+            + firstorder.
+            + eauto using Prefix_cons, prefix_sorted.
+          - apply cons_contiguous_sorted in H3; auto. }
   Qed.
 
   Lemma thing :
     forall es l l' e e',
       sorted l ->
       sorted l' ->
+      contiguous_range_exact_lo l' 0 ->
       entries_match l l' ->
       es <> [] ->
       Prefix es l' ->
@@ -1598,9 +1696,12 @@ Section CommonTheorems.
       eTerm e = eTerm e' ->
       es ++ (removeAfterIndex l (eIndex e)) = l'.
   Proof.
-  Admitted.
-
-
+    intros.
+    rewrite removeAfterIndex_same_sufficient with (l := l'); auto.
+    - apply thing2; auto.
+    - unfold entries_match in *. intros. eapply H2; eauto.
+    - unfold entries_match in *. intros. eapply H2; eauto.
+  Qed.
 
   Lemma sorted_findGtIndex_0 :
     forall l,
@@ -1812,7 +1913,7 @@ Section CommonTheorems.
     intros; induction l; simpl in *; intuition.
     break_if; auto. do_bool. omega.
   Qed.
-  
+
 End CommonTheorems.
 
 Notation is_append_entries m :=

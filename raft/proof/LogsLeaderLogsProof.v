@@ -301,6 +301,7 @@ Section LogsLeaderLogs.
               eapply sorted_Prefix_in_eq; eauto.
               intros.
               eapply prefix_contiguous with (i := 0); eauto.
+              + admit.
               + eapply leaderLogs_contiguous_invariant; eauto.
               + assert (sorted (log d)) by (eapply entries_sorted_nw_invariant; eauto).
                 eapply contiguous_app with (l1 := x1).
@@ -382,7 +383,7 @@ Section LogsLeaderLogs.
                   find_copy_eapply_lem_hyp leaderLogs_sorted_invariant; eauto.
                   f_equal.
                   eapply thing; eauto using lift_logs_sorted;
-                  [eapply leaderLogs_entries_match_invariant; eauto|].
+                  [admit|eapply leaderLogs_entries_match_invariant; eauto|].
                   assert (sorted es) by (eapply entries_sorted_nw_invariant; eauto).
                   find_copy_apply_lem_hyp entries_contiguous_nw_invariant.
                   unfold entries_contiguous_nw in *.
