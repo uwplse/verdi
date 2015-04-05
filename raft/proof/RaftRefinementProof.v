@@ -419,6 +419,7 @@ Section RaftRefinementProof.
     - exact lift_prop.
     - exact lower_prop.
     - exact deghost_spec.
+    - exact simulation_1.
   Qed.
 End RaftRefinementProof.
 

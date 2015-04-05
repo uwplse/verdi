@@ -75,7 +75,6 @@ Require Import StateMachineSafetyInterface.
 Require Import StateMachineSafetyProof.
 
 Require Import MaxIndexSanityInterface.
-Require Import MaxIndexSanityProof.
 
 Require Import LeaderCompletenessInterface.
 Require Import LeaderCompletenessProof.
@@ -84,7 +83,6 @@ Require Import AllEntriesLeaderLogsInterface.
 Require Import AllEntriesLeaderLogsProof.
 
 Require Import CommitRecordedCommittedInterface.
-Require Import CommitRecordedCommittedProof.
 
 Require Import LeaderLogsTermSanityInterface.
 Require Import LeaderLogsTermSanityProof.
