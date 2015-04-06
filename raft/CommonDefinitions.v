@@ -109,4 +109,13 @@ Section CommonDefinitions.
     (eIndex e <= lastApplied (nwState net h) \/
      eIndex e <= commitIndex (nwState net h)).
 
+
+  Definition prefix_within_term (l1 l2 : list entry) : Prop :=
+    forall e e',
+      eTerm e = eTerm e' ->
+      eIndex e <= eIndex e' ->
+      In e l1 ->
+      In e' l2 ->
+      In e l2.
+  
 End CommonDefinitions.

@@ -14,13 +14,6 @@ Section PrefixWithinTerm.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
-  Definition prefix_within_term (l1 l2 : list entry) : Prop :=
-    forall e e',
-      eTerm e = eTerm e' ->
-      eIndex e <= eIndex e' ->
-      In e l1 ->
-      In e' l2 ->
-      In e l2.
 
 
   Class prefix_within_term_interface : Prop :=
