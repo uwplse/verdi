@@ -22,11 +22,30 @@ Section LogsLeaderLogs.
         removeAfterIndex (log (snd (nwState net h))) (eIndex e) = es ++ ll /\
         (forall e', In e' es -> eTerm e' = eTerm e).
 
+  Definition logs_leaderLogs_nw net :=
+    forall p t n pli plt es ci e,
+      In p (nwPackets net) ->
+      pBody p = AppendEntries t n pli plt es ci ->
+      In e es ->
+      exists leader ll es' ll',
+        In (eTerm e, ll) (leaderLogs (fst (nwState net leader))) /\
+        Prefix ll' ll /\
+        removeAfterIndex es (eIndex e) = es' ++ ll' /\
+        (forall e', In e' es' -> eTerm e' = eTerm e) /\
+        ((plt = eTerm e /\ pli > maxIndex ll)  \/
+         (exists e, In e ll /\ eIndex e = pli /\ eTerm e = plt /\ (ll' <> [] \/
+                                                             pli = maxIndex ll)) \/
+         plt = 0 /\ pli = 0 /\ ll' = ll).
+
   Class logs_leaderLogs_interface : Prop :=
     {
       logs_leaderLogs_invariant :
         forall net,
           refined_raft_intermediate_reachable net ->
-          logs_leaderLogs net
+          logs_leaderLogs net;
+      logs_leaderLogs_nw_invariant :
+        forall net,
+          refined_raft_intermediate_reachable net ->
+          logs_leaderLogs_nw net
     }.
 End LogsLeaderLogs.

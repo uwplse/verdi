@@ -39,22 +39,6 @@ Section LogsLeaderLogs.
   Context {nisi : nextIndex_safety_interface}.
   Context {si : sorted_interface}.
 
-  Definition logs_leaderLogs_nw net :=
-    forall p t n pli plt es ci e,
-      In p (nwPackets net) ->
-      pBody p = AppendEntries t n pli plt es ci ->
-      In e es ->
-      exists leader ll es' ll',
-        In (eTerm e, ll) (leaderLogs (fst (nwState net leader))) /\
-        Prefix ll' ll /\
-        removeAfterIndex es (eIndex e) = es' ++ ll' /\
-        (forall e', In e' es' -> eTerm e' = eTerm e) /\
-        ((plt = eTerm e /\ pli > maxIndex ll)  \/
-         (exists e, In e ll /\ eIndex e = pli /\ eTerm e = plt /\ (ll' <> [] \/
-                                                             pli = maxIndex ll)) \/
-         plt = 0 /\ pli = 0).
-
-
   Definition logs_leaderLogs_nw_weak net :=
     forall p t n pli plt es ci e,
       In p (nwPackets net) ->
@@ -209,68 +193,6 @@ Section LogsLeaderLogs.
     | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
     end.
   
-  Require Import Omega.
-
-  Lemma sorted_Prefix_in_eq :
-    forall l' l,
-      sorted l ->
-      Prefix l' l ->
-      (forall e, In e l -> In e l') ->
-      l' = l.
-  Proof.
-    induction l'; intros; simpl in *; intuition.
-    - destruct l; simpl in *; auto.
-      specialize (H1 e); intuition.
-    - break_match; intuition. subst.
-      simpl in *. intuition. f_equal.
-      eapply IHl'; eauto.
-      intros.
-      specialize (H1 e0); intuition.
-      subst. specialize (H0 e0); intuition. omega.
-  Qed.
-
-  Lemma removeAfterIndex_eq :
-    forall l i,
-      (forall e, In e l -> eIndex e <= i) ->
-      removeAfterIndex l i = l.
-  Proof.
-    induction l; intros; simpl in *; intuition.
-    break_if; intuition.
-    do_bool. specialize (H a). intuition. omega.
-  Qed.
-
-  Lemma removeAfterIndex_in_app :
-    forall l l' e,
-      In e l ->
-      removeAfterIndex (l ++ l') (eIndex e) =
-      (removeAfterIndex l (eIndex e)) ++ l'.
-  Proof.
-    induction l; intros; simpl in *; intuition;
-    subst; break_if; do_bool; eauto using app_ass.
-    omega.
-  Qed.
-
-  Lemma removeAfterIndex_in_app_l' :
-    forall l l' e,
-      (forall e', In e' l -> eIndex e' > eIndex e) ->
-      In e l' ->
-      removeAfterIndex (l ++ l') (eIndex e) =
-      removeAfterIndex l' (eIndex e).
-  Proof.
-    induction l; intros; simpl in *; intuition;
-    subst; break_if; do_bool; eauto using app_ass.
-    specialize (H a). intuition. omega.
-  Qed.
-
-  Lemma removeAfterIndex_maxIndex_sorted :
-    forall l,
-      sorted l ->
-      l = removeAfterIndex l (maxIndex l).
-  Proof.
-    intros; induction l; simpl in *; intuition.
-    break_if; auto. do_bool. omega.
-  Qed.
-
   Lemma logs_leaderLogs_inductive_appendEntries :
     refined_raft_net_invariant_append_entries logs_leaderLogs_inductive.
   Proof.
@@ -670,158 +592,6 @@ Section LogsLeaderLogs.
        repeat find_rewrite. intuition.
   Qed.
 
-  Lemma sorted_findGtIndex_0 :
-    forall l,
-      (forall e, In e l -> eIndex e > 0) ->
-      sorted l ->
-      findGtIndex l 0 = l.
-  Proof.
-    induction l; intros; simpl in *; intuition.
-    break_if; intuition.
-    - f_equal. auto.
-    - do_bool. specialize (H a); intuition; omega.
-  Qed.
-  
-  Lemma Prefix_refl :
-    forall A (l : list A),
-      Prefix l l.
-  Proof.
-    intros. induction l; simpl in *; auto.
-  Qed.
-
-  Require Import Omega.
-  
-  Lemma findGtIndex_app_in_1 :
-    forall l1 l2 e,
-      sorted (l1 ++ l2) ->
-      In e l1 ->
-      exists l',
-        findGtIndex (l1 ++ l2) (eIndex e) = l' /\
-        forall x,
-          In x l' -> In x l1.
-  Proof.
-    induction l1; intros; simpl in *; intuition.
-    - subst. break_if; do_bool; try omega.
-      eexists; repeat (simpl in *; intuition).
-    - specialize (H1 e); intuition. conclude H1 ltac:(apply in_app_iff; intuition).
-      break_if; do_bool; try omega. eexists; intuition; eauto.
-      simpl in *. intuition.
-      eapply_prop_hyp sorted sorted; eauto. break_exists; intuition.
-      find_rewrite. eauto.
-  Qed.
-  
-  Lemma sorted_app_in_1 :
-    forall l1 l2 e,
-      sorted (l1 ++ l2) ->
-      eIndex e > 0 ->
-      In e l1 ->
-      eIndex e > maxIndex l2.
-  Proof.
-    induction l1; intros; simpl in *; intuition.
-    subst. destruct l2; simpl in *; auto.
-    specialize (H2 e0); concludes; intuition.
-  Qed.
-
-  Lemma findGtIndex_Prefix :
-    forall l i,
-      Prefix (findGtIndex l i) l.
-  Proof.
-    induction l; intros; simpl in *; intuition.
-    break_if; simpl in *; intuition.
-  Qed.
-  
-  Lemma findGtIndex_app_in_2 :
-    forall l1 l2 e,
-      sorted (l1 ++ l2) ->
-      In e l2 ->
-      exists l',
-        findGtIndex (l1 ++ l2) (eIndex e) = l1 ++ l' /\
-        Prefix l' l2.
-  Proof.
-    induction l1; intros; simpl in *; intuition.
-    - eexists; intuition eauto using findGtIndex_Prefix.
-    - break_if; simpl in *; intuition.
-      + eapply_prop_hyp sorted sorted; eauto.
-        break_exists; intuition; find_rewrite; eauto.
-      + do_bool. specialize (H1 e); conclude H1 ltac:(apply in_app_iff; intuition).
-        omega.
-  Qed.
-
-  Lemma findGtIndex_nil :
-    forall l i,
-      (forall e', In e' l -> eIndex e' <= i) ->
-      findGtIndex l i = [].
-  Proof.
-    intros; induction l; simpl in *; intuition.
-    break_if; do_bool; intuition.
-    specialize (H a); intuition. omega.
-  Qed.
-  
-  Lemma findGtIndex_removeAfterIndex_commute :
-    forall l i i',
-      sorted l ->
-      removeAfterIndex (findGtIndex l i) i' =
-      findGtIndex (removeAfterIndex l i') i.
-  Proof.
-    intros. induction l; simpl in *; auto.
-    repeat (break_if; simpl; intuition); do_bool;
-    try congruence.
-    symmetry. apply findGtIndex_nil.
-    intros. find_apply_lem_hyp removeAfterIndex_in.
-    find_apply_hyp_hyp. intuition.
-  Qed.
-
-  Lemma findGtIndex_app_1 :
-    forall l l' i,
-      maxIndex l' <= i ->
-      findGtIndex (l ++ l') i = findGtIndex l i.
-  Proof.
-    induction l; intros; simpl in *; intuition.
-    - destruct l'; simpl in *; intuition.
-      break_if; do_bool; auto; omega.
-    - break_if; do_bool; auto.
-      f_equal. eauto.
-  Qed.
-
-  Lemma findGtIndex_app_2 :
-    forall l l' i,
-      sorted (l ++ l') ->
-      i < maxIndex l' ->
-      findGtIndex (l ++ l') i = l ++ findGtIndex l' i.
-  Proof.
-    induction l; intros; simpl in *; intuition.
-    break_if; do_bool; auto.
-    - f_equal. eauto.
-    - exfalso.
-      destruct l'; simpl in *; intuition.
-      specialize (H1 e); conclude_using intuition; intuition.
-  Qed.
-
-  Lemma thing3 :
-    forall l l' e,
-      sorted (l ++ l') ->
-      (forall e', In e' (l ++ l') -> eIndex e' > 0) ->
-      In e (l ++ l') ->
-      eIndex e <= maxIndex l' ->
-      In e l'.
-  Proof.
-    induction l; intros; simpl in *; intuition.
-    subst. destruct l'; simpl in *; intuition.
-    - exfalso. specialize (H0 e). intuition.
-    - exfalso. specialize (H3 e0). conclude_using intuition.
-      intuition.
-  Qed.
-  
-  Lemma findGtIndex_non_empty :
-    forall l i,
-      i < maxIndex l ->
-      findGtIndex l i <> [].
-  Proof.
-    intros. induction l; simpl in *; intuition.
-    break_if; do_bool; simpl in *; intuition.
-    congruence.
-  Qed.
-  
   Lemma logs_leaderLogs_inductive_doLeader :
     refined_raft_net_invariant_do_leader logs_leaderLogs_inductive.
   Proof.
@@ -846,7 +616,7 @@ Section LogsLeaderLogs.
       break_or_hyp.
       + unfold logs_leaderLogs_nw in *.
         eapply_prop_hyp pBody pBody; eauto.
-        break_exists_exists; intuition;
+        break_exists_exists; intuition; subst;
         find_higher_order_rewrite; update_destruct; subst; rewrite_update; eauto.
       + { do_in_map. subst. simpl in *.
           find_eapply_lem_hyp doLeader_spec; eauto. intuition.
@@ -1050,9 +820,17 @@ Section LogsLeaderLogs.
     intros. apply logs_leaderLogs_inductive_invariant. auto.
   Qed.
 
+  Theorem logs_leaderLogs_nw_invariant :
+    forall net,
+      refined_raft_intermediate_reachable net ->
+      logs_leaderLogs_nw net.
+  Proof.
+    intros. apply logs_leaderLogs_inductive_invariant. auto.
+  Qed.
+
   Instance llli : logs_leaderLogs_interface.
   Proof.
-    split. eauto using logs_leaderLogs_invariant.
+    split; eauto using logs_leaderLogs_invariant, logs_leaderLogs_nw_invariant.
   Qed.
 
 End LogsLeaderLogs.
