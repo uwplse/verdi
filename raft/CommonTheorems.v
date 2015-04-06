@@ -1812,6 +1812,16 @@ Section CommonTheorems.
     intros; induction l; simpl in *; intuition.
     break_if; auto. do_bool. omega.
   Qed.
+
+  
+  Lemma contiguous_partition :
+    forall l1 x l2 i,
+      sorted (l1 ++ x :: l2) ->
+      contiguous_range_exact_lo (l1 ++ x :: l2) i ->
+      contiguous_range_exact_lo l1 (eIndex x).
+  Proof.
+  Admitted.
+
   
 End CommonTheorems.
 
