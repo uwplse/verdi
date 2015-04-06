@@ -150,6 +150,9 @@ Require Import RefinedLogMatchingLemmasProof.
 Require Import LeaderLogsCandidateEntriesInterface.
 Require Import LeaderLogsCandidateEntriesProof.
 
+Require Import AllEntriesLogMatchingInterface.
+Require Import AllEntriesLogMatchingProof.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -197,6 +200,7 @@ Hint Extern 4 (@leaders_have_leaderLogs_strong_interface _ _ _) => apply lhllsi 
 Hint Extern 4 (@nextIndex_safety_interface _ _ _) => apply nisi : typeclass_instances.
 Hint Extern 4 (@refined_log_matching_lemmas_interface _ _ _) => apply rlmli : typeclass_instances.
 Hint Extern 4 (@leaderLogs_candidate_entries_interface _ _ _) => apply llcei : typeclass_instances.
+Hint Extern 4 (@allEntries_log_matching_interface _ _ _) => apply aelmi : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.

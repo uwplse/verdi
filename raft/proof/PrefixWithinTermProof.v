@@ -25,6 +25,7 @@ Require Import LeaderLogsSublogInterface.
 Require Import LeaderSublogInterface.
 Require Import NextIndexSafetyInterface.
 Require Import LeaderLogsContiguousInterface.
+Require Import AllEntriesLogMatchingInterface.
 
 Section PrefixWithinTerm.
   Context {orig_base_params : BaseParams}.
@@ -40,6 +41,7 @@ Section PrefixWithinTerm.
   Context {lsli : leader_sublog_interface}.
   Context {nisi : nextIndex_safety_interface}.
   Context {llci : leaderLogs_contiguous_interface}.
+  Context {aelmi : allEntries_log_matching_interface}.
 
   Definition lift_leader_sublog :
     forall net leader e h,
@@ -1049,15 +1051,6 @@ Section PrefixWithinTerm.
     find_apply_hyp_hyp. intuition; eauto.
   Qed.
 
-  Lemma allEntries_log_matching :
-    forall net e e' h h',
-      refined_raft_intermediate_reachable net ->
-      In e (log (snd (nwState net h))) ->
-      In e' (map snd (allEntries (fst (nwState net h')))) ->
-      eTerm e = eTerm e' ->
-      eIndex e = eIndex e' ->
-      e = e'.
-  Admitted.
 
   Lemma terms_ge_prevTerm :
     forall net p t n pli plt es ci e,
@@ -1127,7 +1120,7 @@ Section PrefixWithinTerm.
             - subst. apply in_app_iff. right.
               apply removeAfterIndex_le_In; auto.
               break_exists. intuition.
-              assert (x = e) by eauto using allEntries_log_matching.
+              assert (x = e) by (eapply allEntries_log_matching_invariant; eauto).
               subst. auto.
             - break_exists. intuition. subst.
               (* use the fact that the lists are sorted to prove eTerm e = eTerm x,
@@ -1159,7 +1152,7 @@ Section PrefixWithinTerm.
             - subst. apply in_app_iff. right.
               apply removeAfterIndex_le_In; auto.
               break_exists. intuition.
-              assert (x = e) by eauto using allEntries_log_matching.
+              assert (x = e) by (eapply allEntries_log_matching_invariant; eauto).
               subst. auto.
             - break_exists. intuition. subst.
               (* use the fact that the lists are sorted to prove eTerm e = eTerm x,
