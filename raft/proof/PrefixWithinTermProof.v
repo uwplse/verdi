@@ -26,6 +26,7 @@ Require Import LeaderSublogInterface.
 Require Import NextIndexSafetyInterface.
 Require Import LeaderLogsContiguousInterface.
 Require Import AllEntriesLogMatchingInterface.
+Require Import AppendEntriesRequestTermSanityInterface.
 
 Section PrefixWithinTerm.
   Context {orig_base_params : BaseParams}.
@@ -42,6 +43,7 @@ Section PrefixWithinTerm.
   Context {nisi : nextIndex_safety_interface}.
   Context {llci : leaderLogs_contiguous_interface}.
   Context {aelmi : allEntries_log_matching_interface}.
+  Context {aertsi : append_entries_request_term_sanity_interface}.
 
   Definition lift_leader_sublog :
     forall net leader e h,
@@ -1051,16 +1053,6 @@ Section PrefixWithinTerm.
     find_apply_hyp_hyp. intuition; eauto.
   Qed.
 
-
-  Lemma terms_ge_prevTerm :
-    forall net p t n pli plt es ci e,
-      refined_raft_intermediate_reachable net ->
-      In p (nwPackets net) ->
-      pBody p = AppendEntries t n pli plt es ci ->
-      In e es ->
-      eTerm e >= plt.
-  Admitted.
-
   Lemma removeAfterIndex_maxTerm_in :
     forall e l,
       sorted l ->
@@ -1130,8 +1122,8 @@ Section PrefixWithinTerm.
                   destruct (lt_eq_lt_dec (eTerm e) (eTerm x))
               end; intuition; try omega.
               + exfalso.
-                pose proof terms_ge_prevTerm.
-                eapply_prop_hyp eTerm pBody; eauto. omega.
+                find_eapply_lem_hyp append_entries_request_term_sanity_invariant; eauto.
+                conclude_using eauto. omega.
               + apply in_app_iff. right.
                 apply removeAfterIndex_le_In; [omega|].
                 eapply_prop allEntries_log_prefix_within_term; eauto; omega.
@@ -1162,8 +1154,8 @@ Section PrefixWithinTerm.
                   destruct (lt_eq_lt_dec (eTerm e) (eTerm x))
               end; intuition; try omega.
               + exfalso.
-                pose proof terms_ge_prevTerm.
-                eapply_prop_hyp eTerm pBody; eauto. omega.
+                find_eapply_lem_hyp append_entries_request_term_sanity_invariant; eauto.
+                conclude_using eauto. omega.
               + apply in_app_iff. right.
                 apply removeAfterIndex_le_In; [omega|].
                 eapply_prop allEntries_log_prefix_within_term; eauto; omega.
@@ -1260,8 +1252,8 @@ Section PrefixWithinTerm.
               eapply entries_match_nw_host_invariant. Focus 8. eauto.
               Focus 3. eauto. all:eauto.
             + (* contra terms_ge_prevTerm *)
-              pose proof terms_ge_prevTerm.
-              eapply_prop_hyp eTerm (pBody p); eauto. repeat find_rewrite.
+              find_eapply_lem_hyp append_entries_request_term_sanity_invariant; eauto.
+              repeat find_rewrite.
               match goal with
                 | _ : ?x >= ?y, _ : ?x <= ?y |- _ =>
                   assert (x = y) by eauto using le_antisym
