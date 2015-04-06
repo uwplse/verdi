@@ -253,7 +253,7 @@ Section LeaderCompleteness.
           }
 
           break_exists.
-          assert (prefix_within_term (map snd (allEntries (fst (nwState net x)))) l) by eauto using prefix_within_term_invariant.
+          assert (prefix_within_term (map snd (allEntries (fst (nwState net x)))) l) by (eapply allEntries_leaderLogs_prefix_within_term_invariant; eauto).
           unfold prefix_within_term in *.
           exfalso.
           find_false.
