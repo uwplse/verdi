@@ -253,6 +253,17 @@ Section SpecLemmas.
     repeat break_match; find_inversion; auto.
   Qed.
 
+  Lemma handleRequestVoteReply_type :
+    forall h st h' t r st',
+      handleRequestVoteReply h st h' t r = st' ->
+      (type st' = type st /\ currentTerm st' = currentTerm st) \/
+      (type st' = Follower /\ currentTerm st' > currentTerm st) \/
+      (type st = Candidate /\ type st' = Leader /\ currentTerm st' = currentTerm st).
+  Proof.
+    intros. unfold handleRequestVoteReply, advanceCurrentTerm in *.
+    repeat break_match; subst; do_bool; intuition.
+  Qed.
+
   Lemma handleClientRequest_type :
     forall h st client id c out st' l,
       handleClientRequest h st client id c = (out, st', l) ->
@@ -270,6 +281,16 @@ Section SpecLemmas.
   Proof.
     intros. unfold handleTimeout, tryToBecomeLeader in *.
     repeat break_match; find_inversion; auto.
+  Qed.
+
+  Lemma handleTimeout_type_strong :
+    forall h st out st' l,
+      handleTimeout h st = (out, st', l) ->
+      (type st' = type st /\ currentTerm st' = currentTerm st) \/
+      (type st' = Candidate /\ currentTerm st' = S (currentTerm st)).
+  Proof.
+    intros. unfold handleTimeout, tryToBecomeLeader in *.
+    repeat break_match; find_inversion; simpl; intuition.
   Qed.
 
   Lemma doGenericServer_type :
