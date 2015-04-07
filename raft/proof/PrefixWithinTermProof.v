@@ -27,6 +27,7 @@ Require Import NextIndexSafetyInterface.
 Require Import LeaderLogsContiguousInterface.
 Require Import AllEntriesLogMatchingInterface.
 Require Import AppendEntriesRequestTermSanityInterface.
+Require Import AllEntriesLeaderSublogInterface.
 
 Section PrefixWithinTerm.
   Context {orig_base_params : BaseParams}.
@@ -44,6 +45,7 @@ Section PrefixWithinTerm.
   Context {llci : leaderLogs_contiguous_interface}.
   Context {aelmi : allEntries_log_matching_interface}.
   Context {aertsi : append_entries_request_term_sanity_interface}.
+  Context {aelsi : allEntries_leader_sublog_interface}.
 
   Definition lift_leader_sublog :
     forall net leader e h,
@@ -1288,15 +1290,6 @@ Section PrefixWithinTerm.
     subst. auto.
   Qed.
 
-  Lemma allEntries_sublog :
-    forall net leader e h,
-      refined_raft_intermediate_reachable net ->
-      type (snd (nwState net leader)) = Leader ->
-      In e (map snd (allEntries (fst (nwState net h)))) ->
-      eTerm e = currentTerm (snd (nwState net leader)) ->
-      In e (log (snd (nwState net leader))).
-  Admitted.
-
   Lemma prefix_within_term_inductive_client_request :
     refined_raft_net_invariant_client_request prefix_within_term_inductive.
   Proof.
@@ -1360,7 +1353,7 @@ Section PrefixWithinTerm.
         * { break_exists; intuition.
             repeat find_rewrite. simpl in *. break_if; do_bool; try omega.
             do_in_map; simpl in *; intuition; subst; simpl in *; auto.
-            - right. eapply allEntries_sublog; repeat find_rewrite; eauto.
+            - right. eapply allEntries_leader_sublog_invariant; repeat find_rewrite; eauto.
               apply in_map_iff; eauto.
             - right. eapply_prop allEntries_log_prefix_within_term; eauto.
               apply in_map_iff; eauto.
@@ -1388,7 +1381,7 @@ Section PrefixWithinTerm.
         * eapply_prop allEntries_log_prefix_within_term; eauto.
         * { break_exists; intuition. repeat find_rewrite. simpl in *. intuition.
             - subst. right.
-              eapply allEntries_sublog; repeat find_rewrite; eauto.
+              eapply allEntries_leader_sublog_invariant; repeat find_rewrite; eauto.
             - right. eapply_prop allEntries_log_prefix_within_term; eauto.
           }
     - (* leadersublog_nw *)
