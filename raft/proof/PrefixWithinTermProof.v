@@ -1650,8 +1650,407 @@ Section PrefixWithinTerm.
       eapply prefix_within_term_subset; [eapply log_log_prefix_within_term_invariant|];
       eauto using doLeader_in_entries_in_log.
   Qed.
+
+  Lemma update_elections_data_requestVoteReply_leaderLogs' :
+    forall h h' t  st t' ll' r,
+      In (t', ll') (leaderLogs (update_elections_data_requestVoteReply h h' t r st)) ->
+      In (t', ll') (leaderLogs (fst st)) \/ ll' = log (snd st).
+  Proof.
+    unfold update_elections_data_requestVoteReply.
+    intros.
+    repeat break_match; auto.
+    simpl in *. intuition.
+    find_inversion. right.
+    eauto using handleRequestVoteReply_log.
+  Qed.
+
+  Lemma update_elections_data_requestVoteReply_allEntries :
+    forall h h' t  st r,
+      allEntries (update_elections_data_requestVoteReply h h' t r st) = allEntries (fst st).
+  Proof.
+    unfold update_elections_data_requestVoteReply.
+    intros.
+    repeat break_match; auto.
+  Qed.
+
+  Lemma prefix_within_term_inductive_request_vote_reply :
+    refined_raft_net_invariant_request_vote_reply prefix_within_term_inductive.
+  Proof.
+    red. unfold prefix_within_term_inductive. intros.
+    match goal with
+      | H : context [handleRequestVoteReply] |- _ =>
+        symmetry in H
+    end.
+    find_eapply_lem_hyp handleRequestVoteReply_log.
+    intuition.
+    - unfold allEntries_leaderLogs_prefix_within_term, allEntries_log_prefix_within_term in *.
+      intros. simpl in *. repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; try rewrite update_elections_data_requestVoteReply_allEntries; eauto;
+      find_apply_lem_hyp update_elections_data_requestVoteReply_leaderLogs';
+      intuition; subst; eauto.
+    - unfold log_leaderLogs_prefix_within_term in *.
+      intros. simpl in *. repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; repeat find_rewrite; eauto;
+      find_apply_lem_hyp update_elections_data_requestVoteReply_leaderLogs';
+      intuition; subst; eauto;
+      eapply log_log_prefix_within_term_invariant; eauto.
+    - unfold allEntries_log_prefix_within_term in *.
+      intros. simpl in *. repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; repeat find_rewrite; eauto;
+      rewrite update_elections_data_requestVoteReply_allEntries; eauto.
+    - unfold allEntries_append_entries_prefix_within_term_nw in *.
+      intros. simpl in *.
+      find_apply_hyp_hyp.
+      match goal with
+        | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          rewrite H in *
+      end.
+      destruct_update; simpl in *; eauto;
+      try find_rewrite_lem update_elections_data_requestVoteReply_allEntries; eauto.
+    - unfold append_entries_leaderLogs_prefix_within_term, append_entries_log_prefix_within_term
+        in *.
+      intros. simpl in *. find_apply_hyp_hyp.
+      match goal with
+        | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          rewrite H in *
+      end.
+      destruct_update; simpl in *; eauto;
+      find_apply_lem_hyp update_elections_data_requestVoteReply_leaderLogs'; intuition; subst; eauto.
+    - unfold append_entries_log_prefix_within_term in *.
+      intros. simpl in *. find_apply_hyp_hyp.
+      match goal with
+        | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          rewrite H in *
+      end.
+      destruct_update; simpl in *; eauto;
+      repeat find_rewrite; eauto.
+  Qed.
+
+  Lemma prefix_within_term_inductive_append_entries_reply :
+    refined_raft_net_invariant_append_entries_reply prefix_within_term_inductive.
+  Proof.
+    red. unfold prefix_within_term_inductive. intros. subst.
+    find_copy_apply_lem_hyp handleAppendEntriesReply_log.
+    find_apply_lem_hyp handleAppendEntriesReply_packets. subst. simpl in *.
+    intuition.
+    - unfold allEntries_leaderLogs_prefix_within_term in *.
+      intros. simpl in *.
+      repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; eauto.
+    - unfold log_leaderLogs_prefix_within_term in *.
+      intros. simpl in *.
+      repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; repeat find_rewrite; eauto.
+    - unfold allEntries_log_prefix_within_term in *.
+      intros. simpl in *.
+      repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; repeat find_rewrite; eauto.
+    - unfold allEntries_append_entries_prefix_within_term_nw in *.
+      intros. simpl in *.
+      find_apply_hyp_hyp.
+      intuition;
+        match goal with
+          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+            rewrite H in *
+        end;
+        destruct_update; simpl in *; eauto.
+    - unfold append_entries_leaderLogs_prefix_within_term in *.
+      intros. simpl in *.
+      find_apply_hyp_hyp.
+      intuition;
+        match goal with
+          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+            rewrite H in *
+        end;
+        destruct_update; simpl in *; eauto.
+    - unfold append_entries_log_prefix_within_term in *.
+      intros. simpl in *.
+      find_apply_hyp_hyp.
+      intuition;
+        match goal with
+          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+            rewrite H in *
+        end;
+        destruct_update; simpl in *; repeat find_rewrite; eauto.
+  Qed.
+
+  Lemma update_elections_data_timeout_allEntries :
+    forall h st,
+      allEntries (update_elections_data_timeout h st) = allEntries (fst st).
+  Proof.
+    intros.
+    unfold update_elections_data_timeout. repeat break_match; simpl; auto.
+  Qed.
+  
+  Lemma prefix_within_term_inductive_timeout :
+    refined_raft_net_invariant_timeout prefix_within_term_inductive.
+  Proof.
+    red. unfold prefix_within_term_inductive. intros. subst.
+    find_copy_apply_lem_hyp handleTimeout_log_same.
+    intuition.
+    - unfold allEntries_leaderLogs_prefix_within_term in *.
+      intros. simpl in *.
+      repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; eauto;
+      try find_rewrite_lem update_elections_data_timeout_leaderLogs;
+      try rewrite update_elections_data_timeout_allEntries;
+      eauto.
+    - unfold log_leaderLogs_prefix_within_term in *.
+      intros. simpl in *.
+      repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; repeat find_rewrite;
+      try find_rewrite_lem update_elections_data_timeout_leaderLogs;
+      eauto.
+    - unfold allEntries_log_prefix_within_term in *.
+      intros. simpl in *.
+      repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; repeat find_rewrite;
+      try rewrite update_elections_data_timeout_allEntries;
+      eauto.
+    - unfold allEntries_append_entries_prefix_within_term_nw.
+      intros. simpl in *.
+      find_apply_hyp_hyp.
+      intuition;
+        [|do_in_map; subst; simpl in *; find_eapply_lem_hyp handleTimeout_packets; eauto;
+          find_rewrite; intuition; find_false; repeat eexists; eauto].
+      match goal with
+          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+            rewrite H in *
+        end;
+      destruct_update; simpl in *;
+      try find_rewrite_lem update_elections_data_timeout_allEntries;
+      eauto.
+    - unfold append_entries_leaderLogs_prefix_within_term in *.
+      intros. simpl in *.
+      find_apply_hyp_hyp.
+      intuition;
+        [|do_in_map; subst; simpl in *; find_eapply_lem_hyp handleTimeout_packets; eauto;
+          find_rewrite; intuition; find_false; repeat eexists; eauto].
+      match goal with
+          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+            rewrite H in *
+        end;
+      destruct_update; simpl in *;
+      try find_rewrite_lem update_elections_data_timeout_leaderLogs;
+      eauto.
+    - unfold append_entries_log_prefix_within_term in *.
+      intros. simpl in *.
+      find_apply_hyp_hyp.
+      intuition;
+        [|do_in_map; subst; simpl in *; find_eapply_lem_hyp handleTimeout_packets; eauto;
+          find_rewrite; intuition; find_false; repeat eexists; eauto].
+      match goal with
+          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+            rewrite H in *
+        end;
+      destruct_update; simpl in *;
+      repeat find_rewrite;
+      eauto.
+  Qed.
+
+  Lemma update_elections_data_requestVote_allEntries :
+    forall h h' t lli llt st,
+      allEntries (update_elections_data_requestVote h h' t h' lli llt st) =
+      allEntries (fst st).
+  Proof.
+    unfold update_elections_data_requestVote.
+    intros.
+    repeat break_match; auto.
+  Qed.
+
+  Lemma prefix_within_term_inductive_request_vote :
+    refined_raft_net_invariant_request_vote prefix_within_term_inductive.
+  Proof.
+    red. unfold prefix_within_term_inductive. intros. subst.
+    find_copy_apply_lem_hyp handleRequestVote_log.
+    intuition.
+    - unfold allEntries_leaderLogs_prefix_within_term in *.
+      intros. simpl in *.
+      repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; eauto;
+      try find_rewrite_lem update_elections_data_requestVote_leaderLogs;
+      try rewrite update_elections_data_requestVote_allEntries;
+      eauto.
+    - unfold log_leaderLogs_prefix_within_term in *.
+      intros. simpl in *.
+      repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; repeat find_rewrite;
+      try find_rewrite_lem update_elections_data_requestVote_leaderLogs;
+      eauto.
+    - unfold allEntries_log_prefix_within_term in *.
+      intros. simpl in *.
+      repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; repeat find_rewrite;
+      try rewrite update_elections_data_requestVote_allEntries;
+      eauto.
+    - unfold allEntries_append_entries_prefix_within_term_nw.
+      intros. simpl in *.
+      find_apply_hyp_hyp.
+      intuition;
+        [|subst; simpl in *;
+          find_eapply_lem_hyp handleRequestVote_no_append_entries; subst;
+          intuition; find_false; repeat eexists; eauto].
+      match goal with
+          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+            rewrite H in *
+        end;
+      destruct_update; simpl in *;
+      try find_rewrite_lem update_elections_data_requestVote_allEntries;
+      eauto.
+    - unfold append_entries_leaderLogs_prefix_within_term in *.
+      intros. simpl in *.
+      find_apply_hyp_hyp.
+      intuition;
+        [|subst; simpl in *;
+        find_eapply_lem_hyp handleRequestVote_no_append_entries; subst;
+        intuition; find_false; repeat eexists; eauto].
+      match goal with
+          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+            rewrite H in *
+        end;
+      destruct_update; simpl in *;
+      try find_rewrite_lem update_elections_data_requestVote_leaderLogs;
+      eauto.
+    - unfold append_entries_log_prefix_within_term in *.
+      intros. simpl in *.
+      find_apply_hyp_hyp.
+      intuition;
+        [|subst; simpl in *;
+        find_eapply_lem_hyp handleRequestVote_no_append_entries; subst;
+        intuition; find_false; repeat eexists; eauto].
+      match goal with
+          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+            rewrite H in *
+        end;
+      destruct_update; simpl in *;
+      repeat find_rewrite;
+      eauto.
+  Qed.
+
+  Lemma prefix_within_term_inductive_do_generic_server :
+    refined_raft_net_invariant_do_generic_server prefix_within_term_inductive.
+  Proof.
+    red. unfold prefix_within_term_inductive. intros. subst.
+    match goal with
+      | H : nwState ?net ?h = (?gd, ?d) |- _ =>
+        replace gd with (fst (nwState net h)) in * by (rewrite H; reflexivity);
+          replace d with (snd (nwState net h)) in * by (rewrite H; reflexivity);
+          clear H
+    end.
+    find_copy_apply_lem_hyp doGenericServer_log.
+    find_apply_lem_hyp doGenericServer_packets.
+    subst. simpl in *.
+intuition.
+    - unfold allEntries_leaderLogs_prefix_within_term in *.
+      intros. simpl in *.
+      repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; eauto.
+    - unfold log_leaderLogs_prefix_within_term in *.
+      intros. simpl in *.
+      repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; repeat find_rewrite; eauto.
+    - unfold allEntries_log_prefix_within_term in *.
+      intros. simpl in *.
+      repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; repeat find_rewrite; eauto.
+    - unfold allEntries_append_entries_prefix_within_term_nw in *.
+      intros. simpl in *.
+      find_apply_hyp_hyp.
+      intuition;
+        match goal with
+          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+            rewrite H in *
+        end;
+        destruct_update; simpl in *; eauto.
+    - unfold append_entries_leaderLogs_prefix_within_term in *.
+      intros. simpl in *.
+      find_apply_hyp_hyp.
+      intuition;
+        match goal with
+          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+            rewrite H in *
+        end;
+        destruct_update; simpl in *; eauto.
+    - unfold append_entries_log_prefix_within_term in *.
+      intros. simpl in *.
+      find_apply_hyp_hyp.
+      intuition;
+        match goal with
+          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+            rewrite H in *
+        end;
+        destruct_update; simpl in *; repeat find_rewrite; eauto.
+  Qed.
+
+  Lemma prefix_within_term_inductive_init :
+    refined_raft_net_invariant_init prefix_within_term_inductive.
+  Proof.
+    red. unfold prefix_within_term_inductive in *.
+    intuition;
+    red; intros; simpl in *; intuition.
+    unfold prefix_within_term. intros. simpl in *.
+    intuition.
+  Qed.
+
+  Lemma prefix_within_term_inductive_state_same_packet_subset :
+    refined_raft_net_invariant_state_same_packet_subset prefix_within_term_inductive.
+  Proof.
+    red. unfold prefix_within_term_inductive in *.
+    intros.
+    intuition; red;
+    intros; repeat find_reverse_higher_order_rewrite; try find_apply_hyp_hyp; eauto.
+  Qed.
+
+  Lemma prefix_within_term_inductive_reboot :
+    refined_raft_net_invariant_reboot prefix_within_term_inductive.
+  Proof.
+    red. intros. subst.
+    match goal with
+      | H : nwState ?net ?h = (?gd, ?d) |- _ =>
+        replace gd with (fst (nwState net h)) in * by (rewrite H; reflexivity);
+          replace d with (snd (nwState net h)) in * by (rewrite H; reflexivity);
+          clear H
+    end.
+    unfold reboot in *.
+    unfold prefix_within_term_inductive in *.
+    intros.
+    intros.
+    intuition; red; intros; try find_apply_hyp_hyp;
+    match goal with
+      | H : forall _, _ _ _ = update _ _ _ _ |- _ =>
+        repeat rewrite H in *
+    end;
+    match goal with
+      | H : nwPackets _ = nwPackets _ |- _ =>
+        repeat rewrite <- H in *
+    end;
+    destruct_update; simpl in *; eauto.
+  Qed.
+    
+  
+  Theorem prefix_within_term_inductive_invariant :
+    forall net,
+      refined_raft_intermediate_reachable net ->
+      prefix_within_term_inductive net.
+  Proof.
+    intros. apply refined_raft_net_invariant; auto.
+    - apply prefix_within_term_inductive_init.
+    - apply prefix_within_term_inductive_client_request.
+    - apply prefix_within_term_inductive_timeout.
+    - apply prefix_within_term_inductive_append_entries.
+    - apply prefix_within_term_inductive_append_entries_reply.
+    - apply prefix_within_term_inductive_request_vote.
+    - apply prefix_within_term_inductive_request_vote_reply.
+    - apply prefix_within_term_inductive_do_leader.
+    - apply prefix_within_term_inductive_do_generic_server.
+    - apply prefix_within_term_inductive_state_same_packet_subset.
+    - apply prefix_within_term_inductive_reboot.
+  Qed.
   
   Instance pwti : prefix_within_term_interface.
-  Admitted.
+  split; intros.
+  - apply prefix_within_term_inductive_invariant. auto.
+  - apply log_log_prefix_within_term_invariant. auto.
+  Defined.
   
 End PrefixWithinTerm.
