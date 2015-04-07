@@ -757,19 +757,44 @@ Section StateMachineSafetyProof.
   Qed.
 
 
-  Definition commit_invariant (net : network (params := raft_refined_multi_params)) : Prop :=
+  Definition commit_invariant_host (net : network (params := raft_refined_multi_params)) : Prop :=
     forall h e,
       In e (log (snd (nwState net h))) ->
       (eIndex e <= lastApplied (snd (nwState net h)) \/
        eIndex e <= commitIndex (snd (nwState net h))) ->
       committed net e (currentTerm (snd (nwState net h))).
 
+  Definition commit_invariant_nw (net : network (params := raft_refined_multi_params)) : Prop :=
+    forall p t leader pli plt es lci,
+      In p (nwPackets net) ->
+      pBody p = AppendEntries t leader pli plt es lci ->
+      (forall e,
+         In e es ->
+         eIndex e <= lci ->
+         committed net e t) /\
+      (forall h e ple,
+         currentTerm (snd (nwState net h)) <= t ->
+         In ple (log (snd (nwState net h))) ->
+         eIndex ple = pli ->
+         eTerm ple = plt ->
+         haveNewEntries (snd (nwState net h)) es = true ->
+         In e (log (snd (nwState net h))) ->
+         eIndex e <= lci ->
+         eIndex e <= pli ->
+         committed net e t).
+
+  Definition commit_invariant (net : network (params := raft_refined_multi_params)) : Prop :=
+    commit_invariant_host net /\
+    commit_invariant_nw net.
+
   Lemma commit_invariant_init :
     refined_raft_net_invariant_init commit_invariant.
   Proof.
     unfold refined_raft_net_invariant_init, commit_invariant.
-    unfold commit_recorded_committed, commit_recorded, committed. simpl.
-    intuition.
+    split.
+    - unfold commit_invariant_host, commit_recorded_committed, commit_recorded, committed. simpl.
+      intuition.
+    - unfold commit_invariant_nw; simpl; intuition.
   Qed.
 
   Lemma commit_invariant_commit_recorded_committed :
@@ -915,6 +940,63 @@ Section StateMachineSafetyProof.
     rewrite <- deghost_spec with (net0 := net). auto.
   Qed.
 
+  Lemma haveNewEntries_log :
+    forall es st st',
+      log st = log st' ->
+      haveNewEntries st es = true ->
+      haveNewEntries st' es = true.
+  Proof.
+    unfold haveNewEntries.
+    intros.
+    find_rewrite. auto.
+  Qed.
+
+  Lemma commit_invariant_nw_packet_subset :
+    forall net net',
+      (forall p,
+         In p (nwPackets net') ->
+         is_append_entries (pBody p) ->
+         In p (nwPackets net)) ->
+      (forall h,
+         log (snd (nwState net h)) = log (snd (nwState net' h))) ->
+      (forall h e t,
+         In (t, e) (allEntries (fst (nwState net h))) ->
+         In (t, e) (allEntries (fst (nwState net' h)))) ->
+      (forall h, currentTerm (snd (nwState net h)) <= currentTerm (snd (nwState net' h))) ->
+      commit_invariant_nw net ->
+      commit_invariant_nw net'.
+  Proof.
+    unfold commit_invariant_nw.
+    intros.
+    eapply_prop_hyp In In; [|solve [eauto 10]].
+    copy_eapply_prop_hyp In In; [|solve [eauto 10]].
+    assert (forall h x, In x (log (snd (nwState net h))) ->
+                        In x (log (snd (nwState net' h)))) by (intros; find_higher_order_rewrite; auto).
+    assert (forall h x, In x (log (snd (nwState net' h))) ->
+                        In x (log (snd (nwState net h)))) by (intros; find_higher_order_rewrite; auto).
+    intuition.
+    - eapply committed_log_allEntries_preserved; eauto.
+    - eapply committed_log_allEntries_preserved; auto.
+      + eauto 10 using le_trans, haveNewEntries_log.
+      + auto.
+      + auto.
+  Qed.
+
+  Lemma hCR_preserves_committed :
+    forall net net' h client id c out d l e t,
+      handleClientRequest h (snd (nwState net h)) client id c = (out, d, l) ->
+      (forall h', nwState net' h' = update (nwState net) h (update_elections_data_client_request h (nwState net h) client id c, d) h') ->
+      committed net e t ->
+      committed net' e t.
+  Proof.
+    intros.
+    eapply committed_log_allEntries_preserved; simpl; eauto.
+    - intros. find_higher_order_rewrite.
+      update_destruct; eauto using handleClientRequest_preservers_log.
+    - intros. find_higher_order_rewrite.
+      update_destruct; eauto using update_elections_data_client_request_preserves_allEntries.
+  Qed.
+
   Lemma commit_invariant_client_request :
     forall h net st' ps' gd out d l client id c,
       handleClientRequest h (snd (nwState net h)) client id c = (out, d, l) ->
@@ -928,54 +1010,95 @@ Section StateMachineSafetyProof.
       commit_invariant (mkNetwork ps' st').
   Proof.
     unfold refined_raft_net_invariant_client_request, commit_invariant.
-    unfold commit_recorded_committed, commit_recorded.
-    intros. simpl in *.
-    repeat find_higher_order_rewrite.
-    rewrite update_fun_comm with (f := snd).
-    repeat match goal with H : _ |- _ => rewrite update_fun_comm with (f := snd) in H end.
-    simpl in *.
-    repeat match goal with
-      | [H : _ |- _] => rewrite (update_fun_comm raft_data _) in H
-    end.
-    rewrite (update_fun_comm raft_data _).
-    rewrite update_nop_ext' by (now erewrite <- handleClientRequest_currentTerm by eauto).
-    match goal with
-      | [H : _ |- _] => rewrite update_nop_ext' in H
-          by (now erewrite <- handleClientRequest_lastApplied by eauto)
-    end.
-    match goal with
-      | [H : _ |- _] => rewrite update_nop_ext' in H
-          by (now erewrite <- handleClientRequest_commitIndex by eauto)
-    end.
-    update_destruct.
-    - find_copy_apply_lem_hyp handleClientRequest_log.
-      break_and. break_or_hyp.
-      + repeat find_rewrite.
-        eapply committed_log_allEntries_preserved; eauto.
-        * simpl. intros. find_higher_order_rewrite.
-          update_destruct; repeat find_rewrite; auto.
-        * simpl. intros. find_higher_order_rewrite.
-          update_destruct; eauto using update_elections_data_client_request_preserves_allEntries.
-      + break_exists. break_and. repeat find_rewrite.
+    intros. split.
+    - { unfold commit_invariant_host in *. break_and.
+        unfold commit_recorded_committed, commit_recorded in *.
+        intros. simpl in *.
+        repeat find_higher_order_rewrite.
+        rewrite update_fun_comm with (f := snd).
+        repeat match goal with H : _ |- _ => rewrite update_fun_comm with (f := snd) in H end.
         simpl in *.
+        repeat match goal with
+                 | [H : _ |- _] => rewrite (update_fun_comm raft_data _) in H
+               end.
+        rewrite (update_fun_comm raft_data _).
+        rewrite update_nop_ext' by (now erewrite <- handleClientRequest_currentTerm by eauto).
         match goal with
-          | [ H : _ \/ In _ _ |- _ ] => invc H
+          | [H : _ |- _] => rewrite update_nop_ext' in H
+              by (now erewrite <- handleClientRequest_lastApplied by eauto)
         end.
-        * find_eapply_lem_hyp (lift_max_index_sanity net h0); auto.
-          break_and. simpl in *. omega.
-        * { eapply committed_log_allEntries_preserved; eauto.
-            - simpl. intros. find_higher_order_rewrite.
+        match goal with
+          | [H : _ |- _] => rewrite update_nop_ext' in H
+              by (now erewrite <- handleClientRequest_commitIndex by eauto)
+        end.
+        update_destruct.
+        - find_copy_apply_lem_hyp handleClientRequest_log.
+          break_and. break_or_hyp.
+          + repeat find_rewrite.
+            eapply committed_log_allEntries_preserved; eauto.
+            * simpl. intros. find_higher_order_rewrite.
               update_destruct; repeat find_rewrite; auto.
-              find_reverse_rewrite.
-              eapply handleClientRequest_preservers_log; eauto.
-            - simpl. intros. find_higher_order_rewrite.
+            * simpl. intros. find_higher_order_rewrite.
               update_destruct; eauto using update_elections_data_client_request_preserves_allEntries.
+          + break_exists. break_and. repeat find_rewrite.
+            simpl in *.
+            match goal with
+              | [ H : _ \/ In _ _ |- _ ] => invc H
+            end.
+            * find_eapply_lem_hyp (lift_max_index_sanity net h0); auto.
+              break_and. simpl in *. omega.
+            * { eapply committed_log_allEntries_preserved; eauto.
+                - simpl. intros. find_higher_order_rewrite.
+                  update_destruct; repeat find_rewrite; auto.
+                  find_reverse_rewrite.
+                  eapply handleClientRequest_preservers_log; eauto.
+                - simpl. intros. find_higher_order_rewrite.
+                  update_destruct; eauto using update_elections_data_client_request_preserves_allEntries.
+              }
+        - eapply committed_log_allEntries_preserved; eauto.
+          + simpl. intros. find_higher_order_rewrite.
+            update_destruct; repeat find_rewrite; eauto using handleClientRequest_preservers_log.
+          + simpl. intros. find_higher_order_rewrite.
+            update_destruct; eauto using update_elections_data_client_request_preserves_allEntries.
+      }
+    - break_and. unfold commit_invariant_nw in *.
+      simpl. intros.
+      eapply_prop_hyp In In.
+      break_or_hyp.
+      + copy_eapply_prop_hyp In In; [|solve [eauto 10]].
+        intuition.
+        * eauto using hCR_preserves_committed.
+        * find_higher_order_rewrite.
+          { update_destruct.
+            - find_copy_apply_lem_hyp handleClientRequest_log.
+              intuition.
+              + eapply hCR_preserves_committed; simpl; eauto.
+                find_copy_apply_lem_hyp handleClientRequest_type. break_and.
+                repeat find_rewrite.
+                eauto using haveNewEntries_log.
+              + break_exists. break_and.
+                assert (eTerm ple = currentTerm (snd (nwState net h0)) ->
+                        eIndex ple <= maxIndex (log (snd (nwState net h0)))) by admit.
+                repeat find_rewrite.
+                match goal with
+                  | [ H : In ple (_ :: _) |- _ ] => simpl in H
+                end.
+                (* 
+                destruct (eq_nat_dec (eIndex ple) (eIndex x)).
+                * subst. simpl in *. concludes. omega.
+                *
+                break_or_hyp.
+                * concludes. simpl in *. omega.
+                * simpl in *.
+                  { intuition.
+                    - subst. simpl in *.
+                *)
+                admit.
+            - eauto using hCR_preserves_committed.
           }
-    - eapply committed_log_allEntries_preserved; eauto.
-      + simpl. intros. find_higher_order_rewrite.
-        update_destruct; repeat find_rewrite; eauto using handleClientRequest_preservers_log.
-      + simpl. intros. find_higher_order_rewrite.
-        update_destruct; eauto using update_elections_data_client_request_preserves_allEntries.
+      + unfold send_packets in *. exfalso. do_in_map.
+        subst. simpl in *.
+        eapply handleClientRequest_no_append_entries; eauto 10.
   Qed.
 
   Lemma commit_invariant_timeout :
