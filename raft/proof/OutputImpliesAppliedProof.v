@@ -38,36 +38,6 @@ Section OutputImpliesApplied.
   Section inner.
   Variables client id : nat.
 
-  Theorem key_in_output_trace_dec :
-    forall tr : list (name * (raft_input + list raft_output)),
-      {key_in_output_trace client id tr} + {~ key_in_output_trace client id tr}.
-  Proof.
-    unfold key_in_output_trace.
-    intros.
-    destruct (find (fun p => match snd p with
-                               | inr l => match find (is_client_response_with_key client id) l with
-                                            | Some x => true
-                                            | None => false
-                                          end
-                               | _ => false
-                             end) tr) eqn:?.
-    - find_apply_lem_hyp find_some. break_and.
-      repeat break_match; try discriminate.
-      find_apply_lem_hyp find_some. break_and.
-      unfold is_client_response_with_key, key_in_output_list in *.
-      break_match; try discriminate. do_bool. break_and. do_bool. subst.
-      left. exists l, (fst p).
-      find_reverse_rewrite. rewrite <- surjective_pairing.
-      intuition eauto.
-    - right. intro. break_exists. break_and.
-      find_eapply_lem_hyp find_none; eauto.
-      simpl in *. break_match; try discriminate.
-      unfold key_in_output_list in *. break_exists.
-      find_eapply_lem_hyp find_none; eauto.
-      simpl in *. find_apply_lem_hyp Bool.andb_false_elim.
-      intuition (do_bool; congruence).
-  Qed.
-
   Lemma in_output_changed :
     forall tr o,
       ~ key_in_output_trace client id tr ->
@@ -274,7 +244,7 @@ Section OutputImpliesApplied.
     {
       init := step_f_init;
       T := key_in_output_trace client id ;
-      T_dec := key_in_output_trace_dec ;
+      T_dec := key_in_output_trace_dec client id ;
       R := fun s => in_applied_entries client id (snd s)
     }.
   Proof.
