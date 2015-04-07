@@ -208,7 +208,7 @@ Hint Extern 4 (@refined_log_matching_lemmas_interface _ _ _) => apply rlmli : ty
 Hint Extern 4 (@leaderLogs_candidate_entries_interface _ _ _) => apply llcei : typeclass_instances.
 Hint Extern 4 (@allEntries_log_matching_interface _ _ _) => apply aelmi : typeclass_instances.
 Hint Extern 4 (@append_entries_request_term_sanity_interface _ _ _) => apply aertsi : typeclass_instances.
-Hint Extern 4 (@all_entries_leader_sublog_interface _ _ _) => apply aelsi : typeclass_instances.
+Hint Extern 4 (@allEntries_leader_sublog_interface _ _ _) => apply aelsi : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
