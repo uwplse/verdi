@@ -159,6 +159,9 @@ Require Import AppendEntriesRequestTermSanityProof.
 Require Import AllEntriesLeaderSublogInterface.
 Require Import AllEntriesLeaderSublogProof.
 
+Require Import LastAppliedCommitIndexMatchingInterface.
+Require Import LastAppliedCommitIndexMatchingProof.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -209,6 +212,7 @@ Hint Extern 4 (@leaderLogs_candidate_entries_interface _ _ _) => apply llcei : t
 Hint Extern 4 (@allEntries_log_matching_interface _ _ _) => apply aelmi : typeclass_instances.
 Hint Extern 4 (@append_entries_request_term_sanity_interface _ _ _) => apply aertsi : typeclass_instances.
 Hint Extern 4 (@allEntries_leader_sublog_interface _ _ _) => apply aelsi : typeclass_instances.
+Hint Extern 4 (@lastApplied_commitIndex_match_interface _ _ _) => apply lacimi : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.

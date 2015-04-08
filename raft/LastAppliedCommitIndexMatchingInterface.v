@@ -1,0 +1,27 @@
+Require Import List.
+
+Require Import VerdiTactics.
+Require Import Net.
+Require Import Raft.
+
+Section LastAppliedCommitIndexMatching.
+
+  Context {orig_base_params : BaseParams}.
+  Context {one_node_params : OneNodeParams orig_base_params}.
+  Context {raft_params : RaftParams orig_base_params}.
+
+  Definition lastApplied_commitIndex_match net :=
+    forall h h' e,
+      lastApplied (nwState net h') <= commitIndex (nwState net h) ->
+      eIndex e <= lastApplied (nwState net h') ->
+      In e (log (nwState net h')) <-> In e (log (nwState net h)).
+
+  Class lastApplied_commitIndex_match_interface : Prop :=
+    {
+      lastApplied_commitIndex_match_invariant :
+        forall net,
+          raft_intermediate_reachable net ->
+          lastApplied_commitIndex_match net
+    }.
+  
+End LastAppliedCommitIndexMatching.
