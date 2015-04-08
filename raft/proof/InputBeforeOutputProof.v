@@ -78,14 +78,6 @@ Section InputBeforeOutput.
       do_bool.
       break_exists; intuition; do_bool; subst; eauto.
   Qed.
-  
-  Lemma before_func_app :
-    forall A f g l x,
-      before_func (A := A) f g l ->
-      before_func f g (l ++ x).
-  Proof.
-    intros. induction l; simpl in *; intuition.
-  Qed.
 
   Ltac update_destruct_hyp :=
     match goal with

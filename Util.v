@@ -1213,6 +1213,15 @@ Proof.
     destruct (f a); destruct (g a); intuition.
 Qed.
 
+Lemma before_func_app :
+  forall A f g l x,
+    before_func (A := A) f g l ->
+    before_func f g (l ++ x).
+Proof.
+  intros. induction l; simpl in *; intuition.
+Qed.
+
+
 Lemma if_decider_true :
   forall A B (P : A -> Prop) (dec : forall x, {P x} + {~ P x}) a (b1 b2 : B),
     P a ->
