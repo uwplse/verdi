@@ -40,6 +40,7 @@ Section AppliedEntriesMonotonicProof.
   Context {crci : commit_recorded_committed_interface}.
   Context {lci : leader_completeness_interface}.
   Context {lacimi : lastApplied_commitIndex_match_interface}.
+  
   Lemma findAtIndex_max_thing :
     forall net h e i,
       raft_intermediate_reachable net ->
@@ -362,18 +363,6 @@ Section AppliedEntriesMonotonicProof.
     | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
     end.
 
-  Lemma rev_exists_thing :
-    forall A (l : list A) l',
-    (exists l'',
-       l = l'' ++ l') ->
-    exists l'',
-      rev l = rev l' ++ l''.
-  Proof.
-    intros.
-    break_exists.
-    exists (rev x). subst. eauto using rev_app_distr.
-  Qed.
-
   Lemma doGenericServer_applied_entries :
     forall ps h sigma os st' ms,
       raft_intermediate_reachable (mkNetwork ps sigma) ->
@@ -402,10 +391,10 @@ Section AppliedEntriesMonotonicProof.
       end.
       rewrite_update. simpl in *.
       update_destruct_hyp; subst; rewrite_update; simpl in *.
-      + apply rev_exists_thing.
+      + apply rev_exists.
         erewrite removeAfterIndex_le with (i := lastApplied (sigma h')) (j := commitIndex (sigma h')); [|omega].
         eauto using removeAfterIndex_partition.
-      + apply rev_exists_thing.
+      + apply rev_exists.
         match goal with
           | _ : ?h <> ?h' |- exists _, removeAfterIndex ?l (commitIndex (?sigma ?h)) = _ =>
             pose proof removeAfterIndex_partition (removeAfterIndex l (commitIndex (sigma h)))

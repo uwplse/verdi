@@ -1823,6 +1823,18 @@ Section CommonTheorems.
   Admitted.
 
   
+  Lemma rev_exists :
+    forall A (l : list A) l',
+    (exists l'',
+       l = l'' ++ l') ->
+    exists l'',
+      rev l = rev l' ++ l''.
+  Proof.
+    intros.
+    break_exists.
+    exists (rev x). subst. eauto using rev_app_distr.
+  Qed.
+
 End CommonTheorems.
 
 Notation is_append_entries m :=
