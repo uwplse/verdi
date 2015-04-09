@@ -166,50 +166,31 @@ Section CommonTheorems.
   unfold candidateEntries.
     intros. break_exists. break_and.
     exists x.
-    split.
-    - rewrite update_fun_comm. simpl.
-      rewrite update_fun_comm. simpl.
-      my_update_destruct; subst; rewrite_update; auto.
-      unfold update_elections_data_requestVoteReply in *.
-      repeat break_match; simpl in *; auto.
-      + break_if; simpl in *; repeat find_rewrite; auto.
-         match goal with
-          | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
-            remember (handleRequestVoteReply h st h' t r) as new_state
-         end. find_apply_lem_hyp handleRequestVoteReply_spec. intuition.
-         repeat find_rewrite. intuition.
-      + break_if; simpl in *; find_rewrite; auto.
-        match goal with
-          | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
-            remember (handleRequestVoteReply h st h' t r) as new_state
-        end. find_apply_lem_hyp handleRequestVoteReply_spec. intuition.
-        repeat find_rewrite. intuition.
-      +  break_if; simpl in *; find_rewrite; auto.
-        match goal with
-          | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
-            remember (handleRequestVoteReply h st h' t r) as new_state
-        end. find_apply_lem_hyp handleRequestVoteReply_spec. intuition.
-        repeat find_rewrite. intuition.
-        * find_apply_lem_hyp cronies_correct_invariant.
-          unfold cronies_correct in *. intuition.
-          unfold votes_received_leaders in *.
-          match goal with
-            | H :  Leader = _ |- _ =>
-              symmetry in H
-          end. find_apply_hyp_hyp.
-          eapply wonElection_no_dup_in;
-            eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
-        * destruct (serverType_eq_dec (type (snd (nwState net x))) Leader); intuition.
-          find_apply_lem_hyp cronies_correct_invariant; auto.
-          eapply wonElection_no_dup_in;
-            eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
-    - rewrite update_fun_comm. simpl.
-      rewrite update_fun_comm. simpl.
-      my_update_destruct; subst; rewrite_update; auto.
+    split;
+      rewrite update_fun_comm; simpl;
+      rewrite update_fun_comm; simpl;
+      my_update_destruct; subst; rewrite_update; auto;
+      try (unfold update_elections_data_requestVoteReply in *;
+            repeat break_match; simpl in *; auto;
+           break_if; simpl in *; repeat find_rewrite; auto);
       match goal with
-          | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
-            remember (handleRequestVoteReply h st h' t r) as new_state
-      end. find_apply_lem_hyp handleRequestVoteReply_spec. intuition.
-      repeat find_rewrite. intuition.
+        | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
+          remember (handleRequestVoteReply h st h' t r) as new_state
+      end; find_apply_lem_hyp handleRequestVoteReply_spec; intuition;
+      repeat find_rewrite; intuition.
+  - find_apply_lem_hyp cronies_correct_invariant.
+    unfold cronies_correct in *. intuition.
+    unfold votes_received_leaders in *.
+    match goal with
+      | H :  Leader = _ |- _ =>
+        symmetry in H
+    end. find_apply_hyp_hyp.
+    eapply wonElection_no_dup_in;
+      eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
+  - destruct (serverType_eq_dec (type (snd (nwState net x))) Leader); intuition.
+    find_apply_lem_hyp cronies_correct_invariant; auto.
+    eapply wonElection_no_dup_in;
+      eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
   Qed.
+
 End CommonTheorems.
