@@ -117,5 +117,12 @@ Section CommonDefinitions.
       In e l1 ->
       In e' l2 ->
       In e l2.
-  
+
+  Definition output_correct client id out (aes : list entry) : Prop  :=
+    exists xs e ys tr' st',
+        deduplicate_log aes = xs ++ e :: ys /\
+        eClient e = client /\
+        eId e = id /\
+        execute_log (xs ++ [e]) = (tr', st') /\
+        hd_error (rev tr') = Some (eInput e, out).
 End CommonDefinitions.

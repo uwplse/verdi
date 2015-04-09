@@ -17,16 +17,10 @@ Section OutputCorrect.
 
   Class output_correct_interface : Prop :=
     {
-      output_correct :
+      output_correct_invariant :
         forall client id out failed net tr,
           step_f_star step_f_init (failed, net) tr ->
           in_output_trace client id out tr ->
-          exists xs e ys tr' st' i,
-            deduplicate_log (applied_entries (nwState net)) = xs ++ e :: ys /\
-            eClient e = client /\
-            eId e = id /\
-            eInput e = i /\
-            execute_log (xs ++ [e]) = (tr', st') /\
-            hd_error (rev tr') = Some (i, out)
+          output_correct client id out (applied_entries (nwState net))
     }.
 End OutputCorrect.

@@ -23,12 +23,8 @@ Section StateMachineCorrect.
   Definition client_cache_correct net :=
     forall h client id out,
       In (client, (id, out)) (clientCache (nwState net h)) ->
-      exists e xs ys,
-        eClient e = client /\
-        eId e = id /\
-        deduplicate_log (removeAfterIndex (log (nwState net h))
-                                          (lastApplied (nwState net h))) = xs ++ e :: ys /\
-        hd_error (rev (fst (execute_log (xs ++ [e])))) = Some (eInput e, out).
+      output_correct client id out (removeAfterIndex (log (nwState net h))
+                                          (lastApplied (nwState net h))).
 
   Definition client_cache_complete net :=
     forall h e,
