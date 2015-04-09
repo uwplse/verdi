@@ -161,157 +161,6 @@ Section PrefixWithinTerm.
         repeat find_rewrite. apply in_app_iff; intuition.
   Qed.
 
-  Lemma app_maxIndex_thing :
-    forall l l1 l2 l2' i,
-      l = l1 ++ l2 ->
-      Prefix l2 l2' ->
-      contiguous_range_exact_lo l i ->
-      maxIndex l2' <= i ->
-      l = l1.
-  Proof.
-    intros. subst.
-    destruct l2; eauto using app_nil_r.
-    simpl in *.
-    break_match; intuition. subst. simpl in *.
-    unfold contiguous_range_exact_lo in *.
-    intuition. specialize (H0 e0). conclude_using intuition.
-    omega.
-  Qed.
-
-  Lemma Prefix_nil :
-    forall A l,
-      Prefix (A := A) l [] ->
-      l = [].
-  Proof.
-    intros. destruct l; simpl in *; intuition.
-  Qed.
-
-  Lemma sorted_app_1 :
-    forall l1 l2,
-      sorted (l1 ++ l2) ->
-      sorted l1.
-  Proof.
-    intros. induction l1; simpl in *; intuition;
-    eapply H0; intuition.
-  Qed.
-  
-  Lemma Prefix_maxIndex :
-    forall l l' e,
-      sorted l' ->
-      Prefix l l' ->
-      In e l ->
-      eIndex e <= maxIndex l'.
-  Proof.
-    induction l; intros; simpl in *; intuition;
-    break_match; intuition; repeat subst; simpl in *; auto.
-    intuition.
-    eapply_prop_hyp sorted sorted; eauto.
-    match goal with
-      | _ : eIndex _ <= maxIndex ?l |- _ =>
-        destruct l
-    end.
-    - simpl in *.
-      find_apply_lem_hyp Prefix_nil. subst. simpl in *. intuition.
-    - simpl in *.
-      match goal with
-        | [ H : forall _, _ = _ \/ In _ _ -> _, _ : eIndex _ <= eIndex ?e |- _ ] =>
-          specialize (H e)
-      end; intuition.
-  Qed.
-
-  Lemma app_maxIndex_In_l :
-    forall l l' e,
-      sorted (l ++ l') ->
-      In e (l ++ l') ->
-      maxIndex l' < eIndex e ->
-      In e l.
-  Proof.
-    induction l; intros; simpl in *; intuition.
-    - destruct l'; simpl in *; intuition; subst; intuition.
-      find_apply_hyp_hyp. intuition.
-    - do_in_app. intuition. right. eapply IHl; eauto.
-      intuition.
-  Qed.
-  
-  Lemma thing :
-    forall l1 l2 l2' i,
-      Prefix l2 l2' ->
-      sorted (l1 ++ l2) ->
-      contiguous_range_exact_lo (l1 ++ l2) i ->
-      (l2 <> [] \/ i = maxIndex l2') ->
-      contiguous_range_exact_lo l1 (maxIndex l2').
-  Proof.
-    intros.
-    destruct l2.
-    - intuition. subst. rewrite app_nil_r in *. auto.
-    - match goal with H : _ \/ _ |- _ => clear H end.
-      simpl in *. break_match; intuition. subst. simpl.
-      eauto using contiguous_partition.
-  Qed.
-
-  Lemma Prefix_In :
-    forall A (l : list A) l' x,
-      Prefix l l' ->
-      In x l ->
-      In x l'.
-  Proof.
-    induction l; intros; simpl in *; intuition;
-    subst; break_match; intuition; subst; intuition.
-  Qed.
-
-  Lemma sorted_term_index_lt :
-    forall l e e',
-      sorted l ->
-      In e l ->
-      In e' l ->
-      eIndex e < eIndex e' ->
-      eTerm e <= eTerm e'.
-  Proof.
-    intros.
-    induction l; simpl in *; intuition; repeat subst; auto;
-    find_apply_hyp_hyp; intuition.
-  Qed.
-
-  Lemma contiguous_app_prefix_2 :
-    forall l l' l'' i,
-      sorted (l ++ l') ->
-      contiguous_range_exact_lo (l ++ l') 0 ->
-      Prefix l' l'' ->
-      maxIndex l'' < i <= maxIndex l ->
-      exists e, eIndex e = i /\ In e l.
-  Proof.
-    destruct l'.
-    - intros. simpl in *. rewrite app_nil_r in *.
-      eapply_prop (contiguous_range_exact_lo l). omega.
-    - intros. find_eapply_lem_hyp thing; eauto.
-      left. intuition. congruence.
-  Qed.
-
-  Lemma contiguous_0_app :
-    forall l1 l2 e,
-      sorted (l1 ++ l2) ->
-      contiguous_range_exact_lo (l1 ++ l2) 0 ->
-      In e l1 ->
-      eIndex e > maxIndex l2.
-  Proof.
-    induction l1; intros.
-    - simpl in *. intuition.
-    - rewrite <- app_comm_cons in *.
-      match goal with
-        | H : In _ _ |- _ => simpl in H
-      end. intuition.
-      + subst. simpl in *. intuition.
-        destruct l2; simpl in *.
-        * unfold contiguous_range_exact_lo in *. intuition.
-        * match goal with
-            | H : _ |- eIndex _ > eIndex ?e =>
-              specialize (H e)
-          end. conclude_using intuition. intuition.
-      + find_apply_lem_hyp cons_contiguous_sorted; eauto.
-        simpl in *. intuition.
-  Qed.
-      
-
   Definition locked_or x y :=
     x \/ y.
   
@@ -340,7 +189,7 @@ Section PrefixWithinTerm.
       left.
       match goal with
         | H : removeAfterIndex ?l ?index = ?es ++ ?ll |- _ =>
-          eapply app_maxIndex_thing in H
+          eapply app_contiguous_maxIndex_le_eq in H
       end;
         [|idtac|eapply removeAfterIndex_contiguous; [eapply entries_sorted_nw_invariant; eauto|eapply entries_contiguous_nw_invariant; eauto]|idtac]; eauto.
       assert (exists e'', eIndex e'' = eIndex e /\ In e'' es') by
@@ -488,7 +337,7 @@ Section PrefixWithinTerm.
              end.
       repeat match goal with
                | H : ?x \/ ?y |- _ =>
-                 copy_eapply thing H; eauto; fold (locked_or x y) in H
+                 copy_eapply contiguous_app_prefix_contiguous H; eauto; fold (locked_or x y) in H
              end.
       match goal with
         | H : removeAfterIndex _ _ = _ |- _ =>
@@ -635,7 +484,7 @@ Section PrefixWithinTerm.
       repeat find_rewrite.
       repeat match goal with
                | H : ?x \/ ?y |- _ =>
-                 copy_eapply thing H; eauto; fold (locked_or x y) in H
+                 copy_eapply contiguous_app_prefix_contiguous H; eauto; fold (locked_or x y) in H
              end.
       repeat do_in_app. intuition.
       + subst.
@@ -708,7 +557,7 @@ Section PrefixWithinTerm.
       repeat find_rewrite.
       repeat match goal with
                | H : ?x \/ ?y |- _ =>
-                 copy_eapply thing H; eauto; fold (locked_or x y) in H
+                 copy_eapply contiguous_app_prefix_contiguous H; eauto; fold (locked_or x y) in H
              end.
       repeat do_in_app. intuition.
       + left.
