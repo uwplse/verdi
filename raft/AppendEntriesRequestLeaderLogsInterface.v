@@ -28,7 +28,7 @@ Section AppendEntriesRequestLeaderLogs.
         Prefix ll' ll /\
         ((plt = t /\ pli > maxIndex ll)  \/
          (exists e, In e ll /\ eIndex e = pli /\ eTerm e = plt /\ Prefix_sane ll' ll pli) \/
-         plt = 0 /\ pli = 0).
+         plt = 0 /\ pli = 0 /\ ll' = ll).
 
 
   Class append_entries_leaderLogs_interface : Prop :=
