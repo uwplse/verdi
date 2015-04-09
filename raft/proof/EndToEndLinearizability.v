@@ -165,6 +165,9 @@ Require Import LastAppliedCommitIndexMatchingProof.
 Require Import AllEntriesLeaderLogsTermInterface.
 Require Import AllEntriesLeaderLogsTermProof.
 
+Require Import StateMachineCorrectInterface.
+Require Import StateMachineCorrectProof.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -217,7 +220,7 @@ Hint Extern 4 (@append_entries_request_term_sanity_interface _ _ _) => apply aer
 Hint Extern 4 (@allEntries_leader_sublog_interface _ _ _) => apply aelsi : typeclass_instances.
 Hint Extern 4 (@lastApplied_commitIndex_match_interface _ _ _) => apply lacimi : typeclass_instances.
 Hint Extern 4 (@allEntries_leaderLogs_term_interface _ _ _) => apply aellti : typeclass_instances.
-
+Hint Extern 4 (@state_machine_correct_interface _ _ _) => apply smci : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
