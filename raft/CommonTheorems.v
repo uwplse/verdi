@@ -1835,6 +1835,16 @@ Section CommonTheorems.
     exists (rev x). subst. eauto using rev_app_distr.
   Qed.
 
+  Lemma app_in_2 :
+    forall A l l1 l2 (x : A),
+      l = l1 ++ l2 ->
+      In x l2 ->
+      In x l.
+  Proof.
+    intros. subst. intuition.
+  Qed.
+
+
 End CommonTheorems.
 
 Notation is_append_entries m :=

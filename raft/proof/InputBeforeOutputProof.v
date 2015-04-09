@@ -84,15 +84,6 @@ Section InputBeforeOutput.
     | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
     end.
 
-  Lemma app_in :
-    forall A l l1 l2 (x : A),
-      l = l1 ++ l2 ->
-      In x l2 ->
-      In x l.
-  Proof.
-    intros. subst. intuition.
-  Qed.
-
   Lemma doGenericServer_applied_entries :
     forall ps h sigma os st' ms,
       raft_intermediate_reachable (mkNetwork ps sigma) ->
@@ -136,7 +127,7 @@ Section InputBeforeOutput.
       break_exists_exists.
       repeat find_rewrite.
       rewrite <- removeAfterIndex_le by omega. intuition.
-      find_eapply_lem_hyp app_in; eauto.
+      find_eapply_lem_hyp app_in_2; eauto.
       find_apply_lem_hyp In_rev.
       find_copy_apply_lem_hyp removeAfterIndex_in.
       find_apply_lem_hyp removeAfterIndex_In_le; eauto.
@@ -156,7 +147,7 @@ Section InputBeforeOutput.
         eapply removeAfterIndex_same_sufficient; eauto;
         intros;
         eapply_prop_hyp lastApplied_commitIndex_match le; intuition eauto.
-      * find_eapply_lem_hyp app_in; eauto.
+      * find_eapply_lem_hyp app_in_2; eauto.
         find_apply_lem_hyp In_rev.
         find_copy_apply_lem_hyp removeAfterIndex_in.
         find_apply_lem_hyp removeAfterIndex_In_le; eauto.
