@@ -876,6 +876,17 @@ Proof.
     + subst. find_inversion. eauto.
 Qed.
 
+Lemma Prefix_In :
+  forall A (l : list A) l' x,
+    Prefix l l' ->
+    In x l ->
+    In x l'.
+Proof.
+  induction l; intros; simpl in *; intuition;
+  subst; break_match; intuition; subst; intuition.
+Qed.
+
+
 Fixpoint filterMap {A B} (f : A -> option B) (l : list A) : list B :=
   match l with
     | [] => []
