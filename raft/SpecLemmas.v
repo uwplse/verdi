@@ -25,6 +25,14 @@ Section SpecLemmas.
     do_bool. intuition. repeat break_match; congruence.
   Qed.
 
+  Lemma advanceCurrentTerm_log :
+    forall st t,
+      log (advanceCurrentTerm st t) = log st.
+  Proof.
+    intros.
+    unfold advanceCurrentTerm. break_if; simpl in *; auto.
+  Qed.
+
   Theorem handleAppendEntries_log :
     forall h st t n pli plt es ci st' ps,
       handleAppendEntries h st t n pli plt es ci = (st', ps) ->
@@ -38,8 +46,10 @@ Section SpecLemmas.
   Proof.
     intros. unfold handleAppendEntries in *.
     break_if; [find_inversion; subst; eauto|].
-    break_if; [do_bool; break_if; find_inversion; subst;
-               try find_apply_lem_hyp haveNewEntries_not_empty; intuition|].
+    break_if;
+      [do_bool; break_if; find_inversion; subst;
+       try find_apply_lem_hyp haveNewEntries_not_empty; intuition; simpl in *;
+       eauto using advanceCurrentTerm_log|].
     break_if.
     - break_match; [|find_inversion; subst; eauto].
       break_if; [find_inversion; subst; eauto|].
@@ -48,6 +58,7 @@ Section SpecLemmas.
       find_apply_lem_hyp findAtIndex_elim. intuition; do_bool; eauto.
       find_apply_lem_hyp haveNewEntries_not_empty. congruence.
     - repeat break_match; find_inversion; subst; eauto.
+      simpl in *. eauto using advanceCurrentTerm_log.
   Qed.
 
   Theorem handleAppendEntries_log_ind :
@@ -85,6 +96,14 @@ Section SpecLemmas.
     do_bool. eauto.
   Qed.
 
+  Lemma advanceCurrentTerm_commitIndex :
+    forall st t,
+      commitIndex (advanceCurrentTerm st t) = commitIndex st.
+  Proof.
+    intros.
+    unfold advanceCurrentTerm. break_if; simpl in *; auto.
+  Qed.
+
   Theorem handleAppendEntries_log_detailed :
     forall h st t n pli plt es ci st' ps,
       handleAppendEntries h st t n pli plt es ci = (st', ps) ->
@@ -115,10 +134,10 @@ Section SpecLemmas.
     break_if;
       [do_bool; break_if; find_inversion; subst;
         try find_apply_lem_hyp haveNewEntries_true;
-        intuition eauto|].
+        simpl in *; intuition eauto using advanceCurrentTerm_log, advanceCurrentTerm_commitIndex|].
     break_match; [|find_inversion; subst; eauto].
     break_if; [find_inversion; subst; eauto|].
-    break_if; [|find_inversion; subst; eauto].
+    break_if; [|find_inversion; subst; eauto using advanceCurrentTerm_log, advanceCurrentTerm_commitIndex].
     find_inversion; subst; simpl in *.
     right. right.
     find_apply_lem_hyp findAtIndex_elim.

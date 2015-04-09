@@ -202,9 +202,11 @@ Section Raft.
                       max (commitIndex state) (min leaderCommit (maxIndex entries))
                ]}
               with type := Follower ]} with leaderId := Some leaderId ]},
-           AppendEntriesReply (currentTerm state) entries true)
+           AppendEntriesReply t entries true)
         else
-          (state, AppendEntriesReply (currentTerm state) entries true)
+          ({[ {[ (advanceCurrentTerm state t)
+                 with type := Follower ]} with leaderId := Some leaderId ]},
+           AppendEntriesReply t entries true)
       else
         match (findAtIndex (log state) prevLogIndex) with
           | None => (state, AppendEntriesReply (currentTerm state) entries false)
@@ -220,9 +222,11 @@ Section Raft.
                                      max (commitIndex state) (min leaderCommit (maxIndex log''))
                               ]}
                              with type := Follower ]} with leaderId := Some leaderId ]},
-                          AppendEntriesReply (currentTerm state) entries true)
+                          AppendEntriesReply t entries true)
                        else
-                         (state, AppendEntriesReply (currentTerm state) entries true)
+                         ({[ {[ (advanceCurrentTerm state t)
+                                with type := Follower ]} with leaderId := Some leaderId ]},
+                          AppendEntriesReply t entries true)
         end.
 
   Definition handleAppendEntriesReply (me : name) state src term entries (result : bool)

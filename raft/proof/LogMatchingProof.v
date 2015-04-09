@@ -11,6 +11,7 @@ Require Import Net.
 Require Import Raft.
 Require Import VerdiTactics.
 
+Require Import SpecLemmas.
 Require Import CommonTheorems.
 Require Import SortedInterface.
 Require Import UniqueIndicesInterface.
@@ -39,11 +40,7 @@ Section LogMatchingProof.
   Proof.
     intros.
     unfold handleAppendEntries in *.
-    break_match; repeat find_inversion; intuition.
-    break_match; repeat find_inversion; intuition;
-    break_match; repeat find_inversion; intuition.
-    break_match; repeat find_inversion; intuition.
-    break_match; repeat find_inversion; intuition.
+    repeat break_match; find_inversion; simpl in *; intuition; repeat find_rewrite_lem advanceCurrentTerm_log; intuition.
     simpl in *. do_in_app. intuition.
     eauto using removeAfterIndex_in.
   Qed.
@@ -1049,7 +1046,7 @@ Ltac assert_do_leader :=
     intros. unfold handleAppendEntries in *.
     repeat (break_match; try find_inversion; intuition;
             simpl in *; do_bool; subst; intuition;
-           break_exists; try congruence).
+           break_exists; try congruence; eauto using advanceCurrentTerm_log).
     right. right. intuition. eexists; eauto.
   Qed.
 

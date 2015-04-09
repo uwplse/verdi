@@ -109,10 +109,10 @@ Section SpecLemmas.
     forall h st t h' pli plt es ci st' t' es',
       handleAppendEntries h st t h' pli plt es ci =
       (st', AppendEntriesReply t' es' true) ->
-      es' = es.
+      t' = t /\ es' = es /\ (forall e, In e es -> In e (log st') \/ haveNewEntries st es = false /\ log st' = log st).
   Proof.
     intros. unfold handleAppendEntries in *.
-    repeat break_match; find_inversion; congruence.
+    repeat break_match; find_inversion; simpl in *; intuition; eauto using advanceCurrentTerm_log.
   Qed.
 
   Lemma update_elections_data_appendEntries_allEntries :
@@ -129,6 +129,36 @@ Section SpecLemmas.
     - left. apply in_map_iff. eexists; eauto.
   Qed.
 
+
+  Lemma update_elections_data_appendEntries_allEntries_term :
+    forall h st t h' pli plt es ci te e,
+      In (te, e) (allEntries (update_elections_data_appendEntries h st t h' pli plt es ci)) ->
+      In (te, e) (allEntries (fst st)) \/ (In e es /\ te = t).
+  Proof.
+    intros.
+    unfold update_elections_data_appendEntries in *.
+    repeat break_match; subst; simpl in *; auto.
+    find_apply_lem_hyp handleAppendEntriesReply_entries.
+    intuition. subst.
+    do_in_app. intuition.
+    do_in_map. repeat find_inversion. subst. simpl in *. auto.
+  Qed.
+  
+  Lemma update_elections_data_appendEntries_allEntries_detailed :
+    forall h st t h' pli plt es ci st' m te e,
+      handleAppendEntries h (snd st) t h' pli plt es ci = (st', m) ->
+      In (te, e) (allEntries (update_elections_data_appendEntries h st t h' pli plt es ci)) ->
+      In (te, e) (allEntries (fst st)) \/ In e (log st') \/ (In e es /\ haveNewEntries (snd st) es = false /\ log st' = log (snd st)).
+  Proof.
+    intros.
+    unfold update_elections_data_appendEntries in *.
+    repeat break_match; subst; simpl in *; auto.
+    find_apply_lem_hyp handleAppendEntriesReply_entries. intuition.
+    find_inversion.
+    do_in_app. intuition.
+    do_in_map. find_inversion. find_copy_apply_hyp_hyp. intuition.
+  Qed.
+  
   Lemma update_elections_data_clientRequest_allEntries_new :
     forall h st client id c e,
       In e (map snd (allEntries (update_elections_data_client_request h st client id c))) ->
