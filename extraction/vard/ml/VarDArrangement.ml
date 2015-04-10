@@ -29,6 +29,7 @@ module VarDArrangement (M : VardParams) = struct
   type res = (VarDRaft.raft_output list * raft_data0) * ((VarDRaft.name * VarDRaft.msg) list)
   let debug = M.debug
   let init x = Obj.magic (init_handlers0 vard_base_params vard_one_node_params raft_params x)
+  (* a wrapper to wrap coq function defined in Raft.v *)
   let handleIO (n : name) (inp : input) (st : state) = Obj.magic (vard_raft_multi_params.input_handlers (Obj.magic n) (Obj.magic inp) (Obj.magic st))
   let handleNet (n : name) (src: name) (m : msg) (st : state)  = Obj.magic (vard_raft_multi_params.net_handlers (Obj.magic n) (Obj.magic src) (Obj.magic m) (Obj.magic st))
   let handleTimeout (me : name) (st : state) =

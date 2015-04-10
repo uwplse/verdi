@@ -17,12 +17,17 @@ Section LockServ.
 
   Variable num_Clients : nat.
 
+  (* fin is 1...n *)
+  (* Client_index should be a Type *)
   Definition Client_index := (fin num_Clients).
 
   Inductive Name :=
+  (* should I regard Client as a function or a single Name instance ? *)
   | Client : Client_index -> Name
   | Server : Name.
-
+    
+    (* map applies 'Client' function on the () elements *)
+    (* should return a list of names *)
   Definition list_Clients := map Client (all_fin num_Clients).
 
   Definition Name_eq_dec : forall a b : Name, {a = b} + {a <> b}.
@@ -43,10 +48,14 @@ Section LockServ.
   Definition Input := Msg.
   Definition Output := Msg.
 
+  (* mkData is the constructor of Data 'Class' *)
+  (* queue is the access function 'getter' of Data *)
   Record Data := mkData { queue : list Client_index ; held : bool }.
 
+(* use an empty list and 'false' to construct a 'Data' *)
   Definition init_data (n : Name) : Data := mkData [] false.
 
+  (* generate a new type composing the parameters *)
   Definition Handler (S : Type) := GenHandler (Name * Msg) S Output unit.
 
   Definition ClientNetHandler (i : Client_index) (m : Msg) : Handler Data :=
@@ -63,6 +72,7 @@ Section LockServ.
       | _ => nop
     end.
 
+(* how server handles network message *)
   Definition ServerNetHandler (src : Name) (m : Msg) : Handler Data :=
     st <- get ;;
     let q := queue st in
@@ -106,6 +116,8 @@ Section LockServ.
 
   Definition Nodes := Server :: list_Clients.
 
+  (* In == List.contains() *)
+  (* This theorem : a name must be in Nodes *)
   Theorem In_n_Nodes :
     forall n : Name, In n Nodes.
   Proof.

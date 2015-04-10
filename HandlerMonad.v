@@ -13,6 +13,7 @@ Definition bind {W S O A B : Type} (m : GenHandler W S O A) (f : A -> GenHandler
 
 Definition send {W S O} (w : W) : GenHandler W S O unit := fun s => (tt, [], s, [w]).
 
+(* fun should be lambda expression - anonymous function *)
 Definition write_output {W S O} (o : O) : GenHandler W S O unit := fun s => (tt, [o], s, []).
 
 Definition modify {W S O} (f : S -> S) : GenHandler W S O unit := fun s => (tt, [], f s, []).

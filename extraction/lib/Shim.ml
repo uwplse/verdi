@@ -56,6 +56,7 @@ module Shim (A: ARRANGEMENT) = struct
   let update_state_from_log_entry log nm s =
     let (id, op) = ((M.from_channel log) : int * log_step) in
     (id, (snd (fst (match op with
+                    (* call handleIO, which is a wrapper of coq function input handler *)
                     | LogInput inp -> A.handleIO nm inp s
                     | LogNet (src, m) -> A.handleNet nm src m s
                     | LogTimeout -> A.handleTimeout nm s))))
