@@ -117,6 +117,8 @@ Section RaftLinearizableProofs.
         eClient e' = eClient e /\
         eId e' = eId e /\
         In e' (deduplicate_log l).
+  Proof.
+    (* this is now false *)
   Admitted.
 
   Lemma deduplicate_log_In_if :
