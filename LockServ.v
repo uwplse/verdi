@@ -56,6 +56,7 @@ Section LockServ.
   Definition init_data (n : Name) : Data := mkData [] false.
 
   (* generate a new type composing the parameters *)
+  (* according to definition of GenHandler, it's a function get S and return a tuple of the others *)
   Definition Handler (S : Type) := GenHandler (Name * Msg) S Output unit.
 
   Definition ClientNetHandler (i : Client_index) (m : Msg) : Handler Data :=
@@ -64,8 +65,10 @@ Section LockServ.
       | _ => nop
     end.
 
+(* There muse be some call this function to send 'I want lock' or 'Please release lock' message *)
   Definition ClientIOHandler (i : Client_index) (m : Msg) : Handler Data :=
     match m with
+    (* This lock client send out the 'Lock' message *)
       | Lock => send (Server, Lock)
       | Unlock => data <- get ;;
                   when (held data) (put (mkData [] false) >> send (Server, Unlock))
@@ -74,17 +77,24 @@ Section LockServ.
 
 (* how server handles network message *)
   Definition ServerNetHandler (src : Name) (m : Msg) : Handler Data :=
+    (* st should be of type Data *) 
     st <- get ;;
+    (* q is waiting queue *)
     let q := queue st in
     match m with
       | Lock =>
         match src with
+          (* ignore lock msg from server *)
           | Server => nop
           | Client c =>
+            (* where does null come from *)
+            (* not sure: ignore the output of when, and return output of put *)
             when (null q) (send (src, Locked)) >> put (mkData (q++[c]) (held st))
         end
       | Unlock => match q with
+                    (* if there is someone in the waiting list, send 'Locked' to it *)
                     | _ :: x :: xs => put (mkData (x :: xs) (held st)) >> send (Client x, Locked)
+                    (* nobody in the list *)
                     | _ => put (mkData [] (held st))
                   end
       | _ => nop
@@ -132,6 +142,7 @@ Section LockServ.
       reflexivity.
   Qed.
 
+(* no duplicate ? *)
   Theorem nodup :
     NoDup Nodes.
   Proof.
