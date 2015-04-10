@@ -282,11 +282,50 @@ Section OutputCorrect.
     intros. eapply deduplicate_log'_snoc_drop_es; eauto.
   Qed.
 
+
+  Lemma deduplicate_log'_snoc_split :
+    forall es ks e,
+      (forall e', In e' es -> eClient e' = eClient e -> eId e' < eId e) ->
+      (forall i, assoc eq_nat_dec ks (eClient e) = Some i -> i < eId e) ->
+      deduplicate_log' (es ++ [e]) ks = deduplicate_log' es ks ++ [e].
+  Proof.
+    induction es; intros; simpl in *; intuition.
+    - break_match; simpl in *; auto.
+      break_if; simpl in *; auto.
+      do_bool.
+      find_insterU. conclude_using eauto. omega.
+    - repeat break_match; simpl in *; auto.
+      + f_equal. eapply IHes; eauto.
+        intros. do_bool.
+        destruct (eq_nat_dec (eClient a) (eClient e)).
+        * repeat find_rewrite.
+          find_rewrite_lem get_set_same. find_injection.
+          find_insterU. conclude_using eauto. intuition.
+        * find_erewrite_lem get_set_diff.
+          eauto.
+      + f_equal. eapply IHes; eauto.
+        intros. do_bool.
+        destruct (eq_nat_dec (eClient a) (eClient e)).
+        * repeat find_rewrite.
+          find_rewrite_lem get_set_same. find_injection.
+          match goal with
+            | H : forall _, ?x = _ \/ _ -> _ |- _ =>
+              specialize (H x)
+          end.
+          intuition.
+        * find_erewrite_lem get_set_diff.
+          eauto.
+  Qed.
+  
   Lemma deduplicate_log_snoc_split :
     forall es e,
       (forall e', In e' es -> eClient e' = eClient e -> eId e' < eId e) ->
       deduplicate_log (es ++ [e]) = deduplicate_log es ++ [e].
-  Admitted.
+  Proof.
+    intros.
+    eapply deduplicate_log'_snoc_split; eauto.
+    intros. simpl in *. congruence.
+  Qed.
 
   Lemma execute_log_app :
     forall xs ys,
