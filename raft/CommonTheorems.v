@@ -1300,7 +1300,7 @@ Section CommonTheorems.
   Proof.
     induction es; intros; simpl in *; intuition.
     - find_inversion. destruct st'; repeat eexists; eauto.
-    - unfold applyEntry in *.
+    - unfold cacheApplyEntry, applyEntry in *.
       repeat break_match; repeat find_inversion;
       find_apply_hyp_hyp; break_exists; repeat eexists; eauto.
   Qed.
