@@ -364,3 +364,15 @@ Ltac find_false :=
     | H : _ -> False |- _ => exfalso; apply H
   end.
 
+Ltac injc H :=
+  injection H; clear H; intro; subst_max.
+
+Ltac find_injection :=
+  match goal with
+    | [ H : ?X _ _ _ _ _ _ = ?X _ _ _ _ _ _ |- _ ] => injc H
+    | [ H : ?X _ _ _ _ _ = ?X _ _ _ _ _ |- _ ] => injc H
+    | [ H : ?X _ _ _ _ = ?X _ _ _ _ |- _ ] => injc H
+    | [ H : ?X _ _ _ = ?X _ _ _ |- _ ] => injc H
+    | [ H : ?X _ _ = ?X _ _ |- _ ] => injc H
+    | [ H : ?X _ = ?X _ |- _ ] => injc H
+  end.

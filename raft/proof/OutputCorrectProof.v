@@ -233,13 +233,121 @@ Section OutputCorrect.
     induction xs; intros; simpl; auto using f_equal.
   Qed.
 
+  Lemma deduplicate_log'_snoc_drop_keys :
+    forall es ks e n,
+      assoc eq_nat_dec ks (eClient e) = Some n ->
+      eId e <= n ->
+      deduplicate_log' (es ++ [e]) ks = deduplicate_log' es ks.
+  Proof.
+    induction es; simpl; intuition; repeat break_match; repeat find_inversion; do_bool.
+    - omega.
+    - auto.
+    - discriminate.
+    - f_equal. destruct (eq_nat_dec (eClient a) (eClient e)).
+      + repeat find_rewrite. find_injection.
+        eapply IHes with (n := eId a); auto with *.
+        now rewrite get_set_same.
+      + eapply IHes; eauto.
+        rewrite get_set_diff by auto. auto.
+    - eauto.
+    - f_equal. destruct (eq_nat_dec (eClient a) (eClient e)).
+      + repeat find_rewrite. discriminate.
+      + eapply IHes; eauto.
+        rewrite get_set_diff by auto. auto.
+  Qed.
+
+  Lemma deduplicate_log'_snoc_drop_es :
+    forall es ks e e',
+      In e' es ->
+      eClient e = eClient e' ->
+      eId e <= eId e' ->
+      deduplicate_log' (es ++ [e]) ks = deduplicate_log' es ks.
+  Proof.
+    induction es; simpl; intuition; repeat break_match; eauto using f_equal;
+    repeat find_reverse_rewrite.
+    - f_equal. subst. eapply deduplicate_log'_snoc_drop_keys; eauto.
+      now rewrite get_set_same.
+    - subst. do_bool. eapply deduplicate_log'_snoc_drop_keys; eauto; auto with *.
+    - f_equal. subst. eapply deduplicate_log'_snoc_drop_keys; eauto.
+      now rewrite get_set_same.
+  Qed.
+
+  Lemma deduplicate_log_snoc_drop :
+    forall es e e',
+      In e' es ->
+      eClient e = eClient e' ->
+      eId e <= eId e' ->
+      deduplicate_log (es ++ [e]) = deduplicate_log es.
+  Proof.
+    intros. eapply deduplicate_log'_snoc_drop_es; eauto.
+  Qed.
+
+  Lemma deduplicate_log_snoc_split :
+    forall es e,
+      (forall e', In e' es -> eClient e' = eClient e -> eId e' < eId e) ->
+      deduplicate_log (es ++ [e]) = deduplicate_log es ++ [e].
+  Admitted.
+
+  Lemma execute_log_app :
+    forall xs ys,
+      execute_log (xs ++ ys) = let (tr, st) := execute_log xs in execute_log' ys st tr.
+  Proof.
+    unfold execute_log.
+    intros.
+    rewrite execute_log'_app. auto.
+  Qed.
+
+  Lemma applyEntry_correct :
+    forall st e l st' es,
+      applyEntry st e = (l, st') ->
+      stateMachine st = snd (execute_log (deduplicate_log es)) ->
+      (forall e', In e' es -> eClient e' = eClient e -> eId e' < eId e) ->
+      stateMachine st' = snd (execute_log (deduplicate_log (es ++ [e]))).
+  Proof.
+    unfold applyEntry.
+    intros.
+    repeat break_match; repeat find_inversion. simpl.
+    rewrite deduplicate_log_snoc_split by auto.
+    rewrite execute_log_app. simpl. repeat break_let.
+    simpl in *. congruence.
+  Qed.
+
   Lemma cacheApplyEntry_correct :
     forall st e l st' es,
       cacheApplyEntry st e = (l, st') ->
       stateMachine st = snd (execute_log (deduplicate_log es)) ->
-      (* some condition on the cache and e... *)
+      (forall c i o,
+         In (c, (i, o)) (clientCache st) ->
+         exists e,
+           In e es /\
+           eClient e = c /\
+           eId e = i) ->
+      (forall e', In e' es -> eClient e' = eClient e -> eId e' < eId e) ->
       stateMachine st' = snd (execute_log (deduplicate_log (es ++ [e]))).
-  Admitted.
+  Proof.
+    intros.
+    unfold cacheApplyEntry in *.
+    repeat break_match; repeat find_inversion.
+    - find_apply_lem_hyp getLastId_Some_In.
+      find_apply_hyp_hyp. break_exists. break_and.
+      erewrite deduplicate_log_snoc_drop; eauto.
+      do_bool. omega.
+    - find_apply_lem_hyp getLastId_Some_In.
+      find_apply_hyp_hyp. break_exists. break_and.
+      erewrite deduplicate_log_snoc_drop; eauto.
+      do_bool. omega.
+    - eapply applyEntry_correct; eauto.
+    - eapply applyEntry_correct; eauto.
+  Qed.
+
+  Lemma deduplicate_log_In_if :
+    forall e l,
+      In e (deduplicate_log l) ->
+      In e l.
+  Proof.
+    unfold deduplicate_log.
+    intros. eauto using deduplicate_log'_In_if.
+  Qed.
 
   Lemma applyEntries_output_correct :
     forall l c i o h st os st' es,
@@ -259,7 +367,15 @@ Section OutputCorrect.
       + rewrite middle_app_assoc. eapply IHl.
         * eauto.
         * auto.
-        * eapply cacheApplyEntry_correct; eauto.
+        * { eapply cacheApplyEntry_correct; eauto.
+            - intros.
+              find_apply_hyp_hyp. unfold output_correct in *.
+              break_exists. break_and.
+              eexists. intuition eauto.
+              eapply deduplicate_log_In_if.
+              eauto with *.
+            - admit.
+          }
         * intros. admit.
   Qed.
 
