@@ -110,52 +110,6 @@ Section RaftLinearizableProofs.
       | _ :: xs => get_output xs k
     end.
 
-  
-  Lemma deduplicate_log'_keys_perm :
-    forall l ks ks',
-      Permutation ks ks' ->
-      deduplicate_log' l ks =
-      deduplicate_log' l ks'.
-  Proof.
-    induction l; intros; simpl in *; intuition.
-    repeat break_match; subst; simpl in *; intuition.
-    - exfalso; eauto using Permutation_in.
-    - exfalso; eauto using Permutation_in, Permutation_sym.
-    - f_equal. apply IHl. constructor. auto.
-  Qed.
-  
-  Lemma deduplicate_log'_In :
-    forall x l k ks,
-      In x (deduplicate_log' l ks) ->
-      key_of x <> k ->
-      In x (deduplicate_log' l (k :: ks)).
-  Proof.
-    induction l; simpl in *; intuition.
-    repeat break_match; simpl in *; intuition.
-    - subst. congruence.
-    - repeat find_rewrite. auto.
-    - right.
-      match goal with
-        | |- context [?x :: ?y :: ?ks] =>
-          rewrite deduplicate_log'_keys_perm with (ks' := y :: x :: ks) by constructor
-      end. eauto.
-  Qed.
-
-  Lemma deduplicate_log'_In' :
-    forall x l k ks,
-      In x (deduplicate_log' l (k :: ks)) ->
-      In x (deduplicate_log' l ks).
-  Proof.
-    induction l; simpl in *; intuition.
-    repeat break_match; simpl in *; intuition eauto.
-    - subst. eauto.
-    - right.
-      match goal with
-        | H :context [?x :: ?y :: ?ks] |- _ =>
-          rewrite deduplicate_log'_keys_perm with (ks' := y :: x :: ks) in H by constructor
-      end. eauto.
-  Qed.
-  
   Lemma deduplicate_log_In :
     forall l e,
       In e l ->
@@ -163,56 +117,14 @@ Section RaftLinearizableProofs.
         eClient e' = eClient e /\
         eId e' = eId e /\
         In e' (deduplicate_log l).
-  Proof.
-    intros. induction l; simpl in *; intuition.
-    - subst. eexists; intuition eauto.
-    - break_exists. destruct (key_eq_dec (key_of a) (key_of x)).
-      + find_inversion. 
-        exists a; intuition.
-      + intuition.
-        exists x; intuition.
-        right. apply deduplicate_log'_In; eauto.
-  Qed.
-
-  Lemma deduplicate_log'_In_if :
-    forall l e ks,
-      In e (deduplicate_log' l ks) ->
-      In e l.
-  Proof.
-    intros. induction l; simpl in *; intuition.
-    break_if; simpl in *; intuition. eauto using deduplicate_log'_In'.
-  Qed.
+  Admitted.
 
   Lemma deduplicate_log_In_if :
     forall l e,
       In e (deduplicate_log l) ->
       In e l.
-  Proof.
-    eauto using deduplicate_log'_In_if.
-  Qed.
+  Admitted.
 
-  Lemma deduplicate_log'_In_key :
-    forall x l k ks,
-      In x (deduplicate_log' l (k :: ks)) ->
-      key_of x <> k.
-  Proof.
-    induction l; simpl in *; intuition.
-    subst. repeat break_match; subst; repeat find_rewrite; simpl in *; intuition eauto; subst; intuition.
-    match goal with
-      | H :context [?x :: ?y :: ?ks] |- _ =>
-        rewrite deduplicate_log'_keys_perm with (ks' := y :: x :: ks) in H by constructor
-    end. eauto.
-  Qed.
-
-  Lemma deduplicate_log'_In_elim :
-    forall x l k ks,
-      In x (deduplicate_log' l (k :: ks)) ->
-      In x (deduplicate_log' l ks) /\ key_of x <> k.
-  Proof.
-    intros. intuition eauto using deduplicate_log'_In'.
-    find_apply_lem_hyp deduplicate_log'_In_key. congruence.
-  Qed.
-  
   Fixpoint log_to_IR (env_o : key -> option output) (log : list entry) {struct log} : list (IR key) :=
     match log with
       | [] => []
@@ -222,7 +134,7 @@ Section RaftLinearizableProofs.
            | Some _ => [IRI (client, id); IRO (client, id)]
          end) ++ log_to_IR env_o log'
     end.
-  
+
   Lemma log_to_IR_good_trace :
     forall env_o log,
       good_trace _ (log_to_IR env_o log).
@@ -549,7 +461,7 @@ Section RaftLinearizableProofs.
     intros. unfold has_key, key_of in *.
     break_match. subst. simpl in *. find_inversion. repeat (do_bool; intuition).
   Qed.
-  
+
   Lemma has_key_false_key_of :
     forall c i e,
       has_key c i e = false ->
@@ -575,35 +487,11 @@ Section RaftLinearizableProofs.
     - left. do_bool. congruence.
   Qed.
 
-  Lemma deduplicate_log'_before_func :
-    forall l k k' k'' ks,
-      before_func (has_key (fst k) (snd k)) (has_key (fst k') (snd k')) (deduplicate_log' l ks) ->
-      k'' <> k ->
-      before_func (has_key (fst k) (snd k)) (has_key (fst k') (snd k')) (deduplicate_log' l (k'' :: ks)).
-  Proof.
-    induction l; intros; simpl in *; intuition.
-    repeat break_match; simpl in *; intuition.
-    - subst. find_apply_lem_hyp has_key_true_key_of. destruct k; subst; intuition.
-    - subst. auto.
-    - right.
-      match goal with
-        | |- context [?x :: ?y :: ?ks] =>
-          rewrite deduplicate_log'_keys_perm with (ks' := y :: x :: ks) by constructor
-      end. eauto.
-  Qed.
-  
   Lemma before_func_deduplicate :
     forall k k' l,
       before_func (has_key (fst k) (snd k)) (has_key (fst k') (snd k')) l ->
       before_func (has_key (fst k) (snd k)) (has_key (fst k') (snd k')) (deduplicate_log l).
-  Proof.
-    intros. induction l; simpl in *; intuition.
-    destruct (has_key (fst k) (snd k) a) eqn:?; intuition.
-    right. intuition.
-    apply deduplicate_log'_before_func; eauto.
-    find_apply_lem_hyp has_key_false_key_of.
-    destruct k; simpl in *; intuition.
-  Qed.
+  Admitted.
 
   Lemma entries_ordered_before_log_to_IR :
     forall k k' net tr,
@@ -655,7 +543,7 @@ Section RaftLinearizableProofs.
         right.
         intuition; try congruence.
         apply before_remove_if; intuition.
-      + break_if; try congruence. 
+      + break_if; try congruence.
         apply before_app_if; [apply before_remove_all_if|]; auto.
         * intuition. find_apply_lem_hyp in_dedup_was_in.
           find_apply_lem_hyp In_filterMap. break_exists.
@@ -671,7 +559,7 @@ Section RaftLinearizableProofs.
           unfold key_in_output_list. simpl.
           eexists; eauto.
   Qed.
-        
+
   Lemma I_before_O :
     forall failed net tr k,
       step_f_star step_f_init (failed, net) tr ->
@@ -701,39 +589,21 @@ Section RaftLinearizableProofs.
     intros. induction l; simpl in *; intuition.
     repeat break_match; subst; compute; simpl; f_equal; auto.
   Qed.
-  
+
+
   Lemma deduplicate_log'_filter :
     forall l k ks,
       deduplicate_log' l (k :: ks) =
       filter (fun e => negb (andb (beq_nat (eClient e) (fst k))
                                  (beq_nat (eId e) (snd k)))) (deduplicate_log' l ks).
-  Proof.
-    induction l; intros; simpl in *; intuition.
-    - repeat (break_match; subst; simpl in *; intuition eauto).
-      + apply IHl.
-      + repeat (do_bool; intuition).
-      + rewrite filter_true_id; auto.
-        intros. apply Bool.negb_true_iff.
-        do_bool.
-        find_apply_lem_hyp deduplicate_log'_In_key.
-        unfold key_of in *. intuition.
-        match goal with
-          | _ : (?x, ?y) = (?x', ?y') -> False |- _ =>
-            destruct (eq_nat_dec x x'); destruct (eq_nat_dec y y')
-        end; do_bool; repeat find_rewrite; intuition.
-        * right. do_bool. congruence.
-        * left. do_bool. congruence.
-        * left. do_bool. congruence.
-      + f_equal.
-        match goal with
-          | |- context [?x :: ?y :: ?ks] =>
-            rewrite deduplicate_log'_keys_perm with (ks' := y :: x :: ks) by constructor
-        end. intuition eauto.
-      + exfalso. repeat (do_bool; intuition).
-        unfold key_of in *. destruct k. simpl in *.
-        repeat find_rewrite. congruence.
-  Qed.
-  
+  Admitted.
+
+  Lemma deduplicate_log'_In_elim :
+    forall x l k ks,
+      In x (deduplicate_log' l (k :: ks)) ->
+      In x (deduplicate_log' l ks) /\ key_of x <> k.
+  Admitted.
+
   Lemma NoDup_input_log :
     forall l env_o,
       NoDup (get_IR_input_keys key (log_to_IR env_o (deduplicate_log l))).
@@ -898,26 +768,7 @@ Section RaftLinearizableProofs.
       eClient e = eClient e' ->
       eId e = eId e' ->
       xs = xs'.
-  Proof.
-    induction l; intros; simpl in *.
-    - destruct xs; simpl in *; congruence.
-    - break_if; simpl in *; intuition eauto.
-      destruct xs; destruct xs'; simpl in *; intuition eauto;
-      try solve
-          [exfalso;
-            repeat match goal with
-                     | H : _ :: _ = _ :: _ |- _ => invcs H
-                   end;
-            match goal with
-              | _ : deduplicate_log' ?l (?k :: ?ks) = _ ++ ?e :: _ |- _ =>
-                pose proof deduplicate_log'_In_key e l k ks
-            end; forwards; unfold key; [repeat find_rewrite; in_crush|];
-            concludes;
-            unfold key_of in *; repeat find_rewrite; congruence].
-      repeat match goal with
-                | H : _ :: _ = _ :: _ |- _ => invcs H
-             end. f_equal. intuition eauto.
-  Qed.
+  Admitted.
 
   Lemma applied_entries_applied_implies_input_state :
     forall net e,
@@ -1011,7 +862,8 @@ Section RaftLinearizableProofs.
           auto using applied_entries_applied_implies_input_state.
       + intros.
         find_apply_lem_hyp get_output_in_output_trace.
-        find_eapply_lem_hyp output_correct; eauto.
+        find_eapply_lem_hyp output_correct_invariant; eauto.
+        unfold output_correct in *.
         break_exists. intuition.
         find_eapply_lem_hyp deduplicate_partition; eauto.
         subst.
