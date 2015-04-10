@@ -37,8 +37,8 @@ Section SpecLemmas.
     forall h st t n pli plt es ci st' ps,
       handleAppendEntries h st t n pli plt es ci = (st', ps) ->
       log st' = log st \/
-      (es <> [] /\ pli = 0 /\ log st' = es) \/
-      (es <> [] /\ pli <> 0 /\ exists e,
+      (currentTerm st <= t /\ es <> [] /\ pli = 0 /\ log st' = es) \/
+      (currentTerm st <= t /\ es <> [] /\ pli <> 0 /\ exists e,
          In e (log st) /\
          eIndex e = pli /\
          eTerm e = plt) /\
