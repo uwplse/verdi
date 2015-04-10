@@ -353,7 +353,7 @@ Section OutputCorrect.
     break_let. subst.
     find_apply_lem_hyp in_output_changed; auto.
     destruct s.
-    eauto using in_output_trace_step_output_correct.
+    eauto using in_output_trace_step_output_correct, step_f_star_raft_intermediate_reachable.
   Defined.
 
   Theorem output_correct :
