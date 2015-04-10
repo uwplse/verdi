@@ -122,7 +122,11 @@ Section OutputCorrect.
     forall l l' ks,
       exists l'',
         deduplicate_log' (l ++ l') ks = deduplicate_log' l ks ++ l''.
-  Admitted.
+  Proof.
+    induction l; intros; simpl in *; intuition; eauto.
+    repeat break_match; simpl in *; eauto;
+    repeat find_insterU; break_exists; eexists; f_equal; eauto.
+  Qed.
 
 
   Lemma deduplicate_log_app :
