@@ -669,18 +669,6 @@ Section RaftLinearizableProofs.
     induction 1; intros; simpl; auto.
   Qed.
 
-  Lemma execute_log'_app :
-    forall xs ys st tr,
-      execute_log' (xs ++ ys) st tr =
-      let (tr', st') := execute_log' xs st tr in
-      execute_log' ys st' tr'.
-  Proof.
-    induction xs; intros.
-    - auto.
-    - simpl in *. repeat break_let.
-      rewrite IHxs. break_let. find_inversion. auto.
-  Qed.
-
   Lemma log_to_IR_app :
     forall xs ys env,
       log_to_IR env (xs ++ ys) = log_to_IR env xs ++ log_to_IR env ys.
@@ -883,7 +871,7 @@ Section RaftLinearizableProofs.
         repeat find_rewrite.
         find_apply_lem_hyp app_inv_head. find_inversion.
         unfold execute_log in *.
-        rewrite execute_log'_app in *. simpl in *.
+        find_rewrite_lem execute_log'_app. simpl in *.
         repeat break_let. repeat find_inversion.
         rewrite rev_app_distr in *. simpl in *.
         unfold value in *. find_inversion.

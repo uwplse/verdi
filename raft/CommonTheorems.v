@@ -1406,6 +1406,18 @@ Section CommonTheorems.
     eapply pigeon with (l := nodes); eauto using all_fin_all, all_fin_NoDup, NoDup_dedup, name_eq_dec, div2_correct.
   Qed.
 
+  Lemma execute_log'_app :
+    forall xs ys st tr,
+      execute_log' (xs ++ ys) st tr =
+      let (tr', st') := execute_log' xs st tr in
+      execute_log' ys st' tr'.
+  Proof.
+    induction xs; intros.
+    - auto.
+    - simpl in *. repeat break_let.
+      rewrite IHxs. break_let. find_inversion. auto.
+  Qed.
+
   Lemma fst_execute_log' :
     forall log st tr,
       fst (execute_log' log st tr) = tr ++ fst (execute_log' log st []).
