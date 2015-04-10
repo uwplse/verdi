@@ -2006,6 +2006,14 @@ Section CommonTheorems.
         simpl in *. intuition.
   Qed.
   
+  Lemma deduplicate_log'_In_if :
+    forall e l ks,
+      In e (deduplicate_log' l ks) ->
+      In e l.
+  Proof.
+    induction l; intros; simpl in *; intuition.
+    repeat break_match; simpl in *; intuition; find_apply_hyp_hyp; auto.
+  Qed.
 End CommonTheorems.
 
 Notation is_append_entries m :=

@@ -121,15 +121,6 @@ Section RaftLinearizableProofs.
     (* this is now false *)
   Admitted.
 
-  Lemma deduplicate_log'_In_if :
-    forall e l ks,
-      In e (deduplicate_log' l ks) ->
-      In e l.
-  Proof.
-    induction l; intros; simpl in *; intuition.
-    repeat break_match; simpl in *; intuition; find_apply_hyp_hyp; auto.
-  Qed.
-  
   Lemma deduplicate_log_In_if :
     forall l e,
       In e (deduplicate_log l) ->
