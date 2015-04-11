@@ -381,20 +381,61 @@ Section OutputCorrect.
     intuition eauto.
   Qed.
 
+  Lemma applyEntry_output_correct :
+    forall st e l st' o es,
+      applyEntry st e = (l, st') ->
+      In o l ->
+      stateMachine st = snd (execute_log (deduplicate_log es)) ->
+      (forall e', In e' es -> eClient e' = eClient e -> eId e' < eId e) ->
+      output_correct (eClient e) (eId e) o (es ++ [e]).
+  Proof.
+    unfold applyEntry.
+    intros.
+    repeat break_match; repeat find_inversion.
+    simpl in *. intuition.
+    subst.
+    unfold output_correct.
+    rewrite deduplicate_log_snoc_split by auto.
+    destruct (execute_log (deduplicate_log es)) eqn:?.
+    eexists. eexists. exists []. eexists. eexists. intuition eauto.
+    - rewrite execute_log_app. repeat find_rewrite. simpl in *. find_rewrite. eauto.
+    - rewrite rev_app_distr. simpl. auto.
+  Qed.
+
   Lemma cacheApplyEntry_output_correct :
-    forall e es st l st' tail o,
+    forall e es st l st' o,
       cacheApplyEntry st e = (l, st') ->
       In o l ->
       (forall c i o,
          In (c, (i, o)) (clientCache st) ->
          output_correct c i o es) ->
-      output_correct (eClient e) (eId e) o (es ++ e :: tail).
+      stateMachine st = snd (execute_log (deduplicate_log es)) ->
+      (forall c i o e',
+         In (c, (i, o)) (clientCache st) ->
+         In e' es ->
+         eClient e' = c ->
+         eId e' <= i) ->
+      (forall e',
+         In e' es ->
+         exists i o,
+           In (eClient e', (i, o)) (clientCache st) /\
+           eId e' <= i) ->
+      output_correct (eClient e) (eId e) o (es ++ [e]).
   Proof.
     unfold cacheApplyEntry.
     intros.
     repeat break_match; repeat find_inversion; simpl in *; intuition.
     - do_bool. subst. eauto using output_correct_monotonic, getLastId_Some_In.
-    - Admitted.
+    - eapply applyEntry_output_correct; eauto.
+      do_bool. assert (n < eId e) by auto with *.
+      find_apply_lem_hyp getLastId_Some_In.
+      intros. assert (eId e' <= n) by eauto. omega.
+    - eapply applyEntry_output_correct; eauto.
+      intros.
+      find_apply_hyp_hyp.
+      break_exists. break_and.
+      exfalso. repeat find_rewrite. eauto using getLastId_None.
+  Qed.
 
   Lemma cacheApplyEntry_stateMachine_correct :
     forall st e l st' es,
@@ -476,6 +517,7 @@ Section OutputCorrect.
       + break_if.
         * unfold in_output_list in *.
           do_in_map. find_inversion.
+          rewrite middle_app_assoc. apply output_correct_monotonic.
           eapply cacheApplyEntry_output_correct; eauto.
         * exfalso. eapply in_output_list_empty; eauto.
       + rewrite middle_app_assoc. eapply IHl.
