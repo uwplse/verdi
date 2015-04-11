@@ -110,16 +110,113 @@ Section RaftLinearizableProofs.
       | _ :: xs => get_output xs k
     end.
 
+  Lemma deduplicate_log'_In :
+    forall l e,
+      In e l ->
+      forall ks,
+      (forall i, assoc eq_nat_dec ks (eClient e) = Some i -> i < eId e) ->
+      (forall e',
+         before e' e l ->
+         eClient e' = eClient e ->
+         eId e' <= eId e) ->
+      (exists e',
+        eClient e' = eClient e /\
+        eId e' = eId e /\
+        In e' (deduplicate_log' l ks)).
+  Proof.
+    induction l; simpl.
+    - intuition.
+    - intros. repeat break_match; intuition; subst; simpl in *; intuition eauto.
+      + do_bool. destruct (eq_nat_dec (eClient e) (eClient a)).
+        * assert (eId a <= eId e) by auto.
+          { find_apply_lem_hyp le_lt_or_eq. break_or_hyp.
+            - specialize (IHl _ $(eauto)$).
+              match goal with
+                | [ |- context [deduplicate_log' _ ?ks] ] =>
+                  specialize (IHl ks)
+              end.
+              forward IHl.
+              { intuition.
+                repeat find_rewrite. rewrite get_set_same in *. find_injection. auto.
+              }
+              concludes.
+              forward IHl.
+              { intros. assert (a <> e) by (intro; subst; omega). eauto. }
+              concludes.
+              break_exists_exists. intuition.
+            - eauto.
+          }
+        * specialize (IHl _ $(eauto)$).
+          match goal with
+            | [ |- context [deduplicate_log' _ ?ks] ] =>
+              specialize (IHl ks)
+          end.
+          forward IHl.
+          { intuition.
+            repeat find_rewrite. rewrite get_set_diff in * by auto. auto.
+          }
+          concludes.
+          forward IHl.
+          { intros. assert (a <> e) by (intuition congruence). eauto. }
+          concludes.
+          break_exists_exists. intuition.
+      + do_bool. assert (n < eId e) by auto. omega.
+      + do_bool. apply IHl; auto.
+        intros.
+        assert (a <> e) by
+        (intro; subst; assert (n < eId e) by auto; omega).
+        auto.
+      + destruct (eq_nat_dec (eClient e) (eClient a)).
+        * assert (eId a <= eId e) by auto.
+          { find_apply_lem_hyp le_lt_or_eq. break_or_hyp.
+            - specialize (IHl _ $(eauto)$).
+              match goal with
+                | [ |- context [deduplicate_log' _ ?ks] ] =>
+                  specialize (IHl ks)
+              end.
+              forward IHl.
+              { intuition.
+                repeat find_rewrite. rewrite get_set_same in *. find_injection. auto.
+              }
+              concludes.
+              forward IHl.
+              { intros. assert (a <> e) by (intro; subst; omega). eauto. }
+              concludes.
+              break_exists_exists. intuition.
+            - eauto.
+          }
+        * specialize (IHl _ $(eauto)$).
+          match goal with
+            | [ |- context [deduplicate_log' _ ?ks] ] =>
+              specialize (IHl ks)
+          end.
+          forward IHl.
+          { intuition.
+            repeat find_rewrite. rewrite get_set_diff in * by auto. auto.
+          }
+          concludes.
+          forward IHl.
+          { intros. assert (a <> e) by (intuition congruence). eauto. }
+          concludes.
+          break_exists_exists. intuition.
+  Qed.
+
   Lemma deduplicate_log_In :
     forall l e,
       In e l ->
+      (forall e',
+         before e' e l ->
+         eClient e' = eClient e ->
+         eId e' <= eId e) ->
       exists e',
         eClient e' = eClient e /\
         eId e' = eId e /\
         In e' (deduplicate_log l).
   Proof.
-    (* this is now false *)
-  Admitted.
+    unfold deduplicate_log'.
+    intros.
+    eapply deduplicate_log'_In with (ks := []) in H; simpl; intuition; try discriminate.
+  Qed.
 
   Lemma deduplicate_log_In_if :
     forall l e,
