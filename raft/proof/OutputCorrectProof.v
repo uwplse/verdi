@@ -157,10 +157,10 @@ Section OutputCorrect.
   Qed.
 
   Lemma in_output_list_app_or :
-    forall l1 l2,
-      in_output_list client id out (l1 ++ l2) ->
-      in_output_list client id out l1 \/
-      in_output_list client id out l2.
+    forall c i o l1 l2,
+      in_output_list c i o (l1 ++ l2) ->
+      in_output_list c i o l1 \/
+      in_output_list c i o l2.
   Proof.
     unfold in_output_list.
     intuition.
@@ -341,17 +341,62 @@ Section OutputCorrect.
       applyEntry st e = (l, st') ->
       stateMachine st = snd (execute_log (deduplicate_log es)) ->
       (forall e', In e' es -> eClient e' = eClient e -> eId e' < eId e) ->
-      stateMachine st' = snd (execute_log (deduplicate_log (es ++ [e]))).
+      stateMachine st' = snd (execute_log (deduplicate_log es ++ [e])).
   Proof.
     unfold applyEntry.
     intros.
     repeat break_match; repeat find_inversion. simpl.
-    rewrite deduplicate_log_snoc_split by auto.
     rewrite execute_log_app. simpl. repeat break_let.
     simpl in *. congruence.
   Qed.
 
-  Lemma cacheApplyEntry_correct :
+  Lemma deduplicate_log_cases :
+    forall es e,
+      (deduplicate_log (es ++ [e]) = deduplicate_log es /\
+       exists e', In e' es /\ eClient e' = eClient e /\ eId e <= eId e') \/
+      (deduplicate_log (es ++ [e]) = deduplicate_log es ++ [e] /\
+       (forall e', In e' es -> eClient e' = eClient e -> eId e' < eId e)).
+  Admitted.
+
+  Lemma getLastId_None :
+    forall st c i o,
+      getLastId st c = None ->
+      In (c, (i, o)) (clientCache st) ->
+      False.
+  Admitted.
+
+  Lemma output_correct_monotonic :
+    forall c i o xs ys,
+      output_correct c i o xs ->
+      output_correct c i o (xs ++ ys).
+  Proof.
+    unfold output_correct.
+    intros.
+    break_exists.
+    intuition.
+    pose proof (deduplicate_log_app xs ys). break_exists.
+    repeat find_rewrite.
+    rewrite app_ass in *. simpl in *.
+    eexists. eexists. eexists. eexists. eexists.
+    intuition eauto.
+  Qed.
+
+  Lemma cacheApplyEntry_output_correct :
+    forall e es st l st' tail o,
+      cacheApplyEntry st e = (l, st') ->
+      In o l ->
+      (forall c i o,
+         In (c, (i, o)) (clientCache st) ->
+         output_correct c i o es) ->
+      output_correct (eClient e) (eId e) o (es ++ e :: tail).
+  Proof.
+    unfold cacheApplyEntry.
+    intros.
+    repeat break_match; repeat find_inversion; simpl in *; intuition.
+    - do_bool. subst. eauto using output_correct_monotonic, getLastId_Some_In.
+    - Admitted.
+
+  Lemma cacheApplyEntry_stateMachine_correct :
     forall st e l st' es,
       cacheApplyEntry st e = (l, st') ->
       stateMachine st = snd (execute_log (deduplicate_log es)) ->
@@ -361,7 +406,16 @@ Section OutputCorrect.
            In e es /\
            eClient e = c /\
            eId e = i) ->
-      (forall e', In e' es -> eClient e' = eClient e -> eId e' < eId e) ->
+      (forall c i o e',
+         In (c, (i, o)) (clientCache st) ->
+         In e' es ->
+         eClient e' = c ->
+         eId e' <= i) ->
+      (forall e',
+         In e' es ->
+         exists i o,
+           In (eClient e', (i, o)) (clientCache st) /\
+           eId e' <= i) ->
       stateMachine st' = snd (execute_log (deduplicate_log (es ++ [e]))).
   Proof.
     intros.
@@ -375,8 +429,17 @@ Section OutputCorrect.
       find_apply_hyp_hyp. break_exists. break_and.
       erewrite deduplicate_log_snoc_drop; eauto.
       do_bool. omega.
-    - eapply applyEntry_correct; eauto.
-    - eapply applyEntry_correct; eauto.
+    - find_apply_lem_hyp getLastId_Some_In.
+      find_copy_apply_hyp_hyp. break_exists. break_and.
+      pose proof (deduplicate_log_cases es e).
+      intuition; break_exists; intuition; repeat find_rewrite.
+      + do_bool. assert (eId x0 <= n) by eauto. omega.
+      + eapply applyEntry_correct; eauto.
+    - pose proof (deduplicate_log_cases es e).
+      intuition; break_exists; intuition; repeat find_rewrite.
+      + eapply_prop_hyp In In. break_exists. break_and.
+        exfalso. repeat find_rewrite. eauto using getLastId_None.
+      + eapply applyEntry_correct; eauto.
   Qed.
 
   Lemma deduplicate_log_In_if :
@@ -396,26 +459,38 @@ Section OutputCorrect.
       (forall c i o,
          In (c, (i, o)) (clientCache st) ->
          output_correct c i o es) ->
+      (forall c i o e',
+         In (c, (i, o)) (clientCache st) ->
+         In e' es -> eClient e' = c -> eId e' <= i) ->
+      (forall e',
+         In e' es ->
+         exists i o,
+           In (eClient e', (i, o)) (clientCache st) /\ eId e' <= i) ->
       output_correct c i o (es ++ l).
   Proof.
     induction l; intros; simpl in *.
     - find_inversion. exfalso. eapply in_output_list_empty; eauto.
     - repeat break_let. find_inversion.
-      break_if.
-      + admit.
+      find_apply_lem_hyp in_output_list_app_or.
+      break_or_hyp.
+      + break_if.
+        * unfold in_output_list in *.
+          do_in_map. find_inversion.
+          eapply cacheApplyEntry_output_correct; eauto.
+        * exfalso. eapply in_output_list_empty; eauto.
       + rewrite middle_app_assoc. eapply IHl.
         * eauto.
         * auto.
-        * { eapply cacheApplyEntry_correct; eauto.
-            - intros.
-              find_apply_hyp_hyp. unfold output_correct in *.
-              break_exists. break_and.
-              eexists. intuition eauto.
-              eapply deduplicate_log_In_if.
-              eauto with *.
-            - admit.
-          }
-        * intros. admit.
+        * eapply cacheApplyEntry_stateMachine_correct; eauto.
+          intros.
+          find_apply_hyp_hyp. unfold output_correct in *.
+          break_exists. break_and.
+          eexists. intuition eauto.
+          eapply deduplicate_log_In_if.
+          eauto with *.
+        * admit. (* output_correct monotonic *)
+        * admit. (* property of how cacheApplyEntry updates cache *)
+        * admit. (* property of how cacheApplyEntry updates cache *)
   Qed.
 
   Lemma doGenericServer_output_correct :
@@ -433,6 +508,8 @@ Section OutputCorrect.
     - (* something about prefix output_correct *) admit.
     - (* smc *) admit.
     - (* cache correct *) admit.
+    - (* more cache correctness *) admit.
+    - (* cache complete *) admit.
   Qed.
 
   Ltac intermediate_networks :=
