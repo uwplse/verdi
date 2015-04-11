@@ -705,7 +705,7 @@ Section OutputCorrect.
     repeat break_if; simpl in *; repeat break_if;
     repeat (do_bool; intuition); omega.
   Qed.
-  
+
   Lemma cacheApplyEntry_spec :
     forall st a l st',
       cacheApplyEntry st a = (l, st') ->
@@ -779,7 +779,7 @@ Section OutputCorrect.
     unfold contiguous_range_exact_lo. intuition; eauto.
     find_apply_hyp_hyp. omega.
   Qed.
-  
+
   Lemma doGenericServer_output_correct :
     forall h ps sigma os st' ms,
       raft_intermediate_reachable (mkNetwork ps sigma) ->
