@@ -889,8 +889,8 @@ Section RaftLinearizableProofs.
       * congruence.
       * eapply IHl with (id := id) in H1; try omega.
         rewrite get_set_diff; auto.
-  Qed.        
-        
+  Qed.
+
   Lemma NoDup_deduplicate_log' :
     forall l ks,
       NoDup (map (fun e => (eClient e, eId e)) (deduplicate_log' l ks)).
