@@ -17,21 +17,21 @@ Section StateMachineCorrect.
   Definition state_machine_log net :=
     forall h,
       stateMachine (nwState net h) =
-      snd (execute_log (deduplicate_log (removeAfterIndex (log (nwState net h))
-                                                          (lastApplied (nwState net h))))).
+      snd (execute_log (deduplicate_log (rev (removeAfterIndex (log (nwState net h))
+                                                               (lastApplied (nwState net h)))))).
 
   Definition client_cache_correct net :=
     forall h client id out,
-      In (client, (id, out)) (clientCache (nwState net h)) ->
-      output_correct client id out (removeAfterIndex (log (nwState net h))
-                                          (lastApplied (nwState net h))).
+      getLastId (nwState net h) client = Some (id, out) ->
+      output_correct client id out (rev (removeAfterIndex (log (nwState net h))
+                                                          (lastApplied (nwState net h)))).
 
   Definition client_cache_complete net :=
     forall h e,
       In e (removeAfterIndex (log (nwState net h)) (lastApplied (nwState net h))) ->
       exists id o,
         getLastId (nwState net h) (eClient e) = Some (id, o) /\
-        id >= eId e.
+        eId e <= id.
 
   Definition state_machine_correct net :=
     state_machine_log net /\ client_cache_correct net /\ client_cache_complete net.
