@@ -1050,14 +1050,41 @@ Section RaftLinearizableProofs.
     repeat eexists; eauto; in_crush.
   Qed.
 
+  Lemma NoDup_map_partition :
+    forall A B (f : A -> B) xs l y zs xs' y' zs',
+      NoDup (map f l) ->
+      l = xs ++ y :: zs ->
+      l = xs' ++ y' :: zs' ->
+      f y = f y' ->
+      xs = xs'.
+  Proof.
+    induction xs; simpl; intros; destruct xs'.
+    - auto.
+    - subst. simpl in *. find_inversion.
+      invc H. exfalso. rewrite map_app in *. simpl in *.
+      repeat find_rewrite. intuition.
+    - subst. simpl in *. find_inversion.
+      invc H. exfalso. rewrite map_app in *. simpl in *.
+      repeat find_rewrite. intuition.
+    - subst. simpl in *. find_injection. intros. subst.
+      f_equal. eapply IHxs; eauto. solve_by_inversion.
+  Qed.
+
   Lemma deduplicate_partition :
-    forall l ks xs e ys xs' e' ys',
-      deduplicate_log' l ks = xs ++ e :: ys ->
-      deduplicate_log' l ks = xs' ++ e' :: ys' ->
+    forall l xs e ys xs' e' ys',
+      deduplicate_log l = xs ++ e :: ys ->
+      deduplicate_log l = xs' ++ e' :: ys' ->
       eClient e = eClient e' ->
       eId e = eId e' ->
       xs = xs'.
-  Admitted.
+  Proof.
+    intros.
+    eapply NoDup_map_partition.
+    - apply NoDup_deduplicate_log.
+    - eauto.
+    - eauto.
+    - simpl. congruence.
+  Qed.
 
   Lemma applied_entries_applied_implies_input_state :
     forall net e,
