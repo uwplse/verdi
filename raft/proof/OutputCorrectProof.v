@@ -525,6 +525,55 @@ Section OutputCorrect.
     intros. eauto using deduplicate_log'_In_if.
   Qed.
 
+  Lemma applyEntry_clientCache :
+    forall st e l st',
+      applyEntry st e = (l, st') ->
+      let (out, _) := handler (eInput e) (stateMachine st)
+      in (clientCache st' = assoc_set eq_nat_dec (clientCache st) (eClient e) (eId e, out) /\
+          In out l).
+  Proof.
+    unfold applyEntry.
+    intros.
+    repeat break_match; repeat find_inversion. intuition.
+  Qed.
+
+  Lemma cacheApplyEntry_clientCache :
+    forall st e l st',
+      cacheApplyEntry st e = (l, st') ->
+      (clientCache st' = clientCache st /\
+       (exists i o, getLastId st (eClient e) = Some (i, o) /\
+                    eId e <= i) ) \/
+      ((let (out, _) := handler (eInput e) (stateMachine st)
+       in (clientCache st' = assoc_set eq_nat_dec (clientCache st) (eClient e) (eId e, out) /\
+          In out l)) /\ (getLastId st (eClient e) = None \/
+                       (exists i o, getLastId st (eClient e) = Some (i, o) /\
+                                    i < eId e))).
+  Proof.
+    unfold cacheApplyEntry.
+    intros.
+    repeat break_match_hyp; repeat find_inversion; do_bool; intuition eauto with *;
+    right; (split; [solve [apply applyEntry_clientCache; auto]|]); auto.
+    right. do_bool. eexists. eexists. intuition eauto. omega.
+  Qed.
+
+  Lemma getLastId_ext :
+    forall st st' c,
+      clientCache st' = clientCache st ->
+      getLastId st' c = getLastId st c.
+  Proof.
+    unfold getLastId.
+    intros.
+    congruence.
+  Qed.
+
+  Lemma cacheAppliedEntry_clientCache_nondecreasing :
+    forall st e l st' c i o i' o',
+      cacheApplyEntry st e = (l, st') ->
+      getLastId st c = Some (i, o) ->
+      getLastId st' c = Some (i', o') ->
+      i <= i'.
+  Admitted.
+
   Lemma applyEntries_output_correct :
     forall l c i o h st os st' es,
       applyEntries h st l = (os, st') ->
@@ -563,9 +612,35 @@ Section OutputCorrect.
           eexists. intuition eauto.
           eapply deduplicate_log_In_if.
           eauto with *.
-        * admit. (* output_correct monotonic *)
-        * admit. (* property of how cacheApplyEntry updates cache *)
-        * admit. (* property of how cacheApplyEntry updates cache *)
+        * find_copy_apply_lem_hyp cacheApplyEntry_clientCache.
+          { intros. break_or_hyp.
+            - break_and.
+              apply output_correct_monotonic.
+              unfold getLastId in *. repeat find_rewrite. eauto.
+            - break_let. break_and.
+              unfold getLastId in *.
+              repeat find_rewrite.
+              destruct (eq_nat_dec (eClient a) c0).
+              + subst.  rewrite get_set_same in *. find_inversion.
+                eapply cacheApplyEntry_output_correct; eauto.
+              + rewrite get_set_diff in * by auto. eauto using output_correct_monotonic.
+          }
+        * intros.
+          do_in_app. simpl in *.
+          { intuition.
+            - eapply_prop_hyp In In. break_exists. break_and. subst.
+              eauto using le_trans, cacheAppliedEntry_clientCache_nondecreasing.
+            - subst. find_copy_apply_lem_hyp cacheApplyEntry_clientCache.
+              intuition.
+              + break_exists. break_and.
+                eauto using le_trans, cacheAppliedEntry_clientCache_nondecreasing.
+              + unfold getLastId in *. break_let. break_and. repeat find_rewrite.
+                rewrite get_set_same in *. find_inversion. auto.
+              + unfold getLastId in *. break_let. break_and.
+                repeat find_rewrite.
+                rewrite get_set_same in *. find_inversion. auto.
+          }
+        * admit.
   Qed.
 
   Lemma findGtIndex_removeAfterIndex_i_lt_i' :
