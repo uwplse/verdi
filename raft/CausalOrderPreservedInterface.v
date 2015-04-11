@@ -20,11 +20,6 @@ Section CausalOrderPreserved.
   Definition output_before_input (tr : list (name * (raft_input + list raft_output))) :=
     before_func (is_output_with_key client id) (is_input_with_key client' id') tr.
 
-  Definition has_key (c : nat) (i : nat) (e : entry) :=
-    match e with
-      | mkEntry _ c' i' _ _ _ => andb (beq_nat c c') (beq_nat i i')
-    end.
-
   Definition entries_ordered net :=
     before_func (has_key client id) (has_key client' id') (applied_entries (nwState net)).
   End inner.

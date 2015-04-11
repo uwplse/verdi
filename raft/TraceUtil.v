@@ -12,6 +12,12 @@ Section TraceUtil.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
+
+  Definition has_key (c : nat) (i : nat) (e : entry) :=
+    match e with
+      | mkEntry _ c' i' _ _ _ => andb (beq_nat c c') (beq_nat i i')
+    end.
+
   Definition key_in_output_list (client id : nat) (os : list raft_output) :=
     exists o,
       In (ClientResponse client id o) os.
