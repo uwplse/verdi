@@ -594,19 +594,53 @@ Section RaftLinearizableProofs.
     repeat break_match; subst; compute; simpl; f_equal; auto.
   Qed.
 
+  Lemma deduplicate_log'_ks :
+    forall l ks e id,
+      In e (deduplicate_log' l ks) ->
+      assoc eq_nat_dec ks (eClient e) = Some id ->
+      id < (eId e).
+  Proof.
+    induction l; intros; simpl in *; intuition.
+    repeat break_match; simpl in *; do_bool; intuition; subst; eauto;
+    repeat find_rewrite; repeat find_inversion; intuition.
+    - destruct (eq_nat_dec (eClient e) (eClient a)); repeat find_rewrite.
+      * find_injection.
+        eapply IHl with (id := eId a) in H1; try omega.
+        repeat find_rewrite. eauto using get_set_same.
+      * eapply IHl with (id := id) in H1; try omega.
+        rewrite get_set_diff; auto.
+    - congruence.
+    - destruct (eq_nat_dec (eClient e) (eClient a)); repeat find_rewrite.
+      * congruence.
+      * eapply IHl with (id := id) in H1; try omega.
+        rewrite get_set_diff; auto.
+  Qed.        
+        
+  Lemma NoDup_deduplicate_log' :
+    forall l ks,
+      NoDup (map (fun e => (eClient e, eId e)) (deduplicate_log' l ks)).
+  Proof.
+    induction l; intros.
+    - simpl in *. constructor.
+    - simpl in *. repeat break_match; eauto.
+      + simpl in *. constructor; eauto.
+        intuition. do_in_map. find_inversion.
+        eapply deduplicate_log'_ks with (id := eId a) in H0; try omega.
+        repeat find_rewrite.
+        rewrite get_set_same. auto.
+      + simpl in *. constructor; eauto.
+        intuition. do_in_map. find_inversion.
+        eapply deduplicate_log'_ks with (id := eId a) in H0; try omega.
+        repeat find_rewrite.
+        rewrite get_set_same. auto.
+  Qed.
 
-  Lemma deduplicate_log'_filter :
-    forall l k ks,
-      deduplicate_log' l (k :: ks) =
-      filter (fun e => negb (andb (beq_nat (eClient e) (fst k))
-                                 (beq_nat (eId e) (snd k)))) (deduplicate_log' l ks).
-  Admitted.
-
-  Lemma deduplicate_log'_In_elim :
-    forall x l k ks,
-      In x (deduplicate_log' l (k :: ks)) ->
-      In x (deduplicate_log' l ks) /\ key_of x <> k.
-  Admitted.
+  Lemma NoDup_deduplicate_log :
+    forall l,
+      NoDup (map (fun e => (eClient e, eId e)) (deduplicate_log l)).
+  Proof.
+    eauto using NoDup_deduplicate_log'.
+  Qed.
 
   Lemma NoDup_input_log :
     forall l env_o,
@@ -614,13 +648,7 @@ Section RaftLinearizableProofs.
   Proof.
     intros.
     rewrite get_IR_input_keys_log_to_IR.
-    induction l; simpl in *; constructor.
-    - intuition.
-      do_in_map.
-      find_apply_lem_hyp deduplicate_log'_In_elim.
-      unfold key_of in *. intuition.
-    - rewrite deduplicate_log'_filter.
-      eauto using NoDup_map_filter.
+    eauto using NoDup_deduplicate_log.
   Qed.
 
   Lemma NoDup_output_log :
@@ -629,13 +657,7 @@ Section RaftLinearizableProofs.
   Proof.
     intros.
     rewrite get_IR_output_keys_log_to_IR.
-    induction l; simpl in *; constructor.
-    - intuition.
-      do_in_map.
-      find_apply_lem_hyp deduplicate_log'_In_elim.
-      unfold key_of in *. intuition.
-    - rewrite deduplicate_log'_filter.
-      eauto using NoDup_map_filter.
+    eauto using NoDup_deduplicate_log.
   Qed.
 
   Hint Constructors exported.
