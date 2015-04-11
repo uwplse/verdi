@@ -16,6 +16,9 @@ Require Import AppliedEntriesMonotonicInterface.
 Require Import TraceUtil.
 
 Require Import StateMachineCorrectInterface.
+Require Import SortedInterface.
+Require Import LastAppliedCommitIndexMatchingInterface.
+Require Import LogMatchingInterface.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
@@ -27,6 +30,9 @@ Section OutputCorrect.
 
   Context {aemi : applied_entries_monotonic_interface}.
   Context {smci : state_machine_correct_interface}.
+  Context {si : sorted_interface}.
+  Context {lacimi : lastApplied_commitIndex_match_interface}.
+  Context {lmi : log_matching_interface}.
 
   Section inner.
   Variables client id : nat.
@@ -531,6 +537,119 @@ Section OutputCorrect.
         * admit. (* property of how cacheApplyEntry updates cache *)
   Qed.
 
+  Lemma findGtIndex_removeAfterIndex_i_lt_i' :
+    forall l i i',
+      sorted l ->
+      i < i' ->
+      (filter
+         (fun x : entry =>
+            (i <? eIndex x) && (eIndex x <=? i'))
+         (findGtIndex l i))
+        ++ removeAfterIndex l i =
+      removeAfterIndex l i'.
+  Proof.
+    induction l; intros; intuition.
+    simpl in *.
+    repeat break_if; simpl in *; repeat break_if;
+    repeat (do_bool; intuition); try omega.
+    simpl. f_equal.
+    rewrite IHl; eauto.
+    apply removeAfterIndex_eq.
+    intros.
+    find_apply_hyp_hyp. intuition.
+  Qed.
+
+  Lemma findGtIndex_removeAfterIndex_i'_le_i :
+    forall l i i',
+      sorted l ->
+      i' <= i ->
+      (filter
+         (fun x : entry =>
+            (i <? eIndex x) && (eIndex x <=? i'))
+         (findGtIndex l i))
+        ++ removeAfterIndex l i =
+      removeAfterIndex l i.
+  Proof.
+    induction l; intros; intuition.
+    simpl in *.
+    repeat break_if; simpl in *; repeat break_if;
+    repeat (do_bool; intuition); omega.
+  Qed.
+  
+  Lemma cacheApplyEntry_spec :
+    forall st a l st',
+      cacheApplyEntry st a = (l, st') ->
+      log st' = log st /\
+      lastApplied st' = lastApplied st /\
+      commitIndex st' = commitIndex st.
+  Proof.
+    intros. unfold cacheApplyEntry, applyEntry in *.
+    repeat break_match; find_inversion; auto.
+  Qed.
+
+  Lemma applyEntries_spec :
+    forall es h st os st',
+      applyEntries h st es = (os, st') ->
+      log st' = log st /\
+      lastApplied st' = lastApplied st /\
+      commitIndex st' = commitIndex st.
+  Proof.
+    induction es; intros; simpl in *.
+    - find_inversion. auto.
+    - repeat break_match; find_inversion;
+      find_apply_hyp_hyp;
+      find_apply_lem_hyp cacheApplyEntry_spec;
+      intuition; repeat find_rewrite; auto.
+  Qed.
+
+  Lemma contiguous_sorted_subset_prefix :
+    forall l1 l2 i,
+      contiguous_range_exact_lo l1 i ->
+      contiguous_range_exact_lo l2 i ->
+      sorted l1 ->
+      sorted l2 ->
+      (forall e, In e l1 -> In e l2) ->
+      Prefix (rev l1) (rev l2).
+  Proof.
+    admit.
+  Qed.
+
+  Lemma Prefix_exists_rest :
+    forall A l1 l2,
+      Prefix (A := A) l1 l2 ->
+      exists rest,
+        l2 = l1 ++ rest.
+  Proof.
+    induction l1; intros; simpl in *; eauto.
+    break_match; intuition. subst.
+    find_apply_hyp_hyp.
+    break_exists_exists. subst. auto.
+  Qed.
+
+  Lemma output_correct_prefix :
+    forall l1 l2 client id out,
+      Prefix l1 l2 ->
+      output_correct client id out l1 ->
+      output_correct client id out l2.
+  Proof.
+    intros.
+    find_apply_lem_hyp Prefix_exists_rest.
+    break_exists. subst.
+    eauto using output_correct_monotonic.
+  Qed.
+
+  Lemma entries_contiguous :
+    forall net,
+      raft_intermediate_reachable net ->
+      (forall h, contiguous_range_exact_lo (log (nwState net h)) 0).
+  Proof.
+    intros. find_apply_lem_hyp log_matching_invariant.
+    unfold log_matching, log_matching_hosts in *.
+    intuition.
+    unfold contiguous_range_exact_lo. intuition; eauto.
+    find_apply_hyp_hyp. omega.
+  Qed.
+  
   Lemma doGenericServer_output_correct :
     forall h ps sigma os st' ms,
       raft_intermediate_reachable (mkNetwork ps sigma) ->
@@ -539,15 +658,79 @@ Section OutputCorrect.
       output_correct client id out (applied_entries (update sigma h st')).
   Proof.
     intros.
+    find_copy_apply_lem_hyp logs_sorted_invariant.
+    pose proof entries_contiguous.
+    match goal with
+      | H : context [contiguous_range_exact_lo] |- _ =>
+        specialize (H ({| nwPackets := ps; nwState := sigma |}))
+    end.
+    concludes. simpl in *.
+    find_copy_apply_lem_hyp state_machine_correct_invariant.
+    unfold state_machine_correct in *. intuition.
+    unfold logs_sorted in *. intuition.
     unfold doGenericServer in *.
     break_let. find_inversion.
+    find_copy_apply_lem_hyp applyEntries_spec. intuition. repeat find_rewrite.
     eapply applyEntries_output_correct
-           with (es := rev (removeAfterIndex (log (sigma h)) (lastApplied (sigma h)))) in Heqp; eauto.
-    - (* something about prefix output_correct *) admit.
-    - (* smc *) admit.
-    - (* cache correct *) admit.
-    - (* more cache correctness *) admit.
-    - (* cache complete *) admit.
+    with (es := rev (removeAfterIndex (log (sigma h)) (lastApplied (sigma h)))) in Heqp; eauto.
+    - rewrite <- rev_app_distr in *.
+      break_if.
+      + do_bool.
+        erewrite findGtIndex_removeAfterIndex_i_lt_i' in Heqp; eauto.
+        match goal with
+          | |- context [applied_entries (update ?sigma ?h ?st)] =>
+            pose proof applied_entries_update sigma h st
+        end. conclude_using intuition.
+        intuition; simpl in *;
+        unfold raft_data in *; simpl in *; find_rewrite; auto.
+        unfold applied_entries in *.
+        break_exists. intuition. repeat find_rewrite.
+        eapply output_correct_prefix; eauto.
+        eapply contiguous_sorted_subset_prefix; eauto using removeAfterIndex_contiguous, removeAfterIndex_sorted.
+        intros.
+        find_copy_apply_lem_hyp removeAfterIndex_In_le; eauto.
+        find_apply_lem_hyp removeAfterIndex_in.
+        apply removeAfterIndex_le_In; eauto; try omega.
+        find_copy_apply_lem_hyp commitIndex_lastApplied_match_invariant.
+        unfold commitIndex_lastApplied_match in *. simpl in *.
+        match goal with
+          | _ : ?x >= ?y |- _ =>
+            assert (y <= x) by omega
+        end.
+        eapply_prop_hyp le le; eauto. intuition.
+      + do_bool.
+        erewrite findGtIndex_removeAfterIndex_i'_le_i in Heqp; eauto.
+        match goal with
+          | |- context [applied_entries (update ?sigma ?h ?st)] =>
+            pose proof applied_entries_update sigma h st
+        end. conclude_using intuition.
+        intuition; simpl in *;
+        unfold raft_data in *; simpl in *; find_rewrite; auto.
+        unfold applied_entries in *.
+        break_exists. intuition. repeat find_rewrite.
+        eapply output_correct_prefix; eauto.
+        eapply contiguous_sorted_subset_prefix; eauto using removeAfterIndex_contiguous, removeAfterIndex_sorted.
+        intros.
+        find_copy_apply_lem_hyp removeAfterIndex_In_le; eauto.
+        find_apply_lem_hyp removeAfterIndex_in.
+        apply removeAfterIndex_le_In; eauto; try omega.
+        find_copy_apply_lem_hyp lastApplied_lastApplied_match_invariant.
+        unfold lastApplied_lastApplied_match in *. simpl in *.
+        match goal with
+          | _ : ?x >= ?y |- _ =>
+            assert (y <= x) by omega
+        end.
+        eapply_prop_hyp le le; eauto. intuition.
+    - unfold client_cache_complete in *.
+      simpl in *.
+      intros. subst.
+      find_apply_lem_hyp In_rev. find_apply_hyp_hyp.
+      break_exists. intuition. repeat find_rewrite.
+      match goal with
+        | H : Some _ = Some _ |- _ =>
+          invcs H
+      end. auto.
+    - intros. find_apply_lem_hyp In_rev. eauto.
   Qed.
 
   Ltac intermediate_networks :=
