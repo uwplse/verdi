@@ -362,14 +362,45 @@ Section OutputCorrect.
        exists e', In e' es /\ eClient e' = eClient e /\ eId e <= eId e') \/
       (deduplicate_log (es ++ [e]) = deduplicate_log es ++ [e] /\
        (forall e', In e' es -> eClient e' = eClient e -> eId e' < eId e)).
-  Admitted.
+  Proof.
+    intros.
+    destruct (find (fun e' => andb (eClient e' =? eClient e)
+                                  (eId e <=? eId e')) es) eqn:?.
+    - left. find_apply_lem_hyp find_some.
+      repeat (break_and; do_bool).
+      intuition eauto using deduplicate_log_snoc_drop.
+    - right.
+      match goal with
+        | |- _ /\ ?P =>
+          assert P; [|intuition; eauto using deduplicate_log_snoc_split]
+      end.
+      intros.
+      find_eapply_lem_hyp find_none; eauto.
+      simpl in *. repeat (do_bool; intuition).
+  Qed.
+
+  Lemma assoc_None :
+    forall K V K_eq_dec (l : list (K * V)) k v,
+      assoc K_eq_dec l k = None ->
+      In (k, v) l ->
+      False.
+  Proof.
+    intros; induction l; simpl in *; intuition.
+    - subst. break_if; congruence.
+    - break_match. subst. break_if; try congruence.
+      auto.
+  Qed.
 
   Lemma getLastId_None :
     forall st c i o,
       getLastId st c = None ->
       In (c, (i, o)) (clientCache st) ->
       False.
-  Admitted.
+  Proof.
+    intros.
+    unfold getLastId in *.
+    eauto using assoc_None.
+  Qed.
 
   Lemma output_correct_monotonic :
     forall c i o xs ys,
