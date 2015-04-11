@@ -336,7 +336,7 @@ Section OutputCorrect.
     rewrite execute_log'_app. auto.
   Qed.
 
-  Lemma applyEntry_correct :
+  Lemma applyEntry_stateMachine_correct :
     forall st e l st' es,
       applyEntry st e = (l, st') ->
       stateMachine st = snd (execute_log (deduplicate_log es)) ->
@@ -434,12 +434,12 @@ Section OutputCorrect.
       pose proof (deduplicate_log_cases es e).
       intuition; break_exists; intuition; repeat find_rewrite.
       + do_bool. assert (eId x0 <= n) by eauto. omega.
-      + eapply applyEntry_correct; eauto.
+      + eapply applyEntry_stateMachine_correct; eauto.
     - pose proof (deduplicate_log_cases es e).
       intuition; break_exists; intuition; repeat find_rewrite.
       + eapply_prop_hyp In In. break_exists. break_and.
         exfalso. repeat find_rewrite. eauto using getLastId_None.
-      + eapply applyEntry_correct; eauto.
+      + eapply applyEntry_stateMachine_correct; eauto.
   Qed.
 
   Lemma deduplicate_log_In_if :
