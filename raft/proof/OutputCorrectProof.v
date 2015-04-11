@@ -31,7 +31,7 @@ Section OutputCorrect.
   Section inner.
   Variables client id : nat.
   Variable out : output.
-  
+
   Theorem in_output_trace_dec :
     forall tr : list (name * (raft_input + list raft_output)),
       {in_output_trace client id out tr} + {~ in_output_trace client id out tr}.
@@ -136,7 +136,7 @@ Section OutputCorrect.
   Proof.
     eauto using deduplicate_log'_app.
   Qed.
-  
+
 
   Lemma in_output_trace_not_nil :
       in_output_trace client id out [] -> False.
@@ -316,7 +316,7 @@ Section OutputCorrect.
         * find_erewrite_lem get_set_diff.
           eauto.
   Qed.
-  
+
   Lemma deduplicate_log_snoc_split :
     forall es e,
       (forall e', In e' es -> eClient e' = eClient e -> eId e' < eId e) ->
