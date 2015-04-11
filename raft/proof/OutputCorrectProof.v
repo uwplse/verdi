@@ -407,18 +407,18 @@ Section OutputCorrect.
       cacheApplyEntry st e = (l, st') ->
       In o l ->
       (forall c i o,
-         In (c, (i, o)) (clientCache st) ->
+         getLastId st c = Some (i, o) ->
          output_correct c i o es) ->
       stateMachine st = snd (execute_log (deduplicate_log es)) ->
       (forall c i o e',
-         In (c, (i, o)) (clientCache st) ->
+         getLastId st c = Some (i, o) ->
          In e' es ->
          eClient e' = c ->
          eId e' <= i) ->
       (forall e',
          In e' es ->
          exists i o,
-           In (eClient e', (i, o)) (clientCache st) /\
+           getLastId st (eClient e') = Some (i, o) /\
            eId e' <= i) ->
       output_correct (eClient e) (eId e) o (es ++ [e]).
   Proof.
@@ -428,13 +428,12 @@ Section OutputCorrect.
     - do_bool. subst. eauto using output_correct_monotonic, getLastId_Some_In.
     - eapply applyEntry_output_correct; eauto.
       do_bool. assert (n < eId e) by auto with *.
-      find_apply_lem_hyp getLastId_Some_In.
       intros. assert (eId e' <= n) by eauto. omega.
     - eapply applyEntry_output_correct; eauto.
       intros.
       find_apply_hyp_hyp.
       break_exists. break_and.
-      exfalso. repeat find_rewrite. eauto using getLastId_None.
+      repeat find_rewrite. discriminate.
   Qed.
 
   Lemma cacheApplyEntry_stateMachine_correct :
@@ -442,36 +441,33 @@ Section OutputCorrect.
       cacheApplyEntry st e = (l, st') ->
       stateMachine st = snd (execute_log (deduplicate_log es)) ->
       (forall c i o,
-         In (c, (i, o)) (clientCache st) ->
+         getLastId st c = Some (i, o) ->
          exists e,
            In e es /\
            eClient e = c /\
            eId e = i) ->
       (forall c i o e',
-         In (c, (i, o)) (clientCache st) ->
+         getLastId st c = Some (i, o) ->
          In e' es ->
          eClient e' = c ->
          eId e' <= i) ->
       (forall e',
          In e' es ->
          exists i o,
-           In (eClient e', (i, o)) (clientCache st) /\
+           getLastId st (eClient e') = Some (i, o) /\
            eId e' <= i) ->
       stateMachine st' = snd (execute_log (deduplicate_log (es ++ [e]))).
   Proof.
     intros.
     unfold cacheApplyEntry in *.
     repeat break_match; repeat find_inversion.
-    - find_apply_lem_hyp getLastId_Some_In.
-      find_apply_hyp_hyp. break_exists. break_and.
+    - find_apply_hyp_hyp. break_exists. break_and.
       erewrite deduplicate_log_snoc_drop; eauto.
       do_bool. omega.
-    - find_apply_lem_hyp getLastId_Some_In.
-      find_apply_hyp_hyp. break_exists. break_and.
+    - find_apply_hyp_hyp. break_exists. break_and.
       erewrite deduplicate_log_snoc_drop; eauto.
       do_bool. omega.
-    - find_apply_lem_hyp getLastId_Some_In.
-      find_copy_apply_hyp_hyp. break_exists. break_and.
+    - find_copy_apply_hyp_hyp. break_exists. break_and.
       pose proof (deduplicate_log_cases es e).
       intuition; break_exists; intuition; repeat find_rewrite.
       + do_bool. assert (eId x0 <= n) by eauto. omega.
@@ -479,7 +475,7 @@ Section OutputCorrect.
     - pose proof (deduplicate_log_cases es e).
       intuition; break_exists; intuition; repeat find_rewrite.
       + eapply_prop_hyp In In. break_exists. break_and.
-        exfalso. repeat find_rewrite. eauto using getLastId_None.
+        repeat find_rewrite. discriminate.
       + eapply applyEntry_stateMachine_correct; eauto.
   Qed.
 
@@ -498,15 +494,15 @@ Section OutputCorrect.
       in_output_list c i o os ->
       (stateMachine st = snd (execute_log (deduplicate_log es))) ->
       (forall c i o,
-         In (c, (i, o)) (clientCache st) ->
+         getLastId st c = Some (i, o) ->
          output_correct c i o es) ->
       (forall c i o e',
-         In (c, (i, o)) (clientCache st) ->
+         getLastId st c = Some (i, o) ->
          In e' es -> eClient e' = c -> eId e' <= i) ->
       (forall e',
          In e' es ->
          exists i o,
-           In (eClient e', (i, o)) (clientCache st) /\ eId e' <= i) ->
+           getLastId st (eClient e') = Some (i, o) /\ eId e' <= i) ->
       output_correct c i o (es ++ l).
   Proof.
     induction l; intros; simpl in *.
