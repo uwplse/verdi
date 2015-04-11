@@ -21,6 +21,12 @@ Section LastAppliedCommitIndexMatching.
       commitIndex (nwState net h') <= lastApplied (nwState net h) ->
       eIndex e <= commitIndex (nwState net h') ->
       In e (log (nwState net h')) <-> In e (log (nwState net h)).
+
+  Definition lastApplied_lastApplied_match net :=
+    forall h h' e,
+      lastApplied (nwState net h') <= lastApplied (nwState net h) ->
+      eIndex e <= lastApplied (nwState net h') ->
+      In e (log (nwState net h')) <-> In e (log (nwState net h)).
   
   Class lastApplied_commitIndex_match_interface : Prop :=
     {
@@ -31,7 +37,11 @@ Section LastAppliedCommitIndexMatching.
       commitIndex_lastApplied_match_invariant :
         forall net,
           raft_intermediate_reachable net ->
-          commitIndex_lastApplied_match net
+          commitIndex_lastApplied_match net;
+      lastApplied_lastApplied_match_invariant :
+        forall net,
+          raft_intermediate_reachable net ->
+          lastApplied_lastApplied_match net
     }.
   
 End LastAppliedCommitIndexMatching.
