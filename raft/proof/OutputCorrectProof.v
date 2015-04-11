@@ -572,7 +572,31 @@ Section OutputCorrect.
       getLastId st c = Some (i, o) ->
       getLastId st' c = Some (i', o') ->
       i <= i'.
-  Admitted.
+  Proof.
+    intros.
+    unfold cacheApplyEntry in *.
+    repeat break_match; try find_inversion; simpl in *; repeat find_rewrite.
+    - find_inversion. auto.
+    - find_inversion. auto.
+    - do_bool.
+      unfold applyEntry in *.
+      repeat break_match; find_inversion.
+      unfold getLastId in *. simpl in *.
+      destruct (eq_nat_dec (eClient e) c); subst.
+      + find_rewrite_lem get_set_same. find_inversion.
+        repeat find_rewrite. find_inversion. auto.
+      + rewrite get_set_diff in *; auto.
+        repeat find_rewrite. find_inversion. auto.
+    - do_bool.
+      unfold applyEntry in *.
+      repeat break_match; find_inversion.
+      unfold getLastId in *. simpl in *.
+      destruct (eq_nat_dec (eClient e) c); subst.
+      + find_rewrite_lem get_set_same. find_inversion.
+        repeat find_rewrite. congruence.
+      + rewrite get_set_diff in *; auto.
+        repeat find_rewrite. find_inversion. auto.
+  Qed.
 
   Lemma cacheAppliedEntry_clientCache_preserved :
     forall st e l st' c i o,
