@@ -168,6 +168,9 @@ Require Import AllEntriesLeaderLogsTermProof.
 Require Import StateMachineCorrectInterface.
 Require Import StateMachineCorrectProof.
 
+Require Import OutputGreatestIdInterface.
+Require Import OutputGreatestIdProof.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -221,6 +224,7 @@ Hint Extern 4 (@allEntries_leader_sublog_interface _ _ _) => apply aelsi : typec
 Hint Extern 4 (@lastApplied_commitIndex_match_interface _ _ _) => apply lacimi : typeclass_instances.
 Hint Extern 4 (@allEntries_leaderLogs_term_interface _ _ _) => apply aellti : typeclass_instances.
 Hint Extern 4 (@state_machine_correct_interface _ _ _) => apply smci : typeclass_instances.
+Hint Extern 4 (@output_greatest_id_interface _ _ _) => apply ogii : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
