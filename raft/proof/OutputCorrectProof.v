@@ -574,6 +574,15 @@ Section OutputCorrect.
       i <= i'.
   Admitted.
 
+  Lemma cacheAppliedEntry_clientCache_preserved :
+    forall st e l st' c i o,
+      cacheApplyEntry st e = (l, st') ->
+      getLastId st c = Some (i, o) ->
+      exists i' o',
+        getLastId st' c = Some (i', o') /\
+        i <= i'.
+  Admitted.
+
   Lemma applyEntries_output_correct :
     forall l c i o h st os st' es,
       applyEntries h st l = (os, st') ->
@@ -640,7 +649,22 @@ Section OutputCorrect.
                 repeat find_rewrite.
                 rewrite get_set_same in *. find_inversion. auto.
           }
-        * admit.
+        * intros.
+          do_in_app. simpl in *.
+          { intuition.
+            - eapply_prop_hyp In In. break_exists. break_and.
+              find_copy_eapply_lem_hyp cacheAppliedEntry_clientCache_preserved; eauto.
+              break_exists_exists. intuition.
+            - subst. find_copy_apply_lem_hyp cacheApplyEntry_clientCache.
+              intuition.
+              + break_exists. break_and.
+                find_copy_eapply_lem_hyp cacheAppliedEntry_clientCache_preserved; eauto.
+                break_exists_exists. intuition.
+              + break_let. break_and. unfold getLastId. repeat find_rewrite.
+                eexists. eexists. rewrite get_set_same. intuition eauto.
+              + break_let. break_and. unfold getLastId. repeat find_rewrite.
+                eexists. eexists. rewrite get_set_same. intuition eauto.
+          }
   Qed.
 
   Lemma findGtIndex_removeAfterIndex_i_lt_i' :
