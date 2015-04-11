@@ -1117,6 +1117,14 @@ Section assoc.
     induction l; intros; simpl; repeat (break_match; simpl); subst; congruence.
   Qed.
 
+  Lemma get_set_same' :
+    forall k k' v l,
+      k = k' ->
+      assoc (assoc_set l k v) k' = Some v.
+  Proof.
+    intros. subst. auto using get_set_same.
+  Qed.
+
   Lemma get_set_diff :
     forall k k' v l,
       k <> k' ->
