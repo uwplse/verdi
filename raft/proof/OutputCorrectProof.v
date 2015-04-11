@@ -566,6 +566,35 @@ Section OutputCorrect.
     congruence.
   Qed.
 
+  Lemma cacheAppliedEntry_clientCache_preserved :
+    forall st e l st' c i o,
+      cacheApplyEntry st e = (l, st') ->
+      getLastId st c = Some (i, o) ->
+      exists i' o',
+        getLastId st' c = Some (i', o') /\
+        i <= i'.
+  Proof.
+    intros.
+    unfold cacheApplyEntry in *.
+    repeat break_match; try find_inversion; simpl in *; repeat find_rewrite; eauto.
+    - do_bool.
+      unfold applyEntry in *.
+      repeat break_match; find_inversion.
+      unfold getLastId in *. simpl in *.
+      destruct (eq_nat_dec (eClient e) c); subst.
+      + rewrite get_set_same. find_rewrite.
+        find_inversion. eauto.
+      + rewrite get_set_diff in *; auto.
+        repeat find_rewrite. eauto.
+    - unfold applyEntry in *.
+      repeat break_match; find_inversion.
+      unfold getLastId in *. simpl in *.
+      destruct (eq_nat_dec (eClient e) c); subst.
+      + repeat find_rewrite.  congruence.
+      + rewrite get_set_diff in *; auto.
+        repeat find_rewrite. eauto.
+  Qed.
+
   Lemma cacheAppliedEntry_clientCache_nondecreasing :
     forall st e l st' c i o i' o',
       cacheApplyEntry st e = (l, st') ->
@@ -574,39 +603,10 @@ Section OutputCorrect.
       i <= i'.
   Proof.
     intros.
-    unfold cacheApplyEntry in *.
-    repeat break_match; try find_inversion; simpl in *; repeat find_rewrite.
-    - find_inversion. auto.
-    - find_inversion. auto.
-    - do_bool.
-      unfold applyEntry in *.
-      repeat break_match; find_inversion.
-      unfold getLastId in *. simpl in *.
-      destruct (eq_nat_dec (eClient e) c); subst.
-      + find_rewrite_lem get_set_same. find_inversion.
-        repeat find_rewrite. find_inversion. auto.
-      + rewrite get_set_diff in *; auto.
-        repeat find_rewrite. find_inversion. auto.
-    - do_bool.
-      unfold applyEntry in *.
-      repeat break_match; find_inversion.
-      unfold getLastId in *. simpl in *.
-      destruct (eq_nat_dec (eClient e) c); subst.
-      + find_rewrite_lem get_set_same. find_inversion.
-        repeat find_rewrite. congruence.
-      + rewrite get_set_diff in *; auto.
-        repeat find_rewrite. find_inversion. auto.
+    eapply cacheAppliedEntry_clientCache_preserved in H; eauto.
+    break_exists. intuition. repeat find_rewrite. find_inversion. auto.
   Qed.
-
-  Lemma cacheAppliedEntry_clientCache_preserved :
-    forall st e l st' c i o,
-      cacheApplyEntry st e = (l, st') ->
-      getLastId st c = Some (i, o) ->
-      exists i' o',
-        getLastId st' c = Some (i', o') /\
-        i <= i'.
-  Admitted.
-
+  
   Lemma applyEntries_output_correct :
     forall l c i o h st os st' es,
       applyEntries h st l = (os, st') ->
