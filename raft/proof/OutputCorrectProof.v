@@ -691,45 +691,6 @@ Section OutputCorrect.
           }
   Qed.
 
-  Lemma findGtIndex_removeAfterIndex_i_lt_i' :
-    forall l i i',
-      sorted l ->
-      i < i' ->
-      (filter
-         (fun x : entry =>
-            (i <? eIndex x) && (eIndex x <=? i'))
-         (findGtIndex l i))
-        ++ removeAfterIndex l i =
-      removeAfterIndex l i'.
-  Proof.
-    induction l; intros; intuition.
-    simpl in *.
-    repeat break_if; simpl in *; repeat break_if;
-    repeat (do_bool; intuition); try omega.
-    simpl. f_equal.
-    rewrite IHl; eauto.
-    apply removeAfterIndex_eq.
-    intros.
-    find_apply_hyp_hyp. intuition.
-  Qed.
-
-  Lemma findGtIndex_removeAfterIndex_i'_le_i :
-    forall l i i',
-      sorted l ->
-      i' <= i ->
-      (filter
-         (fun x : entry =>
-            (i <? eIndex x) && (eIndex x <=? i'))
-         (findGtIndex l i))
-        ++ removeAfterIndex l i =
-      removeAfterIndex l i.
-  Proof.
-    induction l; intros; intuition.
-    simpl in *.
-    repeat break_if; simpl in *; repeat break_if;
-    repeat (do_bool; intuition); omega.
-  Qed.
-
   Lemma cacheApplyEntry_spec :
     forall st a l st',
       cacheApplyEntry st a = (l, st') ->
@@ -754,30 +715,6 @@ Section OutputCorrect.
       find_apply_hyp_hyp;
       find_apply_lem_hyp cacheApplyEntry_spec;
       intuition; repeat find_rewrite; auto.
-  Qed.
-
-  Lemma contiguous_sorted_subset_prefix :
-    forall l1 l2 i,
-      contiguous_range_exact_lo l1 i ->
-      contiguous_range_exact_lo l2 i ->
-      sorted l1 ->
-      sorted l2 ->
-      (forall e, In e l1 -> In e l2) ->
-      Prefix (rev l1) (rev l2).
-  Proof.
-    admit.
-  Qed.
-
-  Lemma Prefix_exists_rest :
-    forall A l1 l2,
-      Prefix (A := A) l1 l2 ->
-      exists rest,
-        l2 = l1 ++ rest.
-  Proof.
-    induction l1; intros; simpl in *; eauto.
-    break_match; intuition. subst.
-    find_apply_hyp_hyp.
-    break_exists_exists. subst. auto.
   Qed.
 
   Lemma output_correct_prefix :
@@ -828,18 +765,18 @@ Section OutputCorrect.
     eapply applyEntries_output_correct
     with (es := rev (removeAfterIndex (log (sigma h)) (lastApplied (sigma h)))) in Heqp; eauto.
     - rewrite <- rev_app_distr in *.
+      eapply output_correct_prefix; eauto.
       break_if.
       + do_bool.
-        erewrite findGtIndex_removeAfterIndex_i_lt_i' in Heqp; eauto.
+        erewrite findGtIndex_removeAfterIndex_i_lt_i' in *; eauto.
         match goal with
           | |- context [applied_entries (update ?sigma ?h ?st)] =>
             pose proof applied_entries_update sigma h st
         end. conclude_using intuition.
         intuition; simpl in *;
-        unfold raft_data in *; simpl in *; find_rewrite; auto.
+        unfold raft_data in *; simpl in *; find_rewrite; auto using Prefix_refl.
         unfold applied_entries in *.
         break_exists. intuition. repeat find_rewrite.
-        eapply output_correct_prefix; eauto.
         eapply contiguous_sorted_subset_prefix; eauto using removeAfterIndex_contiguous, removeAfterIndex_sorted.
         intros.
         find_copy_apply_lem_hyp removeAfterIndex_In_le; eauto.
@@ -853,16 +790,15 @@ Section OutputCorrect.
         end.
         eapply_prop_hyp le le; eauto. intuition.
       + do_bool.
-        erewrite findGtIndex_removeAfterIndex_i'_le_i in Heqp; eauto.
+        erewrite findGtIndex_removeAfterIndex_i'_le_i in *; eauto.
         match goal with
           | |- context [applied_entries (update ?sigma ?h ?st)] =>
             pose proof applied_entries_update sigma h st
         end. conclude_using intuition.
         intuition; simpl in *;
-        unfold raft_data in *; simpl in *; find_rewrite; auto.
+        unfold raft_data in *; simpl in *; find_rewrite; auto using Prefix_refl.
         unfold applied_entries in *.
         break_exists. intuition. repeat find_rewrite.
-        eapply output_correct_prefix; eauto.
         eapply contiguous_sorted_subset_prefix; eauto using removeAfterIndex_contiguous, removeAfterIndex_sorted.
         intros.
         find_copy_apply_lem_hyp removeAfterIndex_In_le; eauto.

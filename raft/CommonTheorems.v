@@ -2014,6 +2014,72 @@ Section CommonTheorems.
     induction l; intros; simpl in *; intuition.
     repeat break_match; simpl in *; intuition; find_apply_hyp_hyp; auto.
   Qed.
+
+
+  Lemma findGtIndex_removeAfterIndex_i_lt_i' :
+    forall l i i',
+      sorted l ->
+      i < i' ->
+      (filter
+         (fun x : entry =>
+            (i <? eIndex x) && (eIndex x <=? i'))
+         (findGtIndex l i))
+        ++ removeAfterIndex l i =
+      removeAfterIndex l i'.
+  Proof.
+    induction l; intros; intuition.
+    simpl in *.
+    repeat break_if; simpl in *; repeat break_if;
+    repeat (do_bool; intuition); try omega.
+    simpl. f_equal.
+    rewrite IHl; eauto.
+    apply removeAfterIndex_eq.
+    intros.
+    find_apply_hyp_hyp. intuition.
+  Qed.
+
+  Lemma findGtIndex_removeAfterIndex_i'_le_i :
+    forall l i i',
+      sorted l ->
+      i' <= i ->
+      (filter
+         (fun x : entry =>
+            (i <? eIndex x) && (eIndex x <=? i'))
+         (findGtIndex l i))
+        ++ removeAfterIndex l i =
+      removeAfterIndex l i.
+  Proof.
+    induction l; intros; intuition.
+    simpl in *.
+    repeat break_if; simpl in *; repeat break_if;
+    repeat (do_bool; intuition); omega.
+  Qed.
+
+
+  Lemma contiguous_sorted_subset_prefix :
+    forall l1 l2 i,
+      contiguous_range_exact_lo l1 i ->
+      contiguous_range_exact_lo l2 i ->
+      sorted l1 ->
+      sorted l2 ->
+      (forall e, In e l1 -> In e l2) ->
+      Prefix (rev l1) (rev l2).
+  Proof.
+    admit.
+  Qed.
+
+  Lemma Prefix_exists_rest :
+    forall A l1 l2,
+      Prefix (A := A) l1 l2 ->
+      exists rest,
+        l2 = l1 ++ rest.
+  Proof.
+    induction l1; intros; simpl in *; eauto.
+    break_match; intuition. subst.
+    find_apply_hyp_hyp.
+    break_exists_exists. subst. auto.
+  Qed.
+  
 End CommonTheorems.
 
 Notation is_append_entries m :=
