@@ -20,6 +20,61 @@ Section SpecLemmas.
 
   Context {rri : raft_refinement_interface}.
 
+  Lemma votesWithLog_update_elections_data_client_request :
+    forall h st client id c out st' ps t' h' l',
+      handleClientRequest h (snd st) client id c = (out, st', ps) ->
+      In (t', h', l') (votesWithLog (update_elections_data_client_request h st client id c)) ->
+      In (t', h', l') (votesWithLog (fst st)).
+  Proof.
+    unfold update_elections_data_client_request.
+    intros. repeat break_match; repeat tuple_inversion; intuition.
+  Qed.
+
+  Lemma votesWithLog_update_elections_data_timeout :
+    forall h st out st' ps t' h' l',
+      handleTimeout h (snd st) = (out, st', ps) ->
+      In (t', h', l') (votesWithLog (update_elections_data_timeout h st)) ->
+      In (t', h', l') (votesWithLog (fst st)) \/
+      (t' = currentTerm st' /\ l' = log st').
+  Proof.
+    unfold update_elections_data_timeout.
+    intros. repeat break_match; simpl in *; intuition; repeat tuple_inversion; intuition.
+  Qed.
+
+  Lemma votesWithLog_update_elections_data_append_entries :
+    forall h st t n pli plt es ci st' ps t' h' l',
+      handleAppendEntries h (snd st) t n pli plt es ci = (st', ps) ->
+      In (t', h', l') (votesWithLog (update_elections_data_appendEntries h st t n pli plt es ci)) ->
+      In (t', h', l') (votesWithLog (fst st)).
+  Proof.
+    unfold update_elections_data_appendEntries.
+    intros. repeat break_match; repeat tuple_inversion; intuition.
+  Qed.
+
+  Lemma votesWithLog_update_elections_data_request_vote :
+    forall h st t src lli llt st' m t' h' l',
+      handleRequestVote h (snd st) t src lli llt = (st', m) ->
+      In (t', h', l') (votesWithLog (update_elections_data_requestVote h src t src lli llt st)) ->
+      In (t', h', l') (votesWithLog (fst st)) \/
+      (t' = currentTerm st' /\
+       l' = log st').
+  Proof.
+    unfold update_elections_data_requestVote.
+    intros. repeat break_match; repeat tuple_inversion; intuition.
+    simpl in *. intuition.
+    tuple_inversion. intuition.
+  Qed.
+
+  Lemma votesWithLog_update_elections_data_request_vote_reply :
+    forall h st src t r st' t' h' l',
+      handleRequestVoteReply h (snd st) src t r = st' ->
+      In (t', h', l') (votesWithLog (update_elections_data_requestVoteReply h src t r st)) ->
+      In (t', h', l') (votesWithLog (fst st)).
+  Proof.
+    unfold update_elections_data_requestVoteReply.
+    intros. repeat break_match; repeat tuple_inversion; intuition.
+  Qed.
+
   Lemma update_elections_data_client_request_leaderLogs :
     forall h st client id c,
       leaderLogs (update_elections_data_client_request h st client id c) =
@@ -95,7 +150,7 @@ Section SpecLemmas.
     - right.  break_exists_exists. intuition.
       congruence.
   Qed.
-  
+
   Lemma update_elections_data_requestVoteReply_allEntries :
     forall h h' t  st r,
       allEntries (update_elections_data_requestVoteReply h h' t r st) = allEntries (fst st).
@@ -143,7 +198,7 @@ Section SpecLemmas.
     do_in_app. intuition.
     do_in_map. repeat find_inversion. subst. simpl in *. auto.
   Qed.
-  
+
   Lemma update_elections_data_appendEntries_allEntries_detailed :
     forall h st t h' pli plt es ci st' m te e,
       handleAppendEntries h (snd st) t h' pli plt es ci = (st', m) ->
@@ -158,7 +213,7 @@ Section SpecLemmas.
     do_in_app. intuition.
     do_in_map. find_inversion. find_copy_apply_hyp_hyp. intuition.
   Qed.
-  
+
   Lemma update_elections_data_clientRequest_allEntries_new :
     forall h st client id c e,
       In e (map snd (allEntries (update_elections_data_client_request h st client id c))) ->
@@ -237,7 +292,7 @@ Section SpecLemmas.
     unfold update_elections_data_client_request in *.
     repeat break_match; subst; simpl in *; auto.
   Qed.
-  
+
   Lemma update_elections_data_timeout_cronies :
     forall h st t,
       cronies (update_elections_data_timeout h st) t = cronies (fst st) t
@@ -259,5 +314,5 @@ Section SpecLemmas.
     intros.
     repeat break_match; auto.
   Qed.
-  
+
 End SpecLemmas.

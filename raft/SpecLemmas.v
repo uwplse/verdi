@@ -144,7 +144,7 @@ Section SpecLemmas.
     intuition; do_bool; find_apply_lem_hyp haveNewEntries_true;
     intuition eauto.
   Qed.
-    
+
   Theorem handleClientRequest_log :
     forall h st client id c out st' ps,
       handleClientRequest h st client id c = (out, st', ps) ->
@@ -351,7 +351,7 @@ Section SpecLemmas.
     intros.
     repeat break_match; find_inversion; simpl in *; auto.
   Qed.
-  
+
   Lemma handleRequestVoteReply_log :
     forall h st h' t r st',
       st' = handleRequestVoteReply h st h' t r ->
@@ -380,7 +380,7 @@ Section SpecLemmas.
     repeat break_match; find_inversion; simpl in *;
     subst; auto.
   Qed.
-  
+
   Lemma handleRequestVote_no_append_entries :
     forall st h h' t lli llt st' m,
       handleRequestVote h st t h' lli llt = (st', m) ->
@@ -413,5 +413,5 @@ Section SpecLemmas.
     intuition; break_exists;
     do_in_map; subst; simpl in *; congruence.
   Qed.
-  
+
 End SpecLemmas.

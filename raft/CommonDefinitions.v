@@ -128,4 +128,10 @@ Section CommonDefinitions.
         eId e = id /\
         execute_log (xs ++ [e]) = (tr', st') /\
         hd_error (rev tr') = Some (eInput e, out).
+
+  Definition terms_and_indices_from_one (l : list entry) : Prop :=
+    forall e,
+      In e l ->
+      eTerm e >= 1 /\ eIndex e >= 1.
+
 End CommonDefinitions.
