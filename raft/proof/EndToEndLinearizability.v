@@ -171,6 +171,15 @@ Require Import StateMachineCorrectProof.
 Require Import OutputGreatestIdInterface.
 Require Import OutputGreatestIdProof.
 
+Require Import CurrentTermGtZeroInterface.
+Require Import CurrentTermGtZeroProof.
+
+Require Import TermsAndIndicesFromOneLogInterface.
+Require Import TermsAndIndicesFromOneLogProof.
+
+Require Import TermsAndIndicesFromOneInterface.
+Require Import TermsAndIndicesFromOneProof.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -225,6 +234,9 @@ Hint Extern 4 (@lastApplied_commitIndex_match_interface _ _ _) => apply lacimi :
 Hint Extern 4 (@allEntries_leaderLogs_term_interface _ _ _) => apply aellti : typeclass_instances.
 Hint Extern 4 (@state_machine_correct_interface _ _ _) => apply smci : typeclass_instances.
 Hint Extern 4 (@output_greatest_id_interface _ _ _) => apply ogii : typeclass_instances.
+Hint Extern 4 (@current_term_gt_zero_interface _ _ _) => apply ctgzi : typeclass_instances.
+Hint Extern 4 (@terms_and_indices_from_one_log_interface _ _ _) => apply taifoli : typeclass_instances.
+Hint Extern 4 (@terms_and_indices_from_one_interface _ _ _) => apply taifoi : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
