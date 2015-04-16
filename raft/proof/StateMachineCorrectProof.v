@@ -241,9 +241,7 @@ Section StateMachineCorrect.
       find_apply_lem_hyp applyEntries_execute_log'. repeat find_rewrite.
       simpl in *. repeat find_higher_order_rewrite.
       unfold client_cache_complete in *.
-      Lemma execute_log'_app :
-        forall l l' st os,
-          
+  Admitted.
       
 
   Theorem state_machine_correct_invariant :
