@@ -14,20 +14,25 @@ Section PrefixWithinTerm.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
-  Definition prefix_within_term (l1 l2 : list entry) : Prop :=
-    forall e e',
-      eTerm e = eTerm e' ->
-      eIndex e <= eIndex e' ->
-      In e l1 ->
-      In e' l2 ->
-      In e l2.
+  Definition allEntries_leaderLogs_prefix_within_term net :=
+    forall h t l h',
+      In (t, l) (leaderLogs (fst (nwState net h'))) ->
+      prefix_within_term (map snd (allEntries (fst (nwState net h)))) l.
+
+  Definition log_log_prefix_within_term net :=
+    forall h h',
+      prefix_within_term (log (snd (nwState net h))) (log (snd (nwState net h'))).
 
 
   Class prefix_within_term_interface : Prop :=
     {
-      prefix_within_term_invariant :
-        forall net h t l h',
-          In (t, l) (leaderLogs (fst (nwState net h'))) ->
-          prefix_within_term (map snd (allEntries (fst (nwState net h)))) l
+      allEntries_leaderLogs_prefix_within_term_invariant :
+        forall net,
+          refined_raft_intermediate_reachable net ->
+          allEntries_leaderLogs_prefix_within_term net;
+      log_log_prefix_within_term_invariant :
+        forall net,
+          refined_raft_intermediate_reachable net ->
+          log_log_prefix_within_term net
     }.
 End PrefixWithinTerm.

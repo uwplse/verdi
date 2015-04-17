@@ -87,13 +87,16 @@ Section CommonDefinitions.
     Definition key_of (e : entry) :=
       (eClient e, eId e).
 
-    Fixpoint deduplicate_log' (log : list entry) (ks : list key) : list entry :=
+    Fixpoint deduplicate_log' (log : list entry) (ks : list (nat * nat)) : list entry :=
       match log with
         | [] => []
-        | e :: es => if (@in_dec key key_eq_dec (key_of e) ks) then
-                       deduplicate_log' es ks
-                     else
-                       e :: deduplicate_log' es ((key_of e) :: ks)
+        | e :: es =>
+          match assoc eq_nat_dec ks (eClient e) with
+            | Some n => if n <? eId e
+                        then e :: deduplicate_log' es (assoc_set eq_nat_dec ks (eClient e) (eId e))
+                        else deduplicate_log' es ks
+            | None => e :: deduplicate_log' es (assoc_set eq_nat_dec ks (eClient e) (eId e))
+          end
       end.
 
     Definition deduplicate_log l := deduplicate_log' l [].
@@ -108,5 +111,27 @@ Section CommonDefinitions.
     In e (log (nwState net h)) /\
     (eIndex e <= lastApplied (nwState net h) \/
      eIndex e <= commitIndex (nwState net h)).
+
+
+  Definition prefix_within_term (l1 l2 : list entry) : Prop :=
+    forall e e',
+      eTerm e = eTerm e' ->
+      eIndex e <= eIndex e' ->
+      In e l1 ->
+      In e' l2 ->
+      In e l2.
+
+  Definition output_correct client id out (aes : list entry) : Prop  :=
+    exists xs e ys tr' st',
+        deduplicate_log aes = xs ++ e :: ys /\
+        eClient e = client /\
+        eId e = id /\
+        execute_log (xs ++ [e]) = (tr', st') /\
+        hd_error (rev tr') = Some (eInput e, out).
+
+  Definition terms_and_indices_from_one (l : list entry) : Prop :=
+    forall e,
+      In e l ->
+      eTerm e >= 1 /\ eIndex e >= 1.
 
 End CommonDefinitions.

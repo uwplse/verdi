@@ -907,6 +907,17 @@ Proof.
     + subst. find_inversion. eauto.
 Qed.
 
+Lemma Prefix_In :
+  forall A (l : list A) l' x,
+    Prefix l l' ->
+    In x l ->
+    In x l'.
+Proof.
+  induction l; intros; simpl in *; intuition;
+  subst; break_match; intuition; subst; intuition.
+Qed.
+
+
 Fixpoint filterMap {A B} (f : A -> option B) (l : list A) : list B :=
   match l with
     | [] => []
@@ -1137,6 +1148,14 @@ Section assoc.
     induction l; intros; simpl; repeat (break_match; simpl); subst; congruence.
   Qed.
 
+  Lemma get_set_same' :
+    forall k k' v l,
+      k = k' ->
+      assoc (assoc_set l k v) k' = Some v.
+  Proof.
+    intros. subst. auto using get_set_same.
+  Qed.
+
   Lemma get_set_diff :
     forall k k' v l,
       k <> k' ->
@@ -1243,6 +1262,15 @@ Proof.
   - simpl in *.
     destruct (f a); destruct (g a); intuition.
 Qed.
+
+Lemma before_func_app :
+  forall A f g l x,
+    before_func (A := A) f g l ->
+    before_func f g (l ++ x).
+Proof.
+  intros. induction l; simpl in *; intuition.
+Qed.
+
 
 Lemma if_decider_true :
   forall A B (P : A -> Prop) (dec : forall x, {P x} + {~ P x}) a (b1 b2 : B),

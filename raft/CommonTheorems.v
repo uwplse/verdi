@@ -1300,7 +1300,7 @@ Section CommonTheorems.
   Proof.
     induction es; intros; simpl in *; intuition.
     - find_inversion. destruct st'; repeat eexists; eauto.
-    - unfold applyEntry in *.
+    - unfold cacheApplyEntry, applyEntry in *.
       repeat break_match; repeat find_inversion;
       find_apply_hyp_hyp; break_exists; repeat eexists; eauto.
   Qed.
@@ -1404,6 +1404,18 @@ Section CommonTheorems.
     cut (exists h, In h (dedup name_eq_dec l) /\ In h (dedup name_eq_dec l'));
       [intros; break_exists; exists x; intuition eauto using in_dedup_was_in|].
     eapply pigeon with (l := nodes); eauto using all_fin_all, all_fin_NoDup, NoDup_dedup, name_eq_dec, div2_correct.
+  Qed.
+
+  Lemma execute_log'_app :
+    forall xs ys st tr,
+      execute_log' (xs ++ ys) st tr =
+      let (tr', st') := execute_log' xs st tr in
+      execute_log' ys st' tr'.
+  Proof.
+    induction xs; intros.
+    - auto.
+    - simpl in *. repeat break_let.
+      rewrite IHxs. break_let. find_inversion. auto.
   Qed.
 
   Lemma fst_execute_log' :
@@ -1914,6 +1926,260 @@ Section CommonTheorems.
     break_if; auto. do_bool. omega.
   Qed.
 
+  Lemma contiguous_partition :
+    forall l1 x l2 i,
+      sorted (l1 ++ x :: l2) ->
+      contiguous_range_exact_lo (l1 ++ x :: l2) i ->
+      contiguous_range_exact_lo l1 (eIndex x).
+  Proof.
+  Admitted.
+
+  
+  Lemma rev_exists :
+    forall A (l : list A) l',
+    (exists l'',
+       l = l'' ++ l') ->
+    exists l'',
+      rev l = rev l' ++ l''.
+  Proof.
+    intros.
+    break_exists.
+    exists (rev x). subst. eauto using rev_app_distr.
+  Qed.
+
+  Lemma app_in_2 :
+    forall A l l1 l2 (x : A),
+      l = l1 ++ l2 ->
+      In x l2 ->
+      In x l.
+  Proof.
+    intros. subst. intuition.
+  Qed.
+
+  Lemma app_contiguous_maxIndex_le_eq :
+    forall l l1 l2 l2' i,
+      l = l1 ++ l2 ->
+      Prefix l2 l2' ->
+      contiguous_range_exact_lo l i ->
+      maxIndex l2' <= i ->
+      l = l1.
+  Proof.
+    intros. subst.
+    destruct l2; eauto using app_nil_r.
+    simpl in *.
+    break_match; intuition. subst. simpl in *.
+    unfold contiguous_range_exact_lo in *.
+    intuition. specialize (H0 e0). conclude_using intuition.
+    omega.
+  Qed.
+
+  Lemma Prefix_nil :
+    forall A l,
+      Prefix (A := A) l [] ->
+      l = [].
+  Proof.
+    intros. destruct l; simpl in *; intuition.
+  Qed.
+
+  Lemma sorted_app_1 :
+    forall l1 l2,
+      sorted (l1 ++ l2) ->
+      sorted l1.
+  Proof.
+    intros. induction l1; simpl in *; intuition;
+    eapply H0; intuition.
+  Qed.
+  
+  Lemma Prefix_maxIndex :
+    forall l l' e,
+      sorted l' ->
+      Prefix l l' ->
+      In e l ->
+      eIndex e <= maxIndex l'.
+  Proof.
+    induction l; intros; simpl in *; intuition;
+    break_match; intuition; repeat subst; simpl in *; auto.
+    intuition.
+    eapply_prop_hyp sorted sorted; eauto.
+    match goal with
+      | _ : eIndex _ <= maxIndex ?l |- _ =>
+        destruct l
+    end.
+    - simpl in *.
+      find_apply_lem_hyp Prefix_nil. subst. simpl in *. intuition.
+    - simpl in *.
+      match goal with
+        | [ H : forall _, _ = _ \/ In _ _ -> _, _ : eIndex _ <= eIndex ?e |- _ ] =>
+          specialize (H e)
+      end; intuition.
+  Qed.
+
+  Lemma app_maxIndex_In_l :
+    forall l l' e,
+      sorted (l ++ l') ->
+      In e (l ++ l') ->
+      maxIndex l' < eIndex e ->
+      In e l.
+  Proof.
+    induction l; intros; simpl in *; intuition.
+    - destruct l'; simpl in *; intuition; subst; intuition.
+      find_apply_hyp_hyp. intuition.
+    - do_in_app. intuition. right. eapply IHl; eauto.
+      intuition.
+  Qed.
+  
+  Lemma contiguous_app_prefix_contiguous :
+    forall l1 l2 l2' i,
+      Prefix l2 l2' ->
+      sorted (l1 ++ l2) ->
+      contiguous_range_exact_lo (l1 ++ l2) i ->
+      (l2 <> [] \/ i = maxIndex l2') ->
+      contiguous_range_exact_lo l1 (maxIndex l2').
+  Proof.
+    intros.
+    destruct l2.
+    - intuition. subst. rewrite app_nil_r in *. auto.
+    - match goal with H : _ \/ _ |- _ => clear H end.
+      simpl in *. break_match; intuition. subst. simpl.
+      eauto using contiguous_partition.
+  Qed.
+
+  Lemma Prefix_In :
+    forall A (l : list A) l' x,
+      Prefix l l' ->
+      In x l ->
+      In x l'.
+  Proof.
+    induction l; intros; simpl in *; intuition;
+    subst; break_match; intuition; subst; intuition.
+  Qed.
+
+  Lemma sorted_term_index_lt :
+    forall l e e',
+      sorted l ->
+      In e l ->
+      In e' l ->
+      eIndex e < eIndex e' ->
+      eTerm e <= eTerm e'.
+  Proof.
+    intros.
+    induction l; simpl in *; intuition; repeat subst; auto;
+    find_apply_hyp_hyp; intuition.
+  Qed.
+
+  Lemma contiguous_app_prefix_2 :
+    forall l l' l'' i,
+      sorted (l ++ l') ->
+      contiguous_range_exact_lo (l ++ l') 0 ->
+      Prefix l' l'' ->
+      maxIndex l'' < i <= maxIndex l ->
+      exists e, eIndex e = i /\ In e l.
+  Proof.
+    destruct l'.
+    - intros. simpl in *. rewrite app_nil_r in *.
+      eapply_prop (contiguous_range_exact_lo l). omega.
+    - intros. find_eapply_lem_hyp contiguous_app_prefix_contiguous; eauto.
+      left. intuition. congruence.
+  Qed.
+
+  Lemma contiguous_0_app :
+    forall l1 l2 e,
+      sorted (l1 ++ l2) ->
+      contiguous_range_exact_lo (l1 ++ l2) 0 ->
+      In e l1 ->
+      eIndex e > maxIndex l2.
+  Proof.
+    induction l1; intros.
+    - simpl in *. intuition.
+    - rewrite <- app_comm_cons in *.
+      match goal with
+        | H : In _ _ |- _ => simpl in H
+      end. intuition.
+      + subst. simpl in *. intuition.
+        destruct l2; simpl in *.
+        * unfold contiguous_range_exact_lo in *. intuition.
+        * match goal with
+            | H : _ |- eIndex _ > eIndex ?e =>
+              specialize (H e)
+          end. conclude_using intuition. intuition.
+      + find_apply_lem_hyp cons_contiguous_sorted; eauto.
+        simpl in *. intuition.
+  Qed.
+  
+  Lemma deduplicate_log'_In_if :
+    forall e l ks,
+      In e (deduplicate_log' l ks) ->
+      In e l.
+  Proof.
+    induction l; intros; simpl in *; intuition.
+    repeat break_match; simpl in *; intuition; find_apply_hyp_hyp; auto.
+  Qed.
+
+
+  Lemma findGtIndex_removeAfterIndex_i_lt_i' :
+    forall l i i',
+      sorted l ->
+      i < i' ->
+      (filter
+         (fun x : entry =>
+            (i <? eIndex x) && (eIndex x <=? i'))
+         (findGtIndex l i))
+        ++ removeAfterIndex l i =
+      removeAfterIndex l i'.
+  Proof.
+    induction l; intros; intuition.
+    simpl in *.
+    repeat break_if; simpl in *; repeat break_if;
+    repeat (do_bool; intuition); try omega.
+    simpl. f_equal.
+    rewrite IHl; eauto.
+    apply removeAfterIndex_eq.
+    intros.
+    find_apply_hyp_hyp. intuition.
+  Qed.
+
+  Lemma findGtIndex_removeAfterIndex_i'_le_i :
+    forall l i i',
+      sorted l ->
+      i' <= i ->
+      (filter
+         (fun x : entry =>
+            (i <? eIndex x) && (eIndex x <=? i'))
+         (findGtIndex l i))
+        ++ removeAfterIndex l i =
+      removeAfterIndex l i.
+  Proof.
+    induction l; intros; intuition.
+    simpl in *.
+    repeat break_if; simpl in *; repeat break_if;
+    repeat (do_bool; intuition); omega.
+  Qed.
+
+
+  Lemma contiguous_sorted_subset_prefix :
+    forall l1 l2 i,
+      contiguous_range_exact_lo l1 i ->
+      contiguous_range_exact_lo l2 i ->
+      sorted l1 ->
+      sorted l2 ->
+      (forall e, In e l1 -> In e l2) ->
+      Prefix (rev l1) (rev l2).
+  Proof.
+    admit.
+  Qed.
+
+  Lemma Prefix_exists_rest :
+    forall A l1 l2,
+      Prefix (A := A) l1 l2 ->
+      exists rest,
+        l2 = l1 ++ rest.
+  Proof.
+    induction l1; intros; simpl in *; eauto.
+    break_match; intuition. subst.
+    find_apply_hyp_hyp.
+    break_exists_exists. subst. auto.
+  Qed.
+  
 End CommonTheorems.
 
 Notation is_append_entries m :=

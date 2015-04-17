@@ -202,9 +202,11 @@ Section Raft.
                       max (commitIndex state) (min leaderCommit (maxIndex entries))
                ]}
               with type := Follower ]} with leaderId := Some leaderId ]},
-           AppendEntriesReply (currentTerm state) entries true)
+           AppendEntriesReply t entries true)
         else
-          (state, AppendEntriesReply (currentTerm state) entries true)
+          ({[ {[ (advanceCurrentTerm state t)
+                 with type := Follower ]} with leaderId := Some leaderId ]},
+           AppendEntriesReply t entries true)
       else
         match (findAtIndex (log state) prevLogIndex) with
           | None => (state, AppendEntriesReply (currentTerm state) entries false)
@@ -220,9 +222,11 @@ Section Raft.
                                      max (commitIndex state) (min leaderCommit (maxIndex log''))
                               ]}
                              with type := Follower ]} with leaderId := Some leaderId ]},
-                          AppendEntriesReply (currentTerm state) entries true)
+                          AppendEntriesReply t entries true)
                        else
-                         (state, AppendEntriesReply (currentTerm state) entries true)
+                         ({[ {[ (advanceCurrentTerm state t)
+                                with type := Follower ]} with leaderId := Some leaderId ]},
+                          AppendEntriesReply t entries true)
         end.
 
   Definition handleAppendEntriesReply (me : name) state src term entries (result : bool)
@@ -330,22 +334,24 @@ Section Raft.
     ([out], {[ {[ st with clientCache := assoc_set eq_nat_dec (clientCache st) (eClient e) (eId e, out) ]}
              with stateMachine := d ]}).
 
+  Definition cacheApplyEntry st e :=
+    match getLastId st (eClient e) with
+      | Some (id, o) =>
+        if eId e <? id then
+          ([], st)
+        else
+          if eId e =? id then
+            ([o], st)
+          else
+            applyEntry st e
+      | None => applyEntry st e
+    end.
+
   Fixpoint applyEntries h (st : raft_data) entries : (list raft_output * raft_data) :=
     match entries with
       | [] => ([], st)
       | e :: es =>
-        let (out, st) :=
-            match getLastId st (eClient e) with
-              | Some (id, o) =>
-                if eId e <? id then
-                  ([], st)
-                else
-                  if eId e =? id then
-                    ([o], st)
-                  else
-                    applyEntry st e
-              | None => applyEntry st e
-            end in
+        let (out, st) := cacheApplyEntry st e in
         let out := if name_eq_dec (eAt e) h then
                      map (fun o => ClientResponse (eClient e) (eId e) o) out
                    else

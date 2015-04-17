@@ -21,6 +21,7 @@ Require Import LogMatchingInterface.
 Require Import MaxIndexSanityInterface.
 Require Import CommitRecordedCommittedInterface.
 Require Import LeaderCompletenessInterface.
+Require Import LastAppliedCommitIndexMatchingInterface.
 
 Require Import SpecLemmas.
 
@@ -38,7 +39,8 @@ Section AppliedEntriesMonotonicProof.
   Context {misi : max_index_sanity_interface}.
   Context {crci : commit_recorded_committed_interface}.
   Context {lci : leader_completeness_interface}.
-
+  Context {lacimi : lastApplied_commitIndex_match_interface}.
+  
   Lemma findAtIndex_max_thing :
     forall net h e i,
       raft_intermediate_reachable net ->
@@ -361,64 +363,6 @@ Section AppliedEntriesMonotonicProof.
     | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
     end.
 
-  Lemma rev_exists_thing :
-    forall A (l : list A) l',
-    (exists l'',
-       l = l'' ++ l') ->
-    exists l'',
-      rev l = rev l' ++ l''.
-  Proof.
-    intros.
-    break_exists.
-    exists (rev x). subst. eauto using rev_app_distr.
-  Qed.
-
-  Lemma in_logs :
-    forall h h' e ps sigma,
-      raft_intermediate_reachable (mkNetwork ps sigma) ->
-      lastApplied (sigma h') <= commitIndex (sigma h) ->
-      eIndex e <= lastApplied (sigma h') ->
-      In e (log (sigma h')) <-> In e (log (sigma h)).
-  Proof.
-    intros.
-    find_copy_apply_lem_hyp log_matching_invariant. unfold log_matching in *.
-    find_copy_apply_lem_hyp state_machine_safety_invariant. unfold state_machine_safety in *.
-    find_copy_apply_lem_hyp max_index_sanity_invariant. unfold maxIndex_sanity in *.
-    intuition; simpl in *.
-    - unfold log_matching_hosts in *. intuition. simpl in *.
-      match goal with
-        | H : forall (_ : name) (_ : nat), _ |- In ?e (_ (_ ?h)) =>
-          specialize (H h (eIndex e)); forward H;
-          intuition
-      end.
-      + find_apply_hyp_hyp; omega.
-      + eapply le_trans; [|eapply_prop maxIndex_commitIndex].
-        simpl. omega.
-      + break_exists. intuition.
-        match goal with
-          | _ : eIndex ?e = eIndex ?e' |- _ =>
-            cut (e = e'); [intros; subst; auto|]
-        end.
-        eapply_prop state_machine_safety_host; unfold commit_recorded; intuition eauto;
-        simpl in *; intuition.
-    - unfold log_matching_hosts in *. intuition. simpl in *.
-      match goal with
-        | H : forall (_ : name) (_ : nat), _ |- In ?e (_ (_ ?h)) =>
-          specialize (H h (eIndex e)); forward H;
-          intuition
-      end.
-      + find_apply_hyp_hyp; omega.
-      + eapply le_trans; [|eapply_prop maxIndex_lastApplied].
-        simpl. omega.
-      + break_exists. intuition.
-        match goal with
-          | _ : eIndex ?e = eIndex ?e' |- _ =>
-            cut (e = e'); [intros; subst; auto|]
-        end.
-        eapply_prop state_machine_safety_host; unfold commit_recorded; intuition eauto;
-        simpl in *; intuition.
-  Qed.
-
   Lemma doGenericServer_applied_entries :
     forall ps h sigma os st' ms,
       raft_intermediate_reachable (mkNetwork ps sigma) ->
@@ -447,10 +391,10 @@ Section AppliedEntriesMonotonicProof.
       end.
       rewrite_update. simpl in *.
       update_destruct_hyp; subst; rewrite_update; simpl in *.
-      + apply rev_exists_thing.
+      + apply rev_exists.
         erewrite removeAfterIndex_le with (i := lastApplied (sigma h')) (j := commitIndex (sigma h')); [|omega].
         eauto using removeAfterIndex_partition.
-      + apply rev_exists_thing.
+      + apply rev_exists.
         match goal with
           | _ : ?h <> ?h' |- exists _, removeAfterIndex ?l (commitIndex (?sigma ?h)) = _ =>
             pose proof removeAfterIndex_partition (removeAfterIndex l (commitIndex (sigma h)))
@@ -460,10 +404,10 @@ Section AppliedEntriesMonotonicProof.
         find_rewrite. f_equal.
         erewrite <- removeAfterIndex_le; eauto.
         find_copy_apply_lem_hyp logs_sorted_invariant. unfold logs_sorted in *.
-        intuition. pose proof in_logs h h'.
+        intuition. find_copy_apply_lem_hyp lastApplied_commitIndex_match_invariant.
         eapply removeAfterIndex_same_sufficient; eauto;
         intros;
-        eapply_prop_hyp In raft_intermediate_reachable; intuition eauto.
+        eapply_prop_hyp lastApplied_commitIndex_match le; intuition eauto.
   Qed.
 
   Theorem applied_entries_monotonic' :

@@ -10,7 +10,6 @@ Require Import Raft.
 Require Import SortedInterface.
 Require Import RaftRefinementInterface.
 Require Import StateMachineSafetyPrimeInterface.
-Require Import CommitRecordedCommittedInterface.
 Require Import LeaderCompletenessInterface.
 Require Import LeaderLogsContiguousInterface.
 Require Import AllEntriesLeaderLogsInterface.
@@ -33,7 +32,6 @@ Section StateMachineSafety'.
   Context {raft_params : RaftParams orig_base_params}.
 
   Context {rri : raft_refinement_interface}.
-  Context {crci : commit_recorded_committed_interface}.
   Context {lci : leader_completeness_interface}.
   Context {aelli : all_entries_leader_logs_interface}.
   Context {lmi : log_matching_interface}.
@@ -276,13 +274,13 @@ Section StateMachineSafety'.
                   H' : context [ entries_match ] |- _ =>
           let H'' := fresh "H" in
           pose proof H as H'';
-          eapply H' with (h := x) in H''
+            eapply H' with (h := x) in H''
       end.
       match goal with
         | [ _ : In ?e ?l,
-            _ : In ?e' ?l,
-            _ : In ?e' ?l',
-            H : entries_match _ _ |- _ ] =>    
+                _ : In ?e' ?l,
+                    _ : In ?e' ?l',
+                        H : entries_match _ _ |- _ ] =>    
           specialize(H e' e' e)
       end; repeat concludes.
       match goal with
@@ -313,10 +311,7 @@ Section StateMachineSafety'.
         [admit|match goal with
            | _ : In (_, ?l) (leaderLogs _), H : contiguous_range_exact_lo ?l _ |- _ =>
              unfold contiguous_range_exact_lo in H; intuition
-         end
-        |]; [idtac].
-        find_copy_eapply_lem_hyp entries_contiguous; eauto.
-        eapply contiguous_app; eauto. eapply entries_sorted_nw_invariant; eauto.
+         end].
     - subst.
       find_copy_eapply_lem_hyp logs_leaderLogs_invariant; eauto.
       find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
@@ -324,7 +319,7 @@ Section StateMachineSafety'.
       + subst.
         match goal with
           | _ : In (_, ?l) (leaderLogs _),
-            _ : In (_, ?l') (leaderLogs _) |- _ =>
+                _ : In (_, ?l') (leaderLogs _) |- _ =>
             assert (l = l') by (eapply one_leaderLog_per_term_invariant; eauto)
         end.
         subst.
@@ -375,7 +370,7 @@ Section StateMachineSafety'.
       + break_exists. intuition. subst.
         match goal with
           | _ : In (_, ?l) (leaderLogs _),
-            _ : In (_, ?l') (leaderLogs _) |- _ =>
+                _ : In (_, ?l') (leaderLogs _) |- _ =>
             assert (l = l') by (eapply one_leaderLog_per_term_invariant; eauto)
         end.
         subst.
@@ -426,21 +421,21 @@ Section StateMachineSafety'.
           eauto using lift_logs_sorted, removeAfterIndex_sorted.
         * destruct (lt_eq_lt_dec (eIndex base_entry) (eIndex e)); intuition;
           [|cut (base_entry = e); intros; subst; intuition;
-           eapply uniqueIndices_elim_eq; eauto;
-           find_eapply_lem_hyp leaderLogs_sorted_invariant;
-           eauto using sorted_uniqueIndices].
+            eapply uniqueIndices_elim_eq; eauto;
+            find_eapply_lem_hyp leaderLogs_sorted_invariant;
+            eauto using sorted_uniqueIndices].
           right. right. right. apply in_app_iff; right.
           get_invariant leaderLogs_contiguous_invariant.
           unfold leaderLogs_contiguous in *. find_copy_apply_hyp_hyp.
           get_invariant leaderLogs_sorted_invariant.
           unfold leaderLogs_sorted in *. find_copy_apply_hyp_hyp.
-          eapply prefix_contiguous with (i := (eIndex base_entry)); eauto. admit.
+          eapply prefix_contiguous with (i := (eIndex base_entry)); eauto; [admit|].
           find_copy_eapply_lem_hyp entries_sorted_nw_invariant; eauto.
           eauto using contiguous_app, entries_contiguous.
       + subst.
         match goal with
           | _ : In (_, ?l) (leaderLogs _),
-            _ : In (_, ?l') (leaderLogs _) |- _ =>
+                _ : In (_, ?l') (leaderLogs _) |- _ =>
             assert (l = l') by (eapply one_leaderLog_per_term_invariant; eauto)
         end.
         subst.
@@ -452,9 +447,9 @@ Section StateMachineSafety'.
           | |- context [?l1 ++ ?l2] =>
             rename l1 into new_msg_entries; rename l2 into old_msg_entries
         end.
-        assert (In e (new_entries ++ old_entries)) by (find_reverse_rewrite; eauto using removeAfterIndex_le_In).
+        assert (In e (new_entries ++ old_msg_entries)) by (find_reverse_rewrite; eauto using removeAfterIndex_le_In).
         assert (eIndex e > 0) by
-        (repeat find_reverse_rewrite;
+            (repeat find_reverse_rewrite;
              find_apply_lem_hyp removeAfterIndex_in;
              get_invariant lift_log_matching;
              unfold log_matching, log_matching_hosts in *; intuition;
@@ -464,43 +459,35 @@ Section StateMachineSafety'.
                end; eauto).
         assert (0 < eIndex e) by omega.
         do_in_app. intuition.
-        * destruct (le_gt_dec (eIndex e) (maxIndex (new_msg_entries ++ old_msg_entries))); intuition.
-          right. right. right.
-          match goal with
-            | |- In _ ?l => assert (contiguous_range_exact_lo l 0) by
-                  eauto using entries_contiguous
-          end.
-          unfold contiguous_range_exact_lo in *.
-          intuition.
-          match goal with
-            | H : forall _, _ < _ <= _ -> exists _, _ |- _ =>
-              specialize (H (eIndex e)); intuition
-          end.
-          break_exists. intuition.
-          match goal with
-            | _ : eIndex ?x = eIndex e |- _ =>
-              rename x into e'
-          end.
-          cut (eTerm e' = eTerm e);
-            eauto using network_host_entries.
-          do_in_app. intuition; [repeat find_apply_hyp_hyp;
-                                  repeat find_rewrite; auto|].
-          exfalso.
-          cut (eIndex e' < eIndex e); [intros; omega|].
-          match goal with
-            | _ : In e ?ll1, _ : In e' ?ll2, _ : Prefix ?ll2 ?ll2' |- _ =>
-              apply sorted_app_in_gt with (l1 := ll1) (l2 := ll2') (e := e) (e' := e')
-          end; eauto using Prefix_In.
-          repeat find_reverse_rewrite.
-          eauto using lift_logs_sorted, removeAfterIndex_sorted.
-        * right. right. right. apply in_app_iff; right.
-          get_invariant leaderLogs_contiguous_invariant.
-          unfold leaderLogs_contiguous in *. find_copy_apply_hyp_hyp.
-          get_invariant leaderLogs_sorted_invariant.
-          unfold leaderLogs_sorted in *. find_copy_apply_hyp_hyp.
-          eapply prefix_contiguous with (i := 0); eauto. admit.
-          find_copy_eapply_lem_hyp entries_sorted_nw_invariant; eauto.
-          eauto using contiguous_app, entries_contiguous.
+        destruct (le_gt_dec (eIndex e) (maxIndex (new_msg_entries ++ old_msg_entries))); intuition.
+        right. right. right.
+        match goal with
+          | |- In _ ?l => assert (contiguous_range_exact_lo l 0) by
+                eauto using entries_contiguous
+        end.
+        unfold contiguous_range_exact_lo in *.
+        intuition.
+        match goal with
+          | H : forall _, _ < _ <= _ -> exists _, _ |- _ =>
+            specialize (H (eIndex e)); intuition
+        end.
+        break_exists. intuition.
+        match goal with
+          | _ : eIndex ?x = eIndex e |- _ =>
+            rename x into e'
+        end.
+        cut (eTerm e' = eTerm e);
+          eauto using network_host_entries.
+        do_in_app. intuition; [repeat find_apply_hyp_hyp;
+                                repeat find_rewrite; auto|].
+        exfalso.
+        cut (eIndex e' < eIndex e); [intros; omega|].
+        match goal with
+          | _ : In e ?ll1, _ : In e' ?ll2, _ : Prefix ?ll2 ?ll2' |- _ =>
+            apply sorted_app_in_gt with (l1 := ll1) (l2 := ll2') (e := e) (e' := e')
+        end; eauto using Prefix_In.
+        repeat find_reverse_rewrite.
+        eauto using lift_logs_sorted, removeAfterIndex_sorted.
   Qed.
 
   Instance sms'i : state_machine_safety'interface.

@@ -75,7 +75,6 @@ Require Import StateMachineSafetyInterface.
 Require Import StateMachineSafetyProof.
 
 Require Import MaxIndexSanityInterface.
-Require Import MaxIndexSanityProof.
 
 Require Import LeaderCompletenessInterface.
 Require Import LeaderCompletenessProof.
@@ -84,7 +83,6 @@ Require Import AllEntriesLeaderLogsInterface.
 Require Import AllEntriesLeaderLogsProof.
 
 Require Import CommitRecordedCommittedInterface.
-Require Import CommitRecordedCommittedProof.
 
 Require Import LeaderLogsTermSanityInterface.
 Require Import LeaderLogsTermSanityProof.
@@ -152,6 +150,36 @@ Require Import RefinedLogMatchingLemmasProof.
 Require Import LeaderLogsCandidateEntriesInterface.
 Require Import LeaderLogsCandidateEntriesProof.
 
+Require Import AllEntriesLogMatchingInterface.
+Require Import AllEntriesLogMatchingProof.
+
+Require Import AppendEntriesRequestTermSanityInterface.
+Require Import AppendEntriesRequestTermSanityProof.
+
+Require Import AllEntriesLeaderSublogInterface.
+Require Import AllEntriesLeaderSublogProof.
+
+Require Import LastAppliedCommitIndexMatchingInterface.
+Require Import LastAppliedCommitIndexMatchingProof.
+
+Require Import AllEntriesLeaderLogsTermInterface.
+Require Import AllEntriesLeaderLogsTermProof.
+
+Require Import StateMachineCorrectInterface.
+Require Import StateMachineCorrectProof.
+
+Require Import OutputGreatestIdInterface.
+Require Import OutputGreatestIdProof.
+
+Require Import CurrentTermGtZeroInterface.
+Require Import CurrentTermGtZeroProof.
+
+Require Import TermsAndIndicesFromOneLogInterface.
+Require Import TermsAndIndicesFromOneLogProof.
+
+Require Import TermsAndIndicesFromOneInterface.
+Require Import TermsAndIndicesFromOneProof.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -199,6 +227,16 @@ Hint Extern 4 (@leaders_have_leaderLogs_strong_interface _ _ _) => apply lhllsi 
 Hint Extern 4 (@nextIndex_safety_interface _ _ _) => apply nisi : typeclass_instances.
 Hint Extern 4 (@refined_log_matching_lemmas_interface _ _ _) => apply rlmli : typeclass_instances.
 Hint Extern 4 (@leaderLogs_candidate_entries_interface _ _ _) => apply llcei : typeclass_instances.
+Hint Extern 4 (@allEntries_log_matching_interface _ _ _) => apply aelmi : typeclass_instances.
+Hint Extern 4 (@append_entries_request_term_sanity_interface _ _ _) => apply aertsi : typeclass_instances.
+Hint Extern 4 (@allEntries_leader_sublog_interface _ _ _) => apply aelsi : typeclass_instances.
+Hint Extern 4 (@lastApplied_commitIndex_match_interface _ _ _) => apply lacimi : typeclass_instances.
+Hint Extern 4 (@allEntries_leaderLogs_term_interface _ _ _) => apply aellti : typeclass_instances.
+Hint Extern 4 (@state_machine_correct_interface _ _ _) => apply smci : typeclass_instances.
+Hint Extern 4 (@output_greatest_id_interface _ _ _) => apply ogii : typeclass_instances.
+Hint Extern 4 (@current_term_gt_zero_interface _ _ _) => apply ctgzi : typeclass_instances.
+Hint Extern 4 (@terms_and_indices_from_one_log_interface _ _ _) => apply taifoli : typeclass_instances.
+Hint Extern 4 (@terms_and_indices_from_one_interface _ _ _) => apply taifoi : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.

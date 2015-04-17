@@ -489,6 +489,22 @@ Section AppendEntriesRequestLeaderLogs.
       + do_bool. specialize (H1 e); conclude H1 ltac:(apply in_app_iff; intuition).
         omega.
   Qed.
+
+  Lemma findGtIndex_app_eq :
+    forall l1 l2 e,
+      sorted (l1 ++ l2) ->
+      In e l2 ->
+      findGtIndex (l1 ++ l2) (eIndex e) = l1 ->
+      eIndex e = maxIndex l2.
+  Proof.
+    induction l1; intros; simpl in *.
+    - destruct l2; simpl in *; intuition; subst; auto.
+      break_if; try congruence. do_bool.
+      find_apply_hyp_hyp. intuition. omega.
+    - simpl in *. break_if; try congruence.
+      do_bool. find_inversion. intuition.
+  Qed.
+      
   
   Lemma append_entries_leaderLogs_doLeader :
     refined_raft_net_invariant_do_leader append_entries_leaderLogs.
@@ -558,10 +574,18 @@ Section AppendEntriesRequestLeaderLogs.
           [rewrite app_nil_r; auto|].
           find_higher_order_rewrite. rewrite_update.
           simpl in *. auto.
-        * find_copy_eapply_lem_hyp findGtIndex_app_in_2; eauto.
-          exists x2. break_exists_exists.
-          intuition; simpl in *; auto; intuition eauto.
-          find_higher_order_rewrite. rewrite_update. auto.
+        * { find_copy_eapply_lem_hyp findGtIndex_app_in_2; eauto.
+            exists x2. break_exists_exists.
+            intuition; simpl in *; auto; intuition eauto.
+            - find_higher_order_rewrite. rewrite_update. auto.
+            - right. left. eexists; intuition; eauto.
+              match goal with
+                  | |- Prefix_sane ?l _ _ =>
+                    unfold Prefix_sane; destruct l; intuition
+              end;
+                try rewrite app_nil_r in *; eauto using findGtIndex_app_eq.
+              left. intuition. congruence.
+          }
       + exfalso.
         break_exists. intuition.
         replace d with (snd (nwState net h)) in * by (repeat find_rewrite; reflexivity).

@@ -290,16 +290,6 @@ Section SortedProof.
     - subst. find_apply_hyp_hyp. intuition.
   Qed.
 
-  Theorem handleAppendEntries_not_append_entries :
-    forall h st t n pli plt es ci st' m,
-      handleAppendEntries h st t n pli plt es ci = (st', m) ->
-      ~ is_append_entries m.
-  Proof.
-    intros. unfold handleAppendEntries in *.
-    repeat break_match; find_inversion;
-    intuition; break_exists; congruence.
-  Qed.
-
   Lemma handleAppendEntries_logs_sorted :
     forall net p t n pli plt es ci st' m,
       raft_intermediate_reachable net ->
