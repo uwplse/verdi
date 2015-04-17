@@ -449,9 +449,9 @@ Section PrefixWithinTerm.
                  end.
           match goal with
             | _ : Prefix ?x ?ll |- In ?e _ =>
-              cut (In e x); eauto;
-              eapply prefix_contiguous; solve [eauto]
+              cut (In e x); eauto
           end.
+          eapply prefix_contiguous; eauto. admit.
     - left.
       break_exists.
       break_and.
@@ -652,9 +652,10 @@ Section PrefixWithinTerm.
                      | H : contiguous_range_exact_lo _ _ |- _ =>
                        eapply contiguous_app in H; eauto; [idtac]
                  end.
+          assert (x2 <> []) by admit.
           match goal with
             |  _ : Prefix ?x ?ll |- In ?e _ =>
-               assert (In e x) by (eapply prefix_contiguous; eauto)
+               assert (In e x2) by (eapply prefix_contiguous; eauto)
           end.
           match goal with
             | H : removeAfterIndex _ _ = _ |- _ =>

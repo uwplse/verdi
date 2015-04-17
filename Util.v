@@ -864,6 +864,37 @@ Fixpoint Prefix {A} (l1 : list A) l2 : Prop :=
     | _, _ => False
   end.
 
+Lemma Prefix_nil :
+  forall A (l : list A),
+    Prefix l [] ->
+    l = [].
+Proof.
+  intros. destruct l.
+  - reflexivity.
+  - contradiction.
+Qed.
+
+Lemma Prefix_cons :
+  forall A (l l' : list A) a,
+    Prefix l' l ->
+    Prefix (a :: l') (a :: l).
+Proof.
+  simpl. intuition.
+Qed.
+
+Lemma Prefix_in :
+  forall A (l l' : list A),
+    Prefix l' l ->
+    (forall x, In x l' -> In x l).
+Proof.
+  induction l; intros l' H.
+  - find_apply_lem_hyp Prefix_nil. subst. contradiction.
+  - destruct l'.
+    + contradiction.
+    + intros. simpl Prefix in *. break_and. subst. simpl in *. intuition.
+      right. eapply IHl; eauto.
+Qed.
+
 Lemma app_Prefix :
   forall A (xs ys zs : list A),
     xs ++ ys = zs ->
