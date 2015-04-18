@@ -29,6 +29,7 @@ Section AppendEntriesRequestTermSanity.
           refined_raft_intermediate_reachable net ->
           append_entries_request_term_sanity net
     }.
+
 End AppendEntriesRequestTermSanity.
 
 
