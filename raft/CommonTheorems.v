@@ -1800,7 +1800,7 @@ Section CommonTheorems.
     break_if; do_bool; intuition.
     specialize (H a); intuition. omega.
   Qed.
-  
+
   Lemma findGtIndex_removeAfterIndex_commute :
     forall l i i',
       sorted l ->
@@ -1943,7 +1943,7 @@ Section CommonTheorems.
       contiguous_range_exact_lo (x :: y :: l) i.
   Proof.
     intros. unfold contiguous_range_exact_lo in *. intuition.
-    - SearchAbout maxIndex. invc H4.
+    - invc H4.
       + eexists; intuition.
       + find_rewrite. find_apply_lem_hyp succ_inj. subst.
         assert (i < i0 <= maxIndex (y :: l)). simpl. omega.
@@ -2025,7 +2025,7 @@ Section CommonTheorems.
     intros. induction l1; simpl in *; intuition;
     eapply H0; intuition.
   Qed.
-  
+
   Lemma Prefix_maxIndex :
     forall l l' e,
       sorted l' ->
@@ -2063,7 +2063,7 @@ Section CommonTheorems.
     - do_in_app. intuition. right. eapply IHl; eauto.
       intuition.
   Qed.
-  
+
   Lemma contiguous_app_prefix_contiguous :
     forall l1 l2 l2' i,
       Prefix l2 l2' ->
@@ -2141,7 +2141,7 @@ Section CommonTheorems.
       + find_apply_lem_hyp cons_contiguous_sorted; eauto.
         simpl in *. intuition.
   Qed.
-  
+
   Lemma deduplicate_log'_In_if :
     forall e l ks,
       In e (deduplicate_log' l ks) ->
@@ -2192,6 +2192,69 @@ Section CommonTheorems.
   Qed.
 
 
+  Lemma sorted_cons_elim :
+    forall e l,
+      sorted (e :: l) ->
+      sorted l.
+  Proof.
+    eauto using sorted_subseq, subseq_skip, subseq_refl.
+  Qed.
+
+  Lemma contiguous_sorted_last :
+    forall l x i,
+      sorted (l ++ [x]) ->
+      contiguous_range_exact_lo (l ++ [x]) i ->
+      eIndex x = S i /\ contiguous_range_exact_lo l (S i).
+  Proof.
+    Opaque sorted.
+    induction l; intros.
+    - split.
+      + simpl in *. find_apply_lem_hyp contiguous_index_singleton. assumption.
+      + apply contiguous_nil.
+    - destruct l.
+      + simpl in *. find_copy_apply_lem_hyp contiguous_index_adjacent; auto.
+        find_apply_lem_hyp cons_contiguous_sorted; auto.
+        find_copy_apply_lem_hyp contiguous_index_singleton.
+        intuition. eapply contiguous_singleton_sufficient. omega.
+      + simpl in *. find_copy_apply_lem_hyp contiguous_index_adjacent; auto.
+        find_apply_lem_hyp cons_contiguous_sorted; auto.
+        find_apply_lem_hyp sorted_cons_elim. split.
+        * eapply IHl; eauto.
+        * eapply contiguous_adjacent_sufficient; intuition.
+          eapply IHl; eauto.
+    Transparent sorted.
+  Qed.
+
+  Lemma sorted_app_gt :
+    forall l1 l2 e1 e2,
+      sorted (l1 ++ l2) ->
+      In e1 l1 ->
+      In e2 l2 ->
+      eIndex e1 > eIndex e2.
+  Proof.
+    induction l1; intros.
+    - contradiction.
+    - simpl in *. intuition.
+      + subst. assert (In e2 (l1 ++ l2)). apply in_or_app. intuition.
+        find_apply_hyp_hyp. intuition.
+      + eauto.
+  Qed.
+
+  Lemma sorted_app_In_reduce:
+    forall l1 l2 e1 e2,
+      sorted (l1 ++ [e1]) ->
+      sorted (l2 ++ [e2]) ->
+      eIndex e1 = eIndex e2 ->
+      (forall e, In e (l1 ++ [e1]) -> In e (l2 ++ [e2])) ->
+      (forall e, In e l1 -> In e l2).
+  Proof.
+    intros.
+    find_copy_eapply_lem_hyp (sorted_app_gt l1 [e1]); simpl; eauto.
+    assert (In e (l1 ++ [e1])). apply in_or_app. intuition.
+    find_apply_hyp_hyp. find_apply_lem_hyp in_app_or. intuition.
+    simpl in *. intuition. subst. omega.
+  Qed.
+
   Lemma contiguous_sorted_subset_prefix :
     forall l1 l2 i,
       contiguous_range_exact_lo l1 i ->
@@ -2201,7 +2264,16 @@ Section CommonTheorems.
       (forall e, In e l1 -> In e l2) ->
       Prefix (rev l1) (rev l2).
   Proof.
-    admit.
+    intros l1.
+    induction l1 using rev_ind; intuition.
+    induction l2 using rev_ind.
+    - find_insterU. concludes. contradiction.
+    - repeat rewrite rev_unit.
+      find_apply_lem_hyp contiguous_sorted_last; auto.
+      find_apply_lem_hyp contiguous_sorted_last; auto.
+      intuition. repeat find_reverse_rewrite. simpl. intuition.
+      + eapply uniqueIndices_elim_eq; eauto using sorted_uniqueIndices.
+      + eapply IHl1; eauto using sorted_app_1, sorted_app_In_reduce.
   Qed.
 
   Lemma Prefix_exists_rest :
