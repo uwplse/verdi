@@ -1926,15 +1926,51 @@ Section CommonTheorems.
     break_if; auto. do_bool. omega.
   Qed.
 
+  Lemma contiguous_singleton_sufficient :
+    forall x n,
+      S n = eIndex x ->
+      contiguous_range_exact_lo [x] n.
+  Proof.
+    red. intuition.
+    - exists x. intuition. simpl in *. inv H2; [reflexivity | omega].
+    - simpl in *. intuition. subst. omega.
+  Qed.
+
+  Lemma contiguous_adjacent_sufficient :
+    forall x y l i,
+      eIndex x = S (eIndex y) ->
+      contiguous_range_exact_lo (y :: l) i ->
+      contiguous_range_exact_lo (x :: y :: l) i.
+  Proof.
+    intros. unfold contiguous_range_exact_lo in *. intuition.
+    - SearchAbout maxIndex. invc H4.
+      + eexists; intuition.
+      + find_rewrite. find_apply_lem_hyp succ_inj. subst.
+        assert (i < i0 <= maxIndex (y :: l)). simpl. omega.
+        find_apply_hyp_hyp. break_exists. simpl in *.
+        intuition; subst; eexists; intuition.
+    - simpl in *. intuition; subst; auto. specialize (H2 y). concludes. omega.
+  Qed.
+
   Lemma contiguous_partition :
     forall l1 x l2 i,
       sorted (l1 ++ x :: l2) ->
       contiguous_range_exact_lo (l1 ++ x :: l2) i ->
       contiguous_range_exact_lo l1 (eIndex x).
   Proof.
-  Admitted.
+    Opaque sorted.
+    induction l1; intros.
+    - apply contiguous_nil.
+    - destruct l1; simpl in *; find_copy_apply_lem_hyp contiguous_index_adjacent; auto.
+      + apply contiguous_singleton_sufficient. intuition.
+      + intuition. eapply contiguous_adjacent_sufficient; auto.
+        eauto using contiguous_singleton_sufficient. eapply IHl1.
+        * eauto using sorted_subseq, subseq_skip, subseq_refl.
+        * eauto using cons_contiguous_sorted.
+    Transparent sorted.
+  Qed.
 
-  
+
   Lemma rev_exists :
     forall A (l : list A) l',
     (exists l'',
