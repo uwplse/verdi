@@ -195,13 +195,13 @@ Section TermsAndIndicesFromOne.
     simpl in *. find_rewrite_lem leaderLogs_update_elections_data_requestVote. eauto.
   Qed.
 
-  Lemma terms_and_indices_from_one_ll_request_vote_reply : (* hard *)
+  Lemma terms_and_indices_from_one_ll_request_vote_reply :
     refined_raft_net_invariant_request_vote_reply terms_and_indices_from_one_ll.
   Proof.
     unfold refined_raft_net_invariant_request_vote_reply, terms_and_indices_from_one_ll.
     simpl. intuition. repeat find_higher_order_rewrite. update_destruct; rewrite_update; eauto.
     simpl in *. find_eapply_lem_hyp leaderLogs_update_elections_data_RVR; eauto.
-    symmetry in H. find_apply_lem_hyp handleRequestVoteReply_log.
+    find_apply_lem_hyp handleRequestVoteReply_log.
     intuition; eauto; subst. find_rewrite.
     apply lifted_terms_and_indices_from_one_log; auto.
   Qed.

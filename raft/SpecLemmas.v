@@ -252,6 +252,16 @@ Section SpecLemmas.
     repeat break_match; find_inversion; auto.
   Qed.
 
+  Lemma handleAppendEntries_type_term :
+    forall h st t n pli plt es ci st' ps,
+      handleAppendEntries h st t n pli plt es ci = (st', ps) ->
+      (type st' = type st /\ currentTerm st' = currentTerm st) \/
+      (type st' = Follower /\ currentTerm st' >= currentTerm st).
+  Proof.
+    intros. unfold handleAppendEntries, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; do_bool; auto.
+  Qed.
+
   Lemma handleAppendEntriesReply_type :
     forall h st h' t es r st' ms,
       handleAppendEntriesReply h st h' t es r = (st', ms) ->
@@ -262,6 +272,17 @@ Section SpecLemmas.
     repeat break_match; find_inversion; auto.
   Qed.
 
+  Lemma handleAppendEntriesReply_type_term :
+    forall h st h' t es r st' ms,
+      handleAppendEntriesReply h st h' t es r = (st', ms) ->
+      (type st' = type st /\ currentTerm st' = currentTerm st) \/
+      (type st' = Follower /\ currentTerm st' >= currentTerm st).
+  Proof.
+    intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat break_match; tuple_inversion; do_bool; auto.
+    simpl. right. split. reflexivity. omega.
+  Qed.
+
   Lemma handleRequestVote_type :
     forall st h h' t lli llt st' m,
       handleRequestVote h st t h' lli llt = (st', m) ->
@@ -270,6 +291,16 @@ Section SpecLemmas.
   Proof.
     intros. unfold handleRequestVote, advanceCurrentTerm in *.
     repeat break_match; find_inversion; auto.
+  Qed.
+
+  Lemma handleRequestVote_type_term :
+    forall st h h' t lli llt st' m,
+      handleRequestVote h st t h' lli llt = (st', m) ->
+      (type st' = type st /\ currentTerm st' = currentTerm st) \/
+      (type st' = Follower /\ currentTerm st' >= currentTerm st).
+  Proof.
+    intros. unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; tuple_inversion; do_bool; auto.
   Qed.
 
   Lemma handleRequestVoteReply_type :
@@ -354,7 +385,7 @@ Section SpecLemmas.
 
   Lemma handleRequestVoteReply_log :
     forall h st h' t r st',
-      st' = handleRequestVoteReply h st h' t r ->
+      handleRequestVoteReply h st h' t r = st' ->
       log st' = log st.
   Proof.
     intros.

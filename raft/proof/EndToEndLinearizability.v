@@ -180,6 +180,9 @@ Require Import TermsAndIndicesFromOneLogProof.
 Require Import TermsAndIndicesFromOneInterface.
 Require Import TermsAndIndicesFromOneProof.
 
+Require Import CandidateTermGtLogInterface.
+Require Import CandidateTermGtLogProof.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -237,6 +240,7 @@ Hint Extern 4 (@output_greatest_id_interface _ _ _) => apply ogii : typeclass_in
 Hint Extern 4 (@current_term_gt_zero_interface _ _ _) => apply ctgzi : typeclass_instances.
 Hint Extern 4 (@terms_and_indices_from_one_log_interface _ _ _) => apply taifoli : typeclass_instances.
 Hint Extern 4 (@terms_and_indices_from_one_interface _ _ _) => apply taifoi : typeclass_instances.
+Hint Extern 4 (@candidate_term_gt_log_interface _ _ _) => apply ctgli : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.

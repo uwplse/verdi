@@ -145,7 +145,7 @@ Section TermsAndIndicesFromOneLog.
   Proof.
     red. unfold terms_and_indices_from_one_log_ind. split; red; simpl in *; intuition.
     - find_higher_order_rewrite. update_destruct; rewrite_update; auto.
-      symmetry in H. find_apply_lem_hyp handleRequestVoteReply_log. subst. find_rewrite. auto.
+      find_apply_lem_hyp handleRequestVoteReply_log. subst. find_rewrite. auto.
     - eauto.
   Qed.
 
