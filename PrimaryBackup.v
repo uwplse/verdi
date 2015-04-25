@@ -97,6 +97,7 @@ Section PrimaryBackup.
       PB_input_handler h i d = (os, d', ms) ->
       (h = Primary /\
        state d' = state d /\
+       os = [] /\
        exists r,
          i = Request r /\
          queue d' = queue d ++ [r] /\
@@ -425,6 +426,13 @@ Section PrimaryBackup.
     intros. destruct h; auto.
   Qed.
 
+  Lemma inputs_m_inl_read :
+    forall h l,
+      inputs_m ((h, inl Read) :: l) = inputs_m l.
+  Proof.
+    intros. destruct h; auto.
+  Qed.
+
   Lemma list_destruct_last :
     forall A (l : list A),
       l = [] \/ exists l' x, l = l' ++ [x].
@@ -492,6 +500,13 @@ Section PrimaryBackup.
   Lemma inputs_m_backup_singleton :
     forall i,
       inputs_m [(Backup, inl i)] = [].
+  Proof.
+    auto.
+  Qed.
+
+  Lemma inputs_m_backup :
+    forall i l,
+      inputs_m ((Backup, inl i) :: l) = inputs_m l.
   Proof.
     auto.
   Qed.
@@ -643,6 +658,15 @@ Section PrimaryBackup.
       + subst. constructor. auto.
   Qed.
 
+  Lemma outputs_m_read_response_singleton  :
+    forall h o,
+      outputs_m [(h, inr [ReadResponse o])] = [].
+  Proof.
+    intros.
+    simpl in *.
+    break_match; auto.
+  Qed.
+
   Lemma correspond_reachable :
     forall net tr_m,
       step_m_star step_m_init net tr_m ->
@@ -680,23 +704,29 @@ Section PrimaryBackup.
         outputs_m_inr_nil_singleton.
       + find_apply_lem_hyp PB_input_handler_defn.
         intuition; subst;
-        try rewrite inputs_m_app in *.
+        repeat rewrite snoc_assoc in *;
+        repeat rewrite inputs_m_app in *.
         * break_exists. break_and. subst.
+          rewrite inputs_m_inr_singleton in *. rewrite app_nil_r in *.
           rewrite inputs_m_primary_inl_request_singleton in *.
           find_apply_lem_hyp inputs_1_invert_app. break_exists. break_and.
           subst. simpl in *. find_inversion. destruct x1.
           find_apply_lem_hyp step_1_snoc_inv. break_exists. break_and.
-          { eapply correspond_preserved_snoc; eauto.
+          { eapply correspond_preserved_primary_same_no_outputs; eauto.
+            eapply correspond_preserved_snoc; eauto.
             - eauto using step_1_singleton_inversion.
             - rewrite update_eq by auto. auto.
             - rewrite update_eq by auto. auto.
           }
-        * rewrite inputs_m_inl_read_singleton in *. rewrite app_nil_r in *.
+        * rewrite inputs_m_inr_singleton in *. rewrite app_nil_r in *.
+          rewrite inputs_m_inl_read_singleton in *. rewrite app_nil_r in *.
           eauto using
                 correspond_preserved_primary_same_no_outputs,
           update_nop,
-          outputs_m_inl_read_singleton.
-        * rewrite inputs_m_backup_singleton in *. rewrite app_nil_r in *.
+          outputs_m_inl_read_singleton,
+          outputs_m_read_response_singleton.
+        * rewrite inputs_m_inr_singleton in *.
+          rewrite inputs_m_backup_singleton in *. repeat rewrite app_nil_r in *.
           eauto using correspond_preserved_primary_same_no_outputs, update_diff.
   Qed.
 
@@ -716,12 +746,18 @@ Section PrimaryBackup.
             rewrite inputs_m_inr_singleton in H
           | [ H : context [ inputs_m [(Primary, inl (Request _))] ] |- _ ] =>
             rewrite inputs_m_primary_inl_request_singleton in H
+          | [ H : context [ inputs_m ((Primary, inl (Request _)) :: _) ] |- _ ] =>
+            rewrite inputs_m_primary_inl in H
           | [ H : context [ inputs_m [(_, inl Read)] ] |- _ ] =>
             rewrite inputs_m_inl_read_singleton in H
+          | [ H : context [ inputs_m ((_, inl Read) :: _) ] |- _ ] =>
+            rewrite inputs_m_inl_read in H
           | [ H : context [ inputs_1 _ = [] ] |- _ ] =>
             apply inputs_1_nil_is_nil in H; subst
           | [ H : context [ inputs_m [_] ] |- _ ] =>
             rewrite inputs_m_backup_singleton in H
+          | [ H : context [ inputs_m (_ :: _) ] |- _ ] =>
+            rewrite inputs_m_backup in H
           | [ H : step_1_star _ _ [] |- _ ] =>
             apply step_1_star_no_trace_no_step in H; [|solve [auto]]; subst
           | [ H : step_1_star _ _ [_] |- _ ] =>
@@ -742,17 +778,20 @@ Section PrimaryBackup.
           | [ H : exists _, _ |- _ ] => break_exists
           | [ H : _ \/ _ |- _ ] => break_or_hyp
           | _ => repeat break_let; repeat find_rewrite; repeat tuple_inversion; subst; auto
-        end;
+        end; repeat rewrite snoc_assoc;
       eauto using
               correspond_preserved_primary_same_no_outputs,
               update_nop,
               update_diff,
               outputs_m_inr_nil_singleton,
-              outputs_m_inl_read_singleton.
+              outputs_m_inl_read_singleton,
+              outputs_m_read_response_singleton.
     - eapply correspond_preserved_primary_apply_entry; eauto using update_eq.
     - eapply correspond_preserved_primary_apply_entry; eauto using update_eq.
-    - eapply correspond_preserved_snoc; eauto; rewrite update_eq by auto; repeat find_rewrite; auto.
-    - eapply correspond_preserved_snoc; eauto; rewrite update_eq by auto; repeat find_rewrite; auto.
+    - eapply correspond_preserved_primary_same_no_outputs; eauto.
+      eapply correspond_preserved_snoc; eauto; rewrite update_eq by auto; repeat find_rewrite; auto.
+    - eapply correspond_preserved_primary_same_no_outputs; eauto.
+      eapply correspond_preserved_snoc; eauto; rewrite update_eq by auto; repeat find_rewrite; auto.
   Qed.
 
   Lemma step_m_outputs_m :
@@ -784,10 +823,10 @@ Section PrimaryBackup.
       rewrite update_diff by auto. auto.
     - rewrite inputs_m_inr_singleton.
       rewrite update_diff by auto. auto.
-    - break_exists. intuition; subst; rewrite inputs_m_primary_inl_request_singleton; eauto.
-    - rewrite inputs_m_inl_read_singleton. rewrite update_eq by auto. auto.
-    - rewrite inputs_m_inl_read_singleton. rewrite update_diff by auto. auto.
-    - rewrite inputs_m_backup_singleton.
+    - break_exists. intuition; subst; rewrite inputs_m_primary_inl; eauto.
+    - rewrite inputs_m_inl_read. rewrite update_eq by auto. auto.
+    - rewrite inputs_m_inl_read. rewrite update_diff by auto. auto.
+    - rewrite inputs_m_backup.
       rewrite update_diff by auto. auto.
   Qed.
 
@@ -958,13 +997,19 @@ Section PrimaryBackup.
     repeat break_match; repeat find_inversion; auto; try discriminate.
   Qed.
 
-  Definition no_output_at_backup {A B} x := forall y, snd x = @inr A (list B) y -> fst x = Primary \/ y = [].
+  Definition no_output_at_backup {A} x := forall y, snd x = @inr A _ y ->
+                                                      fst x = Primary \/
+                                                      match y with
+                                                        | [] => True
+                                                        | [ReadResponse _] => True
+                                                        | _ => False
+                                                      end.
 
-  Definition no_output_at_backup_trace {A B} tr := (forall x, In x tr -> @no_output_at_backup A B x).
+  Definition no_output_at_backup_trace {A} tr := (forall x, In x tr -> @no_output_at_backup A x).
 
   Lemma NOABT_tail :
-    forall A B x y,
-      @no_output_at_backup_trace A B (x :: y) ->
+    forall A x y,
+      @no_output_at_backup_trace A (x :: y) ->
       no_output_at_backup_trace y.
   Proof.
     unfold no_output_at_backup_trace.
@@ -972,8 +1017,11 @@ Section PrimaryBackup.
   Qed.
 
   Lemma NOABT_contra :
-    forall A B l tr,
-      @no_output_at_backup_trace A B ((Backup, inr l) :: tr) -> l = [].
+    forall A l tr,
+      @no_output_at_backup_trace A ((Backup, inr l) :: tr) ->
+      l = [] \/
+      exists d,
+        l = [ReadResponse d].
   Proof.
     unfold no_output_at_backup_trace, no_output_at_backup.
     intros. simpl in *.
@@ -983,6 +1031,7 @@ Section PrimaryBackup.
     simpl in *.
     econcludes.
     intuition.
+    repeat break_match; intuition eauto.
   Qed.
 
   Lemma outputs_m_revert_trace :
@@ -1001,22 +1050,22 @@ Section PrimaryBackup.
         repeat break_match; auto.
       + rewrite IHtr by eauto using NOABT_tail. auto.
       + find_copy_apply_lem_hyp NOABT_tail.
-        find_apply_lem_hyp NOABT_contra.
-        subst. simpl. auto.
+        find_apply_lem_hyp NOABT_contra. intuition; break_exists;
+        subst; simpl; auto.
   Qed.
 
   Lemma NOABT_nil :
-    forall A B,
-      @no_output_at_backup_trace A B [].
+    forall A,
+      @no_output_at_backup_trace A [].
   Proof.
     unfold no_output_at_backup_trace.
     simpl. intuition.
   Qed.
 
   Lemma NOABT_cons :
-    forall A B x y,
+    forall A x y,
       no_output_at_backup x ->
-      @no_output_at_backup_trace A B y ->
+      @no_output_at_backup_trace A y ->
       no_output_at_backup_trace (x :: y).
   Proof.
     unfold no_output_at_backup_trace, no_output_at_backup.
@@ -1024,8 +1073,8 @@ Section PrimaryBackup.
   Qed.
 
   Lemma NOABT_head :
-    forall A B x y,
-      @no_output_at_backup_trace A B (x :: y) ->
+    forall A x y,
+      @no_output_at_backup_trace A (x :: y) ->
       no_output_at_backup x.
   Proof.
     unfold no_output_at_backup_trace, no_output_at_backup.
@@ -1033,8 +1082,8 @@ Section PrimaryBackup.
   Qed.
 
   Lemma NOABT_app :
-    forall A B xs ys,
-      @no_output_at_backup_trace A B xs ->
+    forall A xs ys,
+      @no_output_at_backup_trace A xs ->
       no_output_at_backup_trace ys ->
       no_output_at_backup_trace (xs ++ ys).
   Proof.
@@ -1045,16 +1094,24 @@ Section PrimaryBackup.
   Qed.
 
   Lemma NOABT_singleton_inr_nil :
-    forall A B h,
-      @no_output_at_backup_trace A B [(h, inr [])].
+    forall A h,
+      @no_output_at_backup_trace A [(h, inr [])].
+  Proof.
+    unfold no_output_at_backup_trace, no_output_at_backup.
+    simpl. intros. intuition. subst. simpl in *. find_inversion. auto.
+  Qed.
+
+  Lemma NOABT_singleton_inr_read_response :
+    forall A h d,
+      @no_output_at_backup_trace A [(h, inr [ReadResponse d])].
   Proof.
     unfold no_output_at_backup_trace, no_output_at_backup.
     simpl. intros. intuition. subst. simpl in *. find_inversion. auto.
   Qed.
 
   Lemma NOABT_singleton_primary :
-    forall A B out,
-      no_output_at_backup_trace [(Primary, @inr A (list B) out)].
+    forall A out,
+      no_output_at_backup_trace [(Primary, @inr A _ out)].
   Proof.
     unfold no_output_at_backup_trace, no_output_at_backup.
     simpl.
@@ -1062,8 +1119,8 @@ Section PrimaryBackup.
   Qed.
 
   Lemma NOABT_singleton_inl :
-    forall A B h r,
-      @no_output_at_backup_trace A B [(h, inl r)].
+    forall A h r,
+      @no_output_at_backup_trace A [(h, inl r)].
   Proof.
     unfold no_output_at_backup_trace, no_output_at_backup.
     simpl. intuition. subst. simpl in *. discriminate.
@@ -1085,7 +1142,11 @@ Section PrimaryBackup.
       + find_apply_lem_hyp PB_net_defn'.
         intuition; subst; repeat find_rewrite;
         auto using NOABT_singleton_inr_nil, NOABT_singleton_primary.
-      + auto using NOABT_singleton_inl.
+      + rewrite cons_cons_app. apply NOABT_app.
+        * auto using NOABT_singleton_inl.
+        * find_apply_lem_hyp PB_input_handler_defn.
+          intuition; break_exists; intuition; subst;
+          auto using NOABT_singleton_inr_nil, NOABT_singleton_inr_read_response.
   Qed.
 
   Definition zero_or_one_outputs_per_step {A B C} t :=
@@ -1195,7 +1256,11 @@ Section PrimaryBackup.
         intuition; subst; auto using ZOOOPST_singleton_nil.
         break_exists. break_and. break_match.
         intuition; subst; auto using ZOOOPST_singleton_singleton.
-      + auto using ZOOOPST_singleton_inl.
+      + rewrite cons_cons_app.
+        apply ZOOOPST_app.
+        * auto using ZOOOPST_singleton_inl.
+        * find_apply_lem_hyp PB_input_handler_defn; intuition; subst;
+          auto using ZOOOPST_singleton_nil, ZOOOPST_singleton_singleton.
   Qed.
 
   Lemma inputs_1_m_revert :
@@ -1232,10 +1297,12 @@ Section PrimaryBackup.
         intuition; subst; simpl in *.
         * break_exists.
           intuition; subst;
-          rewrite (inputs_m_primary_inl_request_singleton); rewrite update_eq; auto.
-        * rewrite (inputs_m_inl_read_singleton).
+          rewrite (inputs_m_primary_inl); rewrite update_eq; auto.
+        * rewrite (inputs_m_inl_read).
+          rewrite inputs_m_inr_singleton.
           rewrite app_nil_r. rewrite update_nop. auto.
-        * rewrite (inputs_m_backup_singleton).
+        * rewrite (inputs_m_backup).
+          rewrite inputs_m_inr_singleton.
           rewrite app_nil_r. rewrite update_nop. auto.
   Qed.
 End PrimaryBackup.

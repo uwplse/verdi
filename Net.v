@@ -269,7 +269,7 @@ Section StepAsync.
                    input_handlers h inp (nwState net h) = (out, d, l) ->
                    net' = mkNetwork (send_packets h l ++ nwPackets net)
                                     (update (nwState net) h d) ->
-                   step_m net net' [(h, inl inp)]. (* note: we throw away the immediate output!*)
+                   step_m net net' [(h, inl inp); (h, inr out)].
 
   Definition step_m_star := refl_trans_1n_trace step_m.
 End StepAsync.
@@ -309,7 +309,7 @@ Section StepDup.
                    input_handlers h inp (nwState net h) = (out, d, l) ->
                    net' = mkNetwork (send_packets h l ++ nwPackets net)
                                     (update (nwState net) h d) ->
-                   step_d net net' [(h, inl inp)] (* note: we throw away the immediate output!*)
+                   step_d net net' [(h, inl inp); (h, inr out)]
   | SD_dup : forall net net' p xs ys,
                nwPackets net = xs ++ p :: ys ->
                net' = mkNetwork (p :: xs ++ p :: ys)
