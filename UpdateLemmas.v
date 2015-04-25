@@ -63,6 +63,17 @@ Section OU.
     subst.
     apply update_nop_ext.
   Qed.
+
+  Lemma update_overwrite :
+    forall A (sigma : name -> A) h st st',
+      update (update sigma h st) h st' = update sigma h st'.
+  Proof.
+    intros.
+    apply functional_extensionality.
+    intros. destruct (name_eq_dec h x).
+    - repeat rewrite update_eq; auto.
+    - repeat rewrite update_diff; auto.
+  Qed.
 End OU.
 
 Ltac update_destruct :=

@@ -13,14 +13,15 @@ module type ARRANGEMENT = sig
   type output
   type msg
   type res = (output list * state) * ((name * msg) list)
+  type request_id
   val init : name -> state
   val reboot : state -> state
   val handleIO : name -> input -> state -> res
   val handleNet : name -> name -> msg -> state -> res
   val handleTimeout : name -> state -> res
   val setTimeout : name -> state -> float
-  val deserialize : int -> string -> (input option)
-  val serialize : output -> (int * string)
+  val deserialize : string -> ((request_id *  input) option)
+  val serialize : output -> (request_id * string)
   val debug : bool
   val debugRecv : state -> (name * msg) -> unit
   val debugSend : state -> (name * msg) -> unit
@@ -35,8 +36,7 @@ module Shim (A: ARRANGEMENT) = struct
       ; usock : file_descr
       ; isock : file_descr
       ; mutable csocks : file_descr list
-      ; outstanding : (int, file_descr) Hashtbl.t
-      ; mutable id : int
+      ; outstanding : (A.request_id, file_descr) Hashtbl.t
       ; mutable saves : int
       ; nodes : (A.name * sockaddr) list
       }
@@ -54,17 +54,17 @@ module Shim (A: ARRANGEMENT) = struct
     List.assoc addr (List.map flip env.nodes)
                
   let update_state_from_log_entry log nm s =
-    let (id, op) = ((M.from_channel log) : int * log_step) in
-    (id, (snd (fst (match op with
-                    | LogInput inp -> A.handleIO nm inp s
-                    | LogNet (src, m) -> A.handleNet nm src m s
-                    | LogTimeout -> A.handleTimeout nm s))))
+    let op = ((M.from_channel log) : log_step) in
+    (snd (fst (match op with
+               | LogInput inp -> A.handleIO nm inp s
+               | LogNet (src, m) -> A.handleNet nm src m s
+               | LogTimeout -> A.handleTimeout nm s)))
 
-  let rec restore_from_log log nm id s =
+  let rec restore_from_log log nm s =
     try
-      let (id', s') = update_state_from_log_entry log nm s in
-      restore_from_log log nm id' s'
-    with End_of_file -> (close_in log); (id, s)
+      let s' = update_state_from_log_entry log nm s in
+      restore_from_log log nm s'
+    with End_of_file -> (close_in log); s
 
   let get_initial_state snapfile nm =
     try
@@ -76,11 +76,10 @@ module Shim (A: ARRANGEMENT) = struct
 
   let restore snapfile log_file nm =
     let initial_state = get_initial_state snapfile nm in
-    let id = 0 in
     try
       let log = open_in_bin log_file in
-      restore_from_log log nm id initial_state
-    with Sys_error _ -> (id, initial_state)
+      restore_from_log log nm initial_state
+    with Sys_error _ -> initial_state
 
   let setup nm nodes =
     Random.self_init ();
@@ -90,7 +89,7 @@ module Shim (A: ARRANGEMENT) = struct
     let addressify (name, (ip, port)) =
       (name, ADDR_INET (inet_addr_of_string ip, port))
     in
-    let (id, restored_state) = restore snapfile clog nm in
+    let restored_state = restore snapfile clog nm in
     let env =
       { restored_state = A.reboot restored_state
       ; snapfile = snapfile
@@ -99,7 +98,6 @@ module Shim (A: ARRANGEMENT) = struct
       ; isock = socket PF_INET SOCK_STREAM 0
       ; csocks = []
       ; outstanding = Hashtbl.create 64
-      ; id = id
       ; saves = 0
       ; nodes = List.map addressify nodes
       }
@@ -119,7 +117,7 @@ module Shim (A: ARRANGEMENT) = struct
     sendto env.usock (M.to_string msg []) (denote env nm)
 
   let respond_to_client sock r =
-    ignore (Unix.send sock r 0 (String.length r) [])
+    ignore (Unix.send sock (r ^ "\n") 0 (String.length r) [])
 
   let output env o =
     let (id, s) = A.serialize o in
@@ -139,7 +137,7 @@ module Shim (A: ARRANGEMENT) = struct
         let csnap = out_channel_of_descr (openfile env.snapfile [O_WRONLY ; O_TRUNC ; O_CREAT ; O_DSYNC] 0o640) in
         M.to_channel csnap st []; flush csnap; close_out csnap;
         ftruncate (descr_of_out_channel env.clog) 0));
-    M.to_channel env.clog (env.id, step) []; flush env.clog; env.saves <- env.saves + 1
+    M.to_channel env.clog step []; flush env.clog; env.saves <- env.saves + 1
 
   let respond env ((os, s), ps) =
     List.iter (output env) os;
@@ -150,16 +148,27 @@ module Shim (A: ARRANGEMENT) = struct
     let (client_sock, _) = accept env.isock in
     env.csocks <- client_sock :: env.csocks
 
+  let read_from_socket sock len =
+    let buf = String.make len '\x00' in
+    try
+      let _ = recv sock buf 0 len [MSG_PEEK] in
+      let msg_len = (String.index buf '\n') + 1 in
+      let buf2 = String.make msg_len '\x00' in
+      printf "doing 2nd recv with len %d\n" msg_len;
+      let _ = recv sock buf2 0 msg_len [] in
+      buf
+    with
+      Not_found -> ""
+    | Unix_error _ -> ""
+
   let input_step client_sock env nm s =
     let len = 1024 in
-    let buf = String.make len '\x00' in
-    let _ = recv client_sock buf 0 len [] in
-    let i = A.deserialize env.id buf in
-    match i with
-    | Some inp ->
+    let buf = read_from_socket client_sock len in
+    let d = A.deserialize buf in
+    match d with
+    | Some (id, inp) ->
        save env (LogInput inp) s;
-       Hashtbl.replace env.outstanding env.id client_sock;
-       env.id <- env.id + 1;
+       Hashtbl.replace env.outstanding id client_sock;
        respond env (A.handleIO nm inp s)
     | None ->
        print_endline "received invalid input; closing connection";

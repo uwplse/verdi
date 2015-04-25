@@ -19,7 +19,8 @@ Set Implicit Arguments.
 Class RaftParams (orig_base_params : BaseParams)
   := {
       N : nat ;
-      input_eq_dec : forall x y : input, {x = y} + {x <> y}
+      input_eq_dec : forall x y : input, {x = y} + {x <> y} ;
+      output_eq_dec : forall x y : output, {x = y} + {x <> y}
     }.
 
 Section Raft.
@@ -43,6 +44,7 @@ Section Raft.
   
   Record entry := mkEntry {
                       eAt : name;
+                      eClient : nat;
                       eId : nat;
                       eIndex : logIndex;
                       eTerm : term;
@@ -57,11 +59,11 @@ Section Raft.
 
   Inductive raft_input : Type :=
   | Timeout : raft_input
-  | ClientRequest : nat -> input -> raft_input.
+  | ClientRequest : nat -> nat -> input -> raft_input.
 
   Inductive raft_output : Type :=
-  | NotLeader : nat -> raft_output
-  | ClientResponse : nat -> output -> raft_output.
+  | NotLeader : nat -> nat -> raft_output
+  | ClientResponse : nat -> nat -> output -> raft_output.
   
   Inductive serverType : Set :=
   | Follower
@@ -84,22 +86,23 @@ Section Raft.
   Qed.
 
   Definition raft_data :=
-    RaftState.raft_data term name entry logIndex serverType data.
+    RaftState.raft_data term name entry logIndex serverType data output.
 
-  Notation currentTerm         := (RaftState.currentTerm term name entry logIndex serverType data).
-  Notation votedFor            := (RaftState.votedFor term name entry logIndex serverType data).
-  Notation log                 := (RaftState.log term name entry logIndex serverType data).
-  Notation commitIndex         := (RaftState.commitIndex term name entry logIndex serverType data).
-  Notation lastApplied         := (RaftState.lastApplied term name entry logIndex serverType data).
-  Notation nextIndex           := (RaftState.nextIndex term name entry logIndex serverType data).
-  Notation matchIndex          := (RaftState.matchIndex term name entry logIndex serverType data).
-  Notation shouldSend          := (RaftState.shouldSend term name entry logIndex serverType data).
-  Notation votesReceived       := (RaftState.votesReceived term name entry logIndex serverType data).
-  Notation type                := (RaftState.type term name entry logIndex serverType data).
-  Notation outstandingRequests := (RaftState.outstandingRequests term name entry logIndex serverType data).
-  Notation stateMachine := (RaftState.stateMachine term name entry logIndex serverType data).
-  Notation electoralVictories := (RaftState.electoralVictories term name entry logIndex serverType data).
-  Notation mkRaft_data              := (RaftState.mkRaft_data term name entry logIndex serverType data).
+  Notation currentTerm         := (RaftState.currentTerm term name entry logIndex serverType data output).
+  Notation votedFor            := (RaftState.votedFor term name entry logIndex serverType data output).
+  Notation leaderId            := (RaftState.leaderId term name entry logIndex serverType data output).
+  Notation log                 := (RaftState.log term name entry logIndex serverType data output).
+  Notation commitIndex         := (RaftState.commitIndex term name entry logIndex serverType data output).
+  Notation lastApplied         := (RaftState.lastApplied term name entry logIndex serverType data output).
+  Notation nextIndex           := (RaftState.nextIndex term name entry logIndex serverType data output).
+  Notation matchIndex          := (RaftState.matchIndex term name entry logIndex serverType data output).
+  Notation shouldSend          := (RaftState.shouldSend term name entry logIndex serverType data output).
+  Notation votesReceived       := (RaftState.votesReceived term name entry logIndex serverType data output).
+  Notation type                := (RaftState.type term name entry logIndex serverType data output).
+  Notation clientCache := (RaftState.clientCache term name entry logIndex serverType data output).
+  Notation stateMachine := (RaftState.stateMachine term name entry logIndex serverType data output).
+  Notation electoralVictories := (RaftState.electoralVictories term name entry logIndex serverType data output).
+  Notation mkRaft_data              := (RaftState.mkRaft_data term name entry logIndex serverType data output).
 
   Fixpoint findAtIndex (entries : list entry) (i : logIndex) : option entry :=
     match entries with
@@ -145,9 +148,10 @@ Section Raft.
 
   Definition advanceCurrentTerm state newTerm :=
     if newTerm >? (currentTerm state) then
-      {[ {[ {[ state with currentTerm := newTerm ]}
-            with votedFor := None ]}
-         with type := Follower ]}
+      {[ {[ {[ {[ state with currentTerm := newTerm ]}
+               with votedFor := None ]}
+            with type := Follower ]}
+           with leaderId := None ]}
     else
       state.
 
@@ -172,41 +176,57 @@ Section Raft.
                  nodes)
     ).
 
+  Definition not_empty {A} (l : list A) :=
+    match l with
+      | [] => false
+      | _ => true
+    end.
+
+  Definition haveNewEntries (state : raft_data) (entries : list entry) :=
+    andb (not_empty entries) (match findAtIndex (log state) (maxIndex entries) with
+                                | None => true
+                                | Some e => (negb (beq_nat (maxTerm entries) (eTerm e)))
+                              end).
+
   Definition handleAppendEntries (me : name)
              (state : raft_data) (t : term) (leaderId : name) (prevLogIndex : logIndex)
-             (prevLogTerm : term) (entries : list entry) (leaderCommit : logIndex) :=
+             (prevLogTerm : term) (entries : list entry) (leaderCommit : logIndex) : raft_data * msg :=
     if currentTerm state >? t then
       (state, AppendEntriesReply (currentTerm state) entries false)
     else
       if prevLogIndex == 0 then
-        ({[ {[ {[ (advanceCurrentTerm state t)
-                  with log := entries ]}
-               with commitIndex :=
-                 if leaderCommit >? (commitIndex state) then
-                   min leaderCommit (maxIndex entries)
-                 else
-                   commitIndex state
-             ]}
-            with type := Follower ]},
-         AppendEntriesReply (currentTerm state) entries true)
+        if (haveNewEntries state entries) then
+          ({[ {[ {[ {[ (advanceCurrentTerm state t)
+                    with log := entries ]}
+                    with commitIndex :=
+                      max (commitIndex state) (min leaderCommit (maxIndex entries))
+               ]}
+              with type := Follower ]} with leaderId := Some leaderId ]},
+           AppendEntriesReply t entries true)
+        else
+          ({[ {[ (advanceCurrentTerm state t)
+                 with type := Follower ]} with leaderId := Some leaderId ]},
+           AppendEntriesReply t entries true)
       else
         match (findAtIndex (log state) prevLogIndex) with
           | None => (state, AppendEntriesReply (currentTerm state) entries false)
           | Some e => if negb (beq_nat prevLogTerm (eTerm e)) then
                        (state, AppendEntriesReply (currentTerm state) entries false)
                      else
-                       let log' := removeAfterIndex (log state) prevLogIndex in
-                       let log'' := entries ++ log' in
-                       ({[ {[ {[ (advanceCurrentTerm state t)
-                                 with log := log'' ]}
-                              with commitIndex :=
-                                if leaderCommit >? (commitIndex state) then
-                                  min leaderCommit (maxIndex log'')
-                                else
-                                  commitIndex state
-                            ]} 
-                           with type := Follower ]},
-                        AppendEntriesReply (currentTerm state) entries true)
+                       if haveNewEntries state entries then
+                         let log' := removeAfterIndex (log state) prevLogIndex in
+                         let log'' := entries ++ log' in
+                         ({[ {[ {[ {[ (advanceCurrentTerm state t)
+                                   with log := log'' ]}
+                                with commitIndex :=
+                                     max (commitIndex state) (min leaderCommit (maxIndex log''))
+                              ]}
+                             with type := Follower ]} with leaderId := Some leaderId ]},
+                          AppendEntriesReply t entries true)
+                       else
+                         ({[ {[ (advanceCurrentTerm state t)
+                                with type := Follower ]} with leaderId := Some leaderId ]},
+                          AppendEntriesReply t entries true)
         end.
 
   Definition handleAppendEntriesReply (me : name) state src term entries (result : bool)
@@ -234,12 +254,14 @@ Section Raft.
 
   Definition moreUpToDate t1 i1 t2 i2 := (t1 >? t2) || ((t1 == t2) && (i1 >=? i2)).
 
-  Definition handleRequestVote (me : name) state t candidateId lastLogIndex lastLogTerm :=
+  Definition handleRequestVote (me : name) state t candidateId lastLogIndex lastLogTerm : raft_data * msg :=
     if currentTerm state >? t then
       (state, RequestVoteReply (currentTerm state) false)
     else
       let state := (advanceCurrentTerm state t) in
-      if moreUpToDate lastLogTerm lastLogIndex (maxTerm (log state)) (maxIndex (log state)) then
+      if andb (if leaderId state then false else true)
+              (moreUpToDate lastLogTerm lastLogIndex (maxTerm (log state)) (maxIndex (log state)))
+      then
         match (votedFor state) with
           | None => ({[ state with votedFor := Some candidateId ]},
                     RequestVoteReply (currentTerm state) true)
@@ -259,7 +281,7 @@ Section Raft.
   Definition wonElection (votes : list name) : bool :=
     (S (div2 (length nodes)) <=? length votes).
 
-  Definition handleRequestVoteReply (me : name) state src t (voteGranted : bool) :=
+  Definition handleRequestVoteReply (me : name) state src t (voteGranted : bool) : raft_data :=
     if t >? (currentTerm state) then
       {[ (advanceCurrentTerm state t) with type := Follower ]}
     else if t <? (currentTerm state) then state else
@@ -267,16 +289,17 @@ Section Raft.
                         && wonElection (dedup name_eq_dec (src :: votesReceived state)) in
            match (type state) with
              | Candidate => 
-               {[ {[ {[ {[ state
-                           with votesReceived := (if voteGranted then
-                                                    [src]
-                                                  else
-                                                    []) ++ votesReceived state ]}
-                        with type := if won then
-                                       Leader         (* long live the king *)
-                                     else
-                                       type state ]}
-                     with matchIndex := [] ]}
+               {[ {[ {[ {[ {[ state
+                              with votesReceived := (if voteGranted then
+                                                       [src]
+                                                     else
+                                                       []) ++ votesReceived state ]}
+                           with type := if won then
+                                          Leader         (* long live the king *)
+                                        else
+                                          type state ]}
+                        with matchIndex := [] ]}
+                       with nextIndex := [] ]}
                   with electoralVictories :=
                     (if won then
                        [(currentTerm state, src :: votesReceived state, log state)]
@@ -288,9 +311,9 @@ Section Raft.
   Definition handleMessage (src : name) (me : name) (m : msg)
              (state : raft_data) : raft_data * list (name * msg) :=
     match m with
-      | AppendEntries t leaderId prevLogIndex prevLogTerm entries leaderCommit =>
+      | AppendEntries t lid prevLogIndex prevLogTerm entries leaderCommit =>
         let (st, r) :=
-            handleAppendEntries me state t leaderId prevLogIndex prevLogTerm entries leaderCommit
+            handleAppendEntries me state t lid prevLogIndex prevLogTerm entries leaderCommit
         in
         (st, [(src, r)])
       | AppendEntriesReply term entries result => handleAppendEntriesReply me state src term entries result
@@ -303,31 +326,52 @@ Section Raft.
         (handleRequestVoteReply me state src t voteGranted, [])
     end.
 
-  Fixpoint applyEntries h (state : data) entries : (list raft_output * data) :=
+  Definition getLastId state client :=
+    assoc eq_nat_dec (clientCache state) client.
+
+  Definition applyEntry st e :=
+    let (out, d) := handler (eInput e) (stateMachine st) in
+    ([out], {[ {[ st with clientCache := assoc_set eq_nat_dec (clientCache st) (eClient e) (eId e, out) ]}
+             with stateMachine := d ]}).
+
+  Definition cacheApplyEntry st e :=
+    match getLastId st (eClient e) with
+      | Some (id, o) =>
+        if eId e <? id then
+          ([], st)
+        else
+          if eId e =? id then
+            ([o], st)
+          else
+            applyEntry st e
+      | None => applyEntry st e
+    end.
+
+  Fixpoint applyEntries h (st : raft_data) entries : (list raft_output * raft_data) :=
     match entries with
-      | [] => ([], state)
+      | [] => ([], st)
       | e :: es =>
-        let (out, state) := handler (eInput e) state in
+        let (out, st) := cacheApplyEntry st e in
         let out := if name_eq_dec (eAt e) h then
-                     map (fun o => ClientResponse (eId e) o) out
+                     map (fun o => ClientResponse (eClient e) (eId e) o) out
                    else
                      [] in
-        let (out', state) := applyEntries h state es in
+        let (out', state) := applyEntries h st es in
         (out ++ out', state)
     end.
 
   Definition doGenericServer (h : name) (state : raft_data) :
     (list raft_output * raft_data * list (name * msg)) :=
-    let (out, stateMachineState) :=
-        applyEntries h (stateMachine state)
+    let (out, state) :=
+        applyEntries h state
                      (rev (filter (fun x => andb (ltb (lastApplied state) (eIndex x))
                                                 (leb (eIndex x) (commitIndex state)))
                                   (findGtIndex (log state) (lastApplied state)))) in
-    (out, {[ {[ state with lastApplied := if commitIndex state >? lastApplied state then
+    (out, {[ state with lastApplied := if commitIndex state >? lastApplied state then
                                          (commitIndex state)
                                        else
                                          (lastApplied state)
-              ]} with stateMachine := stateMachineState ]},
+              ]},
      []).
 
   Definition replicaMessage (state : raft_data) (me : name) (host : name) : (name * msg) :=
@@ -376,19 +420,19 @@ Section Raft.
     (genericOut ++ leaderOut,
      state, pkts ++ genericPkts ++ leaderPkts).
 
-  Definition handleClientRequest (me : name) (state : raft_data) (id : nat) (c : input)
+  Definition handleClientRequest (me : name) (state : raft_data) (client : nat) (id : nat) (c : input)
   : list raft_output * raft_data * list (name * msg) :=
     match (type state) with
       | Leader => let index := S (maxIndex (log state)) in
                  ([],
                   {[ {[ {[ state with log :=
-                             (mkEntry me id index (currentTerm state) c) :: (log state) ]}
+                             (mkEntry me client id index (currentTerm state) c) :: (log state) ]}
                         with matchIndex :=
                           (assoc_set name_eq_dec (matchIndex state) me index)
                       ]}
                      with shouldSend := true ]},
                   [])
-      | _ => ([NotLeader id], state, [])
+      | _ => ([NotLeader client id], state, [])
     end.
 
   
@@ -399,9 +443,10 @@ Section Raft.
       | _ => tryToBecomeLeader me state
     end.
 
-  Definition handleInput (me : name) (inp : raft_input) (state : raft_data) :=
+  Definition handleInput (me : name) (inp : raft_input) (state : raft_data) :
+    list raft_output * raft_data * list (name * msg) :=
     match inp with
-      | ClientRequest id c => handleClientRequest me state id c
+      | ClientRequest client id c => handleClientRequest me state client id c
       | Timeout => handleTimeout me state
     end.
 
@@ -415,7 +460,8 @@ Section Raft.
   
   Definition reboot state : raft_data :=
     mkRaft_data (currentTerm state)
-           (votedFor state)
+                (votedFor state)
+                (leaderId state)
            (log state)
            0
            (lastApplied state)
@@ -425,11 +471,12 @@ Section Raft.
            false
            []
            Follower
-           []
+           (clientCache state)
            (electoralVictories state).
 
   Definition init_handlers (_ : name) : raft_data :=
     mkRaft_data 0
+                None
                 None
                 []
                 0
@@ -512,10 +559,32 @@ Section Raft.
                          In p (send_packets h ms)) ->
         raft_intermediate_reachable (mkNetwork ps' st').
 
+  Lemma step_f_star_raft_intermediate_reachable' :
+    forall n' tr,
+      step_f_star step_f_init n' tr ->
+      raft_intermediate_reachable (snd n').
+  Proof.
+    intros. find_apply_lem_hyp refl_trans_1n_n1_trace.
+    remember step_f_init as net1.
+    induction H.
+    - subst. simpl. constructor.
+    - destruct x'; destruct x''. simpl in *.
+      econstructor; eauto.
+  Qed.
+
+  Lemma step_f_star_raft_intermediate_reachable :
+    forall failed net tr,
+      step_f_star step_f_init (failed, net) tr ->
+      raft_intermediate_reachable net.
+  Proof.
+    intros.
+    replace net with (snd (failed, net)); [|simpl; auto].
+    eapply step_f_star_raft_intermediate_reachable'; eauto.
+  Qed.
 
   Definition raft_net_invariant_client_request (P : network -> Prop) :=
-    forall h net st' ps' out d l id c,
-      handleClientRequest h (nwState net h) id c = (out, d, l) ->
+    forall h net st' ps' out d l client id c,
+      handleClientRequest h (nwState net h) client id c = (out, d, l) ->
       P net ->
       raft_intermediate_reachable net ->
       (forall h', st' h' = update (nwState net) h d h') ->
@@ -771,20 +840,21 @@ Section Raft.
   
 End Raft.
 
-Notation currentTerm         := (RaftState.currentTerm term name entry logIndex serverType data).
-Notation votedFor            := (RaftState.votedFor term name entry logIndex serverType data).
-Notation log                 := (RaftState.log term name entry logIndex serverType data).
-Notation commitIndex         := (RaftState.commitIndex term name entry logIndex serverType data).
-Notation lastApplied         := (RaftState.lastApplied term name entry logIndex serverType data).
-Notation nextIndex           := (RaftState.nextIndex term name entry logIndex serverType data).
-Notation matchIndex          := (RaftState.matchIndex term name entry logIndex serverType data).
-Notation shouldSend          := (RaftState.shouldSend term name entry logIndex serverType data).
-Notation votesReceived       := (RaftState.votesReceived term name entry logIndex serverType data).
-Notation type                := (RaftState.type term name entry logIndex serverType data).
-Notation outstandingRequests := (RaftState.outstandingRequests term name entry logIndex serverType data).
-Notation stateMachine := (RaftState.stateMachine term name entry logIndex serverType data).
-Notation electoralVictories := (RaftState.electoralVictories term name entry logIndex serverType data).
-Notation mkRaft_data              := (RaftState.mkRaft_data term name entry logIndex serverType data).
+Notation currentTerm         := (RaftState.currentTerm term name entry logIndex serverType data output).
+Notation votedFor            := (RaftState.votedFor term name entry logIndex serverType data output).
+Notation leaderId            := (RaftState.leaderId term name entry logIndex serverType data output).
+Notation log                 := (RaftState.log term name entry logIndex serverType data output).
+Notation commitIndex         := (RaftState.commitIndex term name entry logIndex serverType data output).
+Notation lastApplied         := (RaftState.lastApplied term name entry logIndex serverType data output).
+Notation nextIndex           := (RaftState.nextIndex term name entry logIndex serverType data output).
+Notation matchIndex          := (RaftState.matchIndex term name entry logIndex serverType data output).
+Notation shouldSend          := (RaftState.shouldSend term name entry logIndex serverType data output).
+Notation votesReceived       := (RaftState.votesReceived term name entry logIndex serverType data output).
+Notation type                := (RaftState.type term name entry logIndex serverType data output).
+Notation clientCache := (RaftState.clientCache term name entry logIndex serverType data output).
+Notation stateMachine := (RaftState.stateMachine term name entry logIndex serverType data output).
+Notation electoralVictories := (RaftState.electoralVictories term name entry logIndex serverType data output).
+Notation mkRaft_data              := (RaftState.mkRaft_data term name entry logIndex serverType data output).
 
 Hint Extern 5 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 5 (@MultiParams _) => apply multi_params : typeclass_instances.

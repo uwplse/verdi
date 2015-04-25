@@ -274,6 +274,23 @@ Proof.
     + auto.
 Qed.
 
+
+Lemma NoDup_map_filter :
+  forall A B (f : A -> B) g l,
+    NoDup (map f l) ->
+    NoDup (map f (filter g l)).
+Proof.
+  intros. induction l; simpl in *.
+  - constructor.
+  - match goal with | H : NoDup _ |- _ => invcs H end.
+    intuition.
+    break_if; simpl in *; intuition.
+    constructor; intuition.
+    match goal with | H : _ -> False |- False => apply H end.
+    do_in_map. apply in_map_iff.
+    find_apply_lem_hyp filter_In. intuition.
+    eauto.
+Qed.
     
 
 Lemma filter_true_id : forall A (f : A -> bool) xs,
@@ -378,6 +395,17 @@ Proof.
       * eauto.
 Qed.
 
+Lemma subseq_remove :
+  forall A A_eq_dec (x : A) xs,
+    subseq (remove A_eq_dec x xs) xs.
+Proof.
+  induction xs; intros; simpl.
+  - auto.
+  - repeat break_match; auto.
+    + intuition congruence.
+    + find_inversion. auto.
+Qed.
+
 Theorem NoDup_Permutation_NoDup :
   forall A (l l' : list A),
     NoDup l ->
@@ -437,6 +465,8 @@ Ltac do_bool :=
     | [ H : beq_nat _ _ = true |- _ ] => apply beq_nat_true in H
     | [ H : beq_nat _ _ = false |- _ ] => apply beq_nat_false in H
     | [ H : andb _ _ = true |- _ ] => apply Bool.andb_true_iff in H
+    | [ H : andb _ _ = false |- _ ] => apply Bool.andb_false_iff in H
+    | [ H : orb _ _ = true |- _ ] => apply Bool.orb_prop in H
     | [ H : negb _ = true |- _ ] => apply Bool.negb_true_iff in H
     | [ H : negb _ = false |- _ ] => apply Bool.negb_false_iff in H
     | [ H : PeanoNat.Nat.ltb _ _ = true |- _ ] => apply ltb_true_lt in H
@@ -444,6 +474,7 @@ Ltac do_bool :=
     | [ H : leb _ _ = true |- _ ] => apply leb_true_le in H
     | [ H : leb _ _ = false |- _ ] => apply leb_false_lt in H
     | [ |- context [ andb _ _ ] ] => apply Bool.andb_true_iff
+    | [ |- context [ andb _ _ ] ] => apply Bool.andb_false_iff
     | [ |- context [ leb _ _ ] ] => apply leb_correct
     | [ |- context [ _ <> false ] ] => apply Bool.not_false_iff_true
     | [ |- beq_nat _ _ = false ] => apply beq_nat_false_iff
@@ -833,6 +864,37 @@ Fixpoint Prefix {A} (l1 : list A) l2 : Prop :=
     | _, _ => False
   end.
 
+Lemma Prefix_nil :
+  forall A (l : list A),
+    Prefix l [] ->
+    l = [].
+Proof.
+  intros. destruct l.
+  - reflexivity.
+  - contradiction.
+Qed.
+
+Lemma Prefix_cons :
+  forall A (l l' : list A) a,
+    Prefix l' l ->
+    Prefix (a :: l') (a :: l).
+Proof.
+  simpl. intuition.
+Qed.
+
+Lemma Prefix_in :
+  forall A (l l' : list A),
+    Prefix l' l ->
+    (forall x, In x l' -> In x l).
+Proof.
+  induction l; intros l' H.
+  - find_apply_lem_hyp Prefix_nil. subst. contradiction.
+  - destruct l'.
+    + contradiction.
+    + intros. simpl Prefix in *. break_and. subst. simpl in *. intuition.
+      right. eapply IHl; eauto.
+Qed.
+
 Lemma app_Prefix :
   forall A (xs ys zs : list A),
     xs ++ ys = zs ->
@@ -844,6 +906,17 @@ Proof.
     + discriminate.
     + subst. find_inversion. eauto.
 Qed.
+
+Lemma Prefix_In :
+  forall A (l : list A) l' x,
+    Prefix l l' ->
+    In x l ->
+    In x l'.
+Proof.
+  induction l; intros; simpl in *; intuition;
+  subst; break_match; intuition; subst; intuition.
+Qed.
+
 
 Fixpoint filterMap {A B} (f : A -> option B) (l : list A) : list B :=
   match l with
@@ -915,6 +988,20 @@ Lemma filterMap_defn :
                             end.
 Proof.
   simpl. auto.
+Qed.
+
+Lemma In_filterMap :
+  forall A B (f : A -> option B) b xs,
+    In b (filterMap f xs) ->
+    exists a,
+      In a xs /\ f a = Some b.
+Proof.
+  intros.
+  induction xs; simpl in *; intuition.
+  break_match.
+  - simpl in *. intuition; subst; eauto.
+    break_exists_exists; intuition.
+  - concludes. break_exists_exists; intuition.
 Qed.
 
 Lemma app_cons_in :
@@ -1061,6 +1148,14 @@ Section assoc.
     induction l; intros; simpl; repeat (break_match; simpl); subst; congruence.
   Qed.
 
+  Lemma get_set_same' :
+    forall k k' v l,
+      k = k' ->
+      assoc (assoc_set l k v) k' = Some v.
+  Proof.
+    intros. subst. auto using get_set_same.
+  Qed.
+
   Lemma get_set_diff :
     forall k k' v l,
       k <> k' ->
@@ -1107,6 +1202,588 @@ Section assoc.
   Qed.
 End assoc.
 
+Fixpoint before {A: Type} (x : A) y l : Prop :=
+  match l with
+    | [] => False
+    | a :: l' =>
+      a = x \/
+      (a <> y /\ before x y l')
+  end.
+
+Lemma before_In :
+  forall A x y l,
+    before (A:=A) x y l ->
+    In x l.
+Proof.
+  induction l; intros; simpl in *; intuition.
+Qed.
+
+
+Lemma before_split :
+  forall A l (x y : A),
+    before x y l ->
+    x <> y ->
+    In x l ->
+    In y l ->
+    exists xs ys zs,
+      l = xs ++ x :: ys ++ y :: zs.
+Proof.
+  induction l; intros; simpl in *; intuition; subst; try congruence.
+  - exists nil. simpl. find_apply_lem_hyp in_split. break_exists. subst. eauto.
+  - exists nil. simpl. find_apply_lem_hyp in_split. break_exists. subst. eauto.
+  - exists nil. simpl. find_apply_lem_hyp in_split. break_exists. subst. eauto.
+  - eapply_prop_hyp In In; eauto. break_exists. subst.
+    exists (a :: x0), x1, x2. auto.
+Qed.
+
+Lemma In_app_before :
+  forall A xs ys x y,
+    In(A:=A) x xs ->
+    (~ In y xs) ->
+    before x y (xs ++ y :: ys).
+Proof.
+  induction xs; intros; simpl in *; intuition.
+Qed.
+
+Fixpoint before_func {A: Type} (f : A -> bool) (g : A -> bool) (l : list A) : Prop :=
+  match l with
+    | [] => False
+    | a :: l' =>
+      f a = true \/
+      (g a = false /\ before_func f g l')
+  end.
+
+Definition before_func_dec :
+  forall A f g (l : list A),
+    {before_func f g l} + {~ before_func f g l}.
+Proof.
+  intros. induction l.
+  - simpl in *. intuition.
+  - simpl in *.
+    destruct (f a); destruct (g a); intuition.
+Qed.
+
+Lemma before_func_app :
+  forall A f g l x,
+    before_func (A := A) f g l ->
+    before_func f g (l ++ x).
+Proof.
+  intros. induction l; simpl in *; intuition.
+Qed.
+
+
+Lemma if_decider_true :
+  forall A B (P : A -> Prop) (dec : forall x, {P x} + {~ P x}) a (b1 b2 : B),
+    P a ->
+    (if dec a then b1 else b2) = b1.
+Proof.
+  intros.
+  break_if; congruence.
+Qed.
+
+Lemma if_decider_false :
+  forall A B (P : A -> Prop) (dec : forall x, {P x} + {~ P x}) a (b1 b2 : B),
+    ~ P a ->
+    (if dec a then b1 else b2) = b2.
+Proof.
+  intros.
+  break_if; congruence.
+Qed.
+
+Lemma filterMap_app :
+  forall A B (f : A -> option B) xs ys,
+    filterMap f (xs ++ ys) = filterMap f xs ++ filterMap f ys.
+Proof.
+  induction xs; intros; simpl in *; repeat break_match; simpl in *; intuition auto using f_equal.
+Qed.
+
+Lemma filterMap_In :
+  forall A B (f : A -> option B) a b xs,
+    f a = Some b ->
+    In a xs ->
+    In b (filterMap f xs).
+Proof.
+  induction xs; simpl; repeat break_match; simpl; intuition (auto; try congruence).
+Qed.
+
+Lemma In_cons_neq :
+  forall A a x xs,
+    In(A:=A) a (x :: xs) ->
+    a <> x ->
+    In a xs.
+Proof.
+  simpl.
+  intuition congruence.
+Qed.
+
+Lemma NoDup_app3_not_in_1 :
+  forall A (xs ys zs : list A) b,
+    NoDup (xs ++ ys ++ b :: zs) ->
+    In b xs ->
+    False.
+Proof.
+  intros.
+  rewrite <- app_ass in *.
+  find_apply_lem_hyp NoDup_remove.
+  rewrite app_ass in *.
+  intuition.
+Qed.
+
+Lemma NoDup_app3_not_in_2 :
+  forall A (xs ys zs : list A) b,
+    NoDup (xs ++ ys ++ b :: zs) ->
+    In b ys ->
+    False.
+Proof.
+  intros.
+  rewrite <- app_ass in *.
+  find_apply_lem_hyp NoDup_remove_2.
+  rewrite app_ass in *.
+  auto 10 with *.
+Qed.
+
+Lemma NoDup_app3_not_in_3 :
+  forall A (xs ys zs : list A) b,
+    NoDup (xs ++ ys ++ b :: zs) ->
+    In b zs ->
+    False.
+Proof.
+  intros.
+  rewrite <- app_ass in *.
+  find_apply_lem_hyp NoDup_remove_2.
+  rewrite app_ass in *.
+  auto 10 with *.
+Qed.
+
+Lemma In_cons_2_3 :
+  forall A xs ys zs x y a,
+    In (A:=A) a (xs ++ ys ++ zs) ->
+    In a (xs ++ x :: ys ++ y :: zs).
+Proof.
+  intros.
+  repeat (do_in_app; intuition auto 10 with *).
+Qed.
+
+Lemma In_cons_2_3_neq :
+  forall A a x y xs ys zs,
+    In (A:=A) a (xs ++ x :: ys ++ y :: zs) ->
+    a <> x ->
+    a <> y ->
+    In a (xs ++ ys ++ zs).
+Proof.
+  intros.
+  repeat (do_in_app; simpl in *; intuition (auto with *; try congruence)).
+Qed.
+
+Lemma in_middle_reduce :
+  forall A a xs y zs,
+    In (A:=A) a (xs ++ y :: zs) ->
+    a <> y ->
+    In a (xs ++ zs).
+Proof.
+  intros.
+  do_in_app; simpl in *; intuition. congruence.
+Qed.
+
+Lemma before_2_3_insert :
+  forall A xs ys zs x y a b,
+    before(A:=A) a b (xs ++ ys ++ zs) ->
+    b <> x ->
+    b <> y ->
+    before a b (xs ++ x :: ys ++ y :: zs).
+Proof.
+  induction xs; intros; simpl in *; intuition.
+  induction ys; intros; simpl in *; intuition.
+Qed.
+
+Lemma before_middle_insert :
+  forall A xs y zs a b,
+    before(A:=A) a b (xs ++ zs) ->
+    b <> y ->
+    before a b (xs ++ y :: zs).
+Proof.
+  intros.
+  induction xs; intros; simpl in *; intuition.
+Qed.
+
+Lemma in_middle_insert :
+  forall A a xs y zs,
+    In (A:=A) a (xs ++ zs) ->
+    In a (xs ++ y :: zs).
+Proof.
+  intros.
+  do_in_app; simpl in *; intuition.
+Qed.
+
+Lemma before_2_3_reduce :
+  forall A xs ys zs x y a b,
+    before(A:=A) a b (xs ++ x :: ys ++ y :: zs) ->
+    a <> x ->
+    a <> y ->
+    before a b (xs ++ ys ++ zs).
+Proof.
+  induction xs; intros; simpl in *; intuition; try congruence; eauto.
+  induction ys; intros; simpl in *; intuition; try congruence.
+Qed.
+
+Lemma before_middle_reduce :
+  forall A xs zs a b y,
+    before(A:=A) a b (xs ++ y :: zs) ->
+    a <> y ->
+    before a b (xs ++ zs).
+Proof.
+  induction xs; intros; simpl in *; intuition; try congruence; eauto.
+Qed.
+
+Lemma subseq_nil :
+  forall A xs,
+    subseq (A:=A) [] xs.
+Proof.
+  destruct xs; simpl; auto.
+Qed.
+
+Lemma subseq_skip :
+  forall A a xs ys,
+    subseq(A:=A) xs ys ->
+    subseq xs (a :: ys).
+Proof.
+  induction ys; intros; simpl in *; repeat break_match; intuition.
+Qed.
+
+Lemma subseq_filterMap :
+  forall A B (f : A -> option B) ys xs,
+    subseq xs ys ->
+    subseq (filterMap f xs) (filterMap f ys).
+Proof.
+  induction ys; intros; simpl in *; repeat break_match; auto; try discriminate; intuition; subst.
+  - simpl. find_rewrite. auto.
+  - auto using subseq_skip.
+  - auto using subseq_nil.
+  - simpl. find_rewrite. auto.
+Qed.
+
+Lemma subseq_app_r :
+  forall A xs ys,
+    subseq (A:=A) ys (xs ++ ys).
+Proof.
+  induction xs; intros; simpl.
+  + auto using subseq_refl.
+  + break_match.
+    * auto.
+    * right. auto using subseq_nil.
+Qed.
+
+Lemma subseq_app_tail :
+  forall A ys xs zs,
+    subseq (A:=A) xs ys ->
+    subseq (xs ++ zs) (ys ++ zs).
+Proof.
+  induction ys; intros; simpl in *.
+  - break_match; intuition auto using subseq_refl.
+  - repeat break_match.
+    + auto.
+    + discriminate.
+    + simpl in *. subst. right. auto using subseq_app_r.
+    + simpl in *. find_inversion. intuition.
+      rewrite app_comm_cons. auto.
+Qed.
+
+Lemma subseq_app_head :
+  forall A xs ys zs,
+    subseq (A:=A) ys zs ->
+    subseq (A:=A) (xs ++ ys) (xs ++ zs).
+Proof.
+  induction xs; intros; simpl; intuition.
+Qed.
+
+Lemma subseq_2_3 :
+  forall A xs ys zs x y,
+    subseq(A:=A) (xs ++ ys ++ zs) (xs ++ x :: ys ++ y :: zs).
+Proof.
+  auto using subseq_refl, subseq_skip, subseq_app_head.
+Qed.
+
+Lemma subseq_middle :
+  forall A xs y zs,
+    subseq (A:=A) (xs ++ zs) (xs ++ y :: zs).
+Proof.
+  intros.
+  apply subseq_app_head.
+  apply subseq_skip.
+  apply subseq_refl.
+Qed.
+
+Lemma filterMap_of_filterMap :
+  forall A B C (f : B -> option C) (g : A -> option B) xs,
+    filterMap f (filterMap g xs) =
+    filterMap (fun a => match g a with
+                          | Some b => f b
+                          | None => None
+                        end) xs.
+Proof.
+  induction xs; simpl; intuition.
+  repeat break_match; simpl; repeat find_rewrite; auto.
+Qed.
+
+Lemma filterMap_all_None :
+  forall A B (f : A -> option B) xs,
+    (forall x, In x xs -> f x = None) ->
+    filterMap f xs = [].
+Proof.
+  induction xs; intros; simpl in *; intuition.
+  rewrite H; auto.
+Qed.
+
+Lemma NoDup_rev :
+  forall A l,
+    NoDup (A:=A) l ->
+    NoDup (rev l).
+Proof.
+  induction l; intros.
+  - simpl. auto.
+  - simpl. apply NoDup_append.
+    invc H. constructor; auto.
+    intro. apply H2. apply in_rev. auto.
+Qed.
+
+Lemma NoDup_map_map :
+  forall A B C (f : A -> B) (g : A -> C) xs,
+    (forall x y, In x xs -> In y xs -> f x = f y -> g x = g y) ->
+    NoDup (map g xs) ->
+    NoDup (map f xs).
+Proof.
+  induction xs; intros; simpl in *.
+  - constructor.
+  - invc H0.
+    constructor.
+    + intro.
+      apply H3.
+      do_in_map.
+      find_apply_hyp_hyp.
+      rewrite <- H0.
+      auto using in_map.
+    + auto.
+Qed.
+
+Lemma plus_gt_0 :
+  forall a b,
+    a + b > 0 ->
+    a > 0 \/ b > 0.
+Proof.
+  intros.
+  destruct (eq_nat_dec a 0); intuition.
+Qed.
+
+Lemma pigeon :
+  forall A (A_eq_dec : forall a a': A, {a = a'} + {a <> a'}) (l : list A) sub1 sub2,
+    (forall a, In a sub1 -> In a l) ->
+    (forall a, In a sub2 -> In a l) ->
+    NoDup l ->
+    NoDup sub1 ->
+    NoDup sub2 ->
+    length sub1 + length sub2 > length l ->
+    exists a, In a sub1 /\ In a sub2.
+Proof.
+  induction l.
+  intros.
+  + simpl in *. find_apply_lem_hyp plus_gt_0. intuition.
+    * destruct sub1; simpl in *; [omega|].
+      specialize (H a). intuition.
+    * destruct sub2; simpl in *; [omega|].
+      specialize (H0 a). intuition.
+  + intros. simpl in *.
+    destruct (in_dec A_eq_dec a sub1);
+      destruct (in_dec A_eq_dec a sub2); eauto;
+      specialize (IHl (remove A_eq_dec a sub1) (remove A_eq_dec a sub2));
+      cut (exists a0, In a0 (remove A_eq_dec a sub1) /\ In a0 (remove A_eq_dec a sub2));
+      try solve [intros; break_exists;
+                 intuition eauto using in_remove];
+      apply IHl; try solve [
+                       intros; find_copy_apply_lem_hyp in_remove;
+                       find_apply_hyp_hyp; intuition; subst; exfalso; eapply remove_In; eauto];
+      eauto using remove_NoDup; try solve_by_inversion;
+      repeat match goal with
+               | H : ~ In a ?sub |- _ =>
+                 assert (length (remove A_eq_dec a sub) = length sub)
+                   by eauto using remove_length_not_in; clear H
+               | H : In a ?sub |- _ =>
+                 assert (length (remove A_eq_dec a sub) >= length sub - 1)
+                   by eauto using remove_length_ge; clear H
+             end; omega.
+Qed.
+
+Section remove_all.
+  Variable (A : Type).
+  Hypothesis (A_eq_dec : forall x y : A, {x = y} + {x <> y}).
+
+  Fixpoint remove_all (to_delete l : list A) : list A :=
+    match to_delete with
+      | [] => l
+      | d :: ds => remove_all ds (remove A_eq_dec d l)
+    end.
+
+  Lemma in_remove_all_was_in :
+    forall ds l x,
+      In x (remove_all ds l) ->
+      In x l.
+  Proof.
+    induction ds; intros; simpl in *; intuition.
+    eauto using in_remove.
+  Qed.
+
+  Lemma in_remove_all_preserve :
+    forall ds l x,
+      ~ In x ds ->
+      In x l ->
+      In x (remove_all ds l).
+  Proof.
+    induction ds; intros; simpl in *.
+    - auto.
+    - apply IHds.
+      + intuition.
+      + apply remove_preserve; intuition.
+  Qed.
+End remove_all.
+Arguments in_remove_all_was_in : clear implicits.
+
+Lemma filterMap_NoDup_inj :
+  forall A B (f : A -> option B) l,
+    (forall x1 x2 y,
+       f x1 = Some y ->
+       f x2 = Some y ->
+       x1 = x2) ->
+    NoDup l ->
+    NoDup (filterMap f l).
+Proof.
+  induction l; intros.
+  - constructor.
+  - simpl. invc H0.
+    break_match; auto.
+    constructor; auto.
+    intro.
+    find_apply_lem_hyp In_filterMap. break_exists. break_and.
+    assert (a = x) by eauto.
+    subst. contradiction.
+Qed.
+
+Lemma subseq_remove_all :
+  forall A A_eq_dec (ds l l' : list A),
+    subseq l l' ->
+    subseq (remove_all A_eq_dec ds l) l'.
+Proof.
+  induction ds; intros.
+  - simpl. auto.
+  - simpl. apply IHds.
+    eapply subseq_trans.
+    apply subseq_remove.
+    auto.
+Qed.
+
+Lemma in_remove_all_not_in :
+  forall A A_eq_dec ds l x,
+    In x (remove_all (A:=A) A_eq_dec ds l) ->
+    In x ds ->
+    False.
+Proof.
+  induction ds; intros; simpl in *; intuition.
+  - subst. find_apply_lem_hyp in_remove_all_was_in.
+    eapply remove_In; eauto.
+  - eauto.
+Qed.
+
+Lemma before_remove :
+  forall A x y l y' dec,
+    before (A := A) x y (remove dec y' l) ->
+    y <> y' ->
+    before x y l.
+Proof.
+  induction l; intros; simpl in *; intuition.
+  break_if; subst; simpl in *; intuition eauto.
+Qed.
+
+
+Lemma before_remove_if :
+  forall A (x : A) y l x' dec,
+    before x y l ->
+    x <> x' ->
+    before x y (remove dec x' l).
+Proof.
+  induction l; intros; simpl in *; intuition;
+  break_if; subst; simpl in *; intuition eauto.
+Qed.
+
+Lemma remove_all_nil :
+  forall A dec ys,
+    remove_all (A := A) dec ys [] = [].
+Proof.
+  intros. induction ys; simpl in *; intuition.
+Qed.
+
+Lemma remove_all_cons :
+  forall A dec ys a l,
+    (remove_all (A := A) dec ys (a :: l) = remove_all dec ys l /\
+     In a ys) \/
+    (remove_all (A := A) dec ys (a :: l) = a :: (remove_all dec ys l) /\
+     ~In a ys).
+Proof.
+  induction ys; intros; simpl in *; intuition.
+  break_if; subst; simpl in *; intuition.
+  specialize (IHys a0 (remove dec a l)). intuition.
+Qed.
+
+Lemma before_remove_all :
+  forall A x y l ys dec,
+    before (A := A) x y (remove_all dec ys l) ->
+    ~ In y ys ->
+    before x y l.
+Proof.
+  induction l; intros; simpl in *; intuition.
+  - rewrite remove_all_nil in *. simpl in *. intuition.
+  - pose proof remove_all_cons dec ys a l. intuition.
+    + repeat find_rewrite. right. intuition eauto.
+      subst; intuition.
+    + repeat find_rewrite. simpl in *. intuition eauto.
+Qed.
+
+Lemma before_remove_all_if :
+  forall A x y l xs dec,
+    before x y l ->
+    ~ In x xs ->
+    before (A := A) x y (remove_all dec xs l).
+Proof.
+  induction l; intros; simpl in *; intuition;
+  pose proof remove_all_cons dec xs a l; subst; intuition;
+  repeat find_rewrite; simpl in *; intuition.
+Qed.
+
+Lemma before_app :
+  forall A x y l' l,
+    before (A := A) x y (l' ++ l) ->
+    ~ In x l' ->
+    before (A := A) x y l.
+Proof.
+  induction l'; intros; simpl in *; intuition.
+Qed.
+
+Lemma before_app_if :
+  forall A x y l' l,
+    before (A := A) x y l ->
+    ~ In y l' ->
+    before (A := A) x y (l' ++ l).
+Proof.
+  induction l'; intros; simpl in *; intuition.
+Qed.
+
+Lemma before_antisymmetric :
+  forall A x y l,
+    before (A := A) x y l ->
+    before y x l ->
+    x = y.
+Proof.
+  intros.
+  induction l; simpl in *; intuition; congruence.
+Qed.
+  
 Lemma snoc_assoc :
   forall A (l : list A) x y,
     l ++ [x; y] = (l ++ [x]) ++ [y].

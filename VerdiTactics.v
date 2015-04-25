@@ -48,6 +48,13 @@ Ltac break_exists :=
            | [H : exists _, _ |- _ ] => destruct H
          end.
 
+Ltac break_exists_exists :=
+  repeat match goal with
+           | H:exists _, _ |- _ =>
+             let x := fresh "x" in
+             destruct H as [x]; exists x
+         end.
+
 Ltac break_and :=
   repeat match goal with
            | [H : _ /\ _ |- _ ] => destruct H
@@ -98,6 +105,23 @@ Ltac find_rewrite :=
     | [ H : ?X = _, H' : ?X = _ |- _ ] => rewrite H in H'
     | [ H : ?X = _, H' : context [ ?X ] |- _ ] => rewrite H in H'
     | [ H : ?X = _ |- context [ ?X ] ] => rewrite H
+  end.
+
+Ltac find_rewrite_lem lem :=
+  match goal with
+    | [ H : _ |- _ ] =>
+      rewrite lem in H; [idtac]
+  end.
+
+Ltac find_rewrite_lem_by lem t :=
+  match goal with
+    | [ H : _ |- _ ] =>
+      rewrite lem in H by t
+  end.
+
+Ltac find_erewrite_lem lem :=
+  match goal with
+    | [ H : _ |- _] => erewrite lem in H by eauto
   end.
 
 Ltac find_reverse_rewrite :=
@@ -329,3 +353,26 @@ Ltac eapply_prop_hyp P Q :=
     eapply H in H'
   end.
 
+Ltac copy_eapply_prop_hyp P Q :=
+  match goal with
+    | [ H : context [ P ], H' : context [ Q ] |- _ ] =>
+      copy_eapply H H'
+  end.
+
+Ltac find_false :=
+  match goal with
+    | H : _ -> False |- _ => exfalso; apply H
+  end.
+
+Ltac injc H :=
+  injection H; clear H; intro; subst_max.
+
+Ltac find_injection :=
+  match goal with
+    | [ H : ?X _ _ _ _ _ _ = ?X _ _ _ _ _ _ |- _ ] => injc H
+    | [ H : ?X _ _ _ _ _ = ?X _ _ _ _ _ |- _ ] => injc H
+    | [ H : ?X _ _ _ _ = ?X _ _ _ _ |- _ ] => injc H
+    | [ H : ?X _ _ _ = ?X _ _ _ |- _ ] => injc H
+    | [ H : ?X _ _ = ?X _ _ |- _ ] => injc H
+    | [ H : ?X _ = ?X _ |- _ ] => injc H
+  end.

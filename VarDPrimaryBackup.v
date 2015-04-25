@@ -30,7 +30,7 @@ Example revert_trace_eg :
     step_m_star (params := PB_multi_params) step_m_init net tr ->
     inputs_m tr = [Put "james" "awesome"] ->
     outputs_m tr = [o] ->
-    o = [Response "james" (Some "awesome") None].
+    o = Response "james" (Some "awesome") None.
 Proof.
   intros.
   find_copy_apply_lem_hyp simulation.
@@ -58,8 +58,8 @@ Example get_set_eg1 :
     step_m_star step_m_init net tr ->
     inputs_m tr = [Put "james" "awesome"; Get "james"] ->
     outputs_m tr = [a; b] ->
-    outputs_m tr = [[Response "james" (Some "awesome") None];
-                    [Response "james" (Some "awesome") (Some "awesome")]].
+    outputs_m tr = [Response "james" (Some "awesome") None;
+                     Response "james" (Some "awesome") (Some "awesome")].
 Proof.
   intros.
   find_copy_apply_lem_hyp simulation.

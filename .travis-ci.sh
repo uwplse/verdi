@@ -4,8 +4,6 @@ sudo apt-get install -qq ocaml ocaml-native-compilers camlp4-extra
 wget http://homes.cs.washington.edu/~jrw12/coq-8.5beta1-build.tgz
 tar xf coq-8.5beta1-build.tgz
 pushd coq-8.5beta1
-sudo make install
+sudo make install > /dev/null 2>&1
 popd
-make
-cd raft
-make
+./build.sh

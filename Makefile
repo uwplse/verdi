@@ -18,4 +18,4 @@ lint:
 	echo "Possible use of hypothesis names:"
 	find . -name '*.v' -exec grep -Hn 'H[0-9][0-9]*' {} \;
 
-.PHONY: default clean doc raft dash lint
+.PHONY: default clean doc raft dash lint Makefile.coq
