@@ -1527,10 +1527,6 @@ Section PrefixWithinTerm.
     refined_raft_net_invariant_request_vote_reply prefix_within_term_inductive.
   Proof.
     red. unfold prefix_within_term_inductive. intros.
-    match goal with
-      | H : context [handleRequestVoteReply] |- _ =>
-        symmetry in H
-    end.
     find_eapply_lem_hyp handleRequestVoteReply_log.
     intuition.
     - unfold allEntries_leaderLogs_prefix_within_term, allEntries_log_prefix_within_term in *.
