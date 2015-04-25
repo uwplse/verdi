@@ -17,12 +17,16 @@ Section LockServ.
 
   Variable num_Clients : nat.
 
+  (* fin is 1...n *)
+  (* Client_index should be a Type *)
   Definition Client_index := (fin num_Clients).
 
   Inductive Name :=
   | Client : Client_index -> Name
   | Server : Name.
-
+    
+    (* map applies 'Client' function on the () elements *)
+    (* should return a list of names *)
   Definition list_Clients := map Client (all_fin num_Clients).
 
   Definition Name_eq_dec : forall a b : Name, {a = b} + {a <> b}.
@@ -43,10 +47,15 @@ Section LockServ.
   Definition Input := Msg.
   Definition Output := Msg.
 
+  (* mkData is the constructor of Data 'Class' *)
+  (* queue is the accessing function 'getter' of Data *)
   Record Data := mkData { queue : list Client_index ; held : bool }.
 
+(* use an empty list and 'false' to construct a 'Data' *)
   Definition init_data (n : Name) : Data := mkData [] false.
 
+  (* generate a new type composing the parameters *)
+  (* according to definition of GenHandler, it's a function get S and return a tuple of the others *)
   Definition Handler (S : Type) := GenHandler (Name * Msg) S Output unit.
 
   Definition ClientNetHandler (i : Client_index) (m : Msg) : Handler Data :=
@@ -55,26 +64,36 @@ Section LockServ.
       | _ => nop
     end.
 
+(* There muse be some call this function to send 'I want lock' or 'Please release lock' message *)
   Definition ClientIOHandler (i : Client_index) (m : Msg) : Handler Data :=
     match m with
+    (* This lock client send out the 'Lock' message *)
       | Lock => send (Server, Lock)
       | Unlock => data <- get ;;
                   when (held data) (put (mkData [] false) >> send (Server, Unlock))
       | _ => nop
     end.
 
+(* how server handles network message *)
   Definition ServerNetHandler (src : Name) (m : Msg) : Handler Data :=
+    (* st should be of type Data *) 
     st <- get ;;
+    (* q is waiting queue *)
     let q := queue st in
     match m with
       | Lock =>
         match src with
+          (* ignore lock msg from server *)
           | Server => nop
           | Client c =>
+            (* where does null come from *)
+            (* not sure: ignore the output of when, and return output of put *)
             when (null q) (send (src, Locked)) >> put (mkData (q++[c]) (held st))
         end
       | Unlock => match q with
+                    (* if there is someone in the waiting list, send 'Locked' to it *)
                     | _ :: x :: xs => put (mkData (x :: xs) (held st)) >> send (Client x, Locked)
+                    (* nobody in the list *)
                     | _ => put (mkData [] (held st))
                   end
       | _ => nop
@@ -94,6 +113,7 @@ Section LockServ.
       | Server   => ServerIOHandler m
     end.
 
+  (* try to unfold the handler functions in proving lemma *)
   Ltac handler_unfold :=
     repeat (monad_unfold; unfold NetHandler,
                                  InputHandler,
@@ -106,6 +126,8 @@ Section LockServ.
 
   Definition Nodes := Server :: list_Clients.
 
+  (* In == List.contains() *)
+  (* This theorem : a name must be in Nodes *)
   Theorem In_n_Nodes :
     forall n : Name, In n Nodes.
   Proof.
@@ -120,6 +142,7 @@ Section LockServ.
       reflexivity.
   Qed.
 
+(* no duplicate *)
   Theorem nodup :
     NoDup Nodes.
   Proof.
@@ -160,6 +183,7 @@ Section LockServ.
        No two different clients can (think they) hold
        the lock at once.
    *)
+  (* sigma means 'state' *)
   Definition mutual_exclusion (sigma : name -> data) : Prop :=
     forall m n,
       held (sigma (Client m)) = true ->
@@ -169,6 +193,7 @@ Section LockServ.
   (* The system enforces mutual exclusion at the server. Whenever a
      client believs it holds the lock, that client is at the head of the
      server's queue. *)
+  (* 'at the head of the queue : no other field indicating the client holds the lock - just use the head of the queue *)
   Definition locks_correct (sigma : name -> data) : Prop :=
     forall n,
       held (sigma (Client n)) = true ->
@@ -176,6 +201,7 @@ Section LockServ.
         queue (sigma Server) = n :: t.
 
   (* We first show that this actually implies mutual exclusion. *)
+  (* a little different from the paper *)
   Lemma locks_correct_implies_mutex :
     forall sigma,
       locks_correct sigma ->
@@ -189,11 +215,14 @@ Section LockServ.
     auto.
   Qed.
 
+  (* the grantee predicate *)
   Definition valid_unlock q h c p :=
     pSrc p = Client c /\
     (exists t, q = c :: t) /\
+	(* notice that client first release lock, then notify the server *)
     h = false.
 
+  (* the third conjunct *)
   Definition locks_correct_unlock (sigma : name -> data) (p : packet) : Prop :=
     pBody p = Unlock ->
     exists c, valid_unlock (queue (sigma Server)) (held (sigma (Client c))) c p.
@@ -203,6 +232,7 @@ Section LockServ.
       (exists t, q = c :: t) /\
       h = false.
 
+  (* the second conjunct *)
   Definition locks_correct_locked (sigma : name -> data) (p : packet) : Prop :=
     pBody p = Locked ->
     exists c, valid_locked (queue (sigma Server)) (held (sigma (Client c))) c p.
@@ -212,12 +242,15 @@ Section LockServ.
     locks_correct_unlock sigma p /\
     locks_correct_locked sigma p.
 
+  (* 'at_most_one in' the paper*)
+  (* Unlock = UnlockMsg, Locked = GrantMsg *)
   Definition LockServ_network_network_invariant (p q : packet) : Prop :=
     (pBody p = Unlock -> pBody q = Unlock -> False) /\
     (pBody p = Locked -> pBody q = Unlock -> False) /\
     (pBody p = Unlock -> pBody q = Locked -> False) /\
     (pBody p = Locked -> pBody q = Locked -> False).
 
+  (* symmetric *)
   Lemma nwnw_sym :
     forall p q,
       LockServ_network_network_invariant p q ->
@@ -331,6 +364,7 @@ Section LockServ.
 
   Definition at_head_of_queue sigma c := (exists t, queue (sigma Server) = c :: t).
 
+  (* if 'at_head_of_queue is the goal, will intro 'queue (sigma Server)' as the next goal *)
   Lemma at_head_of_queue_intro :
     forall sigma c t,
       queue (sigma Server) = c :: t ->
@@ -598,6 +632,8 @@ Section LockServ.
     auto using locks_correct_locked_sent_lock, locks_correct_locked_sent_unlock.
   Qed.
 
+  (* There are at most three kinds of messages. So if there is one message implying lock granting and as 'at_most_one' excludes 'Unlock'
+  message, the other message could only be 'Lock' *)
   Lemma nwnw_locked_lock :
     forall p q,
       LockServ_network_network_invariant p q ->
@@ -620,6 +656,7 @@ Section LockServ.
     destruct (pBody q); intuition; try discriminate.
   Qed.
 
+(* locks_correct_unlock only proves the existence, but this lemma proves the existing client is THAT client which delivers the packet *) 
   Lemma locks_correct_unlock_at_head :
     forall sigma p c,
       pSrc p = Client c ->
@@ -637,6 +674,7 @@ Section LockServ.
     eauto using at_head_of_queue_intro.
   Qed.
 
+  (* the inductive procedure *)
   Lemma locks_correct_unlock_at_head_preserved :
     forall sigma st' p,
       locks_correct_unlock sigma p ->
@@ -849,30 +887,43 @@ Section LockServ.
   - eauto using LockServ_nwnw_net_handlers_new_new.
   Defined.
 
+(* recursively find the last holder in the trace *)
+(* trace must be a old-to-new list of i/o records *)
   Fixpoint last_holder' (holder : option Client_index) (trace : list (name * (input + list output))) : option Client_index :=
+	(* use a recursive way to describe the loop. First iteration is the whole trace with None is the initial holder *)
     match trace with
+	(* the whole trace has been processed, so the result is the 'holder' *)
       | [] => holder
       | (Client n, inl Unlock) :: tr => match holder with
+											(* invalid UNLOCK message *)
                                           | None => last_holder' holder tr
                                           | Some m => if fin_eq_dec _ n m
+										  (* if equal, the client releases the lock, so holder is None *)
                                                       then last_holder' None tr
+													  (* another invalid message *)
                                                       else last_holder' holder tr
                                         end
 
+	(* no need to leave a branch here *)
       | (Client n, inr [Locked]) :: tr => last_holder' (Some n) tr
+	  (* only LOCKED and UNLOCKED is relavent to last_holder() *)
       | (n, _) :: tr => last_holder' holder tr
     end.
 
+  (* whether mutex is hold in the trace *)
   Fixpoint trace_mutual_exclusion' (holder : option Client_index) (trace : list (name * (input + list output))) : Prop :=
     match trace with
       | [] => True
+	  (* mutex is not restricted by client message - only by server output *)
       | (Client n, (inl Unlock)) :: tr' => match holder with
                                              | Some m => if fin_eq_dec _ n m
                                                          then trace_mutual_exclusion' None tr'
+														 (* invalid message from client *)
                                                          else trace_mutual_exclusion' holder tr'
                                              | _ => trace_mutual_exclusion' holder tr'
                                            end
       | (n, (inl _)) :: tr' => trace_mutual_exclusion' holder tr'
+	  (* not the same with 'mutex' in the paper - not require there exists an UNLOCK between the two GRANTs *)
       | (Client n, (inr [Locked])) :: tr' => match holder with
                                                | None => trace_mutual_exclusion' (Some n) tr'
                                                | Some _ => False
@@ -884,6 +935,7 @@ Section LockServ.
   Definition trace_mutual_exclusion (trace : list (name * (input + list output))) : Prop :=
     trace_mutual_exclusion' None trace.
 
+  (* a wrapper for the recursion body *)
   Definition last_holder (trace : list (name * (input + list output))) : option Client_index :=
     last_holder' None trace.
 
@@ -958,6 +1010,7 @@ Section LockServ.
     - simpl in *. repeat break_match; subst; intuition.
   Qed.
 
+(* replace 'reachable' defined in Net.v *)
   Lemma reachable_intro :
     forall a tr,
       step_m_star step_m_init a tr ->

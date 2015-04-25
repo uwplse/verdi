@@ -29,7 +29,11 @@ module VarDArrangement (M : VardParams) = struct
   type res = (VarDRaft.raft_output list * raft_data0) * ((VarDRaft.name * VarDRaft.msg) list)
   let debug = M.debug
   let init x = Obj.magic (init_handlers0 vard_base_params vard_one_node_params raft_params x)
+  (* a wrapper to wrap coq function defined in Raft.v *)
+  (* for example, handleIO will finally call RaftInputHandler() in Raft.v *)
+  (* coq and ocaml have different data structures. Use Obj.magic to transform *)
   let handleIO (n : name) (inp : input) (st : state) = Obj.magic (vard_raft_multi_params.input_handlers (Obj.magic n) (Obj.magic inp) (Obj.magic st))
+  (* handleNet is Raft.v/RaftNetHandler *)
   let handleNet (n : name) (src: name) (m : msg) (st : state)  = Obj.magic (vard_raft_multi_params.net_handlers (Obj.magic n) (Obj.magic src) (Obj.magic m) (Obj.magic st))
   let handleTimeout (me : name) (st : state) =
     (Obj.magic vard_raft_multi_params.input_handlers (Obj.magic me) (Obj.magic Timeout) (Obj.magic st))
@@ -77,6 +81,7 @@ module VarDArrangement (M : VardParams) = struct
     if string_match r inp 0 then
       (match (matched_group 1 inp, matched_group 2 inp,
               matched_group 3 inp, matched_group 4 inp) with
+              (* GET is defined in Raft.v. GET will accept a string(key) and construct a 'input' *)
        | ("GET", k, _, _) -> Some (Get (char_list_of_string k))
        | ("DEL", k, _, _) -> Some (Del (char_list_of_string k))
        | ("PUT", k, v, _) -> Some (Put ((char_list_of_string k), (char_list_of_string v)))

@@ -29,11 +29,10 @@ Section Raft.
 
   Definition term := nat.
   Definition logIndex := nat.
-  Definition name := fin N.
+  Definition name := fin N.(* fin N is a type, which is a set of integer 1 2 3 ... N *)
   Definition nodes : list name := all_fin _.
   Definition name_eq_dec : forall x y : name, {x = y} + {x <> y} := fin_eq_dec _.
 
-  
   Notation "a >? b" := (b <? a) (at level 42).
   Notation "a >=? b" := (b <=? a) (at level 42).
   Notation "a == b" := (beq_nat a b) (at level 42).
@@ -49,6 +48,7 @@ Section Raft.
                       eInput : input
                     }.
 
+    (* Name: constructors *)
   Inductive msg : Type :=
   | RequestVote : term -> name -> logIndex -> term -> msg
   | RequestVoteReply : term -> bool -> msg
@@ -57,6 +57,7 @@ Section Raft.
 
   Inductive raft_input : Type :=
   | Timeout : raft_input
+  (* Example: 'ClientRequest 0 XX', a raft_input instance is constructed' *)
   | ClientRequest : nat -> input -> raft_input.
 
   Inductive raft_output : Type :=
@@ -172,6 +173,7 @@ Section Raft.
                  nodes)
     ).
 
+  (* 'definition' can define a function *)
   Definition handleAppendEntries (me : name)
              (state : raft_data) (t : term) (leaderId : name) (prevLogIndex : logIndex)
              (prevLogTerm : term) (entries : list entry) (leaderCommit : logIndex) :=
@@ -285,6 +287,7 @@ Section Raft.
              | _ => state
       end.
 
+(* get params, return a pair of data * list *)
   Definition handleMessage (src : name) (me : name) (m : msg)
              (state : raft_data) : raft_data * list (name * msg) :=
     match m with
@@ -373,6 +376,8 @@ Section Raft.
     let (state, pkts) := handleMessage src me m state in
     let '(genericOut, state, genericPkts) := doGenericServer me state in
     let '(leaderOut, state, leaderPkts) := doLeader state me in
+    (* ++ will concatenate two lists *)
+    (* :: will append an element to list *)
     (genericOut ++ leaderOut,
      state, pkts ++ genericPkts ++ leaderPkts).
 
@@ -533,8 +538,13 @@ Section Raft.
                                In p' (send_packets h l)) ->
       P (mkNetwork ps' st').
 
+  (* define a property that for a predicate on network,
+  if it holds before 'append' action, and then a few operations on the network,
+      finally the predicate still holds on network *)
   Definition raft_net_invariant_append_entries (P : network -> Prop) :=
     forall xs p ys net st' ps' d m t n pli plt es ci,
+      (* pDst p == get destination of p *)
+      (* nwState net == get state of network of net *)
       handleAppendEntries (pDst p) (nwState net (pDst p)) t n pli plt es ci = (d, m) ->
       pBody p = AppendEntries t n pli plt es ci ->
       P net ->
@@ -546,11 +556,13 @@ Section Raft.
       P (mkNetwork ps' st').
 
   Definition raft_net_invariant_append_entries_reply (P : network -> Prop) :=
+    (* xs ys are list of packets *)
     forall xs p ys net st' ps' d m t es res,
       handleAppendEntriesReply (pDst p) (nwState net (pDst p)) (pSrc p) t es res = (d, m) ->
       pBody p = AppendEntriesReply t es res ->
       P net ->
       raft_intermediate_reachable net ->
+      (* use field name to access the field of a record *)
       nwPackets net = xs ++ p :: ys ->
       (forall h, st' h = update (nwState net) (pDst p) d h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
