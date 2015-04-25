@@ -1099,7 +1099,7 @@ Section StateMachineSafetyProof.
       + unfold send_packets in *. exfalso. do_in_map.
         subst. simpl in *.
         eapply handleClientRequest_no_append_entries; eauto 10.
-  Qed.
+  Admitted.
 
   Lemma commit_invariant_timeout :
     refined_raft_net_invariant_timeout commit_invariant.

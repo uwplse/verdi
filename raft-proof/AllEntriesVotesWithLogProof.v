@@ -115,9 +115,7 @@ Section AllEntriesVotesWithLog.
       refined_raft_intermediate_reachable net ->
       In (t, e) (allEntries (fst (nwState net h))) ->
       t <= currentTerm (snd (nwState net h)).
-  Proof.
-    admit.
-  Qed.
+  Admitted.
 
   Lemma maxIndex_le :
     forall l1 l2,
