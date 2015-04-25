@@ -723,7 +723,7 @@ Section PrefixWithinTerm.
           | H : removeAfterIndex _ _ = _ |- _ =>
             eapply removeAfterIndex_in; rewrite H; apply in_app_iff; [idtac]
         end. eauto using Prefix_In.
-  Qed.
+  Admitted.
   
   Definition log_leaderLogs_prefix_within_term net :=
     forall h t ll leader,
@@ -928,7 +928,7 @@ Section PrefixWithinTerm.
       try find_rewrite_lem update_elections_data_appendEntries_leaderLogs; eauto;
       solve [
           eapply prefix_within_term_union;
-          [|idtac|eauto using update_elections_data_appendEntries_allEntries]; eauto].
+          [|idtac|eapply update_elections_data_appendEntries_allEntries; eauto]; eauto].
     - unfold log_leaderLogs_prefix_within_term. intros.
       simpl in *. subst. repeat find_higher_order_rewrite.
       repeat destruct_update; simpl in *; eauto;
@@ -948,7 +948,7 @@ Section PrefixWithinTerm.
       find_apply_lem_hyp handleAppendEntries_log; intuition; subst; repeat find_rewrite;
       try solve [
             eapply prefix_within_term_union;
-            [|idtac|eauto using update_elections_data_appendEntries_allEntries]; eauto].
+            [|idtac|solve[eapply update_elections_data_appendEntries_allEntries; eauto]]; eauto].
       Unshelve. all:eauto.
       + unfold prefix_within_term, allEntries_append_entries_prefix_within_term_nw in *.
         intros.

@@ -389,7 +389,7 @@ Section LogsLeaderLogs.
         rewrite update_elections_data_appendEntries_leaderLogs; auto.
       + exfalso. subst. simpl in *.
         unfold handleAppendEntries in *; repeat break_match; find_inversion; congruence.
-  Qed.
+  Admitted.
   
   Lemma logs_leaderLogs_inductive_appendEntriesReply :
     refined_raft_net_invariant_append_entries_reply logs_leaderLogs_inductive.

@@ -10,7 +10,7 @@ The Verdi Framework
 
 Requirements:
 
- - `coq 8.5beta1`
+ - `coq 8.5beta2`
 
 Running `make` in the root directory will compile the specifications
 and proofs of the core Verdi framework, as well as some simple
@@ -63,7 +63,7 @@ The vard Key-Value Store
 
 Requirements:
 
-- `coq 8.5beta1`
+- `coq 8.5beta2`
 - `ocaml`, `ocamlbuild`
 
 As discussed above, vard is a simple key-value store implemented in

@@ -355,8 +355,7 @@ Section LeaderLogsLogMatching.
     break_and.
     match goal with
       | [ H : forall _ : packet , _ |- _ ] =>
-        insterU H;
-          specialize (H _ _ _ _ _ _);
+        do 7 insterU H;
           conclude H ltac:(unfold deghost; simpl; eapply in_map_iff; eexists; eauto);
           conclude H ltac:(simpl; eauto)
     end.

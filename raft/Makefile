@@ -7,14 +7,11 @@ default: RaftState.v Makefile.coq
 RaftState.v: RaftState.v.rec extract_record_notation.py
 	$(PYTHON) extract_record_notation.py RaftState.v.rec raft_data > RaftState.v
 
-Makefile.coq:
-	coq_makefile -Q .. "" -Q . "" -arg -no-native-compiler *.v > Makefile.coq
-
-quick: Makefile.coq
-	$(MAKE) -f Makefile.coq quick
+Makefile.coq: 
+	coq_makefile -R ../core "" -R . "" *.v > Makefile.coq
 
 clean: Makefile.coq
 	$(MAKE) -f Makefile.coq clean
-	rm -rf Makefile.coq
+	rm -f Makefile.coq
 
-.PHONY: Makefile.coq
+.PHONY: Makefile.coq default clean

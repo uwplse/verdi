@@ -1,21 +1,25 @@
-default: Makefile.coq
-	$(MAKE) -f Makefile.coq
+default: core systems raft raft-proofs
 
-raft:
+core: 
+	$(MAKE) -C core
+
+systems: core
+	$(MAKE) -C systems
+
+raft: core
 	$(MAKE) -C raft
 
-clean: Makefile.coq
-	$(MAKE) -f Makefile.coq clean
-	rm -rf Makefile.coq
+raft-proofs: raft
+	$(MAKE) -C raft-proofs
 
-Makefile.coq:
-	coq_makefile -Q . "" -arg -no-native-compiler *.v > Makefile.coq
-
-quick: Makefile.coq
-	$(MAKE) -f Makefile.coq quick
+clean: 
+	$(MAKE) -C core clean
+	$(MAKE) -C systems clean
+	$(MAKE) -C raft clean
+	$(MAKE) -C raft-proofs clean
 
 lint:
 	echo "Possible use of hypothesis names:"
 	find . -name '*.v' -exec grep -Hn 'H[0-9][0-9]*' {} \;
 
-.PHONY: default clean doc raft dash lint Makefile.coq
+.PHONY: default core systems raft raft-proofs clean lint
