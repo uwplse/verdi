@@ -2,7 +2,7 @@ default: Makefile.coq
 	$(MAKE) -f Makefile.coq
 
 Makefile.coq:
-	coq_makefile -Q ../../.. "" -Q ../../../raft "" -Q . "" *.v > Makefile.coq
+	coq_makefile -R ../../../core "" -R ../../../systems "" -R ../../../raft "" -R . "" *.v > Makefile.coq
 
 quick: Makefile.coq
 	$(MAKE) -f Makefile.coq quick
