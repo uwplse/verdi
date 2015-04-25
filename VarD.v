@@ -43,10 +43,12 @@ Definition data :=
 Definition beq_key (k1 k2 : key) :=
   if string_dec k1 k2 then true else false.
 
+(* basic operations on associative list and basic properties *)
 Section assoc.
   Variable K V : Type.
   Variable K_eq_dec : forall k k' : K, {k = k'} + {k <> k'}.
 
+  (* search *)
   Fixpoint assoc (l : list (K * V)) (k : K) : option V :=
     match l with
       | [] => None
@@ -57,6 +59,7 @@ Section assoc.
           assoc l' k
     end.
 
+(* set/update *)
   Fixpoint assoc_set (l : list (K * V)) (k : K) (v : V) : list (K * V) :=
     match l with
       | [] => [(k, v)]
@@ -77,6 +80,7 @@ Section assoc.
           (k', v') :: (assoc_del l' k)
     end.
 
+(* update will be visible *)
   Lemma get_set_same :
     forall k v l,
       assoc (assoc_set l k v) k = Some v.
@@ -84,6 +88,7 @@ Section assoc.
     induction l; intros; simpl; repeat (break_match; simpl); subst; congruence.
   Qed.
 
+  (* update one key/value will not affect others *)
   Lemma get_set_diff :
     forall k k' v l,
       k <> k' ->
@@ -134,6 +139,11 @@ Arguments assoc {_} {_} _ _ _.
 Arguments assoc_set {_} {_} _ _ _ _.
 Arguments assoc_del {_} {_} _ _ _.
 Require Import HandlerMonad.
+(* ------------ *)
+(* operations of vard built on associative list *)
+(* ------------ *)
+
+(* db is an associative list that will be passed in when invoked *)
 Definition getk k : GenHandler unit data output (option value) :=
   db <- get ;;
   ret (assoc key_eq_dec db k).
@@ -192,6 +202,9 @@ Definition input_key (i : input) : key :=
     | CAD k _ => k
   end.
 
+(* pair of new-value and old-value *)
+(* why operate must return a pair? though no function other than interpret needs it?
+I think it's because that interpret needs to return a pair for use in the theorem, and operate() should work with it *)
 Definition operate (op : input) (curr : option value) :=
   match op with
     | Get _ => (curr, curr)
@@ -201,6 +214,8 @@ Definition operate (op : input) (curr : option value) :=
     | CAD _ v => if val_eq_dec curr (Some v) then (None, curr) else (curr, curr)
   end.
 
+(* apply the operations one by one *)
+(* return the last two results *)
 Fixpoint interpret (k : key) (ops : list input) (init : option value) :=
   match ops with
     | [] => (init, init)
@@ -208,18 +223,24 @@ Fixpoint interpret (k : key) (ops : list input) (init : option value) :=
       (operate op (fst (interpret k ops init)))
   end.
 
+(* get the logged inputs which has the same key with 'k' *)
 Definition inputs_with_key (trace : list (input * list output)) (k : key) : list input :=
   filterMap (fun ev => if key_eq_dec k (input_key (fst ev)) then
                             Some (fst ev)
                           else
                             None)
+  (* trace is the parameter for filter *)
             trace.
 
 
 Inductive trace_correct : list (input * list output) -> Prop :=
+(* TCnil is the proposition for 'trace_correct []' *)
+(* trace_correct is a predicate *)
 | TCnil : trace_correct []
 | TCApp : forall t i v o, trace_correct t ->
+(* None is the third parameter of interpret. The interpret's result will be compared with (v,o) *)
                      interpret (input_key i)
+					 (* trace_correct accepts an old-to-new trace, but interpret accepts a new-to-old one for the convenience of recursion *)
                                (i :: (rev (inputs_with_key t (input_key i))))
                                None = (v, o) ->
                      trace_correct (t ++ [(i, [Response (input_key i) v o])]).

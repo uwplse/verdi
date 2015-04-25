@@ -6,6 +6,7 @@ module M = Marshal
 let _LOG = "/tmp/verdi-log"
 let _SNAP = "/tmp/verdi-snapshot"
                
+(* wrapper structure for Coq defined structure *)
 module type ARRANGEMENT = sig
   type name
   type state
@@ -35,6 +36,7 @@ module Shim (A: ARRANGEMENT) = struct
       ; usock : file_descr
       ; isock : file_descr
       ; mutable csocks : file_descr list
+      (* outstanding is a collection of sockets *)
       ; outstanding : (int, file_descr) Hashtbl.t
       ; mutable id : int
       ; mutable saves : int
@@ -56,11 +58,12 @@ module Shim (A: ARRANGEMENT) = struct
   let update_state_from_log_entry log nm s =
     let (id, op) = ((M.from_channel log) : int * log_step) in
     (id, (snd (fst (match op with
-                    (* call handleIO, which is a wrapper of coq function input handler *)
+                    (* call handleIO, which is a wrapper of input handler defined in coq *)
                     | LogInput inp -> A.handleIO nm inp s
                     | LogNet (src, m) -> A.handleNet nm src m s
                     | LogTimeout -> A.handleTimeout nm s))))
 
+(* keep update 's' as the state by replaying all actions in the log *)
   let rec restore_from_log log nm id s =
     try
       let (id', s') = update_state_from_log_entry log nm s in
@@ -152,6 +155,7 @@ module Shim (A: ARRANGEMENT) = struct
     env.csocks <- client_sock :: env.csocks
 
   let input_step client_sock env nm s =
+  (* let-binding should be regarded as local variable declaration, and executed once at the place of declaration *)
     let len = 1024 in
     let buf = String.make len '\x00' in
     let _ = recv client_sock buf 0 len [] in
@@ -175,6 +179,7 @@ module Shim (A: ARRANGEMENT) = struct
     let (src, m) = (undenote env from, unpack_msg buf) in
     save env (LogNet (src, m)) s;
     let s' = respond env (A.handleNet nm src m s) in
+    (* a single s' at the last of the function means to return s' *)
     (if A.debug then A.debugRecv s' (src, m)); s'
 
   let timeout_step env nm s =
@@ -189,9 +194,13 @@ module Shim (A: ARRANGEMENT) = struct
       my_select rs ws es t
 
   let rec eloop env nm s =
+  (* get new connection *)
     let (fds, _, _) = my_select (List.append [env.usock; env.isock] env.csocks) [] [] (A.setTimeout nm s) in
     let s' =
+    (* matching decides which action applied on fds *)
       match (List.mem env.isock fds, List.mem env.usock fds, List.filter (fun c -> List.mem c fds) env.csocks) with
+      (* four kinds of action *)
+      (* new_conn will not update state 's', other function will update the state and return it *)
       | (true, _, _) -> new_conn env ; s
       | (_, _, c :: cs) -> input_step c env nm s
       | (_, true, _) -> recv_step env nm s
@@ -203,6 +212,7 @@ module Shim (A: ARRANGEMENT) = struct
     | None -> v
     | Some v' -> v'
 
+  (* nm = number of nodes *)
   let main nm nodes =
     print_endline "running setup";
     let env = setup nm nodes in

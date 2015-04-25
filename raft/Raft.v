@@ -29,11 +29,10 @@ Section Raft.
 
   Definition term := nat.
   Definition logIndex := nat.
-  Definition name := fin N.
+  Definition name := fin N.(* fin N is a type, which is a set of integer 1 2 3 ... N *)
   Definition nodes : list name := all_fin _.
   Definition name_eq_dec : forall x y : name, {x = y} + {x <> y} := fin_eq_dec _.
 
-(* syntax sugars ? *)  
   Notation "a >? b" := (b <? a) (at level 42).
   Notation "a >=? b" := (b <=? a) (at level 42).
   Notation "a == b" := (beq_nat a b) (at level 42).
@@ -58,6 +57,7 @@ Section Raft.
 
   Inductive raft_input : Type :=
   | Timeout : raft_input
+  (* Example: 'ClientRequest 0 XX', a raft_input instance is constructed' *)
   | ClientRequest : nat -> input -> raft_input.
 
   Inductive raft_output : Type :=
@@ -173,7 +173,7 @@ Section Raft.
                  nodes)
     ).
 
-  (* a function *)
+  (* 'definition' can define a function *)
   Definition handleAppendEntries (me : name)
              (state : raft_data) (t : term) (leaderId : name) (prevLogIndex : logIndex)
              (prevLogTerm : term) (entries : list entry) (leaderCommit : logIndex) :=
@@ -557,7 +557,6 @@ Section Raft.
 
   Definition raft_net_invariant_append_entries_reply (P : network -> Prop) :=
     (* xs ys are list of packets *)
-    (* where is the type definition? *)
     forall xs p ys net st' ps' d m t es res,
       handleAppendEntriesReply (pDst p) (nwState net (pDst p)) (pSrc p) t es res = (d, m) ->
       pBody p = AppendEntriesReply t es res ->
@@ -615,7 +614,6 @@ Section Raft.
                              In p (send_packets h ms)) ->
       P (mkNetwork ps' st').
 
-(* use 'with' to assign P with actual value *)
   Lemma raft_invariant_handle_message P :
     forall xs p ys net st' ps' d l,
       raft_net_invariant_append_entries P ->
