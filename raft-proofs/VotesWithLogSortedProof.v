@@ -137,9 +137,8 @@ Section VotesWithLogSorted.
     subst. simpl in *. find_higher_order_rewrite.
     update_destruct.
     - unfold update_elections_data_requestVote in *.
-      repeat break_match; simpl in *; intuition; repeat find_inversion; eauto.
-      erewrite handleRequestVote_log; eauto.
-      eauto using sorted_host_lifted.
+      repeat break_match; simpl in *; intuition; repeat find_inversion; eauto;
+      erewrite handleRequestVote_log; eauto using sorted_host_lifted.
     - eauto.
   Qed.
 

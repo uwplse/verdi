@@ -60,9 +60,10 @@ Section SpecLemmas.
        l' = log st').
   Proof.
     unfold update_elections_data_requestVote.
-    intros. repeat break_match; repeat tuple_inversion; intuition.
-    simpl in *. intuition.
-    tuple_inversion. intuition.
+    intros.
+    repeat break_match; repeat tuple_inversion; intuition;
+    simpl in *; intuition;
+    tuple_inversion; intuition.
   Qed.
 
   Lemma votesWithLog_update_elections_data_request_vote_reply :

@@ -220,37 +220,108 @@ Section CroniesCorrectProof.
       simpl in *; subst; intuition.
   Qed.
 
+  Lemma update_elections_data_requestVote_cronies :
+    forall h h' t h'' lli llt st,
+      cronies (update_elections_data_requestVote h h' t h'' lli llt st) =
+      cronies (fst st).
+  Proof.
+    intros.
+    unfold update_elections_data_requestVote in *.
+    repeat break_match; simpl in *; auto.
+  Qed.
+
+  Lemma handleRequestVote_votesReceived :
+    forall h st t h' lli llt st' m,
+      handleRequestVote h st t h' lli llt = (st', m) ->
+      votesReceived st' = votesReceived st.
+  Proof.
+    intros. unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; auto.
+  Qed.
+
+  Lemma handleRequestVote_currentTerm_same_or_follower :
+    forall h st t h' lli llt st' m,
+      handleRequestVote h st t h' lli llt = (st', m) ->
+      (currentTerm st' = currentTerm st /\ type st' = type st) \/
+      type st' = Follower.
+  Proof.
+    intros. unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; auto.
+  Qed.
+
+  Lemma update_elections_data_requestVote_votes_preserved :
+    forall t c h h' t' h'' lli llt st,
+      In (t, c) (votes (fst st)) ->
+      In (t, c)
+         (votes (update_elections_data_requestVote h h' t' h'' lli llt st)).
+  Proof.
+    intros.
+    unfold update_elections_data_requestVote.
+    repeat break_match; simpl in *; intuition.
+  Qed.
+
+  Lemma update_elections_data_requestVote_votedFor :
+    forall h h' t lli llt st st' m,
+      handleRequestVote h (snd st) t h' lli llt = (st', m) ->
+      votedFor st' = Some h' ->
+      In (currentTerm st', h')
+         (votes (update_elections_data_requestVote h h' t h' lli llt st)) \/
+      (votedFor st' = votedFor (snd st) /\
+       currentTerm st' = currentTerm (snd st)).
+  Proof.
+    intros.
+    unfold update_elections_data_requestVote in *.
+    repeat break_match; simpl in *;
+    repeat (repeat find_inversion; repeat find_rewrite);
+    repeat (do_bool; break_and); try congruence; intuition.
+  Qed.
+  
   Lemma cronies_correct_request_vote :
     refined_raft_net_invariant_request_vote cronies_correct.
   Proof.
     unfold refined_raft_net_invariant_request_vote. intros.
     unfold cronies_correct in *; intuition.
-    - unfold votes_received_cronies, handleRequestVote,
-      advanceCurrentTerm,
-      update_elections_data_requestVote in *.
-      intros. simpl in *.
-      repeat break_match; repeat find_inversion; subst; simpl in *; eauto;
-      repeat find_higher_order_rewrite; repeat (break_if; simpl in *); intuition; congruence.
-    - unfold update_elections_data_requestVote, cronies_votes in *. intros.
-      simpl in *. repeat break_let. subst. repeat find_higher_order_rewrite.
-      repeat break_match; simpl in *; subst; intuition eauto.
-    - unfold update_elections_data_requestVote, votes_nw in *. intros.
+    - unfold votes_received_cronies in *.
+      intros. simpl in *. subst.
+      repeat find_higher_order_rewrite. break_if; simpl in *; subst; eauto.
+      rewrite update_elections_data_requestVote_cronies.
+      find_copy_apply_lem_hyp handleRequestVote_votesReceived. repeat find_rewrite.
+      find_apply_lem_hyp handleRequestVote_currentTerm_same_or_follower.
+      match goal with
+        | H : currentTerm _ = currentTerm _ /\ _ \/ _ |- _ =>
+          destruct H
+      end; try break_and; repeat find_rewrite; eauto. intuition; congruence.
+    - unfold cronies_votes in *. intros.
       simpl in *.
-      repeat break_let. subst. repeat find_higher_order_rewrite.
+      repeat find_higher_order_rewrite.
+      repeat break_if; subst; simpl in *; eauto;
+      try rewrite update_elections_data_requestVote_cronies in *;
+      eauto using update_elections_data_requestVote_votes_preserved.
+    - unfold votes_nw in *. intros.
+      simpl in *.
+      subst. repeat find_higher_order_rewrite.
       find_apply_hyp_hyp. intuition.
       + assert (In p0 (nwPackets net)) by (repeat find_rewrite; in_crush).
-        repeat break_match; simpl in *;
-        repeat find_reverse_rewrite; intuition eauto.
+        simpl.
+        break_if; simpl in *; eauto.
+        eapply update_elections_data_requestVote_votes_preserved.
+        repeat find_reverse_rewrite. eauto.
       + unfold raft_data in *. repeat find_rewrite. repeat find_inversion.
         repeat (subst; simpl in *).
-        find_apply_lem_hyp handleRequestVote_true_votedFor. intuition.
-        repeat find_rewrite. repeat break_match; intuition.
-        simpl in *. intuition.
+        find_copy_apply_lem_hyp handleRequestVote_true_votedFor. intuition.
+        repeat find_rewrite. simpl in *.
+        break_if; simpl in *; try congruence.
+        subst.
+        find_apply_lem_hyp update_elections_data_requestVote_votedFor; intuition.
+        repeat find_rewrite.
+        apply update_elections_data_requestVote_votes_preserved.
+        eapply votes_correct_invariant; eauto.
     - unfold votes_received_leaders in *. intros. simpl in *.
       repeat find_higher_order_rewrite. repeat break_if; eauto.
       subst. simpl in *.
-      unfold handleRequestVote, advanceCurrentTerm, update_elections_data_requestVote in *.
-      repeat (break_match; subst; simpl in *; try discriminate; try find_inversion); eauto.
+      find_copy_apply_lem_hyp handleRequestVote_votesReceived.
+      find_apply_lem_hyp handleRequestVote_currentTerm_same_or_follower.
+      intuition; repeat find_rewrite; try congruence; eauto.
   Qed.
 
   Lemma handleRequestVoteReply_candidate :
