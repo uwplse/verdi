@@ -30,15 +30,15 @@ Section RaftRefinementInterface.
     let (st', r) :=
         handleRequestVote me (snd st) t candidateId lastLogIndex lastLogTerm
     in
-    match (votedFor (snd st), votedFor st') with
-      | (None, Some cid) =>
+    match (votedFor st') with
+      | Some cid =>
         {| votes := (currentTerm st', cid) :: votes (fst st) ;
            votesWithLog := (currentTerm st', cid, log st') :: votesWithLog (fst st) ;
            cronies := cronies (fst st) ;
            leaderLogs := leaderLogs (fst st) ;
            allEntries := allEntries (fst st)
         |}
-      | _ => fst st
+      | None => fst st
     end.
 
   Definition update_elections_data_requestVoteReply (me : name) (src : name) t voteGranted st :=
