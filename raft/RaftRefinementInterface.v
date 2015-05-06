@@ -115,19 +115,22 @@ Section RaftRefinementInterface.
     let '(_, st', _) := handleTimeout me (snd st) in
     match (votedFor st') with
       | Some cid =>
-        {| votes := (currentTerm st', cid) :: votes (fst st) ;
-           votesWithLog := (currentTerm st', cid, log st') :: votesWithLog (fst st) ;
-           cronies :=
-             if serverType_eq_dec (type st') Candidate then
-               fun tm => (if eq_nat_dec tm (currentTerm st') then
-                           votesReceived st'
-                         else
-                           cronies (fst st) tm)
-             else
-               cronies (fst st) ;
-           leaderLogs := leaderLogs (fst st) ;
-           allEntries := allEntries (fst st)
-        |}
+        if serverType_eq_dec (type (snd st)) Leader then
+          fst st
+        else
+          {| votes := (currentTerm st', cid) :: votes (fst st) ;
+             votesWithLog := (currentTerm st', cid, log st') :: votesWithLog (fst st) ;
+             cronies :=
+               if serverType_eq_dec (type st') Candidate then
+                 fun tm => (if eq_nat_dec tm (currentTerm st') then
+                             votesReceived st'
+                           else
+                             cronies (fst st) tm)
+               else
+                 cronies (fst st) ;
+             leaderLogs := leaderLogs (fst st) ;
+             allEntries := allEntries (fst st)
+          |}
       | None => fst st
     end.
 
