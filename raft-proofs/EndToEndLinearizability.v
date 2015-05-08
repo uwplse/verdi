@@ -183,6 +183,9 @@ Require Import TermsAndIndicesFromOneProof.
 Require Import CandidateTermGtLogInterface.
 Require Import CandidateTermGtLogProof.
 
+Require Import VotesVotesWithLogCorrespondInterface.
+Require Import VotesVotesWithLogCorrespondProof.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -241,6 +244,7 @@ Hint Extern 4 (@current_term_gt_zero_interface _ _ _) => apply ctgzi : typeclass
 Hint Extern 4 (@terms_and_indices_from_one_log_interface _ _ _) => apply taifoli : typeclass_instances.
 Hint Extern 4 (@terms_and_indices_from_one_interface _ _ _) => apply taifoi : typeclass_instances.
 Hint Extern 4 (@candidate_term_gt_log_interface _ _ _) => apply ctgli : typeclass_instances.
+Hint Extern 4 (@votes_votesWithLog_correspond_interface _ _ _) => apply vvci : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
