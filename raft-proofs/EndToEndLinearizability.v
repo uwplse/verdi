@@ -87,6 +87,13 @@ Require Import CommitRecordedCommittedInterface.
 Require Import LeaderLogsTermSanityInterface.
 Require Import LeaderLogsTermSanityProof.
 
+
+Require Import AllEntriesTermSanityInterface.
+Require Import AllEntriesTermSanityProof.
+
+Require Import VotesWithLogTermSanityInterface.
+Require Import VotesWithLogTermSanityProof.
+
 Require Import LeaderLogsPreservedInterface.
 Require Import LeaderLogsPreservedProof.
 
@@ -213,6 +220,8 @@ Hint Extern 4 (@leader_completeness_interface _ _ _) => apply lci : typeclass_in
 Hint Extern 4 (@all_entries_leader_logs_interface _ _ _) => apply aelli : typeclass_instances.
 Hint Extern 4 (@commit_recorded_committed_interface _ _ _) => apply crci : typeclass_instances.
 Hint Extern 4 (@leaderLogs_term_sanity_interface _ _ _) => apply lltsi : typeclass_instances.
+Hint Extern 4 (@allEntries_term_sanity_interface _ _ _) => apply aetsi : typeclass_instances.
+Hint Extern 4 (@votesWithLog_term_sanity_interface _ _ _) => apply vwltsi : typeclass_instances.
 Hint Extern 4 (@leaderLogs_preserved_interface _ _ _) => apply llpi : typeclass_instances.
 Hint Extern 4 (@prefix_within_term_interface _ _ _) => apply pwti : typeclass_instances.
 Hint Extern 4 (@every_entry_was_created_interface _ _ _) => apply eewci : typeclass_instances.
