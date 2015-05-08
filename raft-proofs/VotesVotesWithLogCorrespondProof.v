@@ -30,6 +30,5 @@ Section VotesVotesWithLogCorrespond.
 
   Instance vvci : votes_votesWithLog_correspond_interface.
   Proof.
-    admit.
-  Qed.
+  Admitted.
 End VotesVotesWithLogCorrespond.
