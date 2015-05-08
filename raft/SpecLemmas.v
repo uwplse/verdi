@@ -104,18 +104,38 @@ Section SpecLemmas.
     unfold advanceCurrentTerm. break_if; simpl in *; auto.
   Qed.
 
+  Lemma some_none :
+    forall A (x : A),
+      Some x = None -> False.
+  Proof.
+    congruence.
+  Qed.
+
+  Lemma advanceCurrentTerm_term :
+    forall st t,
+      currentTerm st <= t ->
+      currentTerm (advanceCurrentTerm st t) = t.
+  Proof.
+    intros. unfold advanceCurrentTerm in *.
+    break_if; do_bool; intuition.
+  Qed.
+    
   Theorem handleAppendEntries_log_detailed :
     forall h st t n pli plt es ci st' ps,
       handleAppendEntries h st t n pli plt es ci = (st', ps) ->
       (commitIndex st' = commitIndex st /\ log st' = log st) \/
-      (commitIndex st' = max (commitIndex st) (min ci (maxIndex es)) /\
+      (leaderId st' <> None /\
+       currentTerm st' = t /\
+       commitIndex st' = max (commitIndex st) (min ci (maxIndex es)) /\
        es <> nil /\
        pli = 0 /\ t >= currentTerm st /\ log st' = es /\
        (findAtIndex (log st) (maxIndex es) = None \/
         exists e,
           findAtIndex (log st) (maxIndex es) = Some e /\
           eTerm e <> maxTerm es)) \/
-      (commitIndex st' = max (commitIndex st)
+      (leaderId st' <> None /\
+       currentTerm st' = t /\
+       commitIndex st' = max (commitIndex st)
                              (min ci (maxIndex (es ++ (removeAfterIndex (log st) pli)))) /\
        es <> nil /\
         exists e,
@@ -134,7 +154,8 @@ Section SpecLemmas.
     break_if;
       [do_bool; break_if; find_inversion; subst;
         try find_apply_lem_hyp haveNewEntries_true;
-        simpl in *; intuition eauto using advanceCurrentTerm_log, advanceCurrentTerm_commitIndex|].
+        simpl in *; intuition eauto using advanceCurrentTerm_log, advanceCurrentTerm_commitIndex, some_none, advanceCurrentTerm_term|].
+    simpl in *. intuition eauto using advanceCurrentTerm_log, advanceCurrentTerm_commitIndex.
     break_match; [|find_inversion; subst; eauto].
     break_if; [find_inversion; subst; eauto|].
     break_if; [|find_inversion; subst; eauto using advanceCurrentTerm_log, advanceCurrentTerm_commitIndex].
@@ -142,9 +163,39 @@ Section SpecLemmas.
     right. right.
     find_apply_lem_hyp findAtIndex_elim.
     intuition; do_bool; find_apply_lem_hyp haveNewEntries_true;
-    intuition eauto.
+    intuition eauto using advanceCurrentTerm_term; congruence.
   Qed.
 
+  Lemma advanceCurrentTerm_currentTerm_leaderId :
+    forall st t,
+      currentTerm st < currentTerm (advanceCurrentTerm st t) \/
+      leaderId (advanceCurrentTerm st t) = leaderId st.
+  Proof.
+    intros.
+    unfold advanceCurrentTerm in *.
+    break_if; simpl in *; do_bool; auto.
+  Qed.
+
+  
+  Lemma advanceCurrentTerm_currentTerm :
+    forall st t,
+      currentTerm st <= currentTerm (advanceCurrentTerm st t).
+  Proof.
+    intros. unfold advanceCurrentTerm in *.
+    break_if; simpl in *; do_bool; omega.
+  Qed.
+
+  Theorem handleAppendEntries_currentTerm_leaderId :
+    forall h st t n pli plt es ci st' ps,
+      handleAppendEntries h st t n pli plt es ci = (st', ps) ->
+      currentTerm st < currentTerm st' \/
+      (currentTerm st <= currentTerm st' /\ (leaderId st' = leaderId st \/ leaderId st' <> None)).
+  Proof.
+    intros. unfold handleAppendEntries in *.
+    repeat break_match; find_inversion; simpl in *; auto; right;
+    intuition eauto using advanceCurrentTerm_currentTerm; right; congruence.
+  Qed.
+  
   Theorem handleClientRequest_log :
     forall h st client id c out st' ps,
       handleClientRequest h st client id c = (out, st', ps) ->

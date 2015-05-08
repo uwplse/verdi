@@ -22,6 +22,10 @@ Require Import LeaderLogsContiguousInterface.
 Require Import OneLeaderLogPerTermInterface.
 Require Import LeaderLogsSortedInterface.
 Require Import TermSanityInterface.
+Require Import AllEntriesTermSanityInterface.
+Require Import VotesWithLogTermSanityInterface.
+Require Import VotesCorrectInterface.
+Require Import VotesVotesWithLogCorrespondInterface.
 
 Section AllEntriesVotesWithLog.
 
@@ -38,6 +42,10 @@ Section AllEntriesVotesWithLog.
   Context {llsi : leaderLogs_sorted_interface}.
   Context {tsi : term_sanity_interface}.
   Context {rri : raft_refinement_interface}.
+  Context {aetsi : allEntries_term_sanity_interface}.
+  Context {vwltsi : votesWithLog_term_sanity_interface}.
+  Context {vvwlci : votes_votesWithLog_correspond_interface}.
+  Context {vci : votes_correct_interface}.
   
   Definition allEntries_log (net : network) : Prop :=
     forall t e h,
@@ -45,9 +53,10 @@ Section AllEntriesVotesWithLog.
       In e (log (snd (nwState net h))) \/
       (exists t' leader ll,
          In (t', ll) (leaderLogs (fst (nwState net leader))) /\
-         t < t' /\
-         ~ In e ll).
-
+         t < t' <= currentTerm (snd (nwState net h)) /\
+         ~ In e ll /\
+         (leaderId (snd (nwState net h)) <> None
+          \/ t' < currentTerm (snd (nwState net h)))).
 
   (* strategy : prove allEntries_log as inductive invariant, then
      prove allEntries_leaderLogs inductive from that *)
@@ -85,6 +94,30 @@ Section AllEntriesVotesWithLog.
     find_apply_lem_hyp no_entries_past_current_term_invariant; eauto.
   Qed.
   
+(** Succeed iff [x] is in the list [ls], represented with left-associated nested tuples. *)
+Ltac inList x ls :=
+  match ls with
+    | x => idtac
+    | (_, x) => idtac
+    | (?LS, _) => inList x LS
+  end.
+
+(** Try calling tactic function [f] on every element of tupled list [ls], keeping the first call not to fail. *)
+Ltac app f ls :=
+  match ls with
+    | (?LS, ?X) => f X || app f LS || fail 1
+    | _ => f ls
+  end.
+
+(** Run [f] on every element of [ls], not just the first that doesn't fail. *)
+Ltac all f ls :=
+  match ls with
+    | (?LS, ?X) => f X; all f LS
+    | (_, _) => fail 1
+    | _ => f ls
+  end.
+
+
   Lemma appendEntries_haveNewEntries_false :
     forall net p t n pli plt es ci h e,
       refined_raft_intermediate_reachable net ->
@@ -109,14 +142,7 @@ Section AllEntriesVotesWithLog.
     repeat find_rewrite.
     find_eapply_lem_hyp entries_match_nw_host_invariant; eauto.
   Qed.
-
-  Lemma allEntries_term_sanity_invariant :
-    forall net t e h,
-      refined_raft_intermediate_reachable net ->
-      In (t, e) (allEntries (fst (nwState net h))) ->
-      t <= currentTerm (snd (nwState net h)).
-  Admitted.
-
+  
   Lemma maxIndex_le :
     forall l1 l2,
       sorted l1 ->
@@ -312,17 +338,19 @@ Section AllEntriesVotesWithLog.
     intuition;
       [|repeat find_rewrite;
          find_eapply_lem_hyp appendEntries_haveNewEntries_false; eauto].
-    find_copy_apply_hyp_hyp.
-    intuition; [|right; break_exists_exists; intuition;
-                 repeat find_higher_order_rewrite;
-                 destruct_update; simpl in *;
-                 eauto; rewrite update_elections_data_appendEntries_leaderLogs; eauto].
+    find_copy_apply_hyp_hyp. intuition;
+      [|right; break_exists_exists; intuition;
+        repeat find_higher_order_rewrite; destruct_update; simpl in *; eauto;
+        try rewrite update_elections_data_appendEntries_leaderLogs; eauto; subst;
+        find_apply_lem_hyp handleAppendEntries_currentTerm_leaderId; intuition;
+        repeat find_rewrite; auto].
     destruct (in_dec entry_eq_dec e (log d)); intuition.
     right.
-    find_apply_lem_hyp handleAppendEntries_log_detailed. intuition; repeat find_rewrite; intuition.
+    find_copy_apply_lem_hyp handleAppendEntries_log_detailed.
+    intuition; repeat find_rewrite; intuition.
     - subst.
       find_copy_eapply_lem_hyp allEntries_term_sanity_invariant; eauto.
-      destruct (lt_eq_lt_dec t0 t); intuition; unfold ghost_data in *; simpl in *; try omega.
+      destruct (lt_eq_lt_dec t0 (currentTerm d)); intuition; unfold ghost_data in *; simpl in *; try omega.
       + find_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
         break_exists. break_and.
         match goal with
@@ -333,11 +361,10 @@ Section AllEntriesVotesWithLog.
           [repeat find_higher_order_rewrite;
             destruct_update; simpl in *;
             eauto; rewrite update_elections_data_appendEntries_leaderLogs; eauto|];
-          split; auto.
-        intuition;
+          split; auto; intuition;
           [break_exists; intuition;
            find_eapply_lem_hyp leaderLogs_contiguous_invariant; eauto; omega|].
-        subst. repeat find_rewrite. intuition.
+          subst. repeat find_rewrite. intuition.
       + subst.
         find_eapply_lem_hyp allEntries_leaderLogs_term_invariant; eauto. intuition.
         * subst. exfalso.
@@ -347,6 +374,7 @@ Section AllEntriesVotesWithLog.
           [break_exists; intuition;
            find_eapply_lem_hyp leaderLogs_contiguous_invariant; eauto; omega|].
           subst. clean.
+          repeat find_rewrite.
           find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto;
           conclude_using eauto. subst.
           match goal with
@@ -396,7 +424,7 @@ Section AllEntriesVotesWithLog.
           repeat find_rewrite. apply in_app_iff; intuition.
     - subst.
       find_copy_eapply_lem_hyp allEntries_term_sanity_invariant; eauto.
-      destruct (lt_eq_lt_dec t0 t); intuition; unfold ghost_data in *; simpl in *; try omega.
+      destruct (lt_eq_lt_dec t0 (currentTerm d)); intuition; unfold ghost_data in *; simpl in *; try omega.
       + find_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
         break_exists. break_and.
         match goal with
@@ -421,6 +449,7 @@ Section AllEntriesVotesWithLog.
             [break_exists; intuition;
              find_eapply_lem_hyp leaderLogs_contiguous_invariant; eauto; omega|].
             subst. clean.
+            repeat find_rewrite.
             find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto;
             conclude_using eauto. subst.
             match goal with
@@ -549,6 +578,7 @@ Section AllEntriesVotesWithLog.
             find_copy_eapply_lem_hyp logs_leaderLogs_invariant; eauto.
             find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
             break_exists. break_and.
+            repeat find_rewrite.
             find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto.
             conclude_using eauto. subst. intuition.
             - repeat find_rewrite.
@@ -688,8 +718,8 @@ Section AllEntriesVotesWithLog.
                   end. intuition.
           }
         * { exfalso.
-            find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
-            break_exists; intuition. subst.
+            find_copy_apply_lem_hyp append_entries_leaderLogs_invariant; eauto.
+            break_exists; intuition.
             copy_eapply_prop_hyp append_entries_leaderLogs pBody; eauto.
             break_exists; break_and.
             subst. 
@@ -765,6 +795,7 @@ Section AllEntriesVotesWithLog.
             find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
             break_exists. break_and.
             find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto.
+            repeat find_rewrite.
             conclude_using eauto. subst.
             find_eapply_lem_hyp le_antisym; eauto.
             destruct x1.
@@ -791,12 +822,12 @@ Section AllEntriesVotesWithLog.
               end. conclude_using auto.
               repeat find_rewrite.
               find_apply_lem_hyp findAtIndex_elim. break_and.
-              find_eapply_lem_hyp term_ne_in_l2; eauto.
+              find_eapply_lem_hyp term_ne_in_l2. Focus 7. eauto. all:eauto.
               all:try solve [eapply entries_sorted_invariant; eauto].
               all:try solve [intros; find_eapply_lem_hyp no_entries_past_current_term_host_lifted_invariant; unfold ghost_data, raft_data in *; simpl in *;
                              unfold ghost_data, raft_data in *; simpl in *;
                              repeat find_rewrite; eauto].
-              assert (eIndex e0 <= maxIndex x4) by
+              assert (eIndex e0 <= maxIndex x4) by 
                   (repeat find_rewrite;
                    eapply maxIndex_is_max; eauto;
                    eapply leaderLogs_sorted_invariant; eauto).
@@ -814,7 +845,7 @@ Section AllEntriesVotesWithLog.
                 destruct x4; simpl in *; congruence.
           }
         * { exfalso.
-            find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
+            find_copy_apply_lem_hyp append_entries_leaderLogs_invariant; eauto.
             break_exists; intuition. subst.
             copy_eapply_prop_hyp append_entries_leaderLogs pBody; eauto.
             break_exists; break_and.
@@ -840,7 +871,629 @@ Section AllEntriesVotesWithLog.
             - subst. intuition.
           }
   Qed.
+
+  Lemma handleAppendEntriesReply_currentTerm_leaderId :
+    forall h st h' t es res st' m,
+      handleAppendEntriesReply h st h' t es res = (st', m) ->
+      currentTerm st < currentTerm st' \/
+      (currentTerm st = currentTerm st' /\ leaderId st' = leaderId st).
+  Proof.
+    intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat (break_match; try find_inversion; simpl in *; auto).
+    do_bool. auto.
+  Qed.
+
+  Lemma allEntries_log_append_entries_reply :
+    refined_raft_net_invariant_append_entries_reply allEntries_log.
+  Proof.
+    red. unfold allEntries_log in *. intros. simpl in *.
+    repeat find_higher_order_rewrite.
+    find_copy_apply_lem_hyp handleAppendEntriesReply_log.
+    find_apply_lem_hyp handleAppendEntriesReply_currentTerm_leaderId.
+    destruct_update; simpl in *; eauto; find_apply_hyp_hyp; repeat find_rewrite; intuition;
+    right; break_exists_exists; repeat find_rewrite; intuition;
+    find_higher_order_rewrite;
+    destruct_update; simpl in *; auto.
+  Qed.
+
+  Lemma update_elections_data_requestVote_leaderLogs :
+    forall h h' t lli llt st,
+      leaderLogs (update_elections_data_requestVote h h' t h' lli llt st) =
+      leaderLogs (fst st).
+  Proof.
+    unfold update_elections_data_requestVote.
+    intros.
+    repeat break_match; auto.
+  Qed.
+
+  Lemma update_elections_data_requestVoteReply_leaderLogs :
+    forall h h' t  st t' ll' r,
+      In (t', ll') (leaderLogs (fst st)) ->
+      In (t', ll') (leaderLogs (update_elections_data_requestVoteReply h h' t r st)).
+  Proof.
+    unfold update_elections_data_requestVoteReply.
+    intros.
+    repeat break_match; auto.
+    simpl in *. intuition.
+  Qed.
+
+
+  Lemma handleRequestVote_currentTerm_leaderId :
+    forall h st t c li lt st' m,
+      handleRequestVote h st t c li lt = (st', m) ->
+      currentTerm st < currentTerm st' \/
+      (currentTerm st = currentTerm st' /\ leaderId st' = leaderId st).
+  Proof.
+    intros. unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat (break_match; try find_inversion; simpl in *; auto);
+    do_bool; auto.
+  Qed.
   
+  Lemma allEntries_log_request_vote :
+    refined_raft_net_invariant_request_vote allEntries_log.
+  Proof.
+    red. unfold allEntries_log in *. intros. simpl in *.
+    repeat find_higher_order_rewrite.
+    find_copy_apply_lem_hyp handleRequestVote_log.
+    find_apply_lem_hyp handleRequestVote_currentTerm_leaderId.
+    destruct_update; simpl in *; eauto;
+    try find_rewrite_lem update_elections_data_requestVote_allEntries;
+    find_apply_hyp_hyp; repeat find_rewrite; intuition;
+    right; break_exists_exists; intuition; repeat find_higher_order_rewrite;
+    destruct_update; simpl in *; auto;
+    rewrite update_elections_data_requestVote_leaderLogs; auto.
+  Qed.
+
+  Lemma handleRequestVoteReply_log' :
+    forall h st h' t r,
+      log (handleRequestVoteReply h st h' t r) = log st.
+  Proof.
+    eauto using handleRequestVoteReply_log.
+  Qed.
+
+
+  Lemma handleRequestVoteReply_currentTerm_leaderId :
+    forall h st h' t r st',
+      handleRequestVoteReply h st h' t r = st' ->
+      currentTerm st < currentTerm st' \/
+      currentTerm st' = currentTerm st /\
+      leaderId st' = leaderId st.
+  Proof.
+    intros. unfold handleRequestVoteReply, advanceCurrentTerm in *.
+    subst.
+    repeat (break_match; try find_inversion; simpl in *; auto);
+    do_bool; auto.
+  Qed.
+  
+  Lemma allEntries_log_request_vote_reply :
+    refined_raft_net_invariant_request_vote_reply allEntries_log.
+  Proof.
+    red. unfold allEntries_log in *. intros. simpl in *.
+    find_copy_apply_lem_hyp handleRequestVoteReply_currentTerm_leaderId.
+    repeat find_higher_order_rewrite.
+    destruct_update; simpl in *; eauto;
+    try rewrite handleRequestVoteReply_log';
+    try find_rewrite_lem update_elections_data_requestVoteReply_allEntries;
+    find_apply_hyp_hyp; repeat find_rewrite; intuition;
+    right; break_exists_exists; repeat find_rewrite; intuition;
+    find_higher_order_rewrite;
+    destruct_update; simpl in *; auto;
+    apply update_elections_data_requestVoteReply_leaderLogs; auto.
+  Qed.
+
+  Lemma update_elections_data_client_request_allEntries' :
+    forall h st client id c out st' ms t e,
+      handleClientRequest h (snd st) client id c = (out, st', ms) ->
+      In (t, e) (allEntries (update_elections_data_client_request h st client id c)) ->
+      In (t, e) (allEntries (fst st)) \/
+      In e (log st').
+  Proof.
+    intros.
+    unfold update_elections_data_client_request in *.
+    repeat break_match; repeat find_inversion; auto.
+    simpl in *. intuition.
+    find_inversion. repeat find_rewrite. intuition.
+  Qed.
+
+  Lemma handleClientRequest_currentTerm_leaderId :
+    forall h st client id c out st' ms,
+      handleClientRequest h st client id c = (out, st', ms) ->
+      currentTerm st' = currentTerm st /\
+      leaderId st' = leaderId st.
+  Proof.
+    intros. unfold handleClientRequest in *.
+    subst.
+    break_match; try find_inversion; simpl in *; auto.
+  Qed.
+  
+  Lemma allEntries_log_client_request :
+    refined_raft_net_invariant_client_request allEntries_log.
+  Proof.
+    red. unfold allEntries_log in *. intros. simpl in *.
+    repeat find_higher_order_rewrite.
+    destruct_update; simpl in *;
+    try (find_eapply_lem_hyp update_elections_data_client_request_allEntries'; eauto; [idtac]);
+    intuition;
+    find_copy_apply_lem_hyp handleClientRequest_log;
+    find_apply_lem_hyp handleClientRequest_currentTerm_leaderId;
+    intuition;
+    try break_exists; intuition; repeat find_rewrite; intuition; simpl in *;
+    find_apply_hyp_hyp; intuition; repeat right;
+    break_exists_exists; intuition;
+    repeat find_higher_order_rewrite;
+    destruct_update; simpl in *; auto;
+    rewrite update_elections_data_client_request_leaderLogs; auto.
+  Qed.
+
+  Lemma handleTimeout_currentTerm_leaderId :
+    forall h st out st' ms,
+      handleTimeout h st = (out, st', ms) ->
+      currentTerm st < currentTerm st' \/
+      currentTerm st' = currentTerm st /\ leaderId st' = leaderId st.
+  Proof.
+    intros. unfold handleTimeout, tryToBecomeLeader in *.
+    subst.
+    break_match; try find_inversion; simpl in *; auto.
+  Qed.
+  
+  Lemma allEntries_log_timeout :
+    refined_raft_net_invariant_timeout allEntries_log.
+  Proof.
+    red. unfold allEntries_log in *. intros. simpl in *.
+    repeat find_higher_order_rewrite.
+    destruct_update; simpl in *;
+    try find_rewrite_lem update_elections_data_timeout_allEntries;
+    find_copy_apply_lem_hyp handleTimeout_log_same;
+    find_apply_lem_hyp handleTimeout_currentTerm_leaderId;
+    repeat find_rewrite;
+    find_apply_hyp_hyp; intuition;
+    right; break_exists_exists; intuition;
+    repeat find_higher_order_rewrite;
+    destruct_update; simpl in *; auto;
+    rewrite update_elections_data_timeout_leaderLogs; auto.
+  Qed.
+
+  Lemma doLeader_currentTerm_leaderId :
+    forall st h out st' m,
+      doLeader st h = (out, st', m) ->
+      currentTerm st' = currentTerm st /\
+      leaderId st' = leaderId st.
+  Proof.
+    intros. unfold doLeader, advanceCommitIndex in *.
+    repeat break_match; find_inversion; simpl in *; auto.
+  Qed.
+  
+  Lemma allEntries_log_do_leader :
+    refined_raft_net_invariant_do_leader allEntries_log.
+  Proof.
+    red. unfold allEntries_log in *. intros. simpl in *.
+    match goal with
+      | H : nwState ?net ?h = (?gd, ?d) |- _ =>
+        replace gd with (fst (nwState net h)) in * by (rewrite H; reflexivity);
+          replace d with (snd (nwState net h)) in * by (rewrite H; reflexivity);
+          clear H
+    end.
+    repeat find_higher_order_rewrite.
+    find_copy_apply_lem_hyp doLeader_log.
+    find_apply_lem_hyp doLeader_currentTerm_leaderId.
+    destruct_update; simpl in *; eauto; find_apply_hyp_hyp; repeat find_rewrite; intuition;
+    right; break_exists_exists; intuition; find_higher_order_rewrite;
+    destruct_update; simpl in *; auto.
+  Qed.
+
+
+  Lemma doGenericServer_currentTerm_leaderId :
+    forall st h out st' m,
+      doGenericServer h st = (out, st', m) ->
+      currentTerm st' = currentTerm st /\
+      leaderId st' = leaderId st.
+  Proof.
+    intros. unfold doGenericServer in *.
+    repeat break_match; find_inversion;
+    use_applyEntries_spec; subst; simpl in *;
+    auto.
+  Qed.
+  
+  Lemma allEntries_log_do_generic_server :
+    refined_raft_net_invariant_do_generic_server allEntries_log.
+  Proof.
+    red. unfold allEntries_log in *. intros. simpl in *.
+    match goal with
+      | H : nwState ?net ?h = (?gd, ?d) |- _ =>
+        replace gd with (fst (nwState net h)) in * by (rewrite H; reflexivity);
+          replace d with (snd (nwState net h)) in * by (rewrite H; reflexivity);
+          clear H
+    end.
+    repeat find_higher_order_rewrite.
+    find_copy_apply_lem_hyp doGenericServer_log.
+    find_apply_lem_hyp doGenericServer_currentTerm_leaderId.
+    destruct_update; simpl in *; eauto; find_apply_hyp_hyp; repeat find_rewrite; intuition;
+    right; break_exists_exists; intuition; find_higher_order_rewrite;
+    destruct_update; simpl in *; auto.
+  Qed.
+
+  Lemma allEntries_log_init :
+    refined_raft_net_invariant_init allEntries_log.
+  Proof.
+    red. unfold allEntries_log. intros. simpl in *. intuition.
+  Qed.
+
+  Lemma allEntries_log_state_same_packet_subset :
+    refined_raft_net_invariant_state_same_packet_subset allEntries_log.
+  Proof.
+    red. unfold allEntries_log in *. intros.
+    repeat find_reverse_higher_order_rewrite.
+    find_apply_hyp_hyp. intuition. right.
+    break_exists_exists. repeat find_higher_order_rewrite. auto.
+  Qed.
+
+  Lemma allEntries_log_reboot :
+    refined_raft_net_invariant_reboot allEntries_log.
+  Proof.
+    red. unfold allEntries_log in *. intros. simpl in *.
+    match goal with
+      | H : nwState ?net ?h = (?gd, ?d) |- _ =>
+        replace gd with (fst (nwState net h)) in * by (rewrite H; reflexivity);
+          replace d with (snd (nwState net h)) in * by (rewrite H; reflexivity);
+          clear H
+    end.
+    repeat find_higher_order_rewrite.
+    subst. unfold reboot in *.
+    destruct_update; simpl in *; eauto; find_apply_hyp_hyp; repeat find_rewrite; intuition;
+    right; break_exists_exists; intuition; find_higher_order_rewrite;
+    destruct_update; simpl in *; auto.
+  Qed.
+
+  Lemma allEntries_log_invariant :
+    forall net,
+      refined_raft_intermediate_reachable net ->
+      allEntries_log net.
+  Proof.
+    intros. apply refined_raft_net_invariant; auto.
+    - exact allEntries_log_init.
+    - exact allEntries_log_client_request.
+    - exact allEntries_log_timeout.
+    - exact allEntries_log_append_entries.
+    - exact allEntries_log_append_entries_reply.
+    - exact allEntries_log_request_vote.
+    - exact allEntries_log_request_vote_reply.
+    - exact allEntries_log_do_leader.
+    - exact allEntries_log_do_generic_server.
+    - exact allEntries_log_state_same_packet_subset.
+    - exact allEntries_log_reboot.
+  Qed.
+
+  Lemma update_elections_data_appendEntries_allEntries' :
+    forall h st t h' pli plt es ci t' e,
+      In (t', e) (allEntries (update_elections_data_appendEntries h st t h' pli plt es ci)) ->
+      In (t', e) (allEntries (fst st)) \/ currentTerm (snd st) <= t'.
+  Proof.
+    intros. unfold update_elections_data_appendEntries in *.
+    repeat break_match; auto. simpl in *.
+    do_in_app. intuition. do_in_map. find_inversion.
+    right.
+    unfold handleAppendEntries in *.
+    repeat break_match; find_inversion; simpl in *; do_bool; auto.
+  Qed.
+
+  Lemma allEntries_votesWithLog_append_entries :
+    refined_raft_net_invariant_append_entries allEntries_votesWithLog.
+  Proof.
+    red. unfold allEntries_votesWithLog. intros. simpl in *.
+    repeat find_higher_order_rewrite.
+    destruct_update; simpl in *.
+    - find_eapply_lem_hyp votesWithLog_update_elections_data_append_entries; eauto.
+      find_copy_apply_lem_hyp votesWithLog_term_sanity_invariant; eauto.
+      find_eapply_lem_hyp update_elections_data_appendEntries_allEntries'; eauto.
+      intuition; do 2 (unfold raft_data, ghost_data in *; simpl in *); try omega.
+      eapply_prop_hyp votesWithLog votesWithLog; eauto. intuition.
+      right. break_exists_exists. intuition.
+      find_higher_order_rewrite. destruct_update; simpl in *; auto.
+      rewrite update_elections_data_appendEntries_leaderLogs. auto.
+    - eapply_prop_hyp votesWithLog votesWithLog; eauto. intuition.
+      right. break_exists_exists. intuition.
+      find_higher_order_rewrite. destruct_update; simpl in *; auto.
+      rewrite update_elections_data_appendEntries_leaderLogs. auto.
+  Qed.
+
+  Lemma allEntries_votesWithLog_append_entries_reply :
+    refined_raft_net_invariant_append_entries_reply allEntries_votesWithLog.
+  Proof.
+    red. unfold allEntries_votesWithLog. intros. simpl in *.
+    repeat find_higher_order_rewrite.
+    destruct_update; simpl in *;
+    eapply_prop_hyp votesWithLog votesWithLog; eauto; intuition;
+    right; break_exists_exists; intuition;
+    find_higher_order_rewrite; destruct_update; simpl in *; auto.
+  Qed.
+
+  Definition currentTerm_votedFor_votesWithLog net :=
+    forall h t n,
+      (currentTerm (snd (nwState net h)) = t /\
+       votedFor (snd (nwState net h)) = Some n) ->
+      exists l,
+        In (t, n, l) (votesWithLog (fst (nwState net h))).
+  
+  Lemma currentTerm_votedFor_votesWithLog_invariant :
+    forall net,
+      refined_raft_intermediate_reachable net ->
+      currentTerm_votedFor_votesWithLog net.
+  Proof.
+    unfold currentTerm_votedFor_votesWithLog. intros.
+    eapply votes_votesWithLog_correspond_invariant; eauto.
+    eapply votes_correct_invariant; eauto.
+  Qed.
+
+  Lemma handleRequestVote_currentTerm_leaderId' :
+    forall h st t c li lt st' m,
+      handleRequestVote h st t c li lt = (st', m) ->
+      votedFor st' <> votedFor st ->
+      currentTerm st < currentTerm st' \/
+      leaderId st = None.
+  Proof.
+    intros. unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat (break_match; try find_inversion; simpl in *; auto);
+    do_bool; auto; congruence.
+  Qed.
+  
+  Lemma handleRequestVote_currentTerm :
+    forall h st t src lli llt st' m,
+      handleRequestVote h st t src lli llt = (st', m) ->
+      currentTerm st <= currentTerm st'.
+  Proof.
+    intros.
+    unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; simpl in *; do_bool; auto.
+  Qed.
+    
+  Lemma votesWithLog_update_elections_data_request_vote :
+    forall net h t src lli llt st' m t' h' l',
+      refined_raft_intermediate_reachable net ->
+      handleRequestVote h (snd (nwState net h)) t src lli llt = (st', m) ->
+      In (t', h', l') (votesWithLog (update_elections_data_requestVote h src t src lli llt (nwState net h))) ->
+      In (t', h', l') (votesWithLog (fst (nwState net h))) \/
+      (t' = currentTerm st' /\
+       l' = log st' /\
+       (leaderId (snd (nwState net h)) = None \/
+        currentTerm (snd (nwState net h)) < currentTerm st')).
+  Proof.
+    unfold update_elections_data_requestVote.
+    intros.
+    repeat break_match; repeat tuple_inversion; intuition;
+    simpl in *; intuition;
+    tuple_inversion; intuition; repeat (do_bool; intuition);
+    try congruence;
+    unfold raft_data, ghost_data in *; simpl in *;
+    repeat find_rewrite; repeat find_inversion;
+    find_copy_apply_lem_hyp handleRequestVote_currentTerm_leaderId;
+    intuition;
+    find_apply_lem_hyp handleRequestVote_currentTerm_leaderId'; repeat find_rewrite; try congruence; intuition.
+  Qed.
+
+  Lemma allEntries_votesWithLog_request_vote :
+    refined_raft_net_invariant_request_vote allEntries_votesWithLog.
+  Proof.
+    red. unfold allEntries_votesWithLog. intros. simpl in *.
+    repeat find_higher_order_rewrite.
+    destruct_update; simpl in *.
+    - find_rewrite_lem update_elections_data_requestVote_allEntries.
+      find_copy_apply_lem_hyp handleRequestVote_currentTerm.
+      find_copy_eapply_lem_hyp votesWithLog_update_elections_data_request_vote; eauto.
+      intuition.
+      + eapply_prop_hyp votesWithLog votesWithLog; eauto; intuition;
+        right; break_exists_exists; intuition;
+        find_higher_order_rewrite; destruct_update; simpl in *; auto.
+        rewrite update_elections_data_requestVote_leaderLogs. auto.
+      + subst.
+        find_apply_lem_hyp handleRequestVote_log. repeat find_rewrite.
+        find_copy_eapply_lem_hyp allEntries_log_invariant; eauto.
+        intuition.
+        right. break_exists_exists. repeat find_higher_order_rewrite.
+        simpl in *.
+        destruct_update; simpl in *; intuition; 
+        try rewrite update_elections_data_requestVote_leaderLogs; eauto.
+      +  subst.
+        find_apply_lem_hyp handleRequestVote_log. repeat find_rewrite.
+        find_copy_eapply_lem_hyp allEntries_log_invariant; eauto.
+        intuition.
+        right. break_exists_exists. repeat find_higher_order_rewrite.
+        simpl in *.
+        destruct_update; simpl in *; intuition; 
+        try rewrite update_elections_data_requestVote_leaderLogs; eauto.
+    - eapply_prop_hyp votesWithLog votesWithLog; eauto; intuition;
+      right; break_exists_exists; intuition;
+      find_higher_order_rewrite; destruct_update; simpl in *; auto.
+      rewrite update_elections_data_requestVote_leaderLogs. auto.
+  Qed.
+
+  Lemma allEntries_votesWithLog_request_vote_reply :
+    refined_raft_net_invariant_request_vote_reply allEntries_votesWithLog.
+  Proof.
+    red. unfold allEntries_votesWithLog. intros. simpl in *.
+    repeat find_higher_order_rewrite.
+    destruct_update; simpl in *.
+    - find_rewrite_lem update_elections_data_requestVoteReply_allEntries.
+      find_eapply_lem_hyp votesWithLog_update_elections_data_request_vote_reply; eauto.
+      eapply_prop_hyp votesWithLog votesWithLog; eauto; intuition;
+      right; break_exists_exists; intuition;
+      find_higher_order_rewrite; destruct_update; simpl in *; auto.
+      eauto using update_elections_data_requestVoteReply_leaderLogs.
+    - eapply_prop_hyp votesWithLog votesWithLog; eauto; intuition;
+      right; break_exists_exists; intuition;
+      find_higher_order_rewrite; destruct_update; simpl in *; auto.
+      eauto using update_elections_data_requestVoteReply_leaderLogs.
+  Qed.
+
+  Lemma update_elections_data_client_request_allEntries_in_or_term :
+    forall h st client id c out st' ms t e,
+      handleClientRequest h (snd st) client id c = (out, st', ms) ->
+      In (t, e) (allEntries (update_elections_data_client_request h st client id c)) ->
+      In (t, e) (allEntries (fst st)) \/
+      t = currentTerm (snd st).
+  Proof.
+    intros.
+    intros.
+    unfold update_elections_data_client_request in *.
+    repeat break_match; repeat find_inversion; auto.
+    simpl in *. intuition.
+    find_inversion. repeat find_rewrite. intuition.
+    unfold handleClientRequest in *.
+    break_match; find_inversion; simpl in *; auto.
+  Qed.
+
+  Lemma allEntries_votesWithLog_client_request :
+    refined_raft_net_invariant_client_request allEntries_votesWithLog.
+  Proof.
+    red. unfold allEntries_votesWithLog. intros. simpl in *.
+    repeat find_higher_order_rewrite.
+    destruct_update; simpl in *.
+    - find_copy_eapply_lem_hyp update_elections_data_client_request_allEntries_in_or_term; eauto. intuition.
+      + repeat find_rewrite.
+        find_eapply_lem_hyp votesWithLog_update_elections_data_client_request; eauto.
+        eapply_prop_hyp votesWithLog votesWithLog; eauto; intuition;
+        right; break_exists_exists; intuition;
+        find_higher_order_rewrite; destruct_update; simpl in *; auto.
+        rewrite update_elections_data_client_request_leaderLogs. auto.
+      + subst.
+        find_eapply_lem_hyp votesWithLog_update_elections_data_client_request; eauto.
+        find_eapply_lem_hyp votesWithLog_term_sanity_invariant; eauto.
+        repeat (unfold raft_data, ghost_data in *; simpl in *). omega.
+    - eapply_prop_hyp votesWithLog votesWithLog; eauto; intuition;
+        right; break_exists_exists; intuition;
+        find_higher_order_rewrite; destruct_update; simpl in *; auto.
+      rewrite update_elections_data_client_request_leaderLogs. auto.
+  Qed.
+
+  Lemma votesWithLog_update_elections_data_timeout' :
+    forall net h out st' ps t' h' l',
+      refined_raft_intermediate_reachable net ->
+      handleTimeout h (snd (nwState net h)) = (out, st', ps) ->
+      In (t', h', l') (votesWithLog (update_elections_data_timeout h (nwState net h))) ->
+      In (t', h', l') (votesWithLog (fst (nwState net h))) \/
+      (t' = currentTerm st' /\ l' = log st' /\ currentTerm (snd (nwState net h)) < currentTerm st').
+  Proof.
+    unfold update_elections_data_timeout.
+    intros. repeat break_match; simpl in *; intuition; repeat tuple_inversion; intuition.
+    - unfold handleTimeout, tryToBecomeLeader in *.
+      repeat break_match; repeat find_inversion; simpl in *; intuition.
+    - unfold handleTimeout, tryToBecomeLeader in *.
+      repeat break_match;  repeat find_inversion; simpl in *; congruence.
+  Qed.
+  
+  Lemma allEntries_votesWithLog_timeout :
+    refined_raft_net_invariant_timeout allEntries_votesWithLog.
+  Proof.
+    red. unfold allEntries_votesWithLog. intros. simpl in *.
+    repeat find_higher_order_rewrite.
+    destruct_update; simpl in *.
+    - find_rewrite_lem update_elections_data_timeout_allEntries.
+      find_eapply_lem_hyp votesWithLog_update_elections_data_timeout'; eauto.
+      intuition.
+      + eapply_prop_hyp votesWithLog votesWithLog; eauto; intuition;
+        right; break_exists_exists; intuition;
+        find_higher_order_rewrite; destruct_update; simpl in *; auto.
+        rewrite update_elections_data_timeout_leaderLogs. auto.
+      + subst.
+        find_copy_apply_lem_hyp handleTimeout_log_same. repeat find_rewrite.
+        find_apply_lem_hyp allEntries_log_invariant; eauto. intuition.
+        right.
+        break_exists_exists; intuition;
+        find_higher_order_rewrite; destruct_update; simpl in *; auto;
+        rewrite update_elections_data_timeout_leaderLogs; auto.
+    - eapply_prop_hyp votesWithLog votesWithLog; eauto; intuition;
+      right; break_exists_exists; intuition;
+      find_higher_order_rewrite; destruct_update; simpl in *; auto.
+      rewrite update_elections_data_timeout_leaderLogs; auto.
+  Qed.
+
+  Lemma allEntries_votesWithLog_do_leader :
+    refined_raft_net_invariant_do_leader allEntries_votesWithLog.
+  Proof.
+    red. unfold allEntries_votesWithLog. intros. simpl in *.
+    match goal with
+      | H : nwState ?net ?h = (?gd, ?d) |- _ =>
+        replace gd with (fst (nwState net h)) in * by (rewrite H; reflexivity);
+          replace d with (snd (nwState net h)) in * by (rewrite H; reflexivity);
+          clear H
+    end.
+    repeat find_higher_order_rewrite.
+    destruct_update; simpl in *; eauto;
+    eapply_prop_hyp votesWithLog votesWithLog; eauto; intuition;
+    right; break_exists_exists; intuition;
+    find_higher_order_rewrite; destruct_update; simpl in *; auto.
+  Qed.
+
+  Lemma allEntries_votesWithLog_do_generic_server :
+    refined_raft_net_invariant_do_generic_server allEntries_votesWithLog.
+  Proof.
+    red. unfold allEntries_votesWithLog. intros. simpl in *.
+    match goal with
+      | H : nwState ?net ?h = (?gd, ?d) |- _ =>
+        replace gd with (fst (nwState net h)) in * by (rewrite H; reflexivity);
+          replace d with (snd (nwState net h)) in * by (rewrite H; reflexivity);
+          clear H
+    end.
+    repeat find_higher_order_rewrite.
+    destruct_update; simpl in *; eauto;
+    eapply_prop_hyp votesWithLog votesWithLog; eauto; intuition;
+    right; break_exists_exists; intuition;
+    find_higher_order_rewrite; destruct_update; simpl in *; auto.
+  Qed.
+  
+  Lemma allEntries_votesWithLog_init :
+    refined_raft_net_invariant_init allEntries_votesWithLog.
+  Proof.
+    red. unfold allEntries_votesWithLog. intros. simpl in *. intuition.
+  Qed.
+
+  Lemma allEntries_votesWithLog_state_same_packet_subset :
+    refined_raft_net_invariant_state_same_packet_subset allEntries_votesWithLog.
+  Proof.
+    red. unfold allEntries_votesWithLog in *. intros.
+    repeat find_reverse_higher_order_rewrite.
+    copy_eapply_prop_hyp votesWithLog votesWithLog; eauto. intuition. right.
+    break_exists_exists. repeat find_higher_order_rewrite. auto.
+  Qed.
+
+  Lemma allEntries_votesWithLog_reboot :
+    refined_raft_net_invariant_reboot allEntries_votesWithLog.
+  Proof.
+    red. unfold allEntries_votesWithLog in *. intros. simpl in *.
+    match goal with
+      | H : nwState ?net ?h = (?gd, ?d) |- _ =>
+        replace gd with (fst (nwState net h)) in * by (rewrite H; reflexivity);
+          replace d with (snd (nwState net h)) in * by (rewrite H; reflexivity);
+          clear H
+    end.
+    repeat find_higher_order_rewrite.
+    subst. unfold reboot in *.
+    destruct_update; simpl in *; eauto; copy_eapply_prop_hyp votesWithLog votesWithLog; eauto;
+    repeat find_rewrite; intuition;
+    right; break_exists_exists; intuition; find_higher_order_rewrite;
+    destruct_update; simpl in *; auto.
+  Qed.
+
+  Theorem allEntries_votesWithLog_invariant :
+    forall net,
+      refined_raft_intermediate_reachable net ->
+      allEntries_votesWithLog net.
+  Proof.
+    intros.
+    eapply refined_raft_net_invariant; eauto.
+    - exact allEntries_votesWithLog_init.
+    - exact allEntries_votesWithLog_client_request.
+    - exact allEntries_votesWithLog_timeout.
+    - exact allEntries_votesWithLog_append_entries.
+    - exact allEntries_votesWithLog_append_entries_reply.
+    - exact allEntries_votesWithLog_request_vote.
+    - exact allEntries_votesWithLog_request_vote_reply.
+    - exact allEntries_votesWithLog_do_leader.
+    - exact allEntries_votesWithLog_do_generic_server.
+    - exact allEntries_votesWithLog_state_same_packet_subset.
+    - exact allEntries_votesWithLog_reboot.
+  Qed.
+
   Instance aevwli : allEntries_votesWithLog_interface.
-  Admitted.
+  split. eauto using allEntries_votesWithLog_invariant.
+  Defined.
 End AllEntriesVotesWithLog.
