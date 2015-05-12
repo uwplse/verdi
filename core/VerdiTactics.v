@@ -376,3 +376,6 @@ Ltac find_injection :=
     | [ H : ?X _ _ = ?X _ _ |- _ ] => injc H
     | [ H : ?X _ = ?X _ |- _ ] => injc H
   end.
+
+Ltac aggresive_rewrite_goal :=
+  match goal with H : _ |- _ => rewrite H end.

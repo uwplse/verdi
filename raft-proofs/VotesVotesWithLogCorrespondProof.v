@@ -84,11 +84,15 @@ Section VotesVotesWithLogCorrespond.
     - start. find_rewrite. auto.
     - unfold_all. split; intros; break_and;
       repeat find_reverse_higher_order_rewrite; eauto.
-    - unfold_all. split; intros; break_and.
-      + find_higher_order_rewrite. update_destruct; subst; rewrite_update; [|eauto].
-        unfold reboot in *. simpl in *. specialize (H1 h0). repeat find_rewrite. simpl in *. eauto.
-      + find_higher_order_rewrite. update_destruct; subst; rewrite_update; [|eauto].
-        unfold reboot in *. simpl in *. specialize (H7 h0). repeat find_rewrite. simpl in *. eauto.
+    - unfold_all.
+      intuition; find_higher_order_rewrite;
+      (update_destruct; subst; rewrite_update; [|eauto]);
+      unfold reboot in *; simpl in *;
+      (eapply equates_1; [
+          match goal with
+          | H : _ |- _ => solve [ eapply H; aggresive_rewrite_goal; eauto ]
+          end |]);
+      find_rewrite; auto.
   Qed.
 
   Instance vvci : votes_votesWithLog_correspond_interface.
