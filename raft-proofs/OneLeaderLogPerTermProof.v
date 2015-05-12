@@ -128,25 +128,6 @@ Section OneLeaderLogPerTerm.
     break_if; try congruence; do_bool; eauto using le_antisym.
   Qed.
 
-  Ltac unfold_invariant hyp :=
-    (red in hyp;  (* try unfolding the invariant and look for conjunction *)
-      match type of hyp with
-        | _ /\ _ => break_and
-        | _ => fail 1  (* better to not unfold *)
-      end) ||
-    break_and.
-
-  (* introduces a refined invariant then tries to break apart any nested
-     conjunctions to return the usable invariants as hypotheses *)
-  Ltac intro_invariant lem :=
-    match goal with
-    | [ h: refined_raft_intermediate_reachable _ |- _ ] =>
-        let x := fresh in
-        pose proof h as x;
-          apply lem in x;
-          unfold_invariant x
-    end.
-
   Lemma wonElection_length :
     forall votes,
       wonElection votes = true ->
@@ -187,14 +168,14 @@ Section OneLeaderLogPerTerm.
   Proof.
     intros. unfold not in *. find_false.
     simpl in *. find_apply_lem_hyp update_elections_data_requestVoteReply_leaderLogs'.
-    intro_invariant leaderLogs_votesWithLog_invariant.
+    intro_refined_invariant leaderLogs_votesWithLog_invariant.
     break_or_hyp; repeat (apply_prop_hyp leaderLogs_votesWithLog In; break_exists).
     - assert (exists h, In h x /\ In h x0) by (apply pigeon_nodes; intuition).
       break_exists; break_and.
       do 2 (find_apply_hyp_hyp; break_exists; break_and).
-      intro_invariant votes_votesWithLog_correspond_invariant.
+      intro_refined_invariant votes_votesWithLog_correspond_invariant.
       do 2 (apply_prop_hyp votes_votesWithLog In).
-      intro_invariant votes_correct_invariant.
+      intro_refined_invariant votes_correct_invariant.
       eauto.
     - assert (exists h, In h x /\ In h (dedup name_eq_dec (pSrc p :: votesReceived (snd (nwState net (pDst p)))))).
       { eapply pigeon_nodes.
@@ -204,12 +185,12 @@ Section OneLeaderLogPerTerm.
         - apply wonElection_length; intuition. }
       break_exists. break_and.
       find_apply_hyp_hyp; break_exists; break_and.
-      intro_invariant votes_votesWithLog_correspond_invariant.
+      intro_refined_invariant votes_votesWithLog_correspond_invariant.
       apply_prop_hyp votes_votesWithLog In.
       find_apply_lem_hyp in_dedup_was_in.
       simpl in *.
-      intro_invariant cronies_correct_invariant.
-      intro_invariant votes_correct_invariant.
+      intro_refined_invariant cronies_correct_invariant.
+      intro_refined_invariant votes_correct_invariant.
       break_or_hyp; eauto.
   Qed.
 
@@ -221,7 +202,7 @@ Section OneLeaderLogPerTerm.
       find_copy_eapply_lem_hyp leaderLogs_update_elections_data_RVR; [|eauto].
       pose proof H.
       eapply leaderLogs_update_elections_data_RVR with (ll0 := ll) in H; [|eauto].
-      intro_invariant leaderLogs_currentTerm_sanity_candidate_invariant.
+      intro_refined_invariant leaderLogs_currentTerm_sanity_candidate_invariant.
       intuition.
       + match goal with
         | [ h: _ |- _ ] => solve[eapply h; eauto]
