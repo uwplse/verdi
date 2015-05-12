@@ -194,3 +194,15 @@ Section CommonTheorems.
   Qed.
 
 End CommonTheorems.
+
+
+(* introduces a refined invariant then tries to break apart any nested
+   conjunctions to return the usable invariants as hypotheses *)
+Ltac intro_refined_invariant lem :=
+  match goal with
+  | [ h: refined_raft_intermediate_reachable _ |- _ ] =>
+      let x := fresh in
+      pose proof h as x;
+        apply lem in x;
+        unfold_invariant x
+  end.

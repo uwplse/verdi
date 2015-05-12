@@ -2302,3 +2302,22 @@ Ltac use_applyEntries_spec :=
   match goal with
     | H : context [applyEntries] |- _ => eapply applyEntries_spec in H; eauto; break_exists
   end.
+
+Ltac unfold_invariant hyp :=
+  (red in hyp;  (* try unfolding the invariant and look for conjunction *)
+    match type of hyp with
+      | _ /\ _ => break_and
+      | _ => fail 1  (* better to not unfold *)
+    end) ||
+  break_and.
+
+(* introduces an invariant then tries to break apart any nested
+   conjunctions to return the usable invariants as hypotheses *)
+Ltac intro_invariant lem :=
+  match goal with
+  | [ h: raft_intermediate_reachable _ |- _ ] =>
+      let x := fresh in
+      pose proof h as x;
+        apply lem in x;
+        unfold_invariant x
+  end.
