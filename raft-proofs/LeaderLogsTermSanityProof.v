@@ -255,5 +255,6 @@ Section LeaderLogsTermSanity.
     split.
     - apply leaderLogs_term_sanity_invariant.
     - apply leaderLogs_currentTerm_sanity_invariant.
+    - admit.
   Qed.
 End LeaderLogsTermSanity.

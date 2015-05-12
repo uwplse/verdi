@@ -25,6 +25,13 @@ Section LeaderLogsTermSanity.
       In (t, log) (leaderLogs (fst (nwState net h))) ->
       t <= currentTerm (snd (nwState net h)).
 
+  Definition leaderLogs_currentTerm_sanity_candidate (net : network) : Prop :=
+    forall h t log,
+      In (t, log) (leaderLogs (fst (nwState net h))) ->
+      type (snd (nwState net h)) = Candidate ->
+      t < currentTerm (snd (nwState net h)).
+
+
   Class leaderLogs_term_sanity_interface : Prop :=
     {
       leaderLogs_term_sanity_invariant :
@@ -34,6 +41,10 @@ Section LeaderLogsTermSanity.
       leaderLogs_currentTerm_invariant :
         forall net,
           refined_raft_intermediate_reachable net ->
-          leaderLogs_currentTerm_sanity net
+          leaderLogs_currentTerm_sanity net;
+      leaderLogs_currentTerm_sanity_candidate_invariant :
+        forall net,
+          refined_raft_intermediate_reachable net ->
+          leaderLogs_currentTerm_sanity_candidate net
     }.
 End LeaderLogsTermSanity.

@@ -21,6 +21,7 @@ Require Import LeaderLogsVotesWithLogInterface.
 Require Import VotesCorrectInterface.
 Require Import CroniesCorrectInterface.
 Require Import VotesVotesWithLogCorrespondInterface.
+Require Import LeaderLogsTermSanityInterface.
 Require Import OneLeaderLogPerTermInterface.
 
 Section OneLeaderLogPerTerm.
@@ -33,6 +34,7 @@ Section OneLeaderLogPerTerm.
   Context {vci : votes_correct_interface}.
   Context {cci : cronies_correct_interface}.
   Context {vvci : votes_votesWithLog_correspond_interface}.
+  Context {lltsi : leaderLogs_term_sanity_interface}.
 
   Ltac update_destruct :=
     match goal with
@@ -49,93 +51,61 @@ Section OneLeaderLogPerTerm.
     repeat (update_destruct; subst; rewrite_update);
     [| | |eauto].
 
-  (*Lemma one_leaderLog_per_term_unchanged :
-    forall net st' h gd d ps',
-      one_leaderLog_per_term net ->
-      (forall h' : Net.name, st' h' = update (nwState net) h (gd, d) h') ->
-      leaderLogs gd = leaderLogs (fst (nwState net h)) ->
-      currentTerm d >= currentTerm (snd (nwState net h)) ->
-      one_leaderLog_per_term {| nwPackets := ps'; nwState := st' |}.
-  Proof.
-    unfold one_leaderLog_per_term. intros. find_higher_order_rewrite.
-    update_destruct; subst; rewrite_update.
-    - simpl in *. find_rewrite. find_apply_hyp_hyp. omega.
-    - eauto.
-  Qed.
-
-  Ltac currentTerm_sanity_unchanged :=
-    red; intros; eapply one_leaderLog_per_term_unchanged; subst; eauto.
-
-  Ltac currentTerm_sanity_break_update :=
-    currentTerm_sanity_start_update;
-    match goal with
-      h : _ |- _ => eapply h
-    end; [| eauto];
-    match goal with
-      h : _ |- _ => solve [rewrite h; auto]
-    end.*)
-
   Lemma one_leaderLog_per_term_init :
     refined_raft_net_invariant_init one_leaderLog_per_term.
   Proof.
     start. contradiction.
   Qed.
 
+  Lemma one_leaderLog_per_term_unchanged :
+    forall net st' ps' h gd d,
+      one_leaderLog_per_term net ->
+      (forall h' : Net.name, st' h' = update (nwState net) h (gd, d) h') ->
+      leaderLogs gd = leaderLogs (fst (nwState net h)) ->
+      one_leaderLog_per_term {| nwPackets := ps'; nwState := st' |}.
+  Proof.
+    unfold one_leaderLog_per_term. intros.
+    repeat find_higher_order_rewrite;
+    repeat (update_destruct; subst; rewrite_update);
+    simpl in *; repeat find_rewrite; eauto.
+  Qed.
+
+  Ltac start_unchanged :=
+    red; intros; eapply one_leaderLog_per_term_unchanged; eauto; subst.
+
+  (* solve invariant by lemma which shows leader logs do not change *)
+  Ltac unchanged lem :=
+    start_unchanged; apply lem.
+
   Lemma one_leaderLog_per_term_client_request :
     refined_raft_net_invariant_client_request one_leaderLog_per_term.
   Proof.
-    start_update; simpl in *.
-    - repeat find_rewrite_lem update_elections_data_client_request_leaderLogs. eauto.
-    - repeat find_rewrite_lem update_elections_data_client_request_leaderLogs. eauto.
-    - repeat find_rewrite_lem update_elections_data_client_request_leaderLogs. eauto.
+    unchanged update_elections_data_client_request_leaderLogs.
   Qed.
 
   Lemma one_leaderLog_per_term_timeout :
     refined_raft_net_invariant_timeout one_leaderLog_per_term.
   Proof.
-    admit.
-    (*currentTerm_sanity_unchanged.
-    - apply update_elections_data_timeout_leaderLogs.
-    - find_apply_lem_hyp handleTimeout_type_strong. intuition.*)
+    unchanged update_elections_data_timeout_leaderLogs.
   Qed.
 
   Lemma one_leaderLog_per_term_append_entries :
     refined_raft_net_invariant_append_entries one_leaderLog_per_term.
   Proof.
-    admit.
-    (*currentTerm_sanity_unchanged.
-    - apply update_elections_data_appendEntries_leaderLogs.
-    - find_apply_lem_hyp handleAppendEntries_type_term. intuition.*)
+    unchanged update_elections_data_appendEntries_leaderLogs.
   Qed.
 
   Lemma one_leaderLog_per_term_append_entries_reply :
     refined_raft_net_invariant_append_entries_reply one_leaderLog_per_term.
   Proof.
-    admit.
-    (*currentTerm_sanity_unchanged.
-    - find_apply_lem_hyp handleAppendEntriesReply_type_term. intuition.*)
+    start_unchanged. auto.
   Qed.
 
   Lemma one_leaderLog_per_term_request_vote :
     refined_raft_net_invariant_request_vote one_leaderLog_per_term.
   Proof.
-    admit.
-    (*currentTerm_sanity_unchanged.
-    - apply leaderLogs_update_elections_data_requestVote.
-    - find_apply_lem_hyp handleRequestVote_type_term. intuition.*)
+    unchanged leaderLogs_update_elections_data_requestVote.
   Qed.
-
-  Definition leaderLogs_currentTerm_sanity_candidate (net : network) : Prop :=
-    forall h t log,
-      type (snd (nwState net h)) = Candidate ->
-      In (t, log) (leaderLogs (fst (nwState net h))) ->
-      t < currentTerm (snd (nwState net h)).
-
-  Theorem leaderLogs_currentTerm_sanity_candidate_invariant :
-    forall net,
-      refined_raft_intermediate_reachable net ->
-      leaderLogs_currentTerm_sanity_candidate net.
-  Admitted.
 
   Lemma update_elections_data_requestVoteReply_leaderLogs' :
     forall h h' t st t' ll' r,
@@ -325,25 +295,25 @@ Section OneLeaderLogPerTerm.
   Lemma one_leaderLog_per_term_do_leader :
     refined_raft_net_invariant_do_leader one_leaderLog_per_term.
   Proof.
-    admit.
+    start_unchanged. find_rewrite. auto.
   Qed.
 
   Lemma one_leaderLog_per_term_do_generic_server :
     refined_raft_net_invariant_do_generic_server one_leaderLog_per_term.
   Proof.
-    admit.
+    start_unchanged. find_rewrite. auto.
   Qed.
 
   Lemma one_leaderLog_per_term_state_same_packet_subset :
     refined_raft_net_invariant_state_same_packet_subset one_leaderLog_per_term.
   Proof.
-    admit.
+    start. repeat find_reverse_higher_order_rewrite. eauto.
   Qed.
 
   Lemma one_leaderLog_per_term_reboot :
     refined_raft_net_invariant_reboot one_leaderLog_per_term.
   Proof.
-    admit.
+    start_update; eapply H0; unfold reboot in *; try find_rewrite; simpl in *; eauto.
   Qed.
 
   Lemma one_leaderLog_per_term_invariant :
