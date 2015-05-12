@@ -142,12 +142,12 @@ Section LeaderLogsPreserved.
       omega.
     - find_apply_lem_hyp logs_leaderLogs_invariant; auto.
       break_exists. intuition.
-      find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto;
+      find_eapply_lem_hyp one_leaderLog_per_term_log_invariant; eauto;
       conclude_using eauto. subst.
       find_eapply_lem_hyp app_in_2; eauto using removeAfterIndex_in.
     - find_apply_lem_hyp logs_leaderLogs_invariant; auto.
       break_exists. intuition.
-      find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto;
+      find_eapply_lem_hyp one_leaderLog_per_term_log_invariant; eauto;
       conclude_using eauto. subst.
       find_eapply_lem_hyp app_in_2; eauto using removeAfterIndex_in.
     - match goal with

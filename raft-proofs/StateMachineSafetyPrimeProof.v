@@ -320,7 +320,7 @@ Section StateMachineSafety'.
         match goal with
           | _ : In (_, ?l) (leaderLogs _),
                 _ : In (_, ?l') (leaderLogs _) |- _ =>
-            assert (l = l') by (eapply one_leaderLog_per_term_invariant; eauto)
+            assert (l = l') by (eapply one_leaderLog_per_term_log_invariant; eauto)
         end.
         subst.
         match goal with
@@ -371,7 +371,7 @@ Section StateMachineSafety'.
         match goal with
           | _ : In (_, ?l) (leaderLogs _),
                 _ : In (_, ?l') (leaderLogs _) |- _ =>
-            assert (l = l') by (eapply one_leaderLog_per_term_invariant; eauto)
+            assert (l = l') by (eapply one_leaderLog_per_term_log_invariant; eauto)
         end.
         subst.
         match goal with
@@ -436,7 +436,7 @@ Section StateMachineSafety'.
         match goal with
           | _ : In (_, ?l) (leaderLogs _),
                 _ : In (_, ?l') (leaderLogs _) |- _ =>
-            assert (l = l') by (eapply one_leaderLog_per_term_invariant; eauto)
+            assert (l = l') by (eapply one_leaderLog_per_term_log_invariant; eauto)
         end.
         subst.
         match goal with

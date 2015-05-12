@@ -375,7 +375,7 @@ Ltac all f ls :=
            find_eapply_lem_hyp leaderLogs_contiguous_invariant; eauto; omega|].
           subst. clean.
           repeat find_rewrite.
-          find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto;
+          find_eapply_lem_hyp one_leaderLog_per_term_log_invariant; eauto;
           conclude_using eauto. subst.
           match goal with
             | H : In _ _ -> False |- _ =>
@@ -415,7 +415,7 @@ Ltac all f ls :=
           [break_exists; intuition;
            find_eapply_lem_hyp leaderLogs_contiguous_invariant; eauto; omega|].
           subst. clean.
-          find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto;
+          find_eapply_lem_hyp one_leaderLog_per_term_log_invariant; eauto;
           conclude_using eauto. subst.
           match goal with
             | H : In _ _ -> False |- _ =>
@@ -450,7 +450,7 @@ Ltac all f ls :=
              find_eapply_lem_hyp leaderLogs_contiguous_invariant; eauto; omega|].
             subst. clean.
             repeat find_rewrite.
-            find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto;
+            find_eapply_lem_hyp one_leaderLog_per_term_log_invariant; eauto;
             conclude_using eauto. subst.
             match goal with
               | H : In _ _ -> False |- _ =>
@@ -520,7 +520,7 @@ Ltac all f ls :=
           [break_exists; intuition;
            find_eapply_lem_hyp leaderLogs_contiguous_invariant; eauto; omega|].
           subst. clean.
-          find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto;
+          find_eapply_lem_hyp one_leaderLog_per_term_log_invariant; eauto;
           conclude_using eauto. subst.
           match goal with
             | H : In _ _ -> False |- _ =>
@@ -579,7 +579,7 @@ Ltac all f ls :=
             find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
             break_exists. break_and.
             repeat find_rewrite.
-            find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto.
+            find_eapply_lem_hyp one_leaderLog_per_term_log_invariant; eauto.
             conclude_using eauto. subst. intuition.
             - repeat find_rewrite.
               destruct (le_lt_dec (eIndex e) (eIndex x6)).
@@ -723,7 +723,7 @@ Ltac all f ls :=
             copy_eapply_prop_hyp append_entries_leaderLogs pBody; eauto.
             break_exists; break_and.
             subst. 
-            find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto;
+            find_eapply_lem_hyp one_leaderLog_per_term_log_invariant; eauto;
             conclude_using eauto. subst.
             match goal with
               | H : In _ _ -> False |- _ =>
@@ -794,7 +794,7 @@ Ltac all f ls :=
             find_copy_eapply_lem_hyp logs_leaderLogs_invariant; eauto.
             find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
             break_exists. break_and.
-            find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto.
+            find_eapply_lem_hyp one_leaderLog_per_term_log_invariant; eauto.
             repeat find_rewrite.
             conclude_using eauto. subst.
             find_eapply_lem_hyp le_antisym; eauto.
@@ -850,7 +850,7 @@ Ltac all f ls :=
             copy_eapply_prop_hyp append_entries_leaderLogs pBody; eauto.
             break_exists; break_and.
             subst. 
-            find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto;
+            find_eapply_lem_hyp one_leaderLog_per_term_log_invariant; eauto;
             conclude_using eauto. subst.
             match goal with
               | H : In _ _ -> False |- _ =>

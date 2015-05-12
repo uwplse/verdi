@@ -131,7 +131,7 @@ Section PrefixWithinTerm.
     end.
     break_exists; intuition.
     repeat find_rewrite.
-    find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto.
+    find_eapply_lem_hyp one_leaderLog_per_term_log_invariant; eauto.
     conclude_using eauto. subst.
     assert (exists e'', eIndex e'' = eIndex e /\ In e'' (log (snd (nwState net h')))) by
         (eapply entries_contiguous_invariant; eauto; intuition;
@@ -182,7 +182,7 @@ Section PrefixWithinTerm.
       | H : refined_raft_intermediate_reachable _ |- _ =>
         copy_apply leaderLogs_sorted_invariant H
     end.
-    find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto.
+    find_eapply_lem_hyp one_leaderLog_per_term_log_invariant; eauto.
     conclude_using eauto. subst.
     intuition; subst.
     - destruct (lt_eq_lt_dec (eIndex e) pli'); intuition.
