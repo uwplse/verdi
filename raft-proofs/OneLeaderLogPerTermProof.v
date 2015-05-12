@@ -174,10 +174,10 @@ Section OneLeaderLogPerTerm.
   Qed.
 
   (* two different hosts cannot both have the same term in their leader logs *)
-  (*Lemma contradiction_case :
-    forall (net : network (params := refined_multi_params)) t ll ll' (h h' : name) (p : packet (params := refined_multi_params)) t0 v xs ys,
+  Lemma contradiction_case :
+    forall (net : network ) t ll ll' (h h' : name) (p : packet (params := refined_multi_params (multi_params := multi_params))) t0 v xs ys,
       refined_raft_intermediate_reachable net ->
-      pBody p = RequestVoteReply t v ->
+      pBody p = RequestVoteReply (raft_params := raft_params) t0 v ->
       nwPackets net = xs ++ p :: ys ->
       In (t, ll) (leaderLogs (fst (nwState net h))) ->
       In (t, ll') (leaderLogs (update_elections_data_requestVoteReply (pDst p) (pSrc p) t0 v (nwState net (pDst p)))) ->
@@ -211,7 +211,7 @@ Section OneLeaderLogPerTerm.
       intro_invariant cronies_correct_invariant.
       intro_invariant votes_correct_invariant.
       break_or_hyp; eauto.
-  Qed.*)
+  Qed.
 
   Lemma one_leaderLog_per_term_request_vote_reply :
     refined_raft_net_invariant_request_vote_reply one_leaderLog_per_term.
@@ -237,58 +237,8 @@ Section OneLeaderLogPerTerm.
         * find_apply_lem_hyp lt_asym. congruence.
         * subst. repeat find_rewrite. find_apply_lem_hyp lt_irrefl. contradiction.
       + subst. auto.
-    - intros. unfold not in *. find_false.
-      simpl in *. find_apply_lem_hyp update_elections_data_requestVoteReply_leaderLogs'.
-      intro_invariant leaderLogs_votesWithLog_invariant.
-      break_or_hyp; repeat (apply_prop_hyp leaderLogs_votesWithLog In; break_exists).
-      + assert (exists h, In h x /\ In h x0) by (apply pigeon_nodes; intuition).
-        break_exists; break_and.
-        do 2 (find_apply_hyp_hyp; break_exists; break_and).
-        intro_invariant votes_votesWithLog_correspond_invariant.
-        do 2 (apply_prop_hyp votes_votesWithLog In).
-        intro_invariant votes_correct_invariant.
-        eauto.
-      + assert (exists h, In h x /\ In h (dedup name_eq_dec (pSrc p :: votesReceived (snd (nwState net (pDst p)))))).
-        { eapply pigeon_nodes.
-          - intuition.
-          - apply NoDup_dedup.
-          - intuition.
-          - apply wonElection_length; intuition. }
-        break_exists. break_and.
-        find_apply_hyp_hyp; break_exists; break_and.
-        intro_invariant votes_votesWithLog_correspond_invariant.
-        apply_prop_hyp votes_votesWithLog In.
-        find_apply_lem_hyp in_dedup_was_in.
-        simpl in *.
-        intro_invariant cronies_correct_invariant.
-        intro_invariant votes_correct_invariant.
-        break_or_hyp; eauto.
-    - intros. unfold not in *. find_false.
-      simpl in *. find_apply_lem_hyp update_elections_data_requestVoteReply_leaderLogs'.
-      intro_invariant leaderLogs_votesWithLog_invariant.
-      break_or_hyp; repeat (apply_prop_hyp leaderLogs_votesWithLog In; break_exists).
-      + assert (exists h, In h x /\ In h x0) by (apply pigeon_nodes; intuition).
-        break_exists; break_and.
-        do 2 (find_apply_hyp_hyp; break_exists; break_and).
-        intro_invariant votes_votesWithLog_correspond_invariant.
-        do 2 (apply_prop_hyp votes_votesWithLog In).
-        intro_invariant votes_correct_invariant.
-        eauto.
-      + assert (exists h, In h x /\ In h (dedup name_eq_dec (pSrc p :: votesReceived (snd (nwState net (pDst p)))))).
-        { eapply pigeon_nodes.
-          - intuition.
-          - apply NoDup_dedup.
-          - intuition.
-          - apply wonElection_length; intuition. }
-        break_exists. break_and.
-        find_apply_hyp_hyp; break_exists; break_and.
-        intro_invariant votes_votesWithLog_correspond_invariant.
-        apply_prop_hyp votes_votesWithLog In.
-        find_apply_lem_hyp in_dedup_was_in.
-        simpl in *.
-        intro_invariant cronies_correct_invariant.
-        intro_invariant votes_correct_invariant.
-        break_or_hyp; eauto.
+    - exfalso. eapply contradiction_case; eauto.
+    - exfalso. eapply contradiction_case; eauto.
     - eauto.
   Qed.
 
