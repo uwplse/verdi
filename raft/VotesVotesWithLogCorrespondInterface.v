@@ -24,11 +24,14 @@ Section VotesVotesWithLogCorrespond.
       In (t, h') (votes (fst (nwState net h))) ->
       exists log, In (t, h', log) (votesWithLog (fst (nwState net h))).
 
+  Definition votes_votesWithLog_correspond (net : network) : Prop :=
+    votes_votesWithLog net /\ votesWithLog_votes net.
+
   Class votes_votesWithLog_correspond_interface : Prop :=
     {
       votes_votesWithLog_correspond_invariant :
         forall net,
           refined_raft_intermediate_reachable net ->
-          votes_votesWithLog net /\ votesWithLog_votes net
+          votes_votesWithLog_correspond net
     }.
 End VotesVotesWithLogCorrespond.
