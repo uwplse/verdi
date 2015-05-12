@@ -269,7 +269,7 @@ Section OneLeaderLogPerTerm.
 
   Instance ollpti : one_leaderLog_per_term_interface.
   Proof.
-    split; intros; intro_invariant one_leaderLog_per_term_invariant;
+    split; intros; intro_refined_invariant one_leaderLog_per_term_invariant;
       red; eapply_prop one_leaderLog_per_term.
   Qed.
 
