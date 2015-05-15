@@ -231,6 +231,7 @@ Section Raft.
 
   Definition handleAppendEntriesReply (me : name) state src term entries (result : bool)
   : raft_data * list (name * msg) :=
+(* ZACH TODO: fix currentTerm issue *)
     if result then
       let index := maxIndex entries in
       ({[ {[ state with matchIndex :=
