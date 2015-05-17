@@ -7,8 +7,6 @@ Require Import Coq.Numbers.Natural.Abstract.NDiv.
 Import ListNotations.
 Require Import Sorting.Permutation.
 
-Add LoadPath "/Users/ztatlock/verdi/core".
-
 Require Import Util.
 Require Import Net.
 Require Import VerdiTactics.
