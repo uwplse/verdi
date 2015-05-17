@@ -231,7 +231,7 @@ Section Raft.
 
   Definition handleAppendEntriesReply (me : name) state src term entries (result : bool)
   : raft_data * list (name * msg) :=
-    if currentTerm state >=? term then
+    if currentTerm state =? term then
       if result then
         let index := maxIndex entries in
         ({[ {[ state with matchIndex :=
@@ -249,32 +249,12 @@ Section Raft.
                          (pred (getNextIndex state src)))
           ]},
          [])
-    else (* behind, convert to follower *)
-      ({[ (advanceCurrentTerm state term) with type := Follower ]}, []).
-
-
-(* TODO: note we had this buggy version for a while *)
-(*
-    if result then
-      let index := maxIndex entries in
-      ({[ {[ state with matchIndex :=
-               (assoc_set name_eq_dec (matchIndex state) src (max (assoc_default name_eq_dec (matchIndex state) src 0) index))
-           ]}
-          with nextIndex :=
-            (assoc_set name_eq_dec (nextIndex state) src (max (getNextIndex state src) (S index)))
-        ]},
-       [])
+    else if currentTerm state <? term then
+      (* follower behind, ignore *)
+      (state, [])
     else
-      if currentTerm state != term then
-        (* shit, we're behind. need to convert to follower *)
-        ({[ (advanceCurrentTerm state term) with type := Follower ]}, [])
-      else
-        ({[ state with nextIndex :=
-              (assoc_set name_eq_dec (nextIndex state) src
-                         (pred (getNextIndex state src)))
-          ]},
-         []).
-*)
+      (* leader behind, convert to follower *)
+      (advanceCurrentTerm state term, []).
 
   Definition moreUpToDate t1 i1 t2 i2 := (t1 >? t2) || ((t1 == t2) && (i1 >=? i2)).
 

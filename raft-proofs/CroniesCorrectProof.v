@@ -193,7 +193,10 @@ Section CroniesCorrectProof.
     - unfold votes_received_cronies, handleAppendEntriesReply in *.
       intros. simpl in *.
       repeat break_match; repeat find_inversion; subst; simpl in *; eauto;
-      repeat find_higher_order_rewrite; repeat (break_if; simpl in *); intuition; congruence.
+      repeat find_higher_order_rewrite; repeat (break_if; simpl in *); intuition; try congruence.
+      (* ZACH TODO *)
+      admit.
+      admit.
     - unfold cronies_votes in *. intros.
       simpl in *. repeat find_higher_order_rewrite.
       repeat break_match; subst; simpl in *; eauto.
