@@ -331,7 +331,6 @@ Section SpecLemmas.
   Proof.
     intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
     repeat break_match; tuple_inversion; do_bool; auto.
-    simpl. right. split. reflexivity. omega.
   Qed.
 
   Lemma handleRequestVote_type :

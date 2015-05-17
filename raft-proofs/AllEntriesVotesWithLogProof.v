@@ -880,7 +880,6 @@ Ltac all f ls :=
   Proof.
     intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
     repeat (break_match; try find_inversion; simpl in *; auto).
-    do_bool. auto.
   Qed.
 
   Lemma allEntries_log_append_entries_reply :
