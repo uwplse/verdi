@@ -190,13 +190,10 @@ Section CroniesCorrectProof.
   Proof.
     unfold refined_raft_net_invariant_append_entries_reply. intros.
     unfold cronies_correct in *; intuition.
-    - unfold votes_received_cronies, handleAppendEntriesReply in *.
+    - unfold votes_received_cronies, handleAppendEntriesReply, advanceCurrentTerm in *.
       intros. simpl in *.
       repeat break_match; repeat find_inversion; subst; simpl in *; eauto;
       repeat find_higher_order_rewrite; repeat (break_if; simpl in *); intuition; try congruence.
-      (* ZACH TODO *)
-      admit.
-      admit.
     - unfold cronies_votes in *. intros.
       simpl in *. repeat find_higher_order_rewrite.
       repeat break_match; subst; simpl in *; eauto.
@@ -208,7 +205,7 @@ Section CroniesCorrectProof.
       repeat break_match; subst; repeat find_rewrite; simpl in *; intuition.
     - unfold votes_received_leaders in *. intros. simpl in *.
       repeat find_higher_order_rewrite. repeat break_if; eauto.
-      subst. simpl in *. unfold handleAppendEntriesReply in *.
+      subst. simpl in *. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
       repeat break_match; find_inversion; subst; simpl in *;
       try discriminate; eauto.
   Qed.
