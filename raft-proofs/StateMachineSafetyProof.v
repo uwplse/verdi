@@ -1196,6 +1196,14 @@ Section StateMachineSafetyProof.
 
   Lemma commit_invariant_append_entries :
     refined_raft_net_invariant_append_entries commit_invariant.
+  Proof.
+    unfold refined_raft_net_invariant_append_entries, commit_invariant.
+    intros. split.
+    - unfold commit_invariant_host in *. break_and. simpl. intros.
+      repeat find_higher_order_rewrite.
+      update_destruct.
+      + admit.
+      +
   Admitted.
 
   Lemma commit_invariant_append_entries_reply :
