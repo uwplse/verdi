@@ -16,6 +16,7 @@ Require Import MaxIndexSanityInterface.
 Require Import LeaderCompletenessInterface.
 Require Import SortedInterface.
 Require Import LogMatchingInterface.
+Require Import PrevLogLeaderSublogInterface.
 
 Require Import RefinedLogMatchingLemmasInterface.
 
@@ -34,6 +35,7 @@ Section StateMachineSafetyProof.
   Context {lmi : log_matching_interface}.
   Context {smspi : state_machine_safety'interface}.
   Context {rlmli : refined_log_matching_lemmas_interface}.
+  Context {pllsi : prevLog_leader_sublog_interface}.
 
   Lemma exists_deghost_packet :
     forall net p,
@@ -997,6 +999,58 @@ Section StateMachineSafetyProof.
       update_destruct; eauto using update_elections_data_client_request_preserves_allEntries.
   Qed.
 
+  Lemma not_empty_intro :
+    forall A (l : list A),
+      l <> [] -> not_empty l = true.
+  Proof.
+    unfold not_empty.
+    intros.
+    break_match; congruence.
+  Qed.
+
+  Lemma haveNewEntries_true_intro :
+    forall st es,
+      es <> [] ->
+      (forall e, findAtIndex (log st) (maxIndex es) = Some e ->
+            eTerm e <> maxTerm es) ->
+      haveNewEntries st es = true.
+  Proof.
+    unfold haveNewEntries.
+    intros.
+    do_bool. split.
+    - auto using not_empty_intro.
+    - break_match; auto.
+      apply Bool.negb_true_iff.
+      do_bool. intuition eauto.
+  Qed.
+
+  Definition lifted_prevLog_leader_sublog (net : network) : Prop :=
+    forall leader p t leaderId prevLogIndex prevLogTerm entries leaderCommit,
+      type (snd (nwState net leader)) = Leader ->
+      In p (nwPackets net) ->
+      pBody p = AppendEntries t leaderId prevLogIndex prevLogTerm entries leaderCommit ->
+      currentTerm (snd (nwState net leader)) = prevLogTerm ->
+      exists ple, eIndex ple = prevLogIndex /\
+             eTerm ple = prevLogTerm /\
+             In ple (log (snd (nwState net leader))).
+
+  Lemma prevLog_leader_sublog_lifted :
+    forall net,
+      refined_raft_intermediate_reachable net ->
+      lifted_prevLog_leader_sublog net.
+  Proof.
+    intros.
+    pose proof (lift_prop _ prevLog_leader_sublog_invariant).
+    find_insterU. conclude_using eauto.
+    unfold prevLog_leader_sublog, lifted_prevLog_leader_sublog in *.
+    intros.
+    find_apply_lem_hyp ghost_packet.
+    unfold deghost in *. simpl in *. break_match. simpl in *. subst.
+    specialize (H0 leader).
+    destruct (nwState leader). simpl in *.
+    eauto.
+  Qed.
+
   Lemma commit_invariant_client_request :
     forall h net st' ps' gd out d l client id c,
       handleClientRequest h (snd (nwState net h)) client id c = (out, d, l) ->
@@ -1077,29 +1131,64 @@ Section StateMachineSafetyProof.
                 repeat find_rewrite.
                 eauto using haveNewEntries_log.
               + break_exists. break_and.
-                assert (eTerm ple = currentTerm (snd (nwState net h0)) ->
-                        eIndex ple <= maxIndex (log (snd (nwState net h0)))) by admit.
                 repeat find_rewrite.
                 match goal with
                   | [ H : In ple (_ :: _) |- _ ] => simpl in H
                 end.
-                (* 
-                destruct (eq_nat_dec (eIndex ple) (eIndex x)).
-                * subst. simpl in *. concludes. omega.
-                *
                 break_or_hyp.
-                * concludes. simpl in *. omega.
-                * simpl in *.
-                  { intuition.
-                    - subst. simpl in *.
-                *)
-                admit.
+                * exfalso.
+                  find_copy_apply_lem_hyp prevLog_leader_sublog_lifted.
+                  unfold lifted_prevLog_leader_sublog in *.
+                  match goal with
+                  | [ H : context [In _ (nwPackets net)],
+                      H' : In _ (nwPackets net) |- _ ] =>
+                    eapply H in H'; eauto
+                  end.
+                  break_exists. break_and.
+                  find_apply_lem_hyp maxIndex_is_max;
+                    [|solve[auto using sorted_host_lifted]].
+                  simpl in *. omega.
+                * eapply hCR_preserves_committed; simpl; eauto.
+                  { match goal with
+                    | [ H : _ |- _ ] => eapply H; eauto
+                    end.
+                    - erewrite <- handleClientRequest_currentTerm; eauto.
+                    - find_apply_lem_hyp haveNewEntries_true. break_and.
+                      apply haveNewEntries_true_intro; auto.
+                      repeat find_rewrite.
+                      assert (forall e, findAtIndex (log (snd (nwState net h0))) (maxIndex es) = Some e ->
+                                   eIndex x <= maxIndex es -> False).
+                      { intros. find_apply_lem_hyp findAtIndex_elim. break_and.
+                        assert (maxIndex es <= maxIndex (log (snd (nwState net h0)))).
+                        { eapply le_trans; [|eapply maxIndex_is_max; eauto].
+                          - auto with *.
+                          - auto using sorted_host_lifted.
+                        }
+                        simpl in *. omega.
+                      }
+                      simpl findAtIndex in *. repeat break_if; try congruence; intros.
+                      + do_bool. intuition; try discriminate.
+                        eauto using Nat.eq_le_incl.
+                      + do_bool. intuition.
+                        * eauto using Nat.lt_le_incl.
+                        * break_exists. break_and. discriminate.
+                      + unfold raft_refined_base_params in *.
+                        break_or_hyp.
+                        * simpl in *. congruence.
+                        * break_exists. break_and. congruence.
+                    - simpl In in *. break_or_hyp; auto. exfalso.
+                      match goal with
+                      | [ H : In ple _ |- _ ] =>
+                        eapply maxIndex_is_max in H; [|solve[auto using sorted_host_lifted]]
+                      end.
+                      omega.
+                  }
             - eauto using hCR_preserves_committed.
           }
       + unfold send_packets in *. exfalso. do_in_map.
         subst. simpl in *.
         eapply handleClientRequest_no_append_entries; eauto 10.
-  Admitted.
+  Qed.
 
   Lemma commit_invariant_timeout :
     refined_raft_net_invariant_timeout commit_invariant.
