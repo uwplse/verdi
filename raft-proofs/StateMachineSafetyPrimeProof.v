@@ -172,7 +172,10 @@ Section StateMachineSafety'.
       pBody p = AppendEntries t n pli plt es ci ->
       contiguous_range_exact_lo es pli.
   Proof. (* by log matching, annoying because of refinement *)
-  Admitted.
+    intros.
+    find_apply_lem_hyp entries_contiguous_nw_invariant.
+    unfold entries_contiguous_nw in *. eauto.
+  Qed.
 
   Lemma exists_deghosted_packet :
     forall net (p : packet (params := raft_refined_multi_params (raft_params := raft_params))),
@@ -248,6 +251,14 @@ Section StateMachineSafety'.
         copy_apply i H
     end.
   
+  Lemma in_not_nil :
+    forall A (l : list A) x,
+      In x l ->
+      l <> nil.
+  Proof.
+    destruct l; simpl; intuition congruence.
+  Qed.
+
   Theorem state_machine_safety_nw'_invariant :
     forall net,
       refined_raft_intermediate_reachable net ->
@@ -298,7 +309,12 @@ Section StateMachineSafety'.
         end; intuition.
         * right. right. right.
           apply in_app_iff. right.
-          eapply prefix_contiguous; eauto. admit.
+          eapply prefix_contiguous; eauto.
+          {
+            unfold Prefix_sane in *. intuition.
+            find_apply_lem_hyp (@maxIndex_is_max _ _ x2 e); eauto.
+            omega.
+          }
           find_copy_eapply_lem_hyp entries_contiguous; eauto.
           eapply contiguous_app; eauto. eapply entries_sorted_nw_invariant; eauto.
         * cut (e = x5); [intros; subst; intuition|].
@@ -308,7 +324,7 @@ Section StateMachineSafety'.
         get_invariant leaderLogs_contiguous_invariant.
         unfold leaderLogs_contiguous in *. find_copy_apply_hyp_hyp.
         eapply prefix_contiguous with (i := 0); eauto;
-        [admit|match goal with
+        [solve[eauto using in_not_nil]|match goal with
            | _ : In (_, ?l) (leaderLogs _), H : contiguous_range_exact_lo ?l _ |- _ =>
              unfold contiguous_range_exact_lo in H; intuition
          end].
@@ -429,7 +445,12 @@ Section StateMachineSafety'.
           unfold leaderLogs_contiguous in *. find_copy_apply_hyp_hyp.
           get_invariant leaderLogs_sorted_invariant.
           unfold leaderLogs_sorted in *. find_copy_apply_hyp_hyp.
-          eapply prefix_contiguous with (i := (eIndex base_entry)); eauto; [admit|].
+          eapply prefix_contiguous with (i := (eIndex base_entry)); eauto; [|].
+          {
+            unfold Prefix_sane in *. intuition.
+            find_apply_lem_hyp (@maxIndex_is_max _ _ old_entries e); eauto.
+            omega.
+          }
           find_copy_eapply_lem_hyp entries_sorted_nw_invariant; eauto.
           eauto using contiguous_app, entries_contiguous.
       + subst.
@@ -488,7 +509,7 @@ Section StateMachineSafety'.
         end; eauto using Prefix_In.
         repeat find_reverse_rewrite.
         eauto using lift_logs_sorted, removeAfterIndex_sorted.
-  Admitted.
+  Qed.
 
   Instance sms'i : state_machine_safety'interface.
   Proof.
