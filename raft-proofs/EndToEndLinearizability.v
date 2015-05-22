@@ -196,6 +196,9 @@ Require Import VotesVotesWithLogCorrespondProof.
 Require Import PrevLogLeaderSublogInterface.
 Require Import PrevLogLeaderSublogProof.
 
+Require Import AllEntriesIndicesGt0Interface.
+Require Import AllEntriesIndicesGt0Proof.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -258,6 +261,7 @@ Hint Extern 4 (@terms_and_indices_from_one_interface _ _ _) => apply taifoi : ty
 Hint Extern 4 (@candidate_term_gt_log_interface _ _ _) => apply ctgli : typeclass_instances.
 Hint Extern 4 (@votes_votesWithLog_correspond_interface _ _ _) => apply vvci : typeclass_instances.
 Hint Extern 4 (@prevLog_leader_sublog_interface _ _ _) => apply pllsi : typeclass_instances.
+Hint Extern 4 (@allEntries_indices_gt_0_interface _ _ _) => apply aeigt0 : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
