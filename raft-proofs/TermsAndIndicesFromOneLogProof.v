@@ -22,12 +22,6 @@ Section TermsAndIndicesFromOneLog.
   Context {raft_params : RaftParams orig_base_params}.
   Context {ctgzi : current_term_gt_zero_interface}.
 
-  Definition terms_and_indices_from_one_log_nw (net : network) : Prop :=
-    forall p t leaderId prevLogIndex prevLogTerm entries leaderCommit,
-      In p (nwPackets net) ->
-      pBody p = AppendEntries t leaderId prevLogIndex prevLogTerm entries leaderCommit ->
-      terms_and_indices_from_one entries.
-
   Definition terms_and_indices_from_one_log_ind (net : network) : Prop :=
     terms_and_indices_from_one_log net /\ terms_and_indices_from_one_log_nw net.
 
@@ -210,6 +204,8 @@ Section TermsAndIndicesFromOneLog.
 
   Instance taifoli : terms_and_indices_from_one_log_interface.
   Proof.
-    split. apply terms_and_indices_from_one_log_ind_invariant.
+    split.
+    - apply terms_and_indices_from_one_log_ind_invariant.
+    - apply terms_and_indices_from_one_log_ind_invariant.
   Qed.
 End TermsAndIndicesFromOneLog.
