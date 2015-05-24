@@ -14,6 +14,8 @@ Section PrevLogLeaderSublogInterface.
       In p (nwPackets net) ->
       pBody p = AppendEntries t leaderId prevLogIndex prevLogTerm entries leaderCommit ->
       currentTerm (nwState net leader) = prevLogTerm ->
+      0 < prevLogIndex ->
+      0 < prevLogTerm ->
       exists ple, eIndex ple = prevLogIndex /\
              eTerm ple = prevLogTerm /\
              In ple (log (nwState net leader)).

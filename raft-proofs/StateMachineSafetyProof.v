@@ -17,6 +17,7 @@ Require Import LeaderCompletenessInterface.
 Require Import SortedInterface.
 Require Import LogMatchingInterface.
 Require Import PrevLogLeaderSublogInterface.
+Require Import CurrentTermGtZeroInterface.
 
 Require Import RefinedLogMatchingLemmasInterface.
 
@@ -36,6 +37,7 @@ Section StateMachineSafetyProof.
   Context {smspi : state_machine_safety'interface}.
   Context {rlmli : refined_log_matching_lemmas_interface}.
   Context {pllsi : prevLog_leader_sublog_interface}.
+  Context {ctgt0 : current_term_gt_zero_interface}.
 
   Lemma exists_deghost_packet :
     forall net p,
@@ -1030,6 +1032,8 @@ Section StateMachineSafetyProof.
       In p (nwPackets net) ->
       pBody p = AppendEntries t leaderId prevLogIndex prevLogTerm entries leaderCommit ->
       currentTerm (snd (nwState net leader)) = prevLogTerm ->
+      0 < prevLogIndex ->
+      0 < prevLogTerm ->
       exists ple, eIndex ple = prevLogIndex /\
              eTerm ple = prevLogTerm /\
              In ple (log (snd (nwState net leader))).
@@ -1139,15 +1143,28 @@ Section StateMachineSafetyProof.
                 * exfalso.
                   find_copy_apply_lem_hyp prevLog_leader_sublog_lifted.
                   unfold lifted_prevLog_leader_sublog in *.
-                  match goal with
-                  | [ H : context [In _ (nwPackets net)],
-                      H' : In _ (nwPackets net) |- _ ] =>
-                    eapply H in H'; eauto
-                  end.
-                  break_exists. break_and.
-                  find_apply_lem_hyp maxIndex_is_max;
-                    [|solve[auto using sorted_host_lifted]].
-                  simpl in *. omega.
+                  { match goal with
+                    | [ H : context [In _ (nwPackets net)],
+                            H' : In _ (nwPackets net) |- _ ] =>
+                      eapply H in H'; eauto
+                    end; [|omega|].
+                    - break_exists. break_and.
+                      find_apply_lem_hyp maxIndex_is_max;
+                        [|solve[auto using sorted_host_lifted]].
+                      simpl in *. omega.
+                    - repeat find_rewrite.
+                      pose proof (lift_prop _ current_term_gt_zero_invariant).
+                      find_insterU. econcludes.
+                      unfold current_term_gt_zero in *.
+                      match goal with
+                      | [ H : forall _, _ -> 1 <= _ |- context [currentTerm (snd (nwState _ ?h))] ] =>
+                        specialize (H h);
+                          rewrite deghost_spec in H;
+                          conclude H ltac:(
+                            unfold raft_refined_base_params in *; simpl in *; congruence)
+                      end.
+                      auto with *.
+                  }
                 * eapply hCR_preserves_committed; simpl; eauto.
                   { match goal with
                     | [ H : _ |- _ ] => eapply H; eauto

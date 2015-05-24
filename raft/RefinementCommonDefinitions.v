@@ -19,4 +19,10 @@ Section CommonDefinitions.
       wonElection (dedup name_eq_dec (cronies (fst (sigma h)) (eTerm e))) = true /\
       (currentTerm (snd (sigma h)) = eTerm e ->
        type (snd (sigma h)) <> Candidate).
+
+  Definition candidateEntriesTerm (t : term) (sigma : name -> _) : Prop :=
+    exists h : name,
+      wonElection (dedup name_eq_dec (cronies (fst (sigma h)) t)) = true /\
+      (currentTerm (snd (sigma h)) = t ->
+       type (snd (sigma h)) <> Candidate).
 End CommonDefinitions.
