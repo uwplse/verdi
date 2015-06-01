@@ -192,6 +192,7 @@ Section PrevLogLeaderSublogProof.
         In p (nwPackets (deghost net)) ->
         pBody p = AppendEntries t leaderId prevLogIndex prevLogTerm
                                 entries leaderCommit ->
+        0 < prevLogTerm ->
         candidateEntriesTerm_lowered (deghost net) prevLogTerm p'.
   Proof.
     unfold candidateEntriesTerm_lowered,
@@ -205,6 +206,7 @@ Section PrevLogLeaderSublogProof.
     eapply_prop_hyp votes_nw pBody. concludes.
     eapply_prop_hyp prevLog_candidateEntriesTerm pBody; auto.
 
+    concludes.
     unfold candidateEntriesTerm in *. break_exists. break_and.
 
     match goal with
@@ -239,6 +241,7 @@ Section PrevLogLeaderSublogProof.
         In p (nwPackets net) ->
         pBody p = AppendEntries t leaderId prevLogIndex prevLogTerm
                                 entries leaderCommit ->
+        0 < prevLogTerm ->
         candidateEntriesTerm_lowered net prevLogTerm p'.
   Proof.
     intros net H.
@@ -286,31 +289,6 @@ Section PrevLogLeaderSublogProof.
       eapply prevLog_candidateEntriesTerm_lowered with (p := p0) ; eauto.
       + congruence.
       + congruence.
-  Qed.
-
-  Lemma doLeader_messages :
-    forall st h os st' ms m t n pli plt es ci,
-      doLeader st h = (os, st', ms) ->
-      In m ms ->
-      snd m = AppendEntries t n pli plt es ci ->
-      t = currentTerm st /\
-      log st' = log st /\
-      type st = Leader /\
-      ((plt = 0) \/
-       ((exists e, findAtIndex (log st) pli = Some e /\
-              eTerm e = plt))).
-  Proof.
-    intros. unfold doLeader, advanceCommitIndex in *.
-    break_match; try solve [find_inversion; simpl in *; intuition].
-    break_if; try solve [find_inversion; simpl in *; intuition].
-    find_inversion. simpl. do_in_map. subst.
-    simpl in *. find_inversion. intuition.
-    match goal with
-      | |- context [pred ?x] =>
-        remember (pred x) as index
-    end. break_match; simpl in *.
-    - right. eauto.
-    - destruct index; intuition.
   Qed.
 
   Lemma prevLog_leader_sublog_do_leader :

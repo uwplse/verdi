@@ -19,6 +19,7 @@ Section PrevLogCandidateEntriesTermInterface.
       In p (nwPackets net) ->
       pBody p = AppendEntries t leaderId prevLogIndex prevLogTerm
                               entries leaderCommit ->
+      0 < prevLogTerm ->
       candidateEntriesTerm prevLogTerm (nwState net).
 
   Class prevLog_candidateEntriesTerm_interface : Prop :=

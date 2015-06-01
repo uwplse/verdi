@@ -505,4 +505,29 @@ Section SpecLemmas.
     do_in_map; subst; simpl in *; congruence.
   Qed.
 
+  Lemma doLeader_messages :
+    forall st h os st' ms m t n pli plt es ci,
+      doLeader st h = (os, st', ms) ->
+      In m ms ->
+      snd m = AppendEntries t n pli plt es ci ->
+      t = currentTerm st /\
+      log st' = log st /\
+      type st = Leader /\
+      ((plt = 0) \/
+       ((exists e, findAtIndex (log st) pli = Some e /\
+              eTerm e = plt))).
+  Proof.
+    intros. unfold doLeader, advanceCommitIndex in *.
+    break_match; try solve [find_inversion; simpl in *; intuition].
+    break_if; try solve [find_inversion; simpl in *; intuition].
+    find_inversion. simpl. do_in_map. subst.
+    simpl in *. find_inversion. intuition.
+    match goal with
+      | |- context [pred ?x] =>
+        remember (pred x) as index
+    end. break_match; simpl in *.
+    - right. eauto.
+    - destruct index; intuition.
+  Qed.
+
 End SpecLemmas.

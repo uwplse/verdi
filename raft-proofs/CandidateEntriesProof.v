@@ -572,34 +572,6 @@ Section CandidateEntriesProof.
       eapply handleRequestVoteReply_preserves_candidate_entries; eauto.
   Qed.
 
-  Lemma doLeader_st :
-    forall st h os st' ms,
-      doLeader st h = (os, st', ms) ->
-      votesReceived st' = votesReceived st /\
-      currentTerm st' = currentTerm st /\
-      type st' = type st.
-  Proof.
-    intros.
-    unfold doLeader, advanceCommitIndex in *.
-    repeat break_match; find_inversion; intuition.
-  Qed.
-
-  Lemma doLeader_preserves_candidateEntries :
-    forall net gd d h os d' ms e,
-      nwState net h = (gd, d) ->
-      doLeader d h = (os, d', ms) ->
-      candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h (gd, d')).
-  Proof.
-    intros.
-    eapply candidateEntries_same; eauto;
-    intros;
-    repeat (rewrite update_fun_comm; simpl in * );
-    update_destruct; subst; rewrite_update; auto;
-    repeat find_rewrite; simpl; auto;
-    find_apply_lem_hyp doLeader_st; intuition.
-  Qed.
-
   Lemma doLeader_in_entries :
     forall (h : name) d h os d' ms m t li pli plt es ci e,
       doLeader d h = (os, d', ms) ->
