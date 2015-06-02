@@ -319,6 +319,30 @@ Section StepDup.
   Definition step_d_star := refl_trans_1n_trace step_d.
 End StepDup.
 
+Section StepDrop.
+
+  Context `{params : MultiParams}.
+
+  Inductive step_drop : step_relation network (name * (input + list output)) :=
+  | Sdrop_deliver : forall net net' p xs ys out d l,
+                     nwPackets net = xs ++ p :: ys ->
+                     net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
+                     net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
+                                      (update (nwState net) (pDst p) d) ->
+                     step_drop net net' [(pDst p, inr out)]
+  | Sdrop_drop : forall net net' p xs ys,
+                  nwPackets net = xs ++ p :: ys ->
+                  net' = mkNetwork (xs ++ ys) (nwState net) ->
+                  step_drop net net' []
+  | Sdrop_input : forall h net net' out inp d l,
+                   input_handlers h inp (nwState net h) = (out, d, l) ->
+                   net' = mkNetwork (send_packets h l ++ nwPackets net)
+                                    (update (nwState net) h d) ->
+                   step_drop net net' [(h, inl inp); (h, inr out)].
+
+  Definition step_drop_star := refl_trans_1n_trace step_drop.
+End StepDrop.
+
 Section StepFailure.
   Context `{params : FailureParams}.
 
