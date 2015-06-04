@@ -451,7 +451,16 @@ Section PrefixWithinTerm.
             | _ : Prefix ?x ?ll |- In ?e _ =>
               cut (In e x); eauto
           end.
-          eapply prefix_contiguous; eauto. admit.
+          eapply prefix_contiguous; eauto.
+          match goal with
+          | [ H : locked_or (x2 = [] -> _) _ |- _ ] =>
+            unfold locked_or in H; invc H; auto
+          end.
+          match goal with
+          | [ H : In ?e _, H' : _ < eIndex ?e |- _ ] =>
+            apply maxIndex_is_max in H; [|solve[eapply_prop leaderLogs_sorted; eauto]]
+          end.
+          omega.
     - left.
       break_exists.
       break_and.
@@ -652,7 +661,12 @@ Section PrefixWithinTerm.
                      | H : contiguous_range_exact_lo _ _ |- _ =>
                        eapply contiguous_app in H; eauto; [idtac]
                  end.
-          assert (x2 <> []) by admit.
+          assert (x2 <> []).
+          {
+            unfold locked_or in *. intuition.
+            find_apply_lem_hyp maxIndex_is_max; [|solve[eapply_prop leaderLogs_sorted; eauto]].
+            omega.
+          }
           match goal with
             |  _ : Prefix ?x ?ll |- In ?e _ =>
                assert (In e x2) by (eapply prefix_contiguous; eauto)
@@ -723,7 +737,7 @@ Section PrefixWithinTerm.
           | H : removeAfterIndex _ _ = _ |- _ =>
             eapply removeAfterIndex_in; rewrite H; apply in_app_iff; [idtac]
         end. eauto using Prefix_In.
-  Admitted.
+  Qed.
   
   Definition log_leaderLogs_prefix_within_term net :=
     forall h t ll leader,
