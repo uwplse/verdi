@@ -25,4 +25,8 @@ Section CommonDefinitions.
       wonElection (dedup name_eq_dec (cronies (fst (sigma h)) t)) = true /\
       (currentTerm (snd (sigma h)) = t ->
        type (snd (sigma h)) <> Candidate).
+
+  Definition term_was_created (net : network) (t : term) : Prop :=
+    exists h ll,
+      In (t, ll) (leaderLogs (fst (nwState net h))).
 End CommonDefinitions.

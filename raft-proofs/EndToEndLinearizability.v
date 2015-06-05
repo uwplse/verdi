@@ -103,6 +103,9 @@ Require Import PrefixWithinTermProof.
 Require Import EveryEntryWasCreatedInterface.
 Require Import EveryEntryWasCreatedProof.
 
+Require Import EveryEntryWasCreatedHostLogInterface.
+Require Import EveryEntryWasCreatedHostLogProof.
+
 Require Import LeaderLogsVotesWithLogInterface.
 Require Import LeaderLogsVotesWithLogProof.
 
@@ -235,6 +238,7 @@ Hint Extern 4 (@votesWithLog_term_sanity_interface _ _ _) => apply vwltsi : type
 Hint Extern 4 (@leaderLogs_preserved_interface _ _ _) => apply llpi : typeclass_instances.
 Hint Extern 4 (@prefix_within_term_interface _ _ _) => apply pwti : typeclass_instances.
 Hint Extern 4 (@every_entry_was_created_interface _ _ _) => apply eewci : typeclass_instances.
+Hint Extern 4 (@every_entry_was_created_host_log_interface _ _ _) => apply eewchli : typeclass_instances.
 Hint Extern 4 (@leaderLogs_votesWithLog_interface _ _ _) => apply llvwli : typeclass_instances.
 Hint Extern 4 (@allEntries_votesWithLog_interface _ _ _) => apply aevwli : typeclass_instances.
 Hint Extern 4 (@votesWithLog_sorted_interface _ _ _) => apply vwlsi : typeclass_instances.

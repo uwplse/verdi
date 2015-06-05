@@ -12,6 +12,9 @@ Require Import Raft.
 Require Import CommonDefinitions.
 Require Import CommonTheorems.
 Require Import RaftRefinementInterface.
+
+Require Import RefinementCommonDefinitions.
+
 Require Import LeaderCompletenessInterface.
 Require Import PrefixWithinTermInterface.
 Require Import LeaderLogsTermSanityInterface.
@@ -269,6 +272,7 @@ Section LeaderCompleteness.
           find_insterU. find_insterU. find_insterU. find_insterU.
           conclude_using eauto.
           conclude_using eauto.
+          unfold term_was_created in *.
           break_exists.
           find_copy_apply_hyp_hyp. repeat break_or_hyp; try omega.
           assert (leaderLogs_preserved net) by eauto using leaderLogs_preserved_invariant.
