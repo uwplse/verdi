@@ -467,7 +467,7 @@ Section Raft.
                 (votedFor state)
                 (leaderId state)
            (log state)
-           0
+           (commitIndex state)
            (lastApplied state)
            (stateMachine state)
            []
