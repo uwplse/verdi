@@ -172,6 +172,9 @@ Require Import AllEntriesLeaderSublogProof.
 Require Import LastAppliedCommitIndexMatchingInterface.
 Require Import LastAppliedCommitIndexMatchingProof.
 
+Require Import LastAppliedLeCommitIndexInterface.
+Require Import LastAppliedLeCommitIndexProof.
+
 Require Import AllEntriesLeaderLogsTermInterface.
 Require Import AllEntriesLeaderLogsTermProof.
 
@@ -260,6 +263,7 @@ Hint Extern 4 (@allEntries_log_matching_interface _ _ _) => apply aelmi : typecl
 Hint Extern 4 (@append_entries_request_term_sanity_interface _ _ _) => apply aertsi : typeclass_instances.
 Hint Extern 4 (@allEntries_leader_sublog_interface _ _ _) => apply aelsi : typeclass_instances.
 Hint Extern 4 (@lastApplied_commitIndex_match_interface _ _ _) => apply lacimi : typeclass_instances.
+Hint Extern 4 (@lastApplied_le_commitIndex_interface _ _ _) => apply lalcii : typeclass_instances.
 Hint Extern 4 (@allEntries_leaderLogs_term_interface _ _ _) => apply aellti : typeclass_instances.
 Hint Extern 4 (@state_machine_correct_interface _ _ _) => apply smci : typeclass_instances.
 Hint Extern 4 (@output_greatest_id_interface _ _ _) => apply ogii : typeclass_instances.
