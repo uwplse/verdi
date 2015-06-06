@@ -18,10 +18,12 @@ Require Import SortedInterface.
 Require Import LogMatchingInterface.
 Require Import PrevLogLeaderSublogInterface.
 Require Import CurrentTermGtZeroInterface.
+Require Import LastAppliedLeCommitIndexInterface.
 
 Require Import RefinedLogMatchingLemmasInterface.
 
 Require Import SpecLemmas.
+Require Import RefinementSpecLemmas.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
@@ -38,6 +40,7 @@ Section StateMachineSafetyProof.
   Context {rlmli : refined_log_matching_lemmas_interface}.
   Context {pllsi : prevLog_leader_sublog_interface}.
   Context {ctgt0 : current_term_gt_zero_interface}.
+  Context {lalcii : lastApplied_le_commitIndex_interface}.
 
   Lemma exists_deghost_packet :
     forall net p,
@@ -752,20 +755,18 @@ Section StateMachineSafetyProof.
     unfold refined_raft_net_invariant_reboot,
            lifted_maxIndex_sanity, maxIndex_lastApplied, maxIndex_commitIndex.
     unfold reboot.
-    intuition; find_higher_order_rewrite; update_destruct; auto with *.
+    intuition; find_higher_order_rewrite; update_destruct; auto with *;
     repeat match goal with
              | [ H : forall _ , _ |- _ ] => specialize (H h0)
-           end.
-    repeat find_rewrite. simpl in *.
+           end;
+    repeat find_rewrite; simpl in *;
     auto.
   Qed.
-
 
   Definition commit_invariant_host (net : network (params := raft_refined_multi_params)) : Prop :=
     forall h e,
       In e (log (snd (nwState net h))) ->
-      (eIndex e <= lastApplied (snd (nwState net h)) \/
-       eIndex e <= commitIndex (snd (nwState net h))) ->
+      eIndex e <= commitIndex (snd (nwState net h)) ->
       committed net e (currentTerm (snd (nwState net h))).
 
   Definition commit_invariant_nw (net : network (params := raft_refined_multi_params)) : Prop :=
@@ -801,13 +802,33 @@ Section StateMachineSafetyProof.
     - unfold commit_invariant_nw; simpl; intuition.
   Qed.
 
+  Lemma lifted_lastApplied_le_commitIndex :
+    forall net h,
+      refined_raft_intermediate_reachable net ->
+      lastApplied (snd (nwState net h)) <= commitIndex (snd (nwState net h)).
+  Proof.
+    intros.
+    pose proof (lift_prop _ (lastApplied_le_commitIndex_invariant)).
+    rewrite <- deghost_spec with (net0 := net).
+    match goal with
+    | [ H : _ |- _ ] => apply H
+    end. auto.
+  Qed.
+
   Lemma commit_invariant_commit_recorded_committed :
     forall net,
+      refined_raft_intermediate_reachable net ->
       commit_invariant net ->
       commit_recorded_committed net.
   Proof.
     unfold commit_invariant, commit_recorded_committed, commit_recorded.
     intuition; repeat find_rewrite_lem deghost_spec; auto.
+    match goal with
+    | [ H : _ <= lastApplied ?x |- _ ] =>
+    refine ((fun pf => _) (le_trans _ _ (commitIndex x) H))
+    end.
+    conclude_using ltac:(eapply lifted_lastApplied_le_commitIndex; auto).
+    auto.
   Qed.
 
   Lemma handleClientRequest_currentTerm :
@@ -1083,10 +1104,6 @@ Section StateMachineSafetyProof.
         rewrite update_nop_ext' by (now erewrite <- handleClientRequest_currentTerm by eauto).
         match goal with
           | [H : _ |- _] => rewrite update_nop_ext' in H
-              by (now erewrite <- handleClientRequest_lastApplied by eauto)
-        end.
-        match goal with
-          | [H : _ |- _] => rewrite update_nop_ext' in H
               by (now erewrite <- handleClientRequest_commitIndex by eauto)
         end.
         update_destruct.
@@ -1211,16 +1228,113 @@ Section StateMachineSafetyProof.
     refined_raft_net_invariant_timeout commit_invariant.
   Admitted.
 
+  Lemma committed_ext :
+    forall ps  st st' t e,
+      (forall h, st' h = st h) ->
+      committed (mkNetwork ps st) e t ->
+      committed (mkNetwork ps st') e t.
+  Proof.
+    unfold committed, directly_committed.
+    simpl. intros.
+    break_exists_exists.
+    find_higher_order_rewrite.
+    intuition.
+    break_exists_exists.  intuition.
+    find_higher_order_rewrite. auto.
+  Qed.
+
+  Lemma committed_monotonic :
+    forall net t t' e,
+      committed net e t ->
+      t <= t' ->
+      committed net e t'.
+  Proof.
+    unfold committed.
+    intros.
+    break_exists_exists.
+    intuition.
+  Qed.
+
+  Lemma allEntries_monotonic :
+    forall net h t n pli plt es ci x,
+      In x (allEntries (fst (nwState net h))) ->
+      In x (allEntries (update_elections_data_appendEntries h (nwState net h) t n pli plt es ci)).
+  Proof.
+    unfold update_elections_data_appendEntries.
+    intros. break_let. break_match; auto.
+    break_if; auto.
+    simpl. intuition.
+  Qed.
+
+  Lemma handleAppendEntries_preserves_directly_committed :
+    forall net net' h t n pli plt es ci d m e,
+      handleAppendEntries h (snd (nwState net h)) t n pli plt es ci = (d, m) ->
+      (forall h', nwState net' h' = update (nwState net) h
+                                      (update_elections_data_appendEntries
+                                         h (nwState net h) t n pli plt es ci, d) h') ->
+      directly_committed net e ->
+      directly_committed net' e.
+  Proof.
+    unfold directly_committed.
+    intros. break_exists_exists.
+    intuition.
+    find_higher_order_rewrite.
+    update_destruct; auto.
+    apply allEntries_monotonic.
+    auto.
+  Qed.
+
+  Lemma directly_committed_stays_in_log :
+    forall net net' h t n pli plt es ci d m e,
+      handleAppendEntries h (snd (nwState net h)) t n pli plt es ci = (d, m) ->
+      (forall h', nwState net' h' = update (nwState net) h
+                                      (update_elections_data_appendEntries
+                                         h (nwState net h) t n pli plt es ci, d) h') ->
+      directly_committed net e ->
+      In e (log (snd (nwState net h))) ->
+      In e (log d).
+  Admitted.
+
+  Lemma handleAppendEntries_entries_match :
+    forall h st t n pli plt es ci d m,
+      handleAppendEntries h st t n pli plt es ci = (d, m) ->
+      entries_match (log st) (log d).
+  Admitted.
+
+  Lemma handleAppendEntries_preserves_commit :
+    forall net net' h t n pli plt es ci d m e t',
+      handleAppendEntries h (snd (nwState net h)) t n pli plt es ci = (d, m) ->
+      (forall h', nwState net' h' = update (nwState net) h
+                                      (update_elections_data_appendEntries
+                                         h (nwState net h) t n pli plt es ci, d) h') ->
+      committed net e t' ->
+      committed net' e t'.
+  Proof.
+    unfold committed.
+    intros.
+    break_exists_exists. break_and.
+    find_higher_order_rewrite.
+    update_destruct.
+    - find_copy_eapply_lem_hyp directly_committed_stays_in_log; eauto.
+      find_eapply_lem_hyp handleAppendEntries_preserves_directly_committed; eauto.
+      intuition.
+      eapply handleAppendEntries_entries_match with (st := snd (nwState net x)); eauto.
+    - intuition. eauto using handleAppendEntries_preserves_directly_committed.
+  Qed.
+
+  Lemma handleAppendEntries_currentTerm_le :
+    forall h st t n pli plt es ci st' m,
+      handleAppendEntries h st t n pli plt es ci = (st', m) ->
+      currentTerm st <= currentTerm st'.
+  Proof.
+    intros.
+    unfold handleAppendEntries, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; simpl in *;
+    do_bool; auto.
+  Qed.
+
   Lemma commit_invariant_append_entries :
     refined_raft_net_invariant_append_entries commit_invariant.
-  Proof.
-    unfold refined_raft_net_invariant_append_entries, commit_invariant.
-    intros. split.
-    - unfold commit_invariant_host in *. break_and. simpl. intros.
-      repeat find_higher_order_rewrite.
-      update_destruct.
-      + admit.
-      +
   Admitted.
 
   Lemma commit_invariant_append_entries_reply :
@@ -1289,132 +1403,117 @@ Section StateMachineSafetyProof.
     - apply lifted_maxIndex_sanity_init.
     - apply commit_invariant_init.
     - apply state_machine_safety_deghost.
-      + apply commit_invariant_commit_recorded_committed.
+      + apply commit_invariant_commit_recorded_committed; [constructor|].
         apply commit_invariant_init.
       + apply state_machine_safety'_invariant.
         constructor.
   Qed.
 
   Lemma everything_client_request :
-    refined_raft_net_invariant_client_request everything.
+    refined_raft_net_invariant_client_request' everything.
   Proof.
-    unfold refined_raft_net_invariant_client_request, everything.
+    unfold refined_raft_net_invariant_client_request', everything.
     intuition.
     - eapply lifted_maxIndex_sanity_client_request; eauto.
     - eapply commit_invariant_client_request; eauto.
       apply maxIndex_sanity_lower. auto.
     - apply state_machine_safety_deghost.
-      + apply commit_invariant_commit_recorded_committed.
+      + apply commit_invariant_commit_recorded_committed; auto.
         eapply commit_invariant_client_request; eauto.
         apply maxIndex_sanity_lower. auto.
-      + apply state_machine_safety'_invariant. subst.
-        eapply RRIR_handleInput with (inp := ClientRequest client id c) ; eauto.
+      + apply state_machine_safety'_invariant. subst. auto.
   Qed.
 
   Lemma everything_timeout :
-    refined_raft_net_invariant_timeout everything.
+    refined_raft_net_invariant_timeout' everything.
   Proof.
-    unfold refined_raft_net_invariant_timeout, everything.
+    unfold refined_raft_net_invariant_timeout', everything.
     intuition.
     - eapply lifted_maxIndex_sanity_timeout; eauto.
     - eapply commit_invariant_timeout; eauto.
     - apply state_machine_safety_deghost.
-      + apply commit_invariant_commit_recorded_committed.
+      + apply commit_invariant_commit_recorded_committed. auto.
         eapply commit_invariant_timeout; eauto.
-      + apply state_machine_safety'_invariant. subst.
-        eapply RRIR_handleInput with (inp := Timeout) ; eauto.
+      + apply state_machine_safety'_invariant. auto.
   Qed.
 
   Lemma everything_append_entries :
-    refined_raft_net_invariant_append_entries everything.
+    refined_raft_net_invariant_append_entries' everything.
   Proof.
-    unfold refined_raft_net_invariant_append_entries, everything.
+    unfold refined_raft_net_invariant_append_entries', everything.
     intuition.
     - eapply lifted_maxIndex_sanity_append_entries; eauto.
     - eapply commit_invariant_append_entries; eauto.
     - apply state_machine_safety_deghost.
-      + apply commit_invariant_commit_recorded_committed.
+      + apply commit_invariant_commit_recorded_committed. auto.
         eapply commit_invariant_append_entries; eauto.
-      + apply state_machine_safety'_invariant. subst.
-        eapply RRIR_handleMessage with (p0 := p); eauto; repeat find_rewrite.
-        * simpl.  break_let. simpl in *. repeat find_rewrite. find_inversion.  eauto.
-        * auto.
-        * simpl. intuition. find_apply_hyp_hyp. intuition.
+      + apply state_machine_safety'_invariant. auto.
   Qed.
 
   Lemma everything_append_entries_reply :
-    refined_raft_net_invariant_append_entries_reply everything.
+    refined_raft_net_invariant_append_entries_reply' everything.
   Proof.
-    unfold refined_raft_net_invariant_append_entries_reply, everything.
+    unfold refined_raft_net_invariant_append_entries_reply', everything.
     intuition.
     - eapply lifted_maxIndex_sanity_append_entries_reply; eauto.
     - eapply commit_invariant_append_entries_reply; eauto.
     - apply state_machine_safety_deghost.
-      + apply commit_invariant_commit_recorded_committed.
+      + apply commit_invariant_commit_recorded_committed. auto.
         eapply commit_invariant_append_entries_reply; eauto.
-      + apply state_machine_safety'_invariant. subst.
-        eapply RRIR_handleMessage with (p0 := p); eauto; repeat find_rewrite; simpl; eauto.
+      + apply state_machine_safety'_invariant. auto.
   Qed.
 
   Lemma everything_request_vote :
-    refined_raft_net_invariant_request_vote everything.
+    refined_raft_net_invariant_request_vote' everything.
   Proof.
-    unfold refined_raft_net_invariant_request_vote, everything.
+    unfold refined_raft_net_invariant_request_vote', everything.
     intuition.
     - eapply lifted_maxIndex_sanity_request_vote; eauto.
     - eapply commit_invariant_request_vote; eauto.
     - apply state_machine_safety_deghost.
-      + apply commit_invariant_commit_recorded_committed.
+      + apply commit_invariant_commit_recorded_committed. auto.
         eapply commit_invariant_request_vote; eauto.
-      + apply state_machine_safety'_invariant. subst.
-        eapply RRIR_handleMessage with (p0 := p); eauto; repeat find_rewrite.
-        * simpl.  break_let. simpl in *. repeat find_rewrite. find_inversion.  eauto.
-        * auto.
-        * simpl. intuition. find_apply_hyp_hyp. intuition.
+      + apply state_machine_safety'_invariant. auto.
   Qed.
 
   Lemma everything_request_vote_reply :
-    refined_raft_net_invariant_request_vote_reply everything.
+    refined_raft_net_invariant_request_vote_reply' everything.
   Proof.
-    unfold refined_raft_net_invariant_request_vote_reply, everything.
+    unfold refined_raft_net_invariant_request_vote_reply', everything.
     intuition.
     - eapply lifted_maxIndex_sanity_request_vote_reply; eauto.
     - eapply commit_invariant_request_vote_reply; eauto.
     - apply state_machine_safety_deghost.
-      + apply commit_invariant_commit_recorded_committed.
+      + apply commit_invariant_commit_recorded_committed. auto.
         eapply commit_invariant_request_vote_reply; eauto.
-      + apply state_machine_safety'_invariant. subst.
-        eapply RRIR_handleMessage with (p0 := p); eauto; repeat find_rewrite; simpl; eauto.
+      + apply state_machine_safety'_invariant. auto.
   Qed.
 
   Lemma everything_do_leader :
-    refined_raft_net_invariant_do_leader everything.
+    refined_raft_net_invariant_do_leader' everything.
   Proof.
-    unfold refined_raft_net_invariant_do_leader, everything.
+    unfold refined_raft_net_invariant_do_leader', everything.
     intuition.
     - eapply lifted_maxIndex_sanity_do_leader; eauto.
     - eapply commit_invariant_do_leader; eauto.
     - apply state_machine_safety_deghost.
-      + apply commit_invariant_commit_recorded_committed.
+      + apply commit_invariant_commit_recorded_committed. auto.
         eapply commit_invariant_do_leader; eauto.
-      + apply state_machine_safety'_invariant. subst.
-        eapply RRIR_doLeader; eauto.
+      + apply state_machine_safety'_invariant. auto.
   Qed.
 
   Lemma everything_do_generic_server :
-    refined_raft_net_invariant_do_generic_server everything.
+    refined_raft_net_invariant_do_generic_server' everything.
   Proof.
-    unfold refined_raft_net_invariant_do_generic_server, everything.
+    unfold refined_raft_net_invariant_do_generic_server', everything.
     intuition.
     - eapply lifted_maxIndex_sanity_do_generic_server; eauto.
     - eapply commit_invariant_do_generic_server; eauto.
     - apply state_machine_safety_deghost.
-      + apply commit_invariant_commit_recorded_committed.
+      + apply commit_invariant_commit_recorded_committed. auto.
         eapply commit_invariant_do_generic_server; eauto.
-      + apply state_machine_safety'_invariant. subst.
-        eapply RRIR_doGenericServer; eauto.
+      + apply state_machine_safety'_invariant. auto.
   Qed.
-
 
   Lemma directly_committed_state_same :
     forall net net' e,
@@ -1454,6 +1553,23 @@ Section StateMachineSafetyProof.
       eapply_prop_hyp In In; eauto using committed_state_same.
   Qed.
 
+  Lemma CRC_state_same_packet_subset :
+    refined_raft_net_invariant_state_same_packet_subset commit_recorded_committed.
+  Proof.
+    unfold refined_raft_net_invariant_state_same_packet_subset, commit_recorded_committed,
+           commit_recorded, committed, directly_committed.
+    intros.
+    specialize (H1 h e).
+    repeat find_rewrite_lem deghost_spec.
+    repeat find_higher_order_rewrite.
+    find_apply_hyp_hyp.
+    break_exists_exists.
+    repeat find_higher_order_rewrite. intuition.
+    break_exists_exists. intuition.
+    find_apply_hyp_hyp.
+    find_higher_order_rewrite. auto.
+  Qed.
+
   Lemma everything_state_same_packet_subset :
     refined_raft_net_invariant_state_same_packet_subset everything.
   Proof.
@@ -1462,7 +1578,8 @@ Section StateMachineSafetyProof.
     - eapply lifted_maxIndex_sanity_state_same_packet_subset; eauto.
     - eapply commit_invariant_state_same_packet_subset; eauto.
     - apply state_machine_safety_deghost.
-      + apply commit_invariant_commit_recorded_committed.
+      + eapply CRC_state_same_packet_subset; eauto.
+        apply commit_invariant_commit_recorded_committed. auto.
         eapply commit_invariant_state_same_packet_subset; eauto.
       + eapply state_machine_safety'_state_same_packet_subset; eauto.
         auto using state_machine_safety'_invariant.
@@ -1471,25 +1588,16 @@ Section StateMachineSafetyProof.
   Require Import FunctionalExtensionality.
 
   Lemma everything_reboot :
-    refined_raft_net_invariant_reboot everything.
+    refined_raft_net_invariant_reboot' everything.
   Proof.
-    unfold refined_raft_net_invariant_reboot, everything.
+    unfold refined_raft_net_invariant_reboot', everything.
     intuition.
     - eapply lifted_maxIndex_sanity_reboot; eauto.
     - eapply commit_invariant_reboot; eauto.
     - apply state_machine_safety_deghost.
-      + apply commit_invariant_commit_recorded_committed.
+      + apply commit_invariant_commit_recorded_committed. auto.
         eapply commit_invariant_reboot; eauto.
-      + apply state_machine_safety'_invariant.
-        eapply RRIR_step_f with (failed := [h]) (out := []); eauto. eapply SF_reboot with (h0 := h); eauto.
-        * simpl. auto.
-        * { destruct net'. f_equal.
-            - simpl in *. congruence.
-            - simpl in *. apply functional_extensionality. intros.
-              find_higher_order_rewrite. unfold update. simpl. break_if.
-              + subst. find_higher_order_rewrite. unfold refined_reboot. simpl. auto.
-              + auto.
-          }
+      + apply state_machine_safety'_invariant. auto.
   Qed.
 
   Theorem everything_invariant :
@@ -1498,7 +1606,7 @@ Section StateMachineSafetyProof.
       everything net.
   Proof.
     intros.
-    apply refined_raft_net_invariant; auto.
+    apply refined_raft_net_invariant'; auto.
     - apply everything_init.
     - apply everything_client_request.
     - apply everything_timeout.
@@ -1541,7 +1649,7 @@ Section StateMachineSafetyProof.
       commit_recorded_committed net.
   Proof.
     intros.
-    find_apply_lem_hyp everything_invariant.
+    find_copy_apply_lem_hyp everything_invariant.
     unfold everything in *.
     intuition.
     auto using commit_invariant_commit_recorded_committed.
