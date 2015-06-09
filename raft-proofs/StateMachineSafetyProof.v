@@ -777,6 +777,13 @@ Section StateMachineSafetyProof.
          In e es ->
          eIndex e <= lci ->
          committed net e t) /\
+      (forall h e,
+          currentTerm (snd (nwState net h)) <= t ->
+          haveNewEntries (snd (nwState net h)) es = true ->
+          (pli = 0 \/ (exists e, findAtIndex (log (snd (nwState net h))) pli = Some e /\ eTerm e = plt)) ->
+          In e es ->
+          eIndex e <= commitIndex (snd (nwState net h)) ->
+          committed net e t) /\
       (forall h e ple,
          currentTerm (snd (nwState net h)) <= t ->
          In ple (log (snd (nwState net h))) ->
@@ -983,11 +990,12 @@ Section StateMachineSafetyProof.
          is_append_entries (pBody p) ->
          In p (nwPackets net)) ->
       (forall h,
-         log (snd (nwState net h)) = log (snd (nwState net' h))) ->
+         log (snd (nwState net' h)) = log (snd (nwState net h))) ->
       (forall h e t,
          In (t, e) (allEntries (fst (nwState net h))) ->
          In (t, e) (allEntries (fst (nwState net' h)))) ->
       (forall h, currentTerm (snd (nwState net h)) <= currentTerm (snd (nwState net' h))) ->
+      (forall h, commitIndex (snd (nwState net' h)) = commitIndex (snd (nwState net h))) ->
       commit_invariant_nw net ->
       commit_invariant_nw net'.
   Proof.
@@ -1001,10 +1009,16 @@ Section StateMachineSafetyProof.
                         In x (log (snd (nwState net h)))) by (intros; find_higher_order_rewrite; auto).
     intuition.
     - eapply committed_log_allEntries_preserved; eauto.
-    - eapply committed_log_allEntries_preserved; auto.
-      + eauto 10 using le_trans, haveNewEntries_log.
-      + auto.
-      + auto.
+    - eapply committed_log_allEntries_preserved with (net := net); auto.
+      repeat find_higher_order_rewrite. eauto using le_trans, haveNewEntries_log.
+    - eapply committed_log_allEntries_preserved with (net := net); auto.
+      break_exists. break_and. repeat find_higher_order_rewrite.
+      match goal with
+      | [ H : context [exists _, _] |- _ ] => eapply H
+      end; eauto using le_trans, haveNewEntries_log.
+    - repeat find_higher_order_rewrite.
+      eapply committed_log_allEntries_preserved with (net := net); auto.
+      + eauto using le_trans, haveNewEntries_log.
   Qed.
 
   Lemma hCR_preserves_committed :
@@ -1141,16 +1155,18 @@ Section StateMachineSafetyProof.
       eapply_prop_hyp In In.
       break_or_hyp.
       + copy_eapply_prop_hyp In In; [|solve [eauto 10]].
-        intuition.
-        * eauto using hCR_preserves_committed.
-        * find_higher_order_rewrite.
+        repeat split.
+        * intuition eauto using hCR_preserves_committed.
+        * admit.
+        * intuition.
+          repeat find_higher_order_rewrite.
           { update_destruct.
             - find_copy_apply_lem_hyp handleClientRequest_log.
               intuition.
               + eapply hCR_preserves_committed; simpl; eauto.
                 find_copy_apply_lem_hyp handleClientRequest_type. break_and.
-                repeat find_rewrite.
-                eauto using haveNewEntries_log.
+                (* eauto using haveNewEntries_log. *)
+                admit.
               + break_exists. break_and.
                 repeat find_rewrite.
                 match goal with
@@ -1222,7 +1238,7 @@ Section StateMachineSafetyProof.
       + unfold send_packets in *. exfalso. do_in_map.
         subst. simpl in *.
         eapply handleClientRequest_no_append_entries; eauto 10.
-  Qed.
+Admitted.
 
   Lemma commit_invariant_timeout :
     refined_raft_net_invariant_timeout commit_invariant.
@@ -1333,8 +1349,112 @@ Section StateMachineSafetyProof.
     do_bool; auto.
   Qed.
 
+  Theorem handleAppendEntries_log_detailed :
+    forall h st t n pli plt es ci st' ps,
+      handleAppendEntries h st t n pli plt es ci = (st', ps) ->
+      (commitIndex st' = commitIndex st /\ log st' = log st) \/
+      (leaderId st' <> None /\
+       currentTerm st' = t /\
+       commitIndex st' = max (commitIndex st) (min ci (maxIndex es)) /\
+       es <> nil /\
+       pli = 0 /\ t >= currentTerm st /\ log st' = es /\
+      haveNewEntries st es = true ) \/
+      (leaderId st' <> None /\
+       currentTerm st' = t /\
+       commitIndex st' = max (commitIndex st)
+                             (min ci (maxIndex (es ++ (removeAfterIndex (log st) pli)))) /\
+       es <> nil /\
+        exists e,
+         In e (log st) /\
+         eIndex e = pli /\
+         eTerm e = plt) /\
+      t >= currentTerm st /\
+      log st' = es ++ (removeAfterIndex (log st) pli) /\
+      haveNewEntries st es = true.
+  Proof.
+    intros. unfold handleAppendEntries in *.
+    break_if; [find_inversion; subst; eauto|].
+    break_if;
+      [do_bool; break_if; find_inversion; subst;
+        try find_apply_lem_hyp haveNewEntries_true;
+        simpl in *; intuition eauto using advanceCurrentTerm_log, advanceCurrentTerm_commitIndex, some_none, advanceCurrentTerm_term|].
+    simpl in *. intuition eauto using advanceCurrentTerm_log, advanceCurrentTerm_commitIndex.
+    break_match; [|find_inversion; subst; eauto].
+    break_if; [find_inversion; subst; eauto|].
+    break_if; [|find_inversion; subst; eauto using advanceCurrentTerm_log, advanceCurrentTerm_commitIndex].
+    find_inversion; subst; simpl in *.
+    right. right.
+    find_apply_lem_hyp findAtIndex_elim.
+    intuition; do_bool; find_apply_lem_hyp haveNewEntries_true;
+    intuition eauto using advanceCurrentTerm_term; congruence.
+  Qed.
+
+Ltac break_exists_name x :=
+  match goal with
+  | [ H : exists _, _ |- _ ] => destruct H as [x H]
+  end.
+
   Lemma commit_invariant_append_entries :
     refined_raft_net_invariant_append_entries commit_invariant.
+  Proof.
+     unfold refined_raft_net_invariant_append_entries, commit_invariant.
+     intros. split.
+     - break_and.
+       match goal with
+       | [ H : commit_invariant_host _ |- _ ] =>
+         rename H into Hhost;
+           unfold commit_invariant_host in *
+       end.
+       simpl. intros.
+       eapply committed_ext; eauto.
+       repeat find_higher_order_rewrite.
+       update_destruct.
+       + (* e is in h's log *)
+         eapply handleAppendEntries_preserves_commit; eauto.
+
+         find_copy_apply_lem_hyp handleAppendEntries_log_detailed.
+         break_or_hyp.
+         * break_and. repeat find_rewrite.
+           find_copy_apply_lem_hyp handleAppendEntries_currentTerm_le.
+           eapply committed_monotonic; eauto.
+         * assert (In p (nwPackets net)) as Hp by (repeat find_rewrite; auto with *).
+           match goal with
+           | [ H : pBody p = _, H' : commit_invariant_nw _ |- _ ] =>
+             let Hn := fresh "H" in
+             pose proof H as Hn; apply H' in Hn; [|solve[auto]]; destruct Hn as [Heslci [Hesci Hloglci]]
+           end.
+           clear Hp.
+           { break_or_hyp; repeat break_and.
+             - repeat find_rewrite.
+               find_apply_lem_hyp NPeano.Nat.max_le. break_or_hyp.
+               + eapply Hesci; auto.
+                 eauto.
+                 auto. auto.
+               + eapply Heslci; auto. zify. omega.
+             - repeat find_rewrite.
+               break_exists_name ple. break_and.
+               find_apply_lem_hyp NPeano.Nat.max_le. break_or_hyp.
+               + match goal with
+                 | [ H : In e (_ ++ _) |- _ ] => apply in_app_or in H; destruct H
+                 end.
+                 * eapply Hesci with (h := pDst p); auto.
+                   right. exists ple. intuition.
+                   apply findAtIndex_intro'; auto using sorted_host_lifted.
+                 * { eapply committed_monotonic.
+                     - eapply Hhost with (h := pDst p); eauto using removeAfterIndex_in.
+                     - auto.
+                   }
+               + match goal with
+                 | [ H : In e (_ ++ _) |- _ ] => apply in_app_or in H; destruct H
+                 end.
+                 * eapply Heslci; auto. zify. omega.
+                 * find_copy_apply_lem_hyp removeAfterIndex_in.
+                   find_apply_lem_hyp removeAfterIndex_In_le; [|solve [auto using sorted_host_lifted]].
+                   eapply Hloglci with (ple0 := ple); eauto.
+                   zify. omega.
+           }
+       + eapply handleAppendEntries_preserves_commit; eauto.
+  - admit.
   Admitted.
 
   Lemma commit_invariant_append_entries_reply :

@@ -761,6 +761,27 @@ Section CommonTheorems.
           simpl in *. solve_by_inversion.
   Qed.
 
+  Theorem sorted_uniqueIndices :
+    forall l,
+      sorted l -> uniqueIndices l.
+  Proof.
+    intros; induction l; simpl; auto.
+    - unfold uniqueIndices. simpl. constructor.
+    - unfold uniqueIndices in *. simpl in *. intuition. constructor; eauto.
+      intuition. do_in_map. find_apply_hyp_hyp. omega.
+  Qed.
+
+  Lemma findAtIndex_intro' :
+    forall l i e,
+      sorted l ->
+      In e l ->
+      eIndex e = i ->
+      findAtIndex l i = Some e.
+  Proof.
+    intros.
+    apply findAtIndex_intro; auto using sorted_uniqueIndices.
+  Qed.
+
   Lemma doLeader_same_log :
     forall st n os st' ms,
       doLeader st n = (os, st', ms) ->
@@ -808,17 +829,6 @@ Section CommonTheorems.
       | AppendEntries t _ _ _ _ _ => Some t
       | AppendEntriesReply t _ _ => Some t
     end.
-
-  Theorem sorted_uniqueIndices :
-    forall l,
-      sorted l -> uniqueIndices l.
-  Proof.
-    intros; induction l; simpl; auto.
-    - unfold uniqueIndices. simpl. constructor.
-    - unfold uniqueIndices in *. simpl in *. intuition. constructor; eauto.
-      intuition. do_in_map. find_apply_hyp_hyp. omega.
-  Qed.
-
 
   Lemma wonElection_length :
     forall l1 l2,
