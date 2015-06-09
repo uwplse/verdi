@@ -6,6 +6,7 @@ Require Import VerdiTactics.
 Require Import Util.
 Require Import Net.
 
+Require Import RaftState.
 Require Import Raft.
 Require Import CommonTheorems.
 Require Import CommitRecordedCommittedInterface.
@@ -19,6 +20,7 @@ Require Import LogMatchingInterface.
 Require Import PrevLogLeaderSublogInterface.
 Require Import CurrentTermGtZeroInterface.
 Require Import LastAppliedLeCommitIndexInterface.
+Require Import MatchIndexAllEntriesInterface.
 
 Require Import RefinedLogMatchingLemmasInterface.
 
@@ -41,6 +43,7 @@ Section StateMachineSafetyProof.
   Context {pllsi : prevLog_leader_sublog_interface}.
   Context {ctgt0 : current_term_gt_zero_interface}.
   Context {lalcii : lastApplied_le_commitIndex_interface}.
+  Context {miaei : match_index_all_entries_interface}.
 
   Lemma exists_deghost_packet :
     forall net p,
@@ -1469,8 +1472,142 @@ Ltac break_exists_name x :=
     refined_raft_net_invariant_request_vote_reply commit_invariant.
   Admitted.
 
+  Lemma committed_ext' :
+    forall ps ps' st st' t e,
+      (forall h, st' h = st h) ->
+      committed (mkNetwork ps st) e t ->
+      committed (mkNetwork ps' st') e t.
+  Proof.
+    unfold committed, directly_committed.
+    simpl. intros.
+    break_exists_exists.
+    find_higher_order_rewrite.
+    intuition.
+    break_exists_exists.  intuition.
+    find_higher_order_rewrite. auto.
+  Qed.
+
+
+  Lemma doLeader_spec :
+    forall st n os st' ms,
+      doLeader st n = (os, st', ms) ->
+      st' = st \/
+      (type st = Leader /\
+       log st' = log st /\
+       type st' = type st /\
+       currentTerm st' = currentTerm st /\
+       nextIndex st' = nextIndex st /\
+       commitIndex st' = commitIndex (advanceCommitIndex st n) /\
+       forall m, In m ms ->
+            exists h, h <> n /\ m = replicaMessage (advanceCommitIndex st n) n h).
+  Proof.
+    unfold doLeader.
+    intros.
+    destruct st. simpl in *.
+    repeat break_match; repeat find_inversion; simpl in *; eauto.
+    right. intuition.
+    - intros.
+      do_in_map. subst.
+      find_apply_lem_hyp filter_In. break_and.
+      break_if; try discriminate.
+      eexists. intuition eauto.
+    - intuition.
+  Qed.
+
+  Lemma haveQuorum_directly_committed :
+    forall net h e,
+      refined_raft_intermediate_reachable net ->
+      In e (log (snd (nwState net h))) ->
+      haveQuorum (snd (nwState net h)) h (eIndex e) = true ->
+      eTerm e = currentTerm (snd (nwState net h)) ->
+      directly_committed net e.
+  Proof.
+    unfold haveQuorum, directly_committed.
+    intros. do_bool.
+    eexists. intuition eauto.
+    - apply filter_NoDup. pose proof no_dup_nodes. simpl in *. auto.
+    - find_apply_lem_hyp filter_In. break_and. do_bool.
+      eapply match_index_all_entries_invariant; eauto.
+  Qed.
+
+  Lemma advanceCommitIndex_committed :
+    forall h net,
+      refined_raft_intermediate_reachable net ->
+      (forall e, In e (log (snd (nwState net h))) ->
+            eIndex e <= commitIndex (snd (nwState net h)) ->
+            committed net e (currentTerm (snd (nwState net h)))) ->
+      (forall e, In e (log (snd (nwState net h))) ->
+            eIndex e <= commitIndex (advanceCommitIndex (snd (nwState net h)) h) ->
+            committed net e (currentTerm (snd (nwState net h)))).
+  Proof.
+    unfold advanceCommitIndex.
+    intros. simpl in *.
+    match goal with
+    | [ H : context [fold_left Nat.max ?l ?x] |- _ ] =>
+      pose proof fold_left_maximum_cases l x
+    end. intuition.
+    break_exists. break_and.
+    find_apply_lem_hyp in_map_iff.
+    break_exists_name witness. break_and.
+    find_apply_lem_hyp filter_In.  break_and.
+    find_apply_lem_hyp findGtIndex_necessary. do_bool. break_and. do_bool. break_and.
+    do_bool.
+    unfold committed.
+    exists h, witness. intuition.
+    eapply haveQuorum_directly_committed; eauto.
+  Qed.
+
   Lemma commit_invariant_do_leader :
     refined_raft_net_invariant_do_leader commit_invariant.
+  Proof.
+    unfold refined_raft_net_invariant_do_leader, commit_invariant.
+    simpl. intros. break_and.
+    split.
+    - find_apply_lem_hyp doLeader_spec. break_or_hyp.
+      + unfold commit_invariant_host in *. simpl. intros. find_higher_order_rewrite.
+        eapply committed_ext' with (ps := nwPackets net) (st := nwState net).
+        * intros. find_higher_order_rewrite.
+          match goal with
+          | [ |- context [ update _ ?x _ ?y ] ] =>
+            destruct (name_eq_dec x y); subst; rewrite_update
+          end; auto.
+        * match goal with
+          | [ H : nwState ?net ?h = (?x, ?y) |- _ ] =>
+            replace x with (fst (nwState net h)) in * by (rewrite H; auto);
+              replace y with (snd (nwState net h)) in * by (rewrite H; auto);
+              clear H
+          end.
+          destruct net. simpl in *. auto.
+          update_destruct; auto.
+      + break_and.
+        unfold commit_invariant_host in *.
+        simpl. intros. repeat find_higher_order_rewrite.
+        match goal with
+        | [ H : nwState ?net ?h = (?x, ?y) |- _ ] =>
+          replace x with (fst (nwState net h)) in * by (rewrite H; auto);
+            replace y with (snd (nwState net h)) in * by (rewrite H; auto);
+            clear H
+        end.
+        match goal with
+        | [ H : context [ update _ ?x _ ?y ] |- _ ] =>
+          destruct (name_eq_dec x y); subst; rewrite_update
+        end.
+        * { eapply committed_log_allEntries_preserved.
+            - simpl. find_rewrite. eapply advanceCommitIndex_committed; auto.
+              + simpl in *. repeat find_rewrite. auto.
+              + simpl in *. repeat find_rewrite. auto.
+            - simpl. intros. find_higher_order_rewrite.
+              update_destruct.
+              + repeat find_rewrite. auto.
+              + auto.
+            - simpl. intros. find_higher_order_rewrite.
+              update_destruct; auto.
+          }
+        * { eapply committed_log_allEntries_preserved; eauto.
+            + simpl. intros. find_higher_order_rewrite. update_destruct; repeat find_rewrite; auto.
+            + simpl. intros. find_higher_order_rewrite. update_destruct; repeat find_rewrite; auto.
+          }
+    - admit.
   Admitted.
 
   Lemma commit_invariant_do_generic_server :
