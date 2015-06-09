@@ -1491,7 +1491,7 @@ Ltac break_exists_name x :=
   Lemma doLeader_spec :
     forall st n os st' ms,
       doLeader st n = (os, st', ms) ->
-      st' = st \/
+      (st' = st /\ ms = []) \/
       (type st = Leader /\
        log st' = log st /\
        type st' = type st /\
@@ -1564,9 +1564,10 @@ Ltac break_exists_name x :=
     simpl. intros. break_and.
     split.
     - find_apply_lem_hyp doLeader_spec. break_or_hyp.
-      + unfold commit_invariant_host in *. simpl. intros. find_higher_order_rewrite.
+      + break_and.
+        unfold commit_invariant_host in *. simpl. intros. repeat find_higher_order_rewrite.
         eapply committed_ext' with (ps := nwPackets net) (st := nwState net).
-        * intros. find_higher_order_rewrite.
+        * intros. subst. repeat find_higher_order_rewrite.
           match goal with
           | [ |- context [ update _ ?x _ ?y ] ] =>
             destruct (name_eq_dec x y); subst; rewrite_update
