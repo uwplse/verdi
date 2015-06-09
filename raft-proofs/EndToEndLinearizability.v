@@ -208,6 +208,8 @@ Require Import AllEntriesIndicesGt0Proof.
 Require Import PrevLogCandidateEntriesTermInterface.
 Require Import PrevLogCandidateEntriesTermProof.
 
+Require Import MatchIndexAllEntriesInterface.
+Require Import MatchIndexAllEntriesProof.
 
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
@@ -275,6 +277,7 @@ Hint Extern 4 (@votes_votesWithLog_correspond_interface _ _ _) => apply vvci : t
 Hint Extern 4 (@prevLog_leader_sublog_interface _ _ _) => apply pllsi : typeclass_instances.
 Hint Extern 4 (@allEntries_indices_gt_0_interface _ _ _) => apply aeigt0 : typeclass_instances.
 Hint Extern 4 (@prevLog_candidateEntriesTerm_interface _ _ _) => apply plceti : typeclass_instances.
+Hint Extern 4 (@match_index_all_entries_interface _ _ _) => apply miaei : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
