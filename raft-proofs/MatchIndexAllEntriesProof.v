@@ -20,6 +20,10 @@ Require Import NoAppendEntriesToSelfInterface.
 Require Import TermsAndIndicesFromOneLogInterface.
 Require Import RefinedLogMatchingLemmasInterface.
 Require Import LogAllEntriesInterface.
+Require Import AppendEntriesRequestLeaderLogsInterface.
+Require Import LeaderSublogInterface.
+Require Import LeadersHaveLeaderLogsStrongInterface.
+Require Import OneLeaderLogPerTermInterface.
 
 Require Import MatchIndexAllEntriesInterface.
 
@@ -35,6 +39,10 @@ Section MatchIndexAllEntries.
   Context {taifoli : terms_and_indices_from_one_log_interface}.
   Context {rlmli : refined_log_matching_lemmas_interface}.
   Context {laei : log_all_entries_interface}.
+  Context {aelli : append_entries_leaderLogs_interface}.
+  Context {lsi : leader_sublog_interface}.
+  Context {lhllsi : leaders_have_leaderLogs_strong_interface}.
+  Context {ollpti : one_leaderLog_per_term_interface}.
 
   Definition match_index_all_entries_nw (net : network) : Prop :=
     forall p t es e,
@@ -281,15 +289,47 @@ Section MatchIndexAllEntries.
     - congruence.
   Qed.
 
+  Lemma lifted_leader_sublog_nw :
+    forall net p t n pli plt es ci h e,
+      refined_raft_intermediate_reachable net ->
+      In p (nwPackets net) ->
+      pBody p = AppendEntries t n pli plt es ci ->
+      type (snd (nwState net h)) = Leader ->
+      eTerm e = currentTerm (snd (nwState net h)) ->
+      In e es ->
+      In e (log (snd (nwState net h))).
+  Proof.
+    intros.
+    pose proof (lift_prop _ leader_sublog_invariant_invariant _ $(eauto)$) as Hinv.
+    unfold leader_sublog_invariant, leader_sublog_nw_invariant in *.
+    destruct Hinv as [Hhost Hnw].
+    find_apply_lem_hyp ghost_packet.
+    eapply_prop_hyp In In; eauto; try find_rewrite_lem deghost_spec; try rewrite deghost_spec; eauto.
+  Qed.
+
   Lemma appendEntries_sublog :
     forall net p t n pli plt es ci h e,
       refined_raft_intermediate_reachable net ->
       In p (nwPackets net) ->
       pBody p = AppendEntries t n pli plt es ci ->
       currentTerm (snd (nwState net h)) = t ->
+      type (snd (nwState net h)) = Leader ->
       In e es ->
       In e (log (snd (nwState net h))).
-  Admitted.
+  Proof.
+    intros.
+    find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
+    break_exists. break_and.
+    subst es.
+    find_apply_lem_hyp in_app_or. break_or_hyp.
+    - find_copy_apply_hyp_hyp.
+      eapply lifted_leader_sublog_nw; eauto. intuition.
+    - find_eapply_lem_hyp leaders_have_leaderLogs_strong_invariant; auto.
+      break_exists.  break_and.
+      pose proof one_leaderLog_per_term_invariant _ $(eauto)$ h x _ x3 x0 $(eauto)$ $(eauto)$.
+      break_and. subst.
+      find_rewrite. eauto using Prefix_In with *.
+  Qed.
 
   Lemma match_index_all_entries_append_entries :
     refined_raft_net_invariant_append_entries' match_index_all_entries_inv.
