@@ -21,6 +21,9 @@ Require Import PrevLogLeaderSublogInterface.
 Require Import CurrentTermGtZeroInterface.
 Require Import LastAppliedLeCommitIndexInterface.
 Require Import MatchIndexAllEntriesInterface.
+Require Import LeadersHaveLeaderLogsInterface.
+Require Import LeaderSublogInterface.
+Require Import TermsAndIndicesFromOneLogInterface.
 
 Require Import RefinedLogMatchingLemmasInterface.
 
@@ -44,6 +47,10 @@ Section StateMachineSafetyProof.
   Context {ctgt0 : current_term_gt_zero_interface}.
   Context {lalcii : lastApplied_le_commitIndex_interface}.
   Context {miaei : match_index_all_entries_interface}.
+  Context {lhlli : leaders_have_leaderLogs_interface}.
+  Context {lci : leader_completeness_interface}.
+  Context {lsi : leader_sublog_interface}.
+  Context {taifoli : terms_and_indices_from_one_log_interface}.
 
   Lemma exists_deghost_packet :
     forall net p,
@@ -1557,11 +1564,104 @@ Ltac break_exists_name x :=
     eapply haveQuorum_directly_committed; eauto.
   Qed.
 
-  Lemma commit_invariant_do_leader :
-    refined_raft_net_invariant_do_leader commit_invariant.
+  Lemma and_imp_2 :
+    forall P Q : Prop,
+      P /\ (P -> Q) -> P /\ Q.
   Proof.
-    unfold refined_raft_net_invariant_do_leader, commit_invariant.
+    tauto.
+  Qed.
+
+  Lemma leaderLog_in_log :
+    forall net leader ll e,
+      refined_raft_intermediate_reachable net ->
+      In (currentTerm (snd (nwState net leader)), ll) (leaderLogs (fst (nwState net leader))) ->
+      In e ll ->
+      In e (log (snd (nwState net leader))).
+  Proof.
+        (* use LeadersHaveLeaderLogsStrong and OneLeaderLogPerTerm *)
+  Admitted.
+
+  Lemma commitIndex_anywhere :
+    forall net leader h e,
+      refined_raft_intermediate_reachable net ->
+      type (snd (nwState net leader)) = Leader ->
+      In e (log (snd (nwState net leader))) ->
+      eIndex e <= commitIndex (snd (nwState net h)) ->
+      currentTerm (snd (nwState net h)) <= currentTerm (snd (nwState net leader)) ->
+      lifted_maxIndex_sanity net ->
+      commit_invariant_host net ->
+      In e (log (snd (nwState net h))).
+  Proof.
+    intros.
+
+    unfold lifted_maxIndex_sanity in *. break_and.
+    pose proof entries_contiguous_invariant _ $(eauto)$ h.
+    pose proof contiguous_range_exact_lo_elim_exists _ _ (eIndex e) $(eauto)$
+         $(split; [solve [eapply entries_gt_0_invariant; eauto]| solve[eauto using le_trans]])$.
+    break_exists_name e'. break_and.
+    match goal with
+    | [ H : commit_invariant_host _ |- _ ] =>
+      unfold commit_invariant_host in H;
+        specialize (H h e' $(auto)$ $(repeat find_rewrite; auto)$)
+    end.
+    unfold committed in *. break_exists_name h'. break_exists_name e''. break_and.
+    assert (In e'' (log (snd (nwState net leader)))).
+    {
+      assert (eTerm e'' <= currentTerm (snd (nwState net leader))) by eauto using le_trans.
+      find_apply_lem_hyp le_lt_or_eq. break_or_hyp.
+      - find_copy_apply_lem_hyp leaders_have_leaderLogs_invariant; auto.
+        break_exists_name ll.
+        find_eapply_lem_hyp leaderLog_in_log; eauto.
+        pose proof leader_completeness_invariant _ $(eauto)$. unfold leader_completeness in *. break_and.
+        eapply_prop leader_completeness_directly_committed; eauto.
+      - pose proof lift_prop _ leader_sublog_invariant_invariant _ $(eauto)$.
+        unfold leader_sublog_invariant, leader_sublog_host_invariant in *. break_and.
+        match goal with
+        | [ |- context [snd (nwState ?net ?h)] ] =>
+          replace (snd (nwState net h)) with (nwState (deghost net) h) by now rewrite deghost_spec
+        end.
+        match goal with
+        | [ H : forall _ _ _, type _ = _ -> _ |- _ ] => eapply H; repeat rewrite deghost_spec; eauto
+        end.
+    }
+    pose proof entries_match_invariant _  h' leader $(eauto)$ e'' e'' e'.
+    repeat concludes.
+    intuition.
+    assert (e = e').
+    {
+      eapply uniqueIndices_elim_eq;
+      eauto  using sorted_uniqueIndices,  sorted_host_lifted.
+    }
+    subst.
+    auto.
+  Qed.
+
+  Lemma lifted_terms_and_indices_from_one_log : forall net h,
+    refined_raft_intermediate_reachable net ->
+    terms_and_indices_from_one (log (snd (nwState net h))).
+  Proof.
+    intros.
+    pose proof (lift_prop _ terms_and_indices_from_one_log_invariant).
+    unfold terms_and_indices_from_one_log in *.
+    rewrite <- deghost_spec with (net0 := net). auto.
+  Qed.
+
+
+  Lemma commit_invariant_do_leader :
+    forall net st' ps' gd d h os d' ms,
+      doLeader d h = (os, d', ms) ->
+      commit_invariant net ->
+      refined_raft_intermediate_reachable net ->
+      lifted_maxIndex_sanity net ->
+      nwState net h = (gd, d) ->
+      (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+      (forall p,
+          In p ps' -> In p (nwPackets net) \/ In p (send_packets h ms)) ->
+      commit_invariant {| nwPackets := ps'; nwState := st' |}.
+  Proof.
+    unfold commit_invariant.
     simpl. intros. break_and.
+    apply and_imp_2.
     split.
     - find_apply_lem_hyp doLeader_spec. break_or_hyp.
       + break_and.
@@ -1608,7 +1708,73 @@ Ltac break_exists_name x :=
             + simpl. intros. find_higher_order_rewrite. update_destruct; repeat find_rewrite; auto.
             + simpl. intros. find_higher_order_rewrite. update_destruct; repeat find_rewrite; auto.
           }
-    - admit.
+    - unfold commit_invariant_nw in *. simpl. intros.
+      find_apply_hyp_hyp. break_or_hyp.
+      + admit.
+      + do_in_map. subst. simpl in *.
+        find_apply_lem_hyp doLeader_spec. break_or_hyp; break_and; subst.
+        * simpl in *. intuition.
+        * find_apply_hyp_hyp. break_exists_name h'. break_and.
+          { repeat split.
+            - intros. unfold replicaMessage in *. subst.
+              simpl in *. find_inversion.
+              match goal with
+              | [ H : nwState ?net ?h = (?x, ?y) |- _ ] =>
+                replace x with (fst (nwState net h)) in * by (rewrite H; auto);
+                  replace y with (snd (nwState net h)) in * by (rewrite H; auto);
+                  clear H
+              end.
+              unfold commit_invariant_host in *. simpl in *.
+              match goal with
+              | [ H : forall _ _, In _ _ -> _ <= _ -> _ |- _ ] =>
+                specialize (H leader e)
+              end.
+              repeat find_higher_order_rewrite. rewrite_update. simpl in *.
+              repeat find_rewrite. eauto using findGtIndex_in.
+            - intros.  unfold replicaMessage in *. subst.
+              simpl in *. find_inversion.
+              repeat find_higher_order_rewrite.
+              match goal with
+              | [ H : nwState ?net ?h = (?x, ?y) |- _ ] =>
+                replace x with (fst (nwState net h)) in * by (rewrite H; auto);
+                  replace y with (snd (nwState net h)) in * by (rewrite H; auto);
+                  clear H
+              end.
+              update_destruct.
+              + (* contradiction: can't haveNewEntries from myself *) admit.
+              + unfold commit_invariant_host in *. simpl in *.
+                match goal with
+                | [ H : forall _ _, In _ _ -> _ <= _ -> _ |- _ ] =>
+                  specialize (H h0 e);
+                    repeat find_higher_order_rewrite; rewrite_update;
+                    eapply committed_monotonic; [apply H|]; auto
+                end.
+                eapply commitIndex_anywhere with (leader := leader); auto.
+                eauto using findGtIndex_in.
+            - intros. unfold replicaMessage in *. subst.
+              simpl in *. find_inversion.
+              repeat find_higher_order_rewrite.
+              match goal with
+              | [ H : nwState ?net ?h = (?x, ?y) |- _ ] =>
+                replace x with (fst (nwState net h)) in * by (rewrite H; auto);
+                  replace y with (snd (nwState net h)) in * by (rewrite H; auto);
+                  clear H
+              end.
+              update_destruct.
+              + (* contradiction: can't haveNewEntries from myself *) admit.
+              + break_match.
+                * pose proof entries_match_invariant _  leader h0 $(eauto)$ e0 ple e.
+                  find_apply_lem_hyp findAtIndex_elim. break_and. repeat concludes.
+                  intuition.
+                  unfold commit_invariant_host in *.
+                  match goal with
+                  | [ H : forall _ _, In _ _ -> _ <= _ -> _ |- _ ] =>
+                    specialize (H leader e); simpl in *;
+                    repeat find_higher_order_rewrite; rewrite_update;
+                    simpl in *; repeat find_rewrite; apply H; auto
+                  end.
+                * pose proof lifted_terms_and_indices_from_one_log _ h0 $(eauto)$ ple $(eauto)$.
+                  break_and. omega.
   Admitted.
 
   Lemma commit_invariant_do_generic_server :
