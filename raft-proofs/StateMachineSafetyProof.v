@@ -1399,10 +1399,6 @@ Admitted.
     intuition eauto using advanceCurrentTerm_term; congruence.
   Qed.
 
-Ltac break_exists_name x :=
-  match goal with
-  | [ H : exists _, _ |- _ ] => destruct H as [x H]
-  end.
 
   Lemma commit_invariant_append_entries :
     refined_raft_net_invariant_append_entries commit_invariant.

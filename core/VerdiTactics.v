@@ -379,3 +379,8 @@ Ltac find_injection :=
 
 Ltac aggresive_rewrite_goal :=
   match goal with H : _ |- _ => rewrite H end.
+
+Ltac break_exists_name x :=
+  match goal with
+  | [ H : exists _, _ |- _ ] => destruct H as [x H]
+  end.
