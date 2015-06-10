@@ -316,4 +316,14 @@ Section SpecLemmas.
     repeat break_match; auto.
   Qed.
 
+  Lemma update_elections_data_appendEntries_preserves_allEntries :
+    forall net h t n pli plt es ci x,
+      In x (allEntries (fst (nwState net h))) ->
+      In x (allEntries (update_elections_data_appendEntries h (nwState net h) t n pli plt es ci)).
+  Proof.
+    unfold update_elections_data_appendEntries.
+    intros. break_let. break_match; auto.
+    break_if; auto.
+    simpl. intuition.
+  Qed.
 End SpecLemmas.

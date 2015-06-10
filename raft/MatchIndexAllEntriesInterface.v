@@ -14,6 +14,7 @@ Section MatchIndexAllEntries.
 
   Definition match_index_all_entries net :=
     forall e leader h,
+      type (snd (nwState net leader)) = Leader ->
       eIndex e <= assoc_default name_eq_dec (matchIndex (snd (nwState net leader))) h 0 ->
       In e (log (snd (nwState net leader))) ->
       eTerm e = currentTerm (snd (nwState net leader)) ->

@@ -1281,17 +1281,6 @@ Admitted.
     intuition.
   Qed.
 
-  Lemma allEntries_monotonic :
-    forall net h t n pli plt es ci x,
-      In x (allEntries (fst (nwState net h))) ->
-      In x (allEntries (update_elections_data_appendEntries h (nwState net h) t n pli plt es ci)).
-  Proof.
-    unfold update_elections_data_appendEntries.
-    intros. break_let. break_match; auto.
-    break_if; auto.
-    simpl. intuition.
-  Qed.
-
   Lemma handleAppendEntries_preserves_directly_committed :
     forall net net' h t n pli plt es ci d m e,
       handleAppendEntries h (snd (nwState net h)) t n pli plt es ci = (d, m) ->
@@ -1306,7 +1295,7 @@ Admitted.
     intuition.
     find_higher_order_rewrite.
     update_destruct; auto.
-    apply allEntries_monotonic.
+    apply update_elections_data_appendEntries_preserves_allEntries.
     auto.
   Qed.
 
@@ -1520,6 +1509,7 @@ Admitted.
   Lemma haveQuorum_directly_committed :
     forall net h e,
       refined_raft_intermediate_reachable net ->
+      type (snd (nwState net h)) = Leader ->
       In e (log (snd (nwState net h))) ->
       haveQuorum (snd (nwState net h)) h (eIndex e) = true ->
       eTerm e = currentTerm (snd (nwState net h)) ->
@@ -1536,6 +1526,7 @@ Admitted.
   Lemma advanceCommitIndex_committed :
     forall h net,
       refined_raft_intermediate_reachable net ->
+      type (snd (nwState net h)) = Leader ->
       (forall e, In e (log (snd (nwState net h))) ->
             eIndex e <= commitIndex (snd (nwState net h)) ->
             committed net e (currentTerm (snd (nwState net h)))) ->
