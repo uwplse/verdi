@@ -211,6 +211,15 @@ Require Import PrevLogCandidateEntriesTermProof.
 Require Import MatchIndexAllEntriesInterface.
 Require Import MatchIndexAllEntriesProof.
 
+Require Import NoAppendEntriesToLeaderInterface.
+Require Import NoAppendEntriesToLeaderProof.
+
+Require Import NoAppendEntriesToSelfInterface.
+Require Import NoAppendEntriesToSelfProof.
+
+Require Import LogAllEntriesInterface.
+Require Import LogAllEntriesProof.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -278,6 +287,9 @@ Hint Extern 4 (@prevLog_leader_sublog_interface _ _ _) => apply pllsi : typeclas
 Hint Extern 4 (@allEntries_indices_gt_0_interface _ _ _) => apply aeigt0 : typeclass_instances.
 Hint Extern 4 (@prevLog_candidateEntriesTerm_interface _ _ _) => apply plceti : typeclass_instances.
 Hint Extern 4 (@match_index_all_entries_interface _ _ _) => apply miaei : typeclass_instances.
+Hint Extern 4 (@no_append_entries_to_leader_interface _ _ _) => apply noaetli : typeclass_instances.
+Hint Extern 4 (@no_append_entries_to_self_interface _ _ _) => apply noaetsi : typeclass_instances.
+Hint Extern 4 (@log_all_entries_interface _ _ _) => apply laei : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
