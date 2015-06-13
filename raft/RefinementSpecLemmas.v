@@ -20,6 +20,15 @@ Section SpecLemmas.
 
   Context {rri : raft_refinement_interface}.
 
+  Lemma votesWithLog_same_client_request :
+    forall h st client id c,
+      votesWithLog (update_elections_data_client_request h st client id c) =
+      votesWithLog (fst st).
+  Proof.
+    intros. unfold update_elections_data_client_request.
+    repeat break_match; auto.
+  Qed.
+
   Lemma votesWithLog_update_elections_data_client_request :
     forall h st client id c out st' ps t' h' l',
       handleClientRequest h (snd st) client id c = (out, st', ps) ->
@@ -39,6 +48,15 @@ Section SpecLemmas.
   Proof.
     unfold update_elections_data_timeout.
     intros. repeat break_match; simpl in *; intuition; repeat tuple_inversion; intuition.
+  Qed.
+
+  Lemma votesWithLog_same_append_entries :
+    forall h st t n pli plt es ci,
+      votesWithLog (update_elections_data_appendEntries h st t n pli plt es ci) =
+      votesWithLog (fst st).
+  Proof.
+    intros. unfold update_elections_data_appendEntries.
+    repeat break_match; auto.
   Qed.
 
   Lemma votesWithLog_update_elections_data_append_entries :
@@ -152,6 +170,32 @@ Section SpecLemmas.
       congruence.
   Qed.
 
+  Lemma update_elections_data_client_request_log_allEntries :
+    forall h st client id c out st' ms,
+      handleClientRequest h (snd st) client id c = (out, st', ms) ->
+      (allEntries (update_elections_data_client_request h st client id c) =
+       allEntries (fst st) /\
+       log st' = log (snd st)) \/
+      (type (snd st) = Leader /\
+       exists e : entry,
+         eIndex e = S (maxIndex (log (snd st))) /\
+         eTerm e = currentTerm (snd st) /\
+         eClient e = client /\ eInput e = c /\ eId e = id /\ type (snd st) = Leader /\
+         allEntries (update_elections_data_client_request h st client id c) =
+         (currentTerm st', e) :: allEntries (fst st) /\
+         log st' = e :: log (snd st)).
+  Proof.
+    intros.
+    unfold update_elections_data_client_request.
+    unfold handleClientRequest in *.
+    repeat break_match; repeat tuple_inversion; auto.
+    - discriminate.
+    - do_bool. find_rewrite. omega.
+    - do_bool. find_rewrite. omega.
+    - simpl in *. right. intuition. exists e. find_inversion. simpl. intuition.
+    - simpl in *. do_bool. omega.
+  Qed.
+
   Lemma update_elections_data_requestVoteReply_allEntries :
     forall h h' t  st r,
       allEntries (update_elections_data_requestVoteReply h h' t r st) = allEntries (fst st).
@@ -198,6 +242,33 @@ Section SpecLemmas.
     intuition. subst.
     do_in_app. intuition.
     do_in_map. repeat find_inversion. subst. simpl in *. auto.
+  Qed.
+
+  Lemma update_elections_data_appendEntries_log_allEntries :
+    forall h st t n pli plt es ci st' h' ps,
+      handleAppendEntries h (snd st) t n pli plt es ci = (st', ps) ->
+      (log st' = log (snd st) /\
+       allEntries (update_elections_data_appendEntries h st t h' pli plt es ci) =
+       allEntries (fst st))  \/
+      (allEntries (update_elections_data_appendEntries h st t h' pli plt es ci) =
+       (map (fun e => (t, e)) es) ++ allEntries (fst st) /\
+       ((log st' = log (snd st) /\ haveNewEntries (snd st) es = false) \/
+        (currentTerm (snd st) <= t /\ es <> [] /\ pli = 0 /\ log st' = es) \/
+        (currentTerm (snd st) <= t /\ es <> [] /\ pli <> 0 /\ exists e,
+           In e (log (snd st)) /\
+           eIndex e = pli /\
+           eTerm e = plt) /\
+         log st' = es ++ (removeAfterIndex (log (snd st)) pli))).
+  Proof.
+    intros. unfold update_elections_data_appendEntries, handleAppendEntries in *.
+    repeat break_match; repeat find_inversion; auto; simpl in *.
+    - right. intuition. right. left. do_bool. intuition.
+      find_apply_lem_hyp haveNewEntries_not_empty. congruence.
+    - rewrite advanceCurrentTerm_log. intuition.
+    - right. intuition. right. right. do_bool. intuition.
+      + find_apply_lem_hyp haveNewEntries_not_empty. congruence.
+      + find_apply_lem_hyp findAtIndex_elim. intuition; do_bool; eauto.
+    - rewrite advanceCurrentTerm_log. intuition.
   Qed.
 
   Lemma update_elections_data_appendEntries_allEntries_detailed :

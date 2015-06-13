@@ -2297,7 +2297,15 @@ Section CommonTheorems.
     find_apply_hyp_hyp.
     break_exists_exists. subst. auto.
   Qed.
-  
+
+  Lemma not_empty_false :
+    forall A (l : list A),
+      not_empty l = false ->
+      l  = [].
+  Proof.
+    destruct l; [auto|discriminate].
+  Qed.
+
 End CommonTheorems.
 
 Notation is_append_entries m :=
