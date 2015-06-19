@@ -537,4 +537,20 @@ Section SpecLemmas.
     - destruct index; intuition.
   Qed.
 
+  Lemma doLeader_message_entries :
+    forall st h os st' ms m t n pli plt es ci e,
+      doLeader st h = (os, st', ms) ->
+      In m ms ->
+      snd m = AppendEntries t n pli plt es ci ->
+      In e es ->
+      In e (log st).
+  Proof.
+    intros. unfold doLeader, advanceCommitIndex in *.
+    break_match; try solve [find_inversion; simpl in *; intuition].
+    break_if; try solve [find_inversion; simpl in *; intuition].
+    find_inversion. simpl. do_in_map. subst.
+    simpl in *. find_inversion.
+    eauto using findGtIndex_in.
+  Qed.
+
 End SpecLemmas.
