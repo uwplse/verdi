@@ -24,6 +24,7 @@ Section EveryEntryWasCreated.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
+  Context {rri : raft_refinement_interface}.
   Context {lhlli : leaders_have_leaderLogs_interface}.
 
   Inductive in_any_log (net : network) (e : entry) : Prop :=
@@ -190,8 +191,25 @@ Section EveryEntryWasCreated.
       find_rewrite_lem handleRequestVoteReply_log_rewrite. eauto.
   Qed.
 
-  Ltac in_log_in_leader_log :=
+  Ltac cr_in_log_in_leader_log :=
     find_eapply_lem_hyp in_log; eapply_prop_hyp in_any_log_term_was_created in_any_log;
+    unfold term_was_created in *;
+    break_exists_exists;
+    find_higher_order_rewrite;
+    destruct_update; simpl in *; eauto;
+    rewrite update_elections_data_client_request_leaderLogs; eauto.
+
+  Ltac cr_in_aer_in_leader_log :=
+    find_eapply_lem_hyp in_aer; eauto; eapply_prop_hyp in_any_log_term_was_created in_any_log;
+    unfold term_was_created in *;
+    break_exists_exists;
+    find_higher_order_rewrite;
+    destruct_update; simpl in *; eauto;
+    rewrite update_elections_data_client_request_leaderLogs; eauto.
+  
+
+  Ltac cr_in_ll_in_leader_log :=
+    find_eapply_lem_hyp in_ll; eauto; eapply_prop_hyp in_any_log_term_was_created in_any_log;
     unfold term_was_created in *;
     break_exists_exists;
     find_higher_order_rewrite;
@@ -207,7 +225,7 @@ Section EveryEntryWasCreated.
       find_higher_order_rewrite.
       destruct_update; simpl in *; eauto.
       + find_apply_lem_hyp handleClientRequest_log.
-        intuition; subst; repeat find_rewrite; try in_log_in_leader_log.
+        intuition; subst; repeat find_rewrite; try cr_in_log_in_leader_log.
         break_exists. intuition.
         repeat find_rewrite. simpl in *. intuition; subst.
         * find_eapply_lem_hyp leaders_have_leaderLogs_invariant; eauto.
@@ -220,16 +238,187 @@ Section EveryEntryWasCreated.
           rewrite update_eq; auto. simpl.
           rewrite update_elections_data_client_request_leaderLogs.
           auto.
-        * in_log_in_leader_log.
-      + in_log_in_leader_log.
-    -
-  Admitted.
-      
+        * cr_in_log_in_leader_log.
+      + cr_in_log_in_leader_log.
+    - find_apply_hyp_hyp. intuition.
+      + cr_in_aer_in_leader_log.
+      + do_in_map. subst.
+        find_eapply_lem_hyp handleClientRequest_no_append_entries; eauto.
+        simpl in *.
+        intuition. find_false.
+        unfold mEntries in *. break_match; try congruence.
+        repeat eexists; eauto.
+    - find_higher_order_rewrite.
+      destruct_update; simpl in *.
+      + find_rewrite_lem update_elections_data_client_request_leaderLogs.
+        cr_in_ll_in_leader_log.
+      + cr_in_ll_in_leader_log.
+  Qed.
+
+  
+  Lemma in_any_log_term_was_created_timeout :
+    refined_raft_net_invariant_timeout in_any_log_term_was_created.
+  Proof.
+    red. intros. unfold in_any_log_term_was_created. intros.
+    eapply term_was_created_preserved; [eapply_prop in_any_log_term_was_created|];
+    [|intros; simpl in *;
+      repeat find_higher_order_rewrite;
+      destruct_update; simpl in *; eauto;
+      rewrite update_elections_data_timeout_leaderLogs; eauto]. 
+    iae_case.
+    - repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; eauto.
+      find_eapply_lem_hyp handleTimeout_log_same; eauto.
+      repeat find_rewrite. eauto.
+    - find_apply_hyp_hyp. intuition; eauto.
+      do_in_map. subst. simpl in *.
+      find_eapply_lem_hyp handleTimeout_not_is_append_entries; eauto.
+      intuition. find_false.
+      unfold mEntries in *. break_match; try congruence.
+      repeat eexists; eauto.
+    - repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; eauto.
+      find_rewrite_lem update_elections_data_timeout_leaderLogs; eauto.
+  Qed.
+
+  Lemma in_any_log_term_was_created_do_leader :
+    refined_raft_net_invariant_do_leader in_any_log_term_was_created.
+  Proof.
+    red. intros. unfold in_any_log_term_was_created. intros.
+    match goal with
+      | H : nwState ?net ?h = (?gd, ?d) |- _ =>
+        replace gd with (fst (nwState net h)) in * by (rewrite H; reflexivity);
+          replace d with (snd (nwState net h)) in * by (rewrite H; reflexivity);
+          clear H
+    end.
+    eapply term_was_created_preserved; [eapply_prop in_any_log_term_was_created|];
+    [|intros; simpl in *;
+      repeat find_higher_order_rewrite;
+      destruct_update; simpl in *; eauto].
+    iae_case.
+    - repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; eauto.
+      find_eapply_lem_hyp doLeader_log; eauto.
+      repeat find_rewrite. eauto.
+    - find_apply_hyp_hyp. intuition; eauto.
+      do_in_map. subst. simpl in *.
+      unfold mEntries in *. break_match; try congruence.
+      find_inversion.
+      find_eapply_lem_hyp doLeader_message_entries; eauto.
+    - repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; eauto.
+  Qed.
+
+
+  Lemma in_any_log_term_was_created_do_generic_server :
+    refined_raft_net_invariant_do_generic_server in_any_log_term_was_created.
+  Proof.
+    red. intros. unfold in_any_log_term_was_created. intros.
+    match goal with
+      | H : nwState ?net ?h = (?gd, ?d) |- _ =>
+        replace gd with (fst (nwState net h)) in * by (rewrite H; reflexivity);
+          replace d with (snd (nwState net h)) in * by (rewrite H; reflexivity);
+          clear H
+    end.
+    eapply term_was_created_preserved; [eapply_prop in_any_log_term_was_created|];
+    [|intros; simpl in *;
+      repeat find_higher_order_rewrite;
+      destruct_update; simpl in *; eauto].
+    iae_case.
+    - repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; eauto.
+      find_eapply_lem_hyp doGenericServer_log; eauto.
+      repeat find_rewrite. eauto.
+    - find_apply_hyp_hyp. intuition; eauto.
+      do_in_map. subst. simpl in *.
+      find_apply_lem_hyp doGenericServer_packets. subst.
+      simpl in *. intuition.
+    - repeat find_higher_order_rewrite.
+      destruct_update; simpl in *; eauto.
+  Qed.
+
+
+  Lemma in_any_log_term_was_created_state_same_packet_subset :
+    refined_raft_net_invariant_state_same_packet_subset in_any_log_term_was_created.
+  Proof.
+    red. intros. unfold in_any_log_term_was_created. intros.
+    unfold in_any_log_term_was_created, term_was_created in *.
+    iae_case.
+    - repeat find_reverse_higher_order_rewrite.
+      find_eapply_lem_hyp in_log.
+      eapply_prop_hyp in_any_log in_any_log.
+      break_exists_exists; repeat find_higher_order_rewrite; eauto.
+    - find_apply_hyp_hyp.
+      find_eapply_lem_hyp in_aer; eauto.
+      eapply_prop_hyp in_any_log in_any_log.
+      break_exists_exists; repeat find_higher_order_rewrite; eauto.
+    - repeat find_reverse_higher_order_rewrite.
+      find_eapply_lem_hyp in_ll; eauto.
+      eapply_prop_hyp in_any_log in_any_log.
+      break_exists_exists; repeat find_higher_order_rewrite; eauto.
+  Qed.
+
+
+  Lemma in_any_log_term_was_created_reboot :
+    refined_raft_net_invariant_reboot in_any_log_term_was_created.
+  Proof.
+    red. unfold in_any_log_term_was_created, term_was_created. intros.
+    match goal with
+      | H : nwState ?net ?h = (?gd, ?d) |- _ =>
+        replace gd with (fst (nwState net h)) in * by (rewrite H; reflexivity);
+          replace d with (snd (nwState net h)) in * by (rewrite H; reflexivity);
+          clear H
+    end.
+    iae_case; eauto.
+    - repeat find_higher_order_rewrite.
+      destruct_update; simpl in *;
+      find_apply_lem_hyp in_log;
+      eapply_prop_hyp in_any_log in_any_log;
+      break_exists_exists;
+      repeat find_higher_order_rewrite;
+      destruct_update; simpl in *; eauto.
+    - repeat find_reverse_rewrite.
+      find_eapply_lem_hyp in_aer; eauto.
+      eapply_prop_hyp in_any_log in_any_log;
+      break_exists_exists;
+      repeat find_higher_order_rewrite;
+      destruct_update; simpl in *; eauto.
+    - repeat find_higher_order_rewrite.
+      destruct_update; simpl in *;
+      find_eapply_lem_hyp in_ll; eauto;
+      eapply_prop_hyp in_any_log in_any_log;
+      break_exists_exists;
+      repeat find_higher_order_rewrite;
+      destruct_update; simpl in *; eauto.
+  Qed.
+
+  Lemma in_any_log_term_was_created_init :
+    refined_raft_net_invariant_init in_any_log_term_was_created.
+  Proof.
+    red. unfold in_any_log_term_was_created. intros.
+    iae_case; intuition.
+  Qed.
+
+  
   Theorem in_any_log_term_was_created_invariant :
     forall net,
       refined_raft_intermediate_reachable net ->
       in_any_log_term_was_created net.
-  Admitted.
+  Proof.
+    intros.
+    eapply refined_raft_net_invariant; eauto.
+    - exact in_any_log_term_was_created_init.
+    - exact in_any_log_term_was_created_client_request.
+    - exact in_any_log_term_was_created_timeout.
+    - exact in_any_log_term_was_created_append_entries.
+    - exact in_any_log_term_was_created_append_entries_reply.
+    - exact in_any_log_term_was_created_request_vote.
+    - exact in_any_log_term_was_created_request_vote_reply.
+    - exact in_any_log_term_was_created_do_leader.
+    - exact in_any_log_term_was_created_do_generic_server.
+    - exact in_any_log_term_was_created_state_same_packet_subset.
+    - exact in_any_log_term_was_created_reboot.
+  Qed.
 
   Instance eewci : every_entry_was_created_interface.
   split.
