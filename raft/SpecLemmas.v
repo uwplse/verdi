@@ -442,6 +442,13 @@ Section SpecLemmas.
     eapply handleRequestVoteReply_spec; eauto.
   Qed.
 
+  Lemma handleRequestVoteReply_log_rewrite :
+    forall h st h' t r,
+      log (handleRequestVoteReply h st h' t r) = log st.
+  Proof.
+    intros.
+    erewrite handleRequestVoteReply_log; eauto.
+  Qed.
 
   Lemma handleAppendEntriesReply_packets :
     forall h st from t es s st' ps,

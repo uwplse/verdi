@@ -147,6 +147,17 @@ Section SpecLemmas.
     find_inversion. intuition.
   Qed.
 
+  Lemma update_elections_data_requestVoteReply_old :
+    forall h src t1 v st t2 ll,
+      In (t2, ll) (leaderLogs (fst st)) ->
+      In (t2, ll) (leaderLogs (update_elections_data_requestVoteReply h src t1 v st)).
+  Proof.
+    unfold update_elections_data_requestVoteReply.
+    intros.
+    repeat break_match; repeat find_inversion; intuition.
+    simpl in *. intuition.
+  Qed.
+  
   Lemma update_elections_data_client_request_allEntries :
     forall h st client id c out st' ms,
       handleClientRequest h (snd st) client id c = (out, st', ms) ->
