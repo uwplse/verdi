@@ -447,6 +447,17 @@ Section CommonTheorems.
       + eauto.
   Qed.
 
+  Lemma maxIndex_gt_0_nonempty :
+    forall es,
+      0 < maxIndex es ->
+      es <> nil.
+  Proof.
+    intros.
+    destruct es; simpl in *.
+    - omega.
+    - congruence.
+  Qed.
+
   Lemma removeIncorrect_new_contiguous :
     forall new current prev e,
       sorted current ->

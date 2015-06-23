@@ -324,7 +324,17 @@ Section SpecLemmas.
   Proof.
     intros.
     unfold update_elections_data_client_request in *.
-    repeat break_match; subst; simpl in *; auto. 
+    repeat break_match; subst; simpl in *; auto.
+  Qed.
+
+  Lemma update_elections_data_clientRequest_allEntries_old' :
+    forall h st client id c x,
+      In x (allEntries (fst st)) ->
+      In x (allEntries (update_elections_data_client_request h st client id c)).
+  Proof.
+    intros.
+    unfold update_elections_data_client_request in *.
+    repeat break_match; subst; simpl in *; auto.
   Qed.
 
   Lemma update_elections_data_timeout_allEntries :

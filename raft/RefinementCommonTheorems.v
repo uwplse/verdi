@@ -221,6 +221,23 @@ Section CommonTheorems.
     find_apply_lem_hyp doLeader_st; intuition.
   Qed.
 
+  Lemma ghost_packet :
+    forall (net : network (params := raft_refined_multi_params)) p,
+      In p (nwPackets net) ->
+      In (deghost_packet p) (nwPackets (deghost net)).
+  Proof.
+    unfold deghost.
+    simpl. intuition.
+    apply in_map_iff.
+    eexists; eauto.
+  Qed.
+
+  Lemma pDst_deghost_packet :
+    forall p : packet (params := raft_refined_multi_params),
+      pDst (deghost_packet p) = pDst p.
+  Proof.
+    unfold deghost_packet. auto.
+  Qed.
 End CommonTheorems.
 
 

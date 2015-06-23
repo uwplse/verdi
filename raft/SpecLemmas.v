@@ -500,6 +500,15 @@ Section SpecLemmas.
     intuition; break_exists; congruence.
   Qed.
 
+  Theorem handleClientRequest_packets :
+    forall h st client id c out st' ps,
+      handleClientRequest h st client id c = (out, st', ps) ->
+      ps = [].
+  Proof.
+    intros. unfold handleClientRequest in *.
+    repeat break_match; repeat find_inversion; auto.
+  Qed.
+
   Lemma handleTimeout_packets :
     forall h d out d' ps m,
       handleTimeout h d = (out, d', ps) ->
