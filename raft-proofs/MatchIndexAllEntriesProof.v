@@ -24,6 +24,9 @@ Require Import AppendEntriesRequestLeaderLogsInterface.
 Require Import LeaderSublogInterface.
 Require Import LeadersHaveLeaderLogsStrongInterface.
 Require Import OneLeaderLogPerTermInterface.
+Require Import MatchIndexLeaderInterface.
+Require Import MatchIndexSanityInterface.
+Require Import AppendEntriesReplySublogInterface.
 
 Require Import MatchIndexAllEntriesInterface.
 
@@ -43,6 +46,9 @@ Section MatchIndexAllEntries.
   Context {lsi : leader_sublog_interface}.
   Context {lhllsi : leaders_have_leaderLogs_strong_interface}.
   Context {ollpti : one_leaderLog_per_term_interface}.
+  Context {mili : match_index_leader_interface}.
+  Context {matchisi : match_index_sanity_interface}.
+  Context {aersi : append_entries_reply_sublog_interface}.
 
   Definition match_index_all_entries_nw (net : network) : Prop :=
     forall p t es e,
@@ -77,13 +83,213 @@ Section MatchIndexAllEntries.
         destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
     end.
 
+  Theorem handleClientRequest_matchIndex_log :
+    forall h st client id c out st' ps,
+      handleClientRequest h st client id c = (out, st', ps) ->
+      ps = nil /\
+      (log st' = log st /\ matchIndex st' = matchIndex st \/
+       exists e,
+         log st' = e :: log st /\
+         eIndex e = S (maxIndex (log st)) /\
+         eTerm e = currentTerm st /\
+         eClient e = client /\
+         eInput e = c /\
+         eId e = id /\
+         type st = Leader /\
+         matchIndex st' = assoc_set name_eq_dec (matchIndex st) h (S (maxIndex (log st)))).
+  Proof.
+    intros. unfold handleClientRequest in *.
+    break_match; find_inversion; subst; intuition.
+    simpl in *. eauto 10.
+  Qed.
+
+  Lemma lifted_match_index_leader :
+    forall net leader,
+      refined_raft_intermediate_reachable net ->
+      type (snd (nwState net leader)) = Leader ->
+      assoc_default name_eq_dec (matchIndex (snd (nwState net leader))) leader 0 =
+      maxIndex (log (snd (nwState net leader))).
+  Proof.
+    intros.
+    pose proof lift_prop _ match_index_leader_invariant _ $(eauto)$ leader.
+    find_rewrite_lem deghost_spec. concludes. auto.
+  Qed.
+
+  Lemma lifted_match_index_sanity :
+    forall net leader h,
+      refined_raft_intermediate_reachable net ->
+      type (snd (nwState net leader)) = Leader ->
+      assoc_default name_eq_dec (matchIndex (snd (nwState net leader))) h 0 <=
+      maxIndex (log (snd (nwState net leader))).
+  Proof.
+    intros.
+    pose proof lift_prop _ match_index_sanity_invariant _ $(eauto)$ leader h.
+    find_rewrite_lem deghost_spec. concludes. auto.
+  Qed.
+
+  Lemma lifted_append_entries_reply_sublog :
+    forall net p t es res h e,
+      refined_raft_intermediate_reachable net ->
+      In p (nwPackets net) ->
+      pBody p = AppendEntriesReply t es res ->
+      currentTerm (snd (nwState net h)) = t ->
+      type (snd (nwState net h)) = Leader ->
+      In e es ->
+      In e (log (snd (nwState net h))).
+  Proof.
+    intros.
+    pose proof lift_prop _ append_entries_reply_sublog_invariant _ $(eauto)$.
+    unfold append_entries_reply_sublog in *.
+    find_apply_lem_hyp ghost_packet.
+    eapply_prop_hyp In In; eauto; try rewrite deghost_spec; eauto.
+    find_rewrite_lem deghost_spec. auto.
+  Qed.
+
   Lemma match_index_all_entries_client_request :
     refined_raft_net_invariant_client_request match_index_all_entries_inv.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_client_request, match_index_all_entries_inv.
+    simpl. intros. break_and. split.
+    - unfold match_index_all_entries in *. simpl in *. intros.
+      repeat find_higher_order_rewrite. update_destruct.
+      + find_copy_apply_lem_hyp handleClientRequest_type.
+        find_copy_apply_lem_hyp handleClientRequest_matchIndex_log. intuition.
+        * repeat find_rewrite.
+          { update_destruct.
+            - apply update_elections_data_clientRequest_allEntries_old'.
+              find_apply_hyp_hyp. repeat find_rewrite. auto.
+            - find_apply_hyp_hyp. repeat find_rewrite. auto.
+          }
+        * break_exists. break_and. repeat find_rewrite.
+          { update_destruct.
+            - unfold update_elections_data_client_request. find_rewrite.
+              break_if.
+              + repeat find_rewrite. simpl. break_or_hyp.
+                * auto.
+                * right.
+                  find_copy_apply_lem_hyp maxIndex_is_max; [|solve[apply entries_sorted_invariant; auto]].
+                  rewrite <- lifted_match_index_leader in * by auto.
+                  eapply_prop_hyp In In; eauto. repeat find_rewrite. auto.
+              + do_bool. find_rewrite. simpl length in *. omega.
+            - find_erewrite_lem get_set_diff_default.
+              pose proof lifted_match_index_sanity _ leader h0 $(eauto)$ $(auto)$.
+              break_or_hyp.
+              + simpl in *. omega.
+              + find_apply_hyp_hyp. repeat find_rewrite. auto.
+          }
+      + find_apply_hyp_hyp. update_destruct.
+        * apply update_elections_data_clientRequest_allEntries_old'.
+          repeat find_rewrite. auto.
+        * repeat find_rewrite. auto.
+    - unfold match_index_all_entries_nw in *.
+      simpl. intros.
+      find_apply_hyp_hyp. break_or_hyp.
+      + repeat find_higher_order_rewrite. update_destruct.
+        * find_copy_apply_lem_hyp handleClientRequest_type. break_and. repeat find_rewrite.
+          find_copy_apply_lem_hyp handleClientRequest_log.
+          { intuition.
+            - repeat find_rewrite.
+              eapply_prop_hyp In In; eauto.
+              update_destruct.
+              + apply update_elections_data_clientRequest_allEntries_old'.
+                repeat find_rewrite. auto.
+              + repeat find_rewrite. auto.
+            - break_exists. break_and. repeat find_rewrite.
+              assert (es <> nil).
+              {
+                apply maxIndex_gt_0_nonempty.
+                eapply lt_le_trans; [|eauto].
+                simpl in *. break_or_hyp.
+                - repeat find_rewrite. omega.
+                - eapply entries_gt_0_invariant; eauto.
+              }
+              pose proof maxIndex_non_empty es. concludes.
+              break_exists_name max_e. intuition.
+              find_eapply_lem_hyp lifted_append_entries_reply_sublog; repeat find_rewrite; eauto.
+              simpl In in *. break_or_hyp.
+              + find_apply_lem_hyp maxIndex_is_max; [|solve[apply entries_sorted_invariant; auto]].
+                omega.
+              + eapply_prop_hyp In In; eauto; [|solve[repeat find_rewrite; auto]].
+                update_destruct.
+                * apply update_elections_data_clientRequest_allEntries_old'.
+                  repeat find_rewrite. auto.
+                * repeat find_rewrite. auto.
+          }
+        * eapply_prop_hyp In In; eauto.
+          { update_destruct.
+            - apply update_elections_data_clientRequest_allEntries_old'.
+              repeat find_rewrite. auto.
+            - repeat find_rewrite. auto.
+          }
+      + find_apply_lem_hyp handleClientRequest_packets. subst. simpl in *. intuition.
+  Qed.
+
+  Lemma handleTimeout_matchIndex :
+    forall h st out st' l,
+       handleTimeout h st = (out, st', l) ->
+       matchIndex st' = matchIndex st.
+  Proof.
+    unfold handleTimeout, tryToBecomeLeader.
+    intros.
+    repeat break_match; repeat find_inversion; simpl in *; auto.
+  Qed.
+
+  Lemma allEntries_update_timeout :
+    forall x h h' net d,
+      In x (allEntries (fst (nwState net h))) ->
+      In x (allEntries (fst (update (nwState net) h'
+                                    (update_elections_data_timeout h' (nwState net h'), d) h))).
+  Proof.
+    intros.
+    update_destruct.
+    - unfold update_elections_data_timeout. repeat break_match; auto.
+    - auto.
+  Qed.
+
+  Lemma handleTimeout_sends_RV :
+    forall h st out st' l m,
+      handleTimeout h st = (out, st', l) ->
+      In m l ->
+      exists node t h mi mt,
+        m = (node, RequestVote t h mi mt).
+  Proof.
+    unfold handleTimeout, tryToBecomeLeader.
+    intros.
+    repeat break_match; repeat find_inversion.
+    - do_in_map. subst. eauto 10.
+    - do_in_map. subst. eauto 10.
+    - simpl in *. intuition.
+  Qed.
 
   Lemma match_index_all_entries_timeout :
     refined_raft_net_invariant_timeout match_index_all_entries_inv.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_timeout, match_index_all_entries_inv.
+    simpl. intros. break_and. split.
+    - unfold match_index_all_entries in *. simpl. intros.
+      repeat find_higher_order_rewrite.
+      apply allEntries_update_timeout.
+      update_destruct.
+      + find_erewrite_lem handleTimeout_log_same.
+        find_copy_apply_lem_hyp handleTimeout_type. intuition; try congruence.
+        find_erewrite_lem handleTimeout_matchIndex.
+        repeat find_rewrite.
+        eapply_prop_hyp In In; eauto. congruence.
+      + eapply_prop_hyp In In; eauto. congruence.
+    - unfold match_index_all_entries_nw in *.
+      simpl. intros.
+      find_apply_hyp_hyp. break_or_hyp.
+      + repeat find_higher_order_rewrite.
+        apply allEntries_update_timeout.
+        update_destruct.
+        * find_erewrite_lem handleTimeout_log_same.
+          find_copy_apply_lem_hyp handleTimeout_type.
+          intuition; try congruence.
+          eapply_prop_hyp In In; eauto; try congruence.
+        * eapply_prop_hyp In In; eauto; congruence.
+      + do_in_map. find_eapply_lem_hyp handleTimeout_sends_RV; eauto.
+        break_exists. subst. simpl in *. discriminate.
+  Qed.
 
   Lemma handleAppendEntries_post_leader_nop :
     forall h st t n pli plt es ci st' m,
@@ -106,24 +312,6 @@ Section MatchIndexAllEntries.
     unfold handleAppendEntries.
     intros.
     repeat break_match; repeat find_inversion; auto; try discriminate.
-  Qed.
-
-  Lemma ghost_packet :
-    forall (net : network (params := raft_refined_multi_params)) p,
-      In p (nwPackets net) ->
-      In (deghost_packet p) (nwPackets (deghost net)).
-  Proof.
-    unfold deghost.
-    simpl. intuition.
-    apply in_map_iff.
-    eexists; eauto.
-  Qed.
-
-  Lemma pDst_deghost_packet :
-    forall p : packet (params := raft_refined_multi_params),
-      pDst (deghost_packet p) = pDst p.
-  Proof.
-    unfold deghost_packet. auto.
   Qed.
 
   Lemma lifted_no_AE_to_leader :
@@ -278,17 +466,6 @@ Section MatchIndexAllEntries.
     rewrite <- deghost_spec with (net0 := net). auto.
   Qed.
 
-  Lemma maxIndex_gt_0_nonempty :
-    forall es,
-      0 < maxIndex es ->
-      es <> nil.
-  Proof.
-    intros.
-    destruct es; simpl in *.
-    - omega.
-    - congruence.
-  Qed.
-
   Lemma lifted_leader_sublog_nw :
     forall net p t n pli plt es ci h e,
       refined_raft_intermediate_reachable net ->
@@ -337,7 +514,23 @@ Section MatchIndexAllEntries.
     unfold refined_raft_net_invariant_append_entries', match_index_all_entries_inv.
     simpl. intros. break_and.
     split.
-    - admit.
+    - unfold match_index_all_entries in *. simpl. intros.
+      repeat find_higher_order_rewrite.
+      update_destruct.
+      + assert (currentTerm (snd (nwState net (pDst p))) <> t).
+        { intro.
+          match goal with
+          | [ H : pBody _ = AppendEntries _ _ _ _ _ _ |- _ ] =>
+            eapply lifted_no_AE_to_leader with (net := net) in H; eauto
+          end.
+          eapply handleAppendEntries_leader_was_leader; eauto.
+        }
+        find_apply_lem_hyp handleAppendEntries_post_leader_nop; auto.
+        subst. eapply_prop_hyp In In; eauto.
+        repeat find_rewrite.
+        update_destruct; auto using update_elections_data_appendEntries_preserves_allEntries.
+      + eapply_prop_hyp In In; eauto. repeat find_rewrite.
+        update_destruct; auto using update_elections_data_appendEntries_preserves_allEntries.
     - unfold match_index_all_entries_nw. simpl.  intros.
       find_apply_hyp_hyp. break_or_hyp.
       + unfold match_index_all_entries_nw in *.
@@ -423,7 +616,7 @@ Section MatchIndexAllEntries.
               repeat find_rewrite. auto.
             - apply entries_sorted_invariant. auto.
           }
-  Admitted.
+  Qed.
 
   Lemma handleAppendEntriesReply_spec :
     forall n st src t es b st' l,
@@ -453,27 +646,6 @@ Section MatchIndexAllEntries.
   Proof.
     intros.
     update_destruct; auto.
-  Qed.
-
-  Lemma get_set_diff_default :
-    forall K V K_eq_dec (k k' : K) (v : V) l d,
-      k <> k' ->
-      assoc_default K_eq_dec (assoc_set K_eq_dec l k v) k' d = assoc_default K_eq_dec l k' d.
-  Proof.
-    unfold assoc_default.
-    intros.
-    repeat break_match; auto;
-    rewrite get_set_diff in * by auto; congruence.
-  Qed.
-
-  Lemma get_set_same_default :
-    forall K V K_eq_dec (k : K) (v : V) l d,
-      assoc_default K_eq_dec (assoc_set K_eq_dec l k v) k d = v.
-  Proof.
-    unfold assoc_default.
-    intros.
-    repeat break_match; auto;
-    rewrite get_set_same in *; congruence.
   Qed.
 
   Lemma match_index_all_entries_append_entries_reply :
@@ -520,8 +692,22 @@ Section MatchIndexAllEntries.
               auto.
         - find_apply_hyp_hyp. congruence.
       }
-    - admit.
-  Admitted.
+    - break_and. unfold match_index_all_entries_nw in *. simpl. intros.
+      repeat find_higher_order_rewrite. rewrite update_nop_fst.
+      find_apply_hyp_hyp.
+      break_or_hyp.
+      + update_destruct.
+        * find_erewrite_lem handleAppendEntriesReply_log.
+          find_copy_apply_lem_hyp handleAppendEntriesReply_spec.
+          { repeat break_or_hyp; break_and.
+            - repeat find_rewrite. eauto using in_middle_insert.
+            - congruence.
+            - repeat find_rewrite. eauto using in_middle_insert.
+          }
+        * eauto using in_middle_insert.
+      + do_in_map. find_apply_lem_hyp handleAppendEntriesReply_packets. subst.
+        simpl in *. intuition.
+  Qed.
 
   Lemma match_index_all_entries_request_vote :
     refined_raft_net_invariant_request_vote match_index_all_entries_inv.

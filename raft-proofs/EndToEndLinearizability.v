@@ -211,6 +211,12 @@ Require Import PrevLogCandidateEntriesTermProof.
 Require Import MatchIndexAllEntriesInterface.
 Require Import MatchIndexAllEntriesProof.
 
+Require Import MatchIndexLeaderInterface.
+Require Import MatchIndexLeaderProof.
+
+Require Import MatchIndexSanityInterface.
+Require Import MatchIndexSanityProof.
+
 Require Import NoAppendEntriesToLeaderInterface.
 Require Import NoAppendEntriesToLeaderProof.
 
@@ -219,6 +225,9 @@ Require Import NoAppendEntriesToSelfProof.
 
 Require Import LogAllEntriesInterface.
 Require Import LogAllEntriesProof.
+
+Require Import AppendEntriesReplySublogInterface.
+Require Import AppendEntriesReplySublogProof.
 
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
@@ -287,9 +296,12 @@ Hint Extern 4 (@prevLog_leader_sublog_interface _ _ _) => apply pllsi : typeclas
 Hint Extern 4 (@allEntries_indices_gt_0_interface _ _ _) => apply aeigt0 : typeclass_instances.
 Hint Extern 4 (@prevLog_candidateEntriesTerm_interface _ _ _) => apply plceti : typeclass_instances.
 Hint Extern 4 (@match_index_all_entries_interface _ _ _) => apply miaei : typeclass_instances.
+Hint Extern 4 (@match_index_leader_interface _ _ _) => apply mili : typeclass_instances.
+Hint Extern 4 (@match_index_sanity_interface _ _ _) => apply matchisi : typeclass_instances.
 Hint Extern 4 (@no_append_entries_to_leader_interface _ _ _) => apply noaetli : typeclass_instances.
 Hint Extern 4 (@no_append_entries_to_self_interface _ _ _) => apply noaetsi : typeclass_instances.
 Hint Extern 4 (@log_all_entries_interface _ _ _) => apply laei : typeclass_instances.
+Hint Extern 4 (@append_entries_reply_sublog_interface _ _ _) => apply aersi : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
