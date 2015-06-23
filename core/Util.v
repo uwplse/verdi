@@ -1200,6 +1200,27 @@ Section assoc.
     - repeat (break_match; simpl); subst; try congruence.
       auto.
   Qed.
+
+  Lemma get_set_diff_default :
+    forall (k k' : K) (v : V) l d,
+      k <> k' ->
+      assoc_default (assoc_set l k v) k' d = assoc_default l k' d.
+  Proof.
+    unfold assoc_default.
+    intros.
+    repeat break_match; auto;
+    rewrite get_set_diff in * by auto; congruence.
+  Qed.
+
+  Lemma get_set_same_default :
+    forall (k : K) (v : V) l d,
+      assoc_default (assoc_set l k v) k d = v.
+  Proof.
+    unfold assoc_default.
+    intros.
+    repeat break_match; auto;
+    rewrite get_set_same in *; congruence.
+  Qed.
 End assoc.
 
 Fixpoint before {A: Type} (x : A) y l : Prop :=
