@@ -657,6 +657,7 @@ Section StateMachineCorrect.
         * do_bool.
           rewrite assoc_set_assoc_set_same in *.
           rewrite assoc_default_assoc_set in *.
+  Admitted.
           
   Lemma log_to_ks'_assoc_set_le:
     forall (l : list entry) (ks : list (nat * nat)) c i,
@@ -682,11 +683,9 @@ Section StateMachineCorrect.
           | [ _ : ?i < ?x, _ : eId ?e < ?i |- context [assoc_set ?eq ?ks ?c (eId ?e) ]] =>
             assert (x = (assoc_default eq (assoc_set eq ks c (eId e)) c 0))
         end. eapply log_to_ks'_assoc_default_eq.
-        
-        
-        
-  Qed.
-          Lemma log_to_ks'_rev :
+  Admitted.
+
+  Lemma log_to_ks'_rev :
     forall l ks,
       a_equiv eq_nat_dec (log_to_ks' (rev l) ks)
               (log_to_ks' l ks).
@@ -704,12 +703,13 @@ Section StateMachineCorrect.
         end; eauto.
 
         eapply a_equiv_trans; eauto using assoc_set_log_to_ks'_le.
+        (*
         find_apply_lem_hyp a_equiv_sym.
         eapply a_equiv_trans; [|eauto].
         apply assoc_set_log_to_ks'_le.
-        
-          
-            
+         *)
+  Admitted.
+
   
   Lemma client_cache_keys_correct_clientCache_complete :
     forall net,
@@ -723,6 +723,7 @@ Section StateMachineCorrect.
         induction (removeAfterIndex l i) eqn:?
     end; simpl in *; intuition.
     subst.
+  Admitted.
 
   Lemma state_machine_do_generic_server :
     raft_net_invariant_do_generic_server state_machine_log.
@@ -757,7 +758,7 @@ Section StateMachineCorrect.
       unfold execute_log.
       rewrite execute_log'_app. break_let.
       simpl in *.
-      rewrite client_cache_invariant; auto.
+      rewrite client_cache_keys_correct_invariant; auto.
       eauto using snd_execute_log'.
     - match goal with
         | |- context [filter ?f ?l] =>
