@@ -27,16 +27,6 @@ Section EveryEntryWasCreated.
   Context {rri : raft_refinement_interface}.
   Context {lhlli : leaders_have_leaderLogs_interface}.
 
-  Inductive in_any_log (net : network) (e : entry) : Prop :=
-  | in_log : forall h, In e (log (snd (nwState net h))) ->
-                  in_any_log net e
-  | in_aer : forall p es, In p (nwPackets net) ->
-                     mEntries (pBody p) = Some es ->
-                     In e es ->
-                     in_any_log net e
-  | in_ll : forall h t ll, In (t, ll) (leaderLogs (fst (nwState net h))) ->
-                      In e ll ->
-                      in_any_log net e.
   Hint Constructors in_any_log.
   (* proof sketch: prove for in_any_log. the only time new entries
   come into the system is on a leader, and leaders have leaderLogs in
@@ -101,7 +91,7 @@ Section EveryEntryWasCreated.
     - find_eapply_lem_hyp handleAppendEntries_not_append_entries.
       find_apply_hyp_hyp. intuition.
       + match goal with
-          | _ : In ?p' (_ ++ _) |- _ => eapply in_aer with (p := p'); eauto
+          | _ : In ?p' (_ ++ _) |- _ => eapply in_aer with (p1 := p'); eauto
         end.
       + subst. simpl in *.
         find_false. unfold mEntries in *.
@@ -131,7 +121,7 @@ Section EveryEntryWasCreated.
     - find_eapply_lem_hyp handleRequestVote_no_append_entries.
       find_apply_hyp_hyp. intuition.
       + match goal with
-          | _ : In ?p' (_ ++ _) |- _ => eapply in_aer with (p := p'); eauto
+          | _ : In ?p' (_ ++ _) |- _ => eapply in_aer with (p1 := p'); eauto
         end.
       + subst. simpl in *.
         find_false. unfold mEntries in *.
@@ -160,7 +150,7 @@ Section EveryEntryWasCreated.
     - find_eapply_lem_hyp handleAppendEntriesReply_packets.
       find_apply_hyp_hyp. intuition.
       + match goal with
-          | _ : In ?p' (_ ++ _) |- _ => eapply in_aer with (p := p'); eauto
+          | _ : In ?p' (_ ++ _) |- _ => eapply in_aer with (p1 := p'); eauto
         end.
       + subst. simpl in *. intuition.
     - repeat find_higher_order_rewrite.
@@ -182,7 +172,7 @@ Section EveryEntryWasCreated.
       find_rewrite_lem handleRequestVoteReply_log_rewrite; eauto.
     - find_apply_hyp_hyp.
       match goal with
-        | _ : In ?p' (_ ++ _) |- _ => eapply in_aer with (p := p'); eauto
+        | _ : In ?p' (_ ++ _) |- _ => eapply in_aer with (p1 := p'); eauto
       end.
     - repeat find_higher_order_rewrite.
       destruct_update; simpl in *; eauto.
@@ -422,8 +412,9 @@ Section EveryEntryWasCreated.
 
   Instance eewci : every_entry_was_created_interface.
   split.
-  unfold every_entry_was_created. intros.
-  apply in_any_log_term_was_created_invariant; eauto.
+  - unfold every_entry_was_created. intros.
+    apply in_any_log_term_was_created_invariant; eauto.
+  - intros. apply in_any_log_term_was_created_invariant; auto.
   Qed.
 
 End EveryEntryWasCreated.
