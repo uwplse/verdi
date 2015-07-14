@@ -55,23 +55,6 @@ Section AllEntriesTermSanity.
     unfold advanceCurrentTerm in *; repeat break_match; do_bool; auto.
   Qed.
 
-  Lemma update_elections_data_appendEntries_allEntries_term' :
-    forall h st t h' pli plt es ci te e d m,
-      In (te, e) (allEntries (update_elections_data_appendEntries h st t h' pli plt es ci)) ->
-      handleAppendEntries h (snd st) t h' pli plt es
-                          ci = (d, m) ->
-      In (te, e) (allEntries (fst st)) \/ (In e es /\ te = currentTerm d).
-  Proof.
-    intros.
-    unfold update_elections_data_appendEntries in *.
-    repeat break_match; subst; simpl in *; auto.
-    unfold handleAppendEntries, advanceCurrentTerm in *.
-    repeat break_match; simpl in *; repeat find_inversion; do_bool; simpl in *; auto;
-    try (do_in_app; intuition; do_in_map;  repeat find_inversion; subst; simpl in *; auto);
-    find_eapply_lem_hyp Nat.le_antisymm; eauto.
-  Qed.
-
-  
   Lemma allEntries_term_sanity_append_entries :
     refined_raft_net_invariant_append_entries allEntries_term_sanity.
   Proof.
