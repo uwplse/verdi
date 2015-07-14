@@ -10,6 +10,7 @@ Require Import RaftRefinementInterface.
 Require Import CommonDefinitions.
 
 Require Import LeadersHaveLeaderLogsInterface.
+Require Import EveryEntryWasCreatedInterface.
 Require Import EveryEntryWasCreatedHostLogInterface.
 
 Section EveryEntryWasCreated.
@@ -19,7 +20,12 @@ Section EveryEntryWasCreated.
 
   Context {lhlli : leaders_have_leaderLogs_interface}.
   Context {rri : raft_refinement_interface}.
+  Context {eewci : every_entry_was_created_interface}.
 
+  
   Instance eewchli : every_entry_was_created_host_log_interface.
-  Admitted.
+  split.
+  unfold every_entry_was_created_host_log. intros.
+  apply every_entry_was_created_in_any_log_invariant; eauto using in_log.
+  Qed.
 End EveryEntryWasCreated.
