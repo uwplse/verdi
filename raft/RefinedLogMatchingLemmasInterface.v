@@ -29,7 +29,6 @@ Section RefinedLogMatchingLemmas.
 
   Definition entries_sorted_nw net :=
     forall p t n pli plt es ci,
-      refined_raft_intermediate_reachable net ->
       In p (nwPackets net) ->
       pBody p = AppendEntries t n pli plt es ci ->
       sorted es.

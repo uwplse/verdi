@@ -53,7 +53,7 @@ Section AllEntriesLeaderLogs.
     intros.
     find_copy_apply_lem_hyp append_entries_leaderLogs_invariant.
     unfold append_entries_leaderLogs in *.
-    pose proof entries_sorted_nw_invariant net $(auto)$ p _ _ _ _ _ _ $(auto)$ $(auto)$ $(eauto)$.
+    pose proof entries_sorted_nw_invariant net $(auto)$ p _ _ _ _ _ _ $(auto)$ $(eauto)$.
     match goal with
     | [ H : In _ (nwPackets _), H' : forall _, _ |- _ ] =>
       copy_eapply H' H
