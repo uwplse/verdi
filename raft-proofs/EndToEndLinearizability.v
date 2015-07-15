@@ -130,6 +130,9 @@ Require Import StateMachineSafetyPrimeProof.
 Require Import AppendEntriesRequestLeaderLogsInterface.
 Require Import AppendEntriesRequestLeaderLogsProof.
 
+Require Import AppendEntriesRequestsCameFromLeadersInterface.
+Require Import AppendEntriesRequestsCameFromLeadersProof.
+
 Require Import LeaderLogsSortedInterface.
 Require Import LeaderLogsSortedProof.
 
@@ -269,6 +272,7 @@ Hint Extern 4 (@terms_and_indices_from_one_interface _ _ _) => apply taifoi : ty
 Hint Extern 4 (@leaderLogs_entries_match_interface _ _ _) => apply lllmi : typeclass_instances.
 Hint Extern 4 (@state_machine_safety'interface _ _ _) => apply sms'i : typeclass_instances.
 Hint Extern 4 (@append_entries_leaderLogs_interface _ _ _) => apply aerlli : typeclass_instances.
+Hint Extern 4 (@append_entries_came_from_leaders_interface _ _ _) => apply aercfli : typeclass_instances.
 Hint Extern 4 (@leaderLogs_sorted_interface _ _ _) => apply llsi : typeclass_instances.
 Hint Extern 4 (@leaderLogs_contiguous_interface _ _ _) => apply llci : typeclass_instances.
 Hint Extern 4 (@logs_leaderLogs_interface _ _ _) => apply llli : typeclass_instances.

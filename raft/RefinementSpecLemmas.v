@@ -255,6 +255,24 @@ Section SpecLemmas.
     do_in_map. repeat find_inversion. subst. simpl in *. auto.
   Qed.
 
+  Lemma update_elections_data_appendEntries_allEntries_term' :
+    forall h st t h' pli plt es ci te e d m,
+      In (te, e) (allEntries (update_elections_data_appendEntries h st t h' pli plt es ci)) ->
+      handleAppendEntries h (snd st) t h' pli plt es
+                          ci = (d, m) ->
+      In (te, e) (allEntries (fst st)) \/ (In e es /\ te = currentTerm d).
+  Proof.
+    intros.
+    unfold update_elections_data_appendEntries in *.
+    repeat break_match; subst; simpl in *; auto.
+    unfold handleAppendEntries, advanceCurrentTerm in *.
+    repeat break_match; simpl in *; repeat find_inversion; do_bool; simpl in *; auto;
+    try (do_in_app; intuition; do_in_map;  repeat find_inversion; subst; simpl in *; auto);
+    find_eapply_lem_hyp Nat.le_antisymm; eauto.
+  Qed.
+
+
+  
   Lemma update_elections_data_appendEntries_log_allEntries :
     forall h st t n pli plt es ci st' h' ps,
       handleAppendEntries h (snd st) t n pli plt es ci = (st', ps) ->
@@ -263,9 +281,9 @@ Section SpecLemmas.
        allEntries (fst st))  \/
       (allEntries (update_elections_data_appendEntries h st t h' pli plt es ci) =
        (map (fun e => (t, e)) es) ++ allEntries (fst st) /\
-       ((log st' = log (snd st) /\ haveNewEntries (snd st) es = false) \/
-        (currentTerm (snd st) <= t /\ es <> [] /\ pli = 0 /\ log st' = es) \/
-        (currentTerm (snd st) <= t /\ es <> [] /\ pli <> 0 /\ exists e,
+       ((currentTerm st' = t /\ log st' = log (snd st) /\ haveNewEntries (snd st) es = false) \/
+        (currentTerm st' = t /\ currentTerm (snd st) <= t /\ es <> [] /\ pli = 0 /\ log st' = es) \/
+        (currentTerm st' = t /\ currentTerm (snd st) <= t /\ es <> [] /\ pli <> 0 /\ exists e,
            In e (log (snd st)) /\
            eIndex e = pli /\
            eTerm e = plt) /\
@@ -273,13 +291,18 @@ Section SpecLemmas.
   Proof.
     intros. unfold update_elections_data_appendEntries, handleAppendEntries in *.
     repeat break_match; repeat find_inversion; auto; simpl in *.
-    - right. intuition. right. left. do_bool. intuition.
+    - right. intuition. right. left. do_bool. intuition; eauto using advanceCurrentTerm_term.
       find_apply_lem_hyp haveNewEntries_not_empty. congruence.
-    - rewrite advanceCurrentTerm_log. intuition.
+    - rewrite advanceCurrentTerm_log.
+      right. intuition. left. intuition.
+      do_bool.
+      eauto using advanceCurrentTerm_term.
     - right. intuition. right. right. do_bool. intuition.
+      + eauto using advanceCurrentTerm_term.
       + find_apply_lem_hyp haveNewEntries_not_empty. congruence.
       + find_apply_lem_hyp findAtIndex_elim. intuition; do_bool; eauto.
-    - rewrite advanceCurrentTerm_log. intuition.
+    - rewrite advanceCurrentTerm_log. do_bool. rewrite advanceCurrentTerm_term; auto.
+      intuition.
   Qed.
 
   Lemma update_elections_data_appendEntries_allEntries_detailed :

@@ -63,7 +63,18 @@ Section AllEntriesLogMatching.
     forall net,
       refined_raft_intermediate_reachable net ->
       leader_sublog net.
-  Admitted.
+  Proof.
+    pose proof lift_prop _ leader_sublog_invariant_invariant.
+    unfold leader_sublog, leader_sublog_invariant, leader_sublog_host_invariant in *.
+    intuition.
+    unfold raft_refined_base_params in *.
+    repeat rewrite <- deghost_spec in *.
+    repeat match goal with
+    | [ H : _ |- _ ] => rewrite <- deghost_spec in H
+    end.
+    find_apply_hyp_hyp. intuition.
+    eauto.
+  Qed.
 
   Lemma invalid_index :
     forall net h e,
