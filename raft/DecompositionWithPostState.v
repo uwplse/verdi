@@ -167,7 +167,7 @@ Section DecompositionWithPostState.
       nwPackets net = nwPackets net' ->
       P net'.
 
-  Theorem raft_net_invariant :
+  Theorem raft_net_invariant' :
     forall P net,
       raft_net_invariant_init P ->
       raft_net_invariant_client_request' P ->
