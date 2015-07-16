@@ -479,6 +479,17 @@ Section SpecLemmas.
     intuition; break_exists; congruence.
   Qed.
 
+  Lemma handleAppendEntries_stateMachine:
+    forall h st (d : raft_data) 
+      (m : msg) (t : term) (n : name) (pli : logIndex) 
+      (plt : term) (es : list entry) (ci : logIndex),
+      handleAppendEntries h st t n pli plt es ci = (d, m) ->
+      stateMachine d = stateMachine st.
+  Proof.
+    intros. unfold handleAppendEntries, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; simpl in *; auto.
+  Qed.
+
   Lemma handleRequestVote_no_append_entries :
     forall st h h' t lli llt st' m,
       handleRequestVote h st t h' lli llt = (st', m) ->
