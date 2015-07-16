@@ -756,7 +756,15 @@ Section StateMachineCorrect.
     forall l ks ks',
       a_equiv eq_nat_dec ks ks' ->
       deduplicate_log' l ks = deduplicate_log' l ks'.
-  Admitted.
+  Proof.
+    induction l; intros; simpl in *; auto.
+    repeat break_match; simpl in *; auto; do_bool;
+    try solve [f_equal; eauto using assoc_set_a_equiv];
+    match goal with
+      | _ : assoc ?dec ?ks ?c = _, _ : assoc ?dec ?ks' ?c = _ |- _ =>
+        assert (assoc dec ks c = assoc dec ks' c) by (eauto using assoc_a_equiv)
+    end; repeat find_rewrite; try find_inversion; try congruence; omega.
+  Qed.
 
   Ltac get_invariant_pre inv :=
     match goal with
