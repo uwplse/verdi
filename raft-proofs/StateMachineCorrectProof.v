@@ -520,6 +520,107 @@ Section StateMachineCorrect.
       + now rewrite max_l by omega.
   Qed.
 
+  Lemma max_id_for_client_default_le :
+    forall l x c,
+      (forall e, In e l -> eClient e = c -> eId e <= x) ->
+      max_id_for_client_default x c l = x.
+  Proof.
+    induction l; simpl; intros.
+    - auto.
+    - break_if.
+      + rewrite IHl.
+        * subst. now rewrite max_l by eauto.
+        * intros. subst. eapply le_trans; [| apply Max.le_max_l]. eauto.
+      + auto.
+  Qed.
+
+  Lemma max_id_for_client_default_on_max :
+    forall c l x x',
+      max_id_for_client_default (max x x') c l =
+      max x (max_id_for_client_default x' c l).
+  Proof.
+    induction l; simpl; intros.
+    - auto.
+    - break_if; repeat rewrite IHl; auto with *.
+      zify. omega.
+  Qed.
+
+  Lemma max_id_for_client_default_or_entry :
+    forall c l x,
+      max_id_for_client_default x c l = x \/
+      exists e, In e l /\ eClient e = c /\ max_id_for_client_default x c l = eId e.
+  Proof.
+    induction l; simpl; intuition.
+    break_if.
+    - specialize (IHl (max x (eId a))).
+      intuition.
+      + destruct (le_lt_dec x (eId a)).
+        * rewrite max_r in * by auto.
+          right. eauto.
+        * rewrite max_l in * by omega. auto.
+      + right.
+        break_exists. break_and.
+        rewrite max_id_for_client_default_on_max in *.
+        exists x0. intuition.
+    - specialize (IHl x). intuition. right. break_exists_exists. intuition.
+  Qed.
+
+  Lemma max_id_for_client_default_is_max :
+    forall l x c e,
+      In e l ->
+      eClient e = c ->
+      eId e <= max_id_for_client_default x c l.
+  Proof.
+    induction l; simpl; intuition; subst.
+    - break_if; try congruence.
+      rewrite Max.max_comm.
+      rewrite max_id_for_client_default_on_max.
+      apply Max.le_max_l.
+    - break_if; auto.
+  Qed.
+
+  Lemma max_id_for_client_default_ge_default :
+    forall l x c,
+      x <= max_id_for_client_default x c l.
+  Proof.
+    induction l; simpl; intuition.
+    break_if; intuition.
+    rewrite max_id_for_client_default_on_max.
+    apply Max.le_max_l.
+  Qed.
+
+  Lemma max_id_for_client_default_subset :
+    forall l l' x c,
+      (forall e, In e l -> In e l') ->
+      max_id_for_client_default x c l <= max_id_for_client_default x c l'.
+  Proof.
+    intros.
+    pose proof max_id_for_client_default_or_entry c l x.
+    pose proof max_id_for_client_default_or_entry c l' x.
+    intuition; break_exists; intuition; repeat find_rewrite.
+    - eapply le_trans; [|eapply Nat.eq_le_incl].
+      apply max_id_for_client_default_ge_default.
+      eauto.
+    - find_apply_hyp_hyp.
+      eapply le_trans.
+      + apply max_id_for_client_default_is_max; eauto.
+      + eauto using Nat.eq_le_incl.
+    - find_apply_hyp_hyp.
+      eapply le_trans.
+      + apply max_id_for_client_default_is_max; eauto.
+      + eauto using Nat.eq_le_incl.
+  Qed.
+
+  Lemma max_id_for_client_default_ext :
+    forall l l' x c,
+      (forall e, In e l -> In e l') ->
+      (forall e, In e l' -> In e l) ->
+      max_id_for_client_default x c l = max_id_for_client_default x c l'.
+  Proof.
+    intros.
+    apply le_antisym; auto using max_id_for_client_default_subset.
+  Qed.
+
   Lemma log_to_ks'_assoc_default_ks :
     forall l ks c i,
       i <= assoc_default eq_nat_dec
