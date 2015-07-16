@@ -490,6 +490,90 @@ Section SpecLemmas.
     repeat break_match; find_inversion; simpl in *; auto.
   Qed.
 
+  Lemma handleAppendEntriesReply_stateMachine:
+    forall h st (d : raft_data)
+      (m : list (name * msg)) (t : nat) (es : list entry) 
+      (res : bool) h',
+      handleAppendEntriesReply h st h' t es res = (d, m) ->
+      stateMachine d = stateMachine st.
+  Proof.
+    intros.
+    unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat (break_match; try find_inversion; simpl in *; auto).
+  Qed.
+
+  Lemma advanceCurrentTerm_stateMachine :
+    forall st t,
+      stateMachine (advanceCurrentTerm st t) = stateMachine st.
+  Proof.
+    unfold advanceCurrentTerm. intros.
+    break_if; auto.
+  Qed.
+
+  Theorem handleTimeout_stateMachine :
+    forall h st out st' ps,
+      handleTimeout h st = (out, st', ps) ->
+      stateMachine st' = stateMachine st.
+  Proof.
+    intros. unfold handleTimeout, tryToBecomeLeader in *.
+    break_match; find_inversion; subst; auto.
+  Qed.
+
+  Theorem handleClientRequest_stateMachine:
+  forall h st client id c out st' ps,
+    handleClientRequest h st client id c = (out, st', ps) ->
+    stateMachine st' = stateMachine st.
+  Proof.
+    intros. unfold handleClientRequest in *.
+    break_match; find_inversion; subst; auto.
+  Qed.
+
+  Lemma tryToBecomeLeader_stateMachine :
+    forall n st out st' ms,
+      tryToBecomeLeader n st = (out, st', ms) ->
+      stateMachine st' = stateMachine st.
+  Proof.
+    unfold tryToBecomeLeader.
+    intros. find_inversion. auto.
+  Qed.
+
+  Lemma handleRequestVote_stateMachine :
+    forall n st t c li lt st' ms,
+      handleRequestVote n st t c li lt = (st', ms) ->
+      stateMachine st' = stateMachine st.
+  Proof.
+    unfold handleRequestVote.
+    intros.
+    repeat (break_match; try discriminate; repeat (find_inversion; simpl in *));
+      auto using advanceCurrentTerm_stateMachine.
+  Qed.
+
+  Lemma handleRequestVoteReply_stateMachine :
+    forall n st src t v,
+      stateMachine (handleRequestVoteReply n st src t v) = stateMachine st.
+  Proof.
+    unfold handleRequestVoteReply.
+    intros. repeat break_match; simpl; auto using advanceCurrentTerm_stateMachine.
+  Qed.
+
+  Lemma doLeader_stateMachine :
+        forall st h os st' ms,
+      doLeader st h = (os, st', ms) ->
+      stateMachine st' = stateMachine st.
+  Proof.
+    intros. unfold doLeader in *.
+    repeat break_match; find_inversion; auto.
+  Qed.
+
+
+  Lemma doLeader_lastApplied :
+        forall st h os st' ms,
+      doLeader st h = (os, st', ms) ->
+      lastApplied st' = lastApplied st.
+  Proof.
+    intros. unfold doLeader in *.
+    repeat break_match; find_inversion; auto.
+  Qed.  
   Lemma handleRequestVote_no_append_entries :
     forall st h h' t lli llt st' m,
       handleRequestVote h st t h' lli llt = (st', m) ->
