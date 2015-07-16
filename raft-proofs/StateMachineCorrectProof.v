@@ -960,10 +960,141 @@ Section StateMachineCorrect.
     - intros. eauto using handleAppendEntries_preserves_lastApplied_entries.
   Qed.
   
+  Lemma state_machine_append_entries_reply :
+    raft_net_invariant_append_entries_reply' state_machine_log.
+  Proof.
+    red. unfold state_machine_log in *. simpl in *. intros.
+    find_higher_order_rewrite.
+    destruct_update; simpl in *; eauto.
+    erewrite handleAppendEntriesReply_stateMachine; eauto.
+    erewrite handleAppendEntriesReply_log; eauto.
+    erewrite handleAppendEntriesReply_same_lastApplied; eauto.
+  Qed.
+
+  Lemma state_machine_request_vote :
+    raft_net_invariant_request_vote' state_machine_log.
+  Proof.
+    red. unfold state_machine_log in *. simpl in *. intros.
+    find_higher_order_rewrite.
+    destruct_update; simpl in *; eauto.
+    erewrite handleRequestVote_log; eauto.
+    erewrite handleRequestVote_same_lastApplied; eauto.
+    erewrite handleRequestVote_stateMachine; eauto.
+  Qed.
+
+  Lemma state_machine_request_vote_reply :
+    raft_net_invariant_request_vote_reply' state_machine_log.
+  Proof.
+    red. unfold state_machine_log in *. simpl in *. intros.
+    find_higher_order_rewrite.
+    destruct_update; simpl in *; eauto.
+    erewrite handleRequestVoteReply_log; eauto.
+    erewrite handleRequestVoteReply_same_lastApplied; eauto.
+    erewrite handleRequestVoteReply_stateMachine; eauto.
+  Qed.
+
+  Lemma state_machine_timeout :
+    raft_net_invariant_timeout' state_machine_log.
+  Proof.
+    red. unfold state_machine_log in *. simpl in *. intros.
+    find_higher_order_rewrite.
+    destruct_update; simpl in *; eauto.
+    erewrite handleTimeout_log_same; eauto.
+    erewrite handleTimeout_lastApplied; eauto.
+    erewrite handleTimeout_stateMachine; eauto.
+  Qed.
+
+  Lemma removeAfterIndex_cons :
+    forall l x i,
+      i < eIndex x ->
+      removeAfterIndex (x :: l) i = removeAfterIndex l i.
+  Proof.
+    intros.
+    simpl in *; break_if; do_bool; auto; omega.
+  Qed.
+  
+  Lemma state_machine_client_request :
+    raft_net_invariant_client_request' state_machine_log.
+  Proof.
+    red. unfold state_machine_log in *. simpl in *. intros.
+    find_higher_order_rewrite.
+    destruct_update; simpl in *; eauto.
+    erewrite handleClientRequest_lastApplied; eauto.
+    erewrite handleClientRequest_stateMachine; eauto.
+    find_apply_lem_hyp handleClientRequest_log.
+    intuition; repeat find_rewrite; eauto.
+    break_exists; intuition; repeat find_rewrite.
+    erewrite removeAfterIndex_cons; eauto.
+    get_invariant_pre max_index_sanity_invariant.
+    unfold maxIndex_sanity, maxIndex_lastApplied in *. intuition.
+    match goal with
+      | H : forall _, lastApplied _ <= maxIndex _ |- _ =>
+        specialize (H h0)
+    end. omega.
+  Qed.
+
+  Lemma state_machine_do_leader :
+    raft_net_invariant_do_leader' state_machine_log.
+  Proof.
+    red. unfold state_machine_log in *. simpl in *. intros. subst.
+    find_higher_order_rewrite.
+    destruct_update; simpl in *; eauto.
+    erewrite doLeader_stateMachine; eauto.
+    erewrite doLeader_same_log; eauto.
+    erewrite doLeader_lastApplied; eauto.
+  Qed.
+
+  Lemma state_machine_reboot :
+    raft_net_invariant_reboot' state_machine_log.
+  Proof.
+    red. unfold state_machine_log in *. simpl in *. intros. subst.
+    find_higher_order_rewrite.
+    destruct_update; simpl in *; eauto.
+  Qed.
+
+  Lemma state_machine_state_same_packet_subset :
+    raft_net_invariant_state_same_packet_subset state_machine_log.
+  Proof.
+    red. unfold state_machine_log in *. simpl in *. intros. subst.
+    find_reverse_higher_order_rewrite. eauto.
+  Qed.
+    
+  Lemma state_machine_init :
+    raft_net_invariant_init state_machine_log.
+  Proof.
+    now red.
+  Qed.
+
+  Lemma state_machine_log_invariant :
+    forall net,
+      raft_intermediate_reachable net ->
+      state_machine_log net.
+  Proof.
+    intros.
+    apply raft_net_invariant'; auto.
+    - apply state_machine_init.
+    - apply state_machine_client_request.
+    - apply state_machine_timeout.
+    - apply state_machine_append_entries.
+    - apply state_machine_append_entries_reply.
+    - apply state_machine_request_vote.
+    - apply state_machine_request_vote_reply.
+    - apply state_machine_do_leader.
+    - apply state_machine_do_generic_server.
+    - apply state_machine_state_same_packet_subset.
+    - apply state_machine_reboot.
+  Qed.
+      
   Theorem state_machine_correct_invariant :
     forall net,
       raft_intermediate_reachable net ->
       state_machine_correct net.
+  Proof.
+    intros. red. intuition.
+    - auto using state_machine_log_invariant.
+    - admit.
+    - auto using client_cache_keys_correct_clientCache_complete,
+                 client_cache_keys_correct_invariant.
   Admitted.
 
   Instance smci : state_machine_correct_interface.
