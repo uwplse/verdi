@@ -498,20 +498,27 @@ Section StateMachineCorrect.
       break_if; auto using assoc_set_a_equiv.
   Qed.
 
-(*
   Fixpoint max_id_for_client_default (default : nat) (c : nat) (l : list entry) : nat :=
     match l with
     | [] => default
-    | e :: l' => if eq_nat_dec c (eClient e) then max (eId e) (max_id_for_client_default default c l')
+    | e :: l' => if eq_nat_dec c (eClient e)
+                then max_id_for_client_default (max default (eId e)) c l'
                 else max_id_for_client_default default c l'
     end.
 
   Lemma log_to_ks'_max_id_for_client :
-    forall c ks l,
+    forall l c ks,
       assoc_default eq_nat_dec (log_to_ks' l ks) c 0 =
       max_id_for_client_default (assoc_default eq_nat_dec ks c 0) c l.
-  Admitted.
-*)
+  Proof.
+    induction l; simpl; intros.
+    - auto.
+    - repeat break_match; do_bool; rewrite IHl; subst; auto.
+      + rewrite get_set_same_default.
+        now rewrite max_r by auto.
+      + now rewrite get_set_diff_default by auto.
+      + now rewrite max_l by omega.
+  Qed.
 
   Lemma log_to_ks'_assoc_default_ks :
     forall l ks c i,
