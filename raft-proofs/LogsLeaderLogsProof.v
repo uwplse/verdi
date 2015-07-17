@@ -24,6 +24,7 @@ Require Import RefinedLogMatchingLemmasInterface.
 Require Import LeadersHaveLeaderLogsStrongInterface.
 Require Import NextIndexSafetyInterface.
 Require Import SortedInterface.
+Require Import LeaderLogsLogPropertiesInterface.
 
 Section LogsLeaderLogs.
   Context {orig_base_params : BaseParams}.
@@ -38,6 +39,7 @@ Section LogsLeaderLogs.
   Context {lhllsi : leaders_have_leaderLogs_strong_interface}.
   Context {nisi : nextIndex_safety_interface}.
   Context {si : sorted_interface}.
+  Context {lpholli : log_properties_hold_on_leader_logs_interface}.
 
   Definition logs_leaderLogs_nw_weak net :=
     forall p t n pli plt es ci e,
@@ -192,6 +194,24 @@ Section LogsLeaderLogs.
     match goal with
     | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
     end.
+
+  Lemma contiguous_log_property :
+    log_property (fun l => contiguous_range_exact_lo l 0).
+  Proof.
+    red. intros.
+    apply entries_contiguous_invariant; auto.
+  Qed.
+
+  Lemma leaderLogs_contiguous :
+    forall net h t ll,
+      refined_raft_intermediate_reachable net ->
+      In (t, ll) (leaderLogs (fst (nwState net h))) ->
+      contiguous_range_exact_lo ll 0.
+  Proof.
+    intros. pattern ll.
+    eapply log_properties_hold_on_leader_logs_invariant; eauto using contiguous_log_property.
+  Qed.
+
   
   Lemma logs_leaderLogs_inductive_appendEntries :
     refined_raft_net_invariant_append_entries logs_leaderLogs_inductive.
@@ -305,7 +325,7 @@ Section LogsLeaderLogs.
                   find_copy_eapply_lem_hyp leaderLogs_sorted_invariant; eauto.
                   f_equal.
                   eapply thing; eauto using lift_logs_sorted;
-                  [admit|eapply leaderLogs_entries_match_invariant; eauto|].
+                  [eauto using leaderLogs_contiguous|eapply leaderLogs_entries_match_invariant; eauto|].
                   assert (sorted es) by (eapply entries_sorted_nw_invariant; eauto).
                   find_copy_apply_lem_hyp entries_contiguous_nw_invariant.
                   unfold entries_contiguous_nw in *.
