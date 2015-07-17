@@ -675,6 +675,134 @@ Section SpecLemmas.
     repeat break_match; find_inversion; auto.
   Qed.
 
+(* matchIndex *)
+  Definition matchIndex_preserved st st' :=
+    type st' = Leader ->
+    (type st = Leader /\ matchIndex st' = matchIndex st).
+
+  Arguments matchIndex_preserved / _ _.
+
+  Definition matchIndex_preserved_except_at_host h st st' :=
+    type st' = Leader ->
+    (type st = Leader /\
+     forall h',
+       h <> h' ->
+       (assoc_default name_eq_dec (matchIndex st') h' 0) = (assoc_default name_eq_dec (matchIndex st) h') 0).
+
+  Arguments matchIndex_preserved_except_at_host / _ _ _.
+  
+  Lemma handleAppendEntries_matchIndex_preserved:
+    forall h st (d : raft_data) 
+      (m : msg) (t : term) (n : name) (pli : logIndex) 
+      (plt : term) (es : list entry) (ci : logIndex),
+      handleAppendEntries h st t n pli plt es ci = (d, m) ->
+      matchIndex_preserved st d.
+  Proof.
+    intros. unfold handleAppendEntries, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; simpl in *; auto; intros; congruence.
+  Qed.
+
+  Lemma handleAppendEntriesReply_matchIndex_leader_preserved:
+    forall h st (d : raft_data)
+      (m : list (name * msg)) (t : nat) (es : list entry) 
+      (res : bool) h',
+      handleAppendEntriesReply h st h' t es res = (d, m) ->
+      matchIndex_preserved_except_at_host h' st d.
+  Proof.
+    intros.
+    unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat (break_match; try find_inversion; simpl in *; auto).
+    intros. intuition.
+    unfold assoc_default.
+    repeat break_match; rewrite get_set_diff in *; repeat find_rewrite; congruence.
+  Qed.
+
+  Lemma advanceCurrentTerm_matchIndex_preserved :
+    forall st t,
+      matchIndex_preserved st (advanceCurrentTerm st t).
+  Proof.
+    unfold advanceCurrentTerm. intros.
+    break_if; simpl in *; auto; congruence.
+  Qed.
+
+  Theorem handleTimeout_matchIndex_preserved :
+    forall h st out st' ps,
+      handleTimeout h st = (out, st', ps) ->
+      matchIndex_preserved st st'.
+  Proof.
+    intros. unfold handleTimeout, tryToBecomeLeader in *.
+    break_match; simpl in *; find_inversion; subst; simpl in *; auto; congruence.
+  Qed.
+
+  Theorem handleClientRequest_matchIndex_maxIndex:
+  forall h st client id c out st' ps,
+    handleClientRequest h st client id c = (out, st', ps) ->
+    (maxIndex (log st') = maxIndex (log st) /\
+     matchIndex st' = matchIndex st) \/
+    (assoc_default name_eq_dec (matchIndex st') h 0) = maxIndex (log st').
+  Proof.
+    intros. unfold handleClientRequest in *.
+    break_match; find_inversion; subst; simpl in *; auto.
+    unfold assoc_default. break_match;
+    rewrite get_set_same in *; try congruence; find_inversion; auto.
+  Qed.
+
+  Lemma tryToBecomeLeader_matchIndex_preserved :
+    forall n st out st' ms,
+      tryToBecomeLeader n st = (out, st', ms) ->
+      matchIndex_preserved st st'.
+  Proof.
+    unfold tryToBecomeLeader.
+    intros. find_inversion. simpl; intros; auto; congruence.
+  Qed.
+
+  Lemma handleRequestVote_matchIndex_preserved :
+    forall n st t c li lt st' ms,
+      handleRequestVote n st t c li lt = (st', ms) ->
+      matchIndex_preserved st st.
+  Proof.
+    unfold handleRequestVote.
+    intros.
+    repeat (break_match; try discriminate; repeat (find_inversion; simpl in *));
+      auto using advanceCurrentTerm_matchIndex_preserved.
+  Qed.
+
+  Lemma doGenericServer_matchIndex_preserved :
+    forall h st os st' ps,
+      doGenericServer h st = (os, st', ps) ->
+      matchIndex_preserved st st'.
+  Proof.
+    intros. unfold doGenericServer in *.
+    repeat break_match; find_inversion;
+    use_applyEntries_spec; simpl in *;
+    subst; auto.
+  Qed.
+
+  Lemma handleRequestVoteReply_matchIndex :
+    forall n st src t v,
+      type (handleRequestVoteReply n st src t v) = Leader ->
+      (type st = Leader /\ matchIndex (handleRequestVoteReply n st src t v) = matchIndex st) \/
+      (assoc_default name_eq_dec (matchIndex (handleRequestVoteReply n st src t v)) n 0
+       = maxIndex (log (handleRequestVoteReply n st src t v))).
+  Proof.
+    unfold handleRequestVoteReply.
+    intros.
+    repeat break_match; simpl; auto using advanceCurrentTerm_matchIndex_preserved;
+    simpl in *; try congruence.
+    unfold assoc_default. simpl.
+    repeat break_match; simpl in *; try congruence; find_inversion; auto.
+  Qed.
+  
+  Lemma doLeader_stateMachine :
+        forall st h os st' ms,
+      doLeader st h = (os, st', ms) ->
+      stateMachine st' = stateMachine st.
+  Proof.
+    intros. unfold doLeader in *.
+    repeat break_match; find_inversion; auto.
+  Qed.
+  
+  
 
   
   Lemma doLeader_lastApplied :
