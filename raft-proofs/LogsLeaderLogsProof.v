@@ -1,5 +1,6 @@
 Require Import List.
 Import ListNotations.
+Require Import Omega.
 
 Require Import VerdiTactics.
 Require Import Util.
@@ -41,6 +42,11 @@ Section LogsLeaderLogs.
   Context {si : sorted_interface}.
   Context {lpholli : log_properties_hold_on_leader_logs_interface}.
 
+  Definition weak_sanity pli ll ll' :=
+    pli = 0 ->
+    (exists e, eIndex e = 0 /\ In e ll) \/
+    ll = ll'.
+  
   Definition logs_leaderLogs_nw_weak net :=
     forall p t n pli plt es ci e,
       In p (nwPackets net) ->
@@ -50,17 +56,19 @@ Section LogsLeaderLogs.
         In (eTerm e, ll) (leaderLogs (fst (nwState net leader))) /\
         Prefix ll' ll /\
         removeAfterIndex es (eIndex e) = es' ++ ll' /\
-        (forall e', In e' es' -> eTerm e' = eTerm e).
+        (forall e', In e' es' -> eTerm e' = eTerm e) /\
+        weak_sanity pli ll ll'.
 
   Lemma logs_leaderLogs_nw_weaken :
     forall net,
       logs_leaderLogs_nw net ->
       logs_leaderLogs_nw_weak net.
   Proof.
-    intros. unfold logs_leaderLogs_nw, logs_leaderLogs_nw_weak in *.
+    intros. unfold logs_leaderLogs_nw, logs_leaderLogs_nw_weak, weak_sanity in *.
     intros.
     eapply_prop_hyp In In; eauto.
-    break_exists_exists; intuition.
+    break_exists_exists; intuition; subst; try omega.
+    break_exists; intuition; eauto.
   Qed.
     
   Definition logs_leaderLogs_inductive net :=
@@ -97,7 +105,6 @@ Section LogsLeaderLogs.
     eapply lift_prop; eauto using nextIndex_safety_invariant.
   Qed.
 
-  Require Import Omega.
   
   Lemma nextIndex_sanity :
     forall net h h',
@@ -243,7 +250,11 @@ Section LogsLeaderLogs.
               eapply sorted_Prefix_in_eq; eauto.
               intros.
               eapply prefix_contiguous with (i := 0); eauto.
-              + admit.
+              + unfold weak_sanity in *. concludes.
+                intuition; subst; simpl in *; intuition.
+                break_exists. intuition.
+                find_eapply_lem_hyp leaderLogs_contiguous_invariant; eauto.
+                omega.
               + eapply leaderLogs_contiguous_invariant; eauto.
               + assert (sorted (log d)) by (eapply entries_sorted_nw_invariant; eauto).
                 eapply contiguous_app with (l1 := x1).
