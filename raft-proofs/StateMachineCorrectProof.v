@@ -942,7 +942,7 @@ Section StateMachineCorrect.
       rewrite filter_false. reflexivity.
   Qed.
 
-  Lemma handleAppendEntries_preserves_lastApplied_entries:
+  Lemma handleAppendEntries_preserves_lastApplied_entries':
     forall (p : packet) (net : network) (d : raft_data) 
       (m : msg) (t : term) (n : name) (pli : logIndex) 
       (plt : term) (es : list entry) (ci : logIndex) xs ys ps' st' e,
@@ -1014,16 +1014,24 @@ Section StateMachineCorrect.
         repeat find_rewrite. omega.
   Qed.
     
-  Lemma state_machine_append_entries :
-    raft_net_invariant_append_entries' state_machine_log.
+  Lemma handleAppendEntries_preserves_lastApplied_entries:
+    forall (p : packet) (net : network) (d : raft_data) 
+      (m : msg) (t : term) (n : name) (pli : logIndex) 
+      (plt : term) (es : list entry) (ci : logIndex) xs ys ps' st',
+      raft_intermediate_reachable net ->
+      raft_intermediate_reachable {| nwPackets := ps'; nwState := st' |} ->
+      (forall h : name, st' h = update (nwState net) (pDst p) d h) ->
+      (forall p' : packet,
+         In p' ps' ->
+         In p' (xs ++ ys) \/
+         p' = {| pSrc := pDst p; pDst := pSrc p; pBody := m |}) ->
+      handleAppendEntries (pDst p) (nwState net (pDst p)) t n pli plt es ci = (d, m) ->
+      nwPackets net = xs ++ p :: ys ->
+      pBody p = AppendEntries t n pli plt es ci ->
+      removeAfterIndex (log d) (lastApplied d) = removeAfterIndex (log (nwState net (pDst p)))
+                                                                  (lastApplied (nwState net (pDst p))).
   Proof.
-    red. unfold state_machine_log in *. simpl in *. intros.
-    find_higher_order_rewrite.
-    destruct_update; simpl in *; eauto.
-    erewrite handleAppendEntries_stateMachine; eauto.
-    find_higher_order_rewrite.
-    f_equal. f_equal. f_equal.
-    f_equal.
+    intros.
     find_copy_apply_lem_hyp handleAppendEntries_same_lastApplied.
     repeat find_rewrite.
     get_invariant_pre logs_sorted_invariant.
@@ -1037,12 +1045,13 @@ Section StateMachineCorrect.
       end.
       repeat find_higher_order_rewrite.
       rewrite_update. auto.
+    - intros. eauto using handleAppendEntries_preserves_lastApplied_entries'.
     - intros.
       get_invariant_pre max_index_sanity_invariant.
       unfold maxIndex_sanity, maxIndex_lastApplied in *. intuition.
       enough (exists e', eIndex e' = eIndex e /\ In e' (log (nwState net (pDst p)))).
       + break_exists. intuition.
-        find_copy_eapply_lem_hyp handleAppendEntries_preserves_lastApplied_entries;
+        find_copy_eapply_lem_hyp handleAppendEntries_preserves_lastApplied_entries';
           repeat find_rewrite; eauto.
         enough (x = e) by now subst.
         eapply uniqueIndices_elim_eq; eauto.
@@ -1065,7 +1074,16 @@ Section StateMachineCorrect.
         end.
         simpl. repeat find_higher_order_rewrite.
         rewrite_update. auto.
-    - intros. eauto using handleAppendEntries_preserves_lastApplied_entries.
+  Qed.
+    
+  Lemma state_machine_append_entries :
+    raft_net_invariant_append_entries' state_machine_log.
+  Proof.
+    red. unfold state_machine_log in *. simpl in *. intros.
+    find_higher_order_rewrite.
+    destruct_update; simpl in *; eauto.
+    erewrite handleAppendEntries_stateMachine; eauto.
+    erewrite handleAppendEntries_preserves_lastApplied_entries; eauto.
   Qed.
   
   Lemma state_machine_append_entries_reply :
@@ -1688,7 +1706,7 @@ Section StateMachineCorrect.
     apply Nat.ltb_lt.
     find_apply_lem_hyp findGtIndex_necessary. intuition.
   Qed.
-                                          
+
   
   Theorem state_machine_correct_invariant :
     forall net,
