@@ -503,6 +503,92 @@ Section SpecLemmas.
     intuition; break_exists; congruence.
   Qed.
 
+  Lemma handleAppendEntries_clientCache:
+    forall h st (d : raft_data) 
+      (m : msg) (t : term) (n : name) (pli : logIndex) 
+      (plt : term) (es : list entry) (ci : logIndex),
+      handleAppendEntries h st t n pli plt es ci = (d, m) ->
+      clientCache d = clientCache st.
+  Proof.
+    intros. unfold handleAppendEntries, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; simpl in *; auto.
+  Qed.
+
+  Lemma handleAppendEntriesReply_clientCache:
+    forall h st (d : raft_data)
+      (m : list (name * msg)) (t : nat) (es : list entry) 
+      (res : bool) h',
+      handleAppendEntriesReply h st h' t es res = (d, m) ->
+      clientCache d = clientCache st.
+  Proof.
+    intros.
+    unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat (break_match; try find_inversion; simpl in *; auto).
+  Qed.
+
+  Lemma advanceCurrentTerm_clientCache :
+    forall st t,
+      clientCache (advanceCurrentTerm st t) = clientCache st.
+  Proof.
+    unfold advanceCurrentTerm. intros.
+    break_if; auto.
+  Qed.
+
+  Theorem handleTimeout_clientCache :
+    forall h st out st' ps,
+      handleTimeout h st = (out, st', ps) ->
+      clientCache st' = clientCache st.
+  Proof.
+    intros. unfold handleTimeout, tryToBecomeLeader in *.
+    break_match; find_inversion; subst; auto.
+  Qed.
+
+  Theorem handleClientRequest_clientCache:
+  forall h st client id c out st' ps,
+    handleClientRequest h st client id c = (out, st', ps) ->
+    clientCache st' = clientCache st.
+  Proof.
+    intros. unfold handleClientRequest in *.
+    break_match; find_inversion; subst; auto.
+  Qed.
+
+  Lemma tryToBecomeLeader_clientCache :
+    forall n st out st' ms,
+      tryToBecomeLeader n st = (out, st', ms) ->
+      clientCache st' = clientCache st.
+  Proof.
+    unfold tryToBecomeLeader.
+    intros. find_inversion. auto.
+  Qed.
+
+  Lemma handleRequestVote_clientCache :
+    forall n st t c li lt st' ms,
+      handleRequestVote n st t c li lt = (st', ms) ->
+      clientCache st' = clientCache st.
+  Proof.
+    unfold handleRequestVote.
+    intros.
+    repeat (break_match; try discriminate; repeat (find_inversion; simpl in *));
+      auto using advanceCurrentTerm_clientCache.
+  Qed.
+
+  Lemma handleRequestVoteReply_clientCache :
+    forall n st src t v,
+      clientCache (handleRequestVoteReply n st src t v) = clientCache st.
+  Proof.
+    unfold handleRequestVoteReply.
+    intros. repeat break_match; simpl; auto using advanceCurrentTerm_clientCache.
+  Qed.
+
+  Lemma doLeader_clientCache :
+        forall st h os st' ms,
+      doLeader st h = (os, st', ms) ->
+      clientCache st' = clientCache st.
+  Proof.
+    intros. unfold doLeader in *.
+    repeat break_match; find_inversion; auto.
+  Qed.
+
   Lemma handleAppendEntries_stateMachine:
     forall h st (d : raft_data) 
       (m : msg) (t : term) (n : name) (pli : logIndex) 
@@ -590,6 +676,7 @@ Section SpecLemmas.
   Qed.
 
 
+  
   Lemma doLeader_lastApplied :
         forall st h os st' ms,
       doLeader st h = (os, st', ms) ->
