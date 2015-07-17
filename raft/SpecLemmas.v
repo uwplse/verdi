@@ -678,7 +678,7 @@ Section SpecLemmas.
 (* matchIndex *)
   Definition matchIndex_preserved st st' :=
     type st' = Leader ->
-    (type st = Leader /\ matchIndex st' = matchIndex st).
+    (type st = Leader /\ matchIndex st' = matchIndex st /\ log st' = log st).
 
   Arguments matchIndex_preserved / _ _.
 
