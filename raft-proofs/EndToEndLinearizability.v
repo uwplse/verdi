@@ -229,6 +229,9 @@ Require Import NoAppendEntriesToLeaderProof.
 Require Import NoAppendEntriesToSelfInterface.
 Require Import NoAppendEntriesToSelfProof.
 
+Require Import NoAppendEntriesRepliesToSelfInterface.
+Require Import NoAppendEntriesRepliesToSelfProof.
+
 Require Import LogAllEntriesInterface.
 Require Import LogAllEntriesProof.
 
@@ -311,6 +314,7 @@ Hint Extern 4 (@match_index_leader_interface _ _ _) => apply mili : typeclass_in
 Hint Extern 4 (@match_index_sanity_interface _ _ _) => apply matchisi : typeclass_instances.
 Hint Extern 4 (@no_append_entries_to_leader_interface _ _ _) => apply noaetli : typeclass_instances.
 Hint Extern 4 (@no_append_entries_to_self_interface _ _ _) => apply noaetsi : typeclass_instances.
+Hint Extern 4 (@no_append_entries_replies_to_self_interface _ _ _) => apply noaertsi : typeclass_instances.
 Hint Extern 4 (@log_all_entries_interface _ _ _) => apply laei : typeclass_instances.
 Hint Extern 4 (@append_entries_reply_sublog_interface _ _ _) => apply aersi : typeclass_instances.
 Hint Extern 4 (@log_properties_hold_on_leader_logs_interface _ _ _) => apply lpholli : typeclass_instances.
