@@ -302,7 +302,7 @@ Section Raft.
                                           Leader         (* long live the king *)
                                         else
                                           type state ]}
-                        with matchIndex := [] ]}
+                        with matchIndex := (assoc_set name_eq_dec [] me (maxIndex (log state))) ]}
                        with nextIndex := [] ]}
                   with electoralVictories :=
                     (if won then
