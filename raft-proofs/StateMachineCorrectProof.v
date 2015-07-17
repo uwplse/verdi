@@ -1192,6 +1192,412 @@ Section StateMachineCorrect.
     - apply state_machine_state_same_packet_subset.
     - apply state_machine_reboot.
   Qed.
+  
+  Lemma cacheApplyEntry_getLastId :
+    forall st e l st' client id out,
+      cacheApplyEntry st e = (l, st') ->
+      getLastId st' client = Some (id, out) ->
+      getLastId st client = Some (id, out) \/
+      eClient e = client /\
+      l = [out] /\
+      eId e = id /\
+      out = fst (handler (eInput e) (stateMachine st)) /\
+      (forall id' out', getLastId st client = Some (id', out') ->
+       id' < id).
+  Proof.
+    intros. unfold cacheApplyEntry in *.
+    repeat break_match; try find_inversion; subst; auto; do_bool.
+    - unfold applyEntry in *.
+      break_let. find_inversion.
+      simpl in *.
+      match goal with
+        | H : context [assoc_set] |- _ =>
+          unfold getLastId in H; simpl in H
+      end.
+      destruct (eq_nat_dec client (eClient e));
+        try now rewrite get_set_diff in *; auto.
+      subst. rewrite get_set_same in *.
+      find_inversion. repeat find_rewrite.
+      right. intuition. find_inversion.
+      omega.
+    - unfold applyEntry in *.
+      break_let. find_inversion.
+      simpl in *.
+      match goal with
+        | H : context [assoc_set] |- _ =>
+          unfold getLastId in H; simpl in H
+      end.
+      destruct (eq_nat_dec client (eClient e));
+        try now rewrite get_set_diff in *; auto.
+      subst. rewrite get_set_same in *.
+      find_inversion. repeat find_rewrite.
+      right. intuition. congruence.
+  Qed.
+
+  Lemma applyEntries_app :
+    forall l h st os d l',
+      applyEntries h st (l ++ l') = (os, d) ->
+      exists os' os'' d',
+        applyEntries h st l = (os', d') /\
+        applyEntries h d' l' = (os'', d) /\
+        os = os' ++ os''.
+  Proof.
+    induction l; intros; simpl in *; try now repeat eexists; eauto.
+    repeat break_let. find_inversion.
+    find_apply_hyp_hyp.
+    break_exists. intuition.
+    repeat find_rewrite. find_inversion.
+    repeat eexists; eauto using app_ass.
+  Qed.
+
+  Lemma applyEntries_log_to_ks' :
+    forall h st l o st',
+      applyEntries h st l = (o, st') ->
+      a_equiv eq_nat_dec (clientCache_to_ks (clientCache st'))
+              (log_to_ks' l (clientCache_to_ks (clientCache st))).
+  Proof.
+  Admitted.
+    
+  Lemma applyEntries_execute_log'_cache :
+    forall l h st os st' client id out,
+      applyEntries h st l = (os, st') ->
+      getLastId st' client = Some (id, out) ->
+      (getLastId st client = Some (id, out) \/
+       exists e xs ys,
+         deduplicate_log' l (clientCache_to_ks (clientCache st)) = xs ++ e :: ys /\
+         eClient e = client /\
+         eId e = id /\
+         Some (eInput e, out) = hd_error (rev (fst (execute_log'
+                                               (xs ++ [e])
+                                               (stateMachine st) [])))).
+  Proof.
+    induction l using rev_ind; intros; simpl in *; intuition; repeat break_let; repeat find_inversion; auto.
+    find_apply_lem_hyp applyEntries_app. break_exists. intuition.
+    simpl in *. break_let. find_inversion.
+    unfold cacheApplyEntry in *.
+    repeat break_match.
+    - subst. find_inversion.
+      copy_eapply_prop_hyp applyEntries applyEntries;
+        [| match goal with
+             | H : context [id] |- _ => apply H
+           end]. intuition.
+      right.
+      break_exists_name e; exists e.
+      break_exists_name xs.
+      exists xs.
+      break_exists_name ys.
+      break_exists.
+      intuition. subst.
+      match goal with
+        | _ : deduplicate_log' ?l ?ks = _ |- _ =>
+          pose proof deduplicate_log'_app l [x] ks
+      end.
+      repeat find_rewrite.
+      repeat eexists; eauto.
+      rewrite app_ass.
+      rewrite <- app_comm_cons. eauto.
+    - do_bool. repeat find_inversion.
+      copy_eapply_prop_hyp applyEntries applyEntries;
+        [| match goal with
+             | H : context [id] |- _ => apply H
+           end]. intuition.
+      right.
+      break_exists_name e; exists e.
+      break_exists_name xs.
+      exists xs.
+      break_exists_name ys.
+      break_exists.
+      intuition. subst.
+      match goal with
+        | _ : deduplicate_log' ?l ?ks = _ |- _ =>
+          pose proof deduplicate_log'_app l [x] ks
+      end.
+      repeat find_rewrite.
+      repeat eexists; eauto.
+      rewrite app_ass.
+      rewrite <- app_comm_cons. eauto.
+    - do_bool. subst.
+      destruct (eq_nat_dec (eClient x) client).
+      + subst.
+        assert (id = eId x).
+        {
+          unfold applyEntry in *.
+          break_let. find_inversion. unfold getLastId in *.
+          simpl in *. rewrite get_set_same in *. find_inversion. auto.
+        }
+        subst.
+        right.
+        unfold applyEntry in *. break_let. find_inversion.
+        exists x, (deduplicate_log' l (clientCache_to_ks (clientCache st))), [].
+        intuition.
+        * rewrite deduplicate_log'_app. f_equal.
+          simpl in *.
+          repeat break_match; auto.
+          do_bool.
+          find_apply_lem_hyp applyEntries_log_to_ks'.
+          find_apply_lem_hyp a_equiv_sym.
+          find_erewrite_lem assoc_a_equiv; eauto.
+          find_apply_lem_hyp clientCache_to_ks_assoc_getLastId.
+          break_exists. repeat find_rewrite. find_inversion.
+          omega.
+        * rewrite execute_log'_app. break_let.
+          simpl in *. break_let. simpl.
+          rewrite rev_app_distr. simpl. unfold value. repeat f_equal.
+          find_apply_lem_hyp applyEntries_execute_log'.
+          repeat find_rewrite. simpl in *. repeat find_rewrite. find_inversion.
+          unfold getLastId in *.
+          simpl in *. rewrite get_set_same in *.
+          find_inversion. auto.
+      + unfold applyEntry in *.
+        break_let. find_inversion.
+        unfold getLastId in *.
+        simpl in *.
+        rewrite get_set_diff in *; auto.
+        copy_eapply_prop_hyp applyEntries applyEntries;
+        [| match goal with
+             | H : context [id] |- _ => apply H
+           end]. intuition.
+        right.
+        break_exists_name e; exists e.
+        break_exists_name xs.
+        exists xs.
+        break_exists_name ys.
+        break_exists.
+        intuition. subst.
+        match goal with
+          | _ : deduplicate_log' ?l ?ks = _ |- _ =>
+            pose proof deduplicate_log'_app l [x] ks
+        end.
+        repeat find_rewrite.
+        repeat eexists; eauto.
+        rewrite app_ass.
+        rewrite <- app_comm_cons. eauto.
+    - do_bool. subst.
+      destruct (eq_nat_dec (eClient x) client).
+      + subst.
+        assert (id = eId x).
+        {
+          unfold applyEntry in *.
+          break_let. find_inversion. unfold getLastId in *.
+          simpl in *. rewrite get_set_same in *. find_inversion. auto.
+        }
+        subst.
+        right.
+        unfold applyEntry in *. break_let. find_inversion.
+        exists x, (deduplicate_log' l (clientCache_to_ks (clientCache st))), [].
+        intuition.
+        * rewrite deduplicate_log'_app. f_equal.
+          simpl in *.
+          repeat break_match; auto.
+          do_bool.
+          find_apply_lem_hyp applyEntries_log_to_ks'.
+          find_apply_lem_hyp a_equiv_sym.
+          find_erewrite_lem assoc_a_equiv; eauto.
+          find_apply_lem_hyp clientCache_to_ks_assoc_getLastId.
+          break_exists. repeat find_rewrite.
+          congruence.
+        * rewrite execute_log'_app. break_let.
+          simpl in *. break_let. simpl.
+          rewrite rev_app_distr. simpl. unfold value. repeat f_equal.
+          find_apply_lem_hyp applyEntries_execute_log'.
+          repeat find_rewrite. simpl in *. repeat find_rewrite. find_inversion.
+          unfold getLastId in *.
+          simpl in *. rewrite get_set_same in *.
+          find_inversion. auto.
+      + unfold applyEntry in *.
+        break_let. find_inversion.
+        unfold getLastId in *.
+        simpl in *.
+        rewrite get_set_diff in *; auto.
+        copy_eapply_prop_hyp applyEntries applyEntries;
+        [| match goal with
+             | H : context [id] |- _ => apply H
+           end]. intuition.
+        right.
+        break_exists_name e; exists e.
+        break_exists_name xs.
+        exists xs.
+        break_exists_name ys.
+        break_exists.
+        intuition. subst.
+        match goal with
+          | _ : deduplicate_log' ?l ?ks = _ |- _ =>
+            pose proof deduplicate_log'_app l [x] ks
+        end.
+        repeat find_rewrite.
+        repeat eexists; eauto.
+        rewrite app_ass.
+        rewrite <- app_comm_cons. eauto.
+  Qed.
+
+  Lemma doGenericServer_spec :
+    forall (orig_base_params : BaseParams)
+      (one_node_params : OneNodeParams orig_base_params)
+      (raft_params : RaftParams orig_base_params) (h : name) 
+      (st : raft_data) (os : list raft_output) (st' : raft_data)
+      (ps : list (name * msg)),
+      doGenericServer h st = (os, st', ps) ->
+      st' = st \/
+      log st' = log st /\
+      lastApplied st < lastApplied st' /\
+      lastApplied st' = commitIndex st /\
+      exists os' st'',
+        applyEntries h st
+                     (rev
+                        (filter
+                           (fun x : entry =>
+                              (lastApplied st <? eIndex x) && (eIndex x <=? commitIndex st))
+                           (findGtIndex (log st) (lastApplied st)))) = (os', st'')  /\
+        forall c, getLastId st' c = getLastId st'' c.
+  Proof.
+    intros.
+    unfold doGenericServer in *.
+    break_let. break_if.
+    - right. do_bool. find_inversion.
+      simpl in *.
+      intuition; eauto;
+      use_applyEntries_spec; subst; simpl in *; auto.
+    - left. do_bool.  find_inversion.
+      match goal with
+        | _ : applyEntries _ _ (rev ?l) = _ |- _ =>
+          enough (l = []) by
+              (repeat find_rewrite; simpl in *; find_inversion;
+               destruct r; simpl in *; auto)
+      end.
+      erewrite filter_fun_ext_eq; eauto using filter_false.
+      intros. simpl in *.
+      apply Bool.not_true_is_false.
+      intuition.
+      do_bool. intuition. do_bool.
+      use_applyEntries_spec. subst. simpl in *. omega.
+  Qed.
+      
+
+  Lemma deduplicate_log_app :
+    forall l l',
+      exists l'',
+        deduplicate_log (l ++ l') = deduplicate_log l ++ l''.
+  Proof.
+    eauto using deduplicate_log'_app.
+  Qed.
+  
+  Lemma output_correct_monotonic :
+    forall c i o xs ys,
+      output_correct c i o xs ->
+      output_correct c i o (xs ++ ys).
+  Proof.
+    unfold output_correct.
+    intros.
+    break_exists.
+    intuition.
+    pose proof (deduplicate_log_app xs ys). break_exists.
+    repeat find_rewrite.
+    rewrite app_ass in *. simpl in *.
+    eexists. eexists. eexists. eexists. eexists.
+    intuition eauto.
+  Qed.
+  
+  Lemma execute_log'_trace:
+    forall l d d' tr tr' tr'',
+      execute_log' l d tr = (tr', d') ->
+      execute_log' l d (tr'' ++ tr) = (tr'' ++ tr', d').
+  Proof.
+    induction l; intros; simpl in *.
+    - find_inversion. auto.
+    - repeat break_let.
+      rewrite app_ass.
+      eauto.
+  Qed.
+
+  Lemma execute_log'_trace_nil:
+    forall l d d' tr' tr'',
+      execute_log' l d [] = (tr', d') ->
+      execute_log' l d tr'' = (tr'' ++ tr', d').
+  Proof.
+    intros.
+    find_eapply_lem_hyp execute_log'_trace;
+      rewrite app_nil_r in *; eauto.
+  Qed.
+
+  Lemma hd_error_Some_app :
+    forall A l l' (x : A),
+      hd_error l = Some x ->
+      hd_error (l ++ l') = Some x.
+  Proof.
+    intros.
+    destruct l; simpl in *; intuition; unfold error in *; congruence.
+  Qed.
+  
+  Lemma client_cache_correct_do_generic_server :
+    raft_net_invariant_do_generic_server' client_cache_correct.
+  Proof.
+    red. unfold client_cache_correct in *. simpl in *. intros. subst.
+    find_higher_order_rewrite.
+    destruct_update; simpl in *; eauto.
+    repeat find_rewrite. find_apply_lem_hyp doGenericServer_spec.
+    intuition; repeat find_rewrite; eauto.
+    get_invariant_pre logs_sorted_invariant. unfold logs_sorted in *. intuition.
+    erewrite removeAfterIndex_app; eauto.
+    break_exists. intuition.
+    find_higher_order_rewrite.
+    find_eapply_lem_hyp applyEntries_execute_log'_cache; eauto. intuition.
+    - find_apply_hyp_hyp.
+      rewrite rev_app_distr.
+      eauto using output_correct_monotonic.
+    - unfold output_correct. break_exists. intuition.
+      rewrite rev_app_distr.
+      unfold deduplicate_log.
+      rewrite deduplicate_log'_app.
+      match goal with
+        | _ : context [execute_log' ?x ?y] |- _ =>
+          destruct (execute_log' x y) eqn:?
+      end.
+      simpl in *.
+      match goal with
+        | [ H : deduplicate_log' _ _ = ?xs ++ ?e :: ?ys |-
+            context [?l ++ deduplicate_log' _ _] ] =>
+          (exists (l ++ xs), e, ys)
+      end.
+      unfold execute_log.
+      repeat rewrite app_ass.
+      rewrite execute_log'_app.
+      break_let.
+      get_invariant_pre state_machine_log_invariant.
+      unfold state_machine_log in *.
+      repeat find_higher_order_rewrite.
+      unfold execute_log, deduplicate_log in *.
+      repeat find_rewrite. simpl in *.
+      match goal with
+        | [ H : execute_log' (_ ++ _) _ _ = (?tr, ?st) |-
+            context [execute_log' _ _ ?tr'] ] =>
+          (exists (tr' ++ tr), st)
+      end.
+      intuition.
+      + f_equal.
+        repeat find_reverse_rewrite.
+        match goal with
+          | H : deduplicate_log' _ _ = _ ++ _ :: _ |- _ =>
+            clear H
+        end.
+        match goal with
+          | |- _ ?l _ = _ ?l' _ =>
+            assert (l = l') by
+                (f_equal; apply filter_fun_ext_eq;
+                 intros;
+                 repeat find_rewrite;
+                 rewrite <- Bool.andb_true_l at 1;
+                 f_equal;
+                 symmetry; apply Nat.ltb_lt;
+                 find_apply_lem_hyp findGtIndex_necessary; intuition)
+        end.
+        repeat find_rewrite.
+        apply deduplicate_log'_a_equiv.
+        apply a_equiv_sym.
+        apply client_cache_keys_correct_invariant; auto.
+      + eauto using execute_log'_trace_nil.
+      + rewrite rev_app_distr.
+        erewrite hd_error_Some_app; eauto.
+  Qed.
       
   Theorem state_machine_correct_invariant :
     forall net,
@@ -1211,3 +1617,4 @@ Section StateMachineCorrect.
     exact state_machine_correct_invariant.
   Qed.
 End StateMachineCorrect.
+
