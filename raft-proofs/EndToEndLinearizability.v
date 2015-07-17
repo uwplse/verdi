@@ -235,6 +235,9 @@ Require Import LogAllEntriesProof.
 Require Import AppendEntriesReplySublogInterface.
 Require Import AppendEntriesReplySublogProof.
 
+Require Import LeaderLogsLogPropertiesInterface.
+Require Import LeaderLogsLogPropertiesProof.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -310,6 +313,7 @@ Hint Extern 4 (@no_append_entries_to_leader_interface _ _ _) => apply noaetli : 
 Hint Extern 4 (@no_append_entries_to_self_interface _ _ _) => apply noaetsi : typeclass_instances.
 Hint Extern 4 (@log_all_entries_interface _ _ _) => apply laei : typeclass_instances.
 Hint Extern 4 (@append_entries_reply_sublog_interface _ _ _) => apply aersi : typeclass_instances.
+Hint Extern 4 (@log_properties_hold_on_leader_logs_interface _ _ _) => apply lpholli : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
