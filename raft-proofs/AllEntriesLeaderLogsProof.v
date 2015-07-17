@@ -18,6 +18,7 @@ Require Import OneLeaderLogPerTermInterface.
 Require Import LeaderLogsSortedInterface.
 Require Import RefinedLogMatchingLemmasInterface.
 Require Import AppendEntriesRequestsCameFromLeadersInterface.
+Require Import AllEntriesLogInterface.
 
 Require Import AllEntriesLeaderLogsInterface.
 
@@ -33,12 +34,19 @@ Section AllEntriesLeaderLogs.
   Context {llsi : leaderLogs_sorted_interface}.
   Context {rlmli : refined_log_matching_lemmas_interface}.
   Context {aercfli : append_entries_came_from_leaders_interface}.
+  Context {aeli : allEntries_log_interface}.
 
   Lemma leader_without_missing_entry_invariant :
     forall net,
       refined_raft_intermediate_reachable net ->
       leader_without_missing_entry net.
-  Admitted.
+  Proof.
+    intros. unfold leader_without_missing_entry.
+    find_apply_lem_hyp allEntries_log_invariant.
+    unfold allEntries_log in *.
+    intros. copy_eapply_prop_hyp allEntries allEntries.
+    intuition. right. break_exists; intuition; repeat eexists; eauto.
+  Qed.
 
   Lemma appendEntriesRequest_exists_leaderLog_invariant :
     forall net,
