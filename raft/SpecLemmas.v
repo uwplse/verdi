@@ -207,6 +207,19 @@ Section SpecLemmas.
     do_bool; auto.
   Qed.
   
+  Lemma handleRequestVoteReply_currentTerm_leaderId :
+    forall h st h' t r st',
+      handleRequestVoteReply h st h' t r = st' ->
+      currentTerm st < currentTerm st' \/
+      currentTerm st' = currentTerm st /\
+      leaderId st' = leaderId st.
+  Proof.
+    intros. unfold handleRequestVoteReply, advanceCurrentTerm in *.
+    subst.
+    repeat (break_match; try find_inversion; simpl in *; auto);
+      do_bool; auto.
+  Qed.
+  
   Theorem handleClientRequest_log :
     forall h st client id c out st' ps,
       handleClientRequest h st client id c = (out, st', ps) ->
