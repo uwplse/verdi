@@ -15,11 +15,10 @@ Section AllEntriesLeaderLogs.
     forall t e h,
       In (t, e) (allEntries (fst (nwState net h))) ->
       In e (log (snd (nwState  net h))) \/
-      exists t' log' leader e',
+      exists t' log' leader,
         t' > t /\
         In (t', log') (leaderLogs (fst (nwState net leader))) /\
-        ~ In e log' /\
-        In (t', e') (allEntries (fst (nwState net h))).
+        ~ In e log'.
 
   Definition appendEntriesRequest_exists_leaderLog net :=
     forall p t leaderId prevLogIndex prevLogTerm entries leaderCommit,
