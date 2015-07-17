@@ -793,17 +793,14 @@ Section SpecLemmas.
     repeat break_match; simpl in *; try congruence; find_inversion; auto.
   Qed.
   
-  Lemma doLeader_stateMachine :
+  Lemma doLeader_matchIndex_preserved :
         forall st h os st' ms,
       doLeader st h = (os, st', ms) ->
-      stateMachine st' = stateMachine st.
+      matchIndex_preserved st st'.
   Proof.
-    intros. unfold doLeader in *.
-    repeat break_match; find_inversion; auto.
+    intros. unfold doLeader in *. simpl; intros.
+    repeat break_match; find_inversion; auto; congruence.
   Qed.
-  
-  
-
   
   Lemma doLeader_lastApplied :
         forall st h os st' ms,
