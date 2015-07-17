@@ -759,12 +759,11 @@ Section SpecLemmas.
   Lemma handleRequestVote_matchIndex_preserved :
     forall n st t c li lt st' ms,
       handleRequestVote n st t c li lt = (st', ms) ->
-      matchIndex_preserved st st.
+      matchIndex_preserved st st'.
   Proof.
-    unfold handleRequestVote.
+    unfold handleRequestVote, advanceCurrentTerm.
     intros.
-    repeat (break_match; try discriminate; repeat (find_inversion; simpl in *));
-      auto using advanceCurrentTerm_matchIndex_preserved.
+    repeat (break_match; try discriminate; repeat (find_inversion; simpl in *)); auto.
   Qed.
 
   Lemma doGenericServer_matchIndex_preserved :
