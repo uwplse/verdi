@@ -12,6 +12,7 @@ Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 Require Import CommonTheorems.
+Require Import RefinementCommonTheorems.
 
 Require Import AppendEntriesRequestLeaderLogsInterface.
 Require Import OneLeaderLogPerTermInterface.
@@ -19,6 +20,8 @@ Require Import LeaderLogsSortedInterface.
 Require Import RefinedLogMatchingLemmasInterface.
 Require Import AppendEntriesRequestsCameFromLeadersInterface.
 Require Import AllEntriesLogInterface.
+Require Import LeaderSublogInterface.
+Require Import LeadersHaveLeaderLogsStrongInterface.
 
 Require Import AllEntriesLeaderLogsInterface.
 
@@ -35,6 +38,8 @@ Section AllEntriesLeaderLogs.
   Context {rlmli : refined_log_matching_lemmas_interface}.
   Context {aercfli : append_entries_came_from_leaders_interface}.
   Context {aeli : allEntries_log_interface}.
+  Context {lsi : leader_sublog_interface}.
+  Context {lhsi : leaders_have_leaderLogs_strong_interface}.
 
   Lemma leader_without_missing_entry_invariant :
     forall net,
@@ -92,17 +97,65 @@ Section AllEntriesLeaderLogs.
     - subst. auto.
   Qed.
 
+  Lemma lift_leader_sublog_nw :
+    forall net (leader : Net.name) (p : packet) (t : term) 
+      (leaderId : name) (prevLogIndex : logIndex) (prevLogTerm : term)
+      (entries : list entry) (leaderCommit : logIndex) 
+      (e : entry),
+      refined_raft_intermediate_reachable net ->
+      type (snd (nwState net leader)) = Leader ->
+      In p (nwPackets net) ->
+      pBody p =
+      AppendEntries t leaderId prevLogIndex prevLogTerm entries leaderCommit ->
+      In e entries ->
+      eTerm e = currentTerm (snd (nwState net leader)) -> In e (log (snd (nwState net leader))).
+  Proof.
+    intros.
+    pose proof lift_prop _ leader_sublog_invariant_invariant $(eauto)$ $(eauto)$.
+    unfold leader_sublog_invariant, leader_sublog_nw_invariant in *. intuition.
+    find_apply_lem_hyp ghost_packet.
+    simpl in *. repeat break_match.
+    simpl.
+    match goal with
+      | H : context [pBody] |- _ =>
+        solve [eapply H; simpl in *; eauto]
+    end.
+  Qed.
+  
   Lemma appendEntries_leader_invariant :
     forall net,
       refined_raft_intermediate_reachable net ->
       appendEntries_leader net.
-  Admitted.
+  Proof.
+    unfold appendEntries_leader. intros.
+    subst.
+    find_copy_eapply_lem_hyp leaders_have_leaderLogs_strong_invariant; eauto.
+    break_exists; intuition. repeat find_rewrite.
+    find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
+    break_exists; repeat break_and.
+    match goal with
+      | H : context [Prefix_sane] |- _ =>
+        clear H
+    end.
+    find_eapply_lem_hyp one_leaderLog_per_term_invariant; eauto.
+    conclude_using eauto. intuition; subst.
+    do_in_app; intuition;
+    [|eapply in_app_iff;
+       eauto using Prefix_in].
+    find_copy_apply_hyp_hyp.
+    find_eapply_lem_hyp lift_leader_sublog_nw; eauto; repeat find_rewrite; eauto.
+    eapply in_app_iff. auto.
+  Qed.
 
   Lemma leaderLogs_leader_invariant :
     forall net,
       refined_raft_intermediate_reachable net ->
       leaderLogs_leader net.
-  Admitted.
+  Proof.
+    unfold leaderLogs_leader. intros.
+    find_apply_lem_hyp leaders_have_leaderLogs_strong_invariant; auto.
+    break_exists_exists. intuition.
+  Qed.
 
   Instance aelli :  all_entries_leader_logs_interface.
   Proof.
