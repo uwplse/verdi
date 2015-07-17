@@ -1250,13 +1250,73 @@ Section StateMachineCorrect.
     repeat eexists; eauto using app_ass.
   Qed.
 
+  Lemma getLastId_clientCache_to_ks_assoc :
+    forall
+      (st : RaftState.raft_data term name entry logIndex serverType data output)
+      (client id : nat) o,
+      getLastId st client = Some (id, o) ->
+      assoc Nat.eq_dec (clientCache_to_ks (clientCache st)) client = Some id.
+  Proof.
+    intros. unfold getLastId in *. induction (clientCache st).
+    - simpl in *. congruence.
+    - simpl in *. break_let. subst. simpl in *.
+      break_if; repeat find_inversion; auto.
+  Qed.
+
+  Lemma i_lt_assoc_default_0 :
+    forall K K_eq_dec ks (k : K) i,
+      i < assoc_default K_eq_dec ks k 0 ->
+      exists i',
+        assoc K_eq_dec ks k = Some i' /\
+        i < i'.
+  Proof.
+    intros.
+    unfold assoc_default in *.
+    break_match; intuition; eauto; omega.
+  Qed.
+
   Lemma applyEntries_log_to_ks' :
-    forall h st l o st',
+    forall l h st o st',
       applyEntries h st l = (o, st') ->
       a_equiv eq_nat_dec (clientCache_to_ks (clientCache st'))
               (log_to_ks' l (clientCache_to_ks (clientCache st))).
   Proof.
-  Admitted.
+    induction l; intros; simpl in *; intuition.
+    - find_inversion. 
+      apply a_equiv_refl.
+    - repeat break_let. find_inversion.
+      break_if.
+      + do_bool.
+        unfold cacheApplyEntry in *.
+        repeat break_match; repeat find_inversion; do_bool.
+        * find_apply_lem_hyp getLastId_clientCache_to_ks_assoc.
+          find_erewrite_lem assoc_assoc_default. omega.
+        * find_apply_hyp_hyp.
+          subst.
+          rewrite assoc_set_same; eauto using a_equiv_refl.
+          eauto using getLastId_clientCache_to_ks_assoc.
+        * subst.
+          unfold applyEntry in *.
+          break_let. find_inversion.
+          find_apply_hyp_hyp.
+          eapply a_equiv_trans; eauto.
+          simpl.
+          erewrite clientCache_to_ks_assoc_set; eauto using a_equiv_refl.
+        * subst.
+          unfold applyEntry in *.
+          break_let. find_inversion.
+          find_apply_hyp_hyp.
+          eapply a_equiv_trans; eauto.
+          simpl.
+          erewrite clientCache_to_ks_assoc_set; eauto using a_equiv_refl.
+      + do_bool. find_apply_lem_hyp i_lt_assoc_default_0.
+        break_exists. intuition.
+        find_apply_lem_hyp clientCache_to_ks_assoc_getLastId.
+        break_exists.
+        unfold cacheApplyEntry in *.
+        repeat find_rewrite. break_if; do_bool; try omega.
+        find_inversion. eauto.
+  Qed.
     
   Lemma applyEntries_execute_log'_cache :
     forall l h st os st' client id out,
