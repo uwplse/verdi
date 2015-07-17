@@ -1508,6 +1508,7 @@ Section StateMachineCorrect.
                            (fun x : entry =>
                               (lastApplied st <? eIndex x) && (eIndex x <=? commitIndex st))
                            (findGtIndex (log st) (lastApplied st)))) = (os', st'')  /\
+        clientCache st' = clientCache st'' /\
         forall c, getLastId st' c = getLastId st'' c.
   Proof.
     intros.
@@ -1658,7 +1659,37 @@ Section StateMachineCorrect.
       + rewrite rev_app_distr.
         erewrite hd_error_Some_app; eauto.
   Qed.
-      
+
+  Lemma client_cache_keys_correct_do_generic_server :
+    raft_net_invariant_do_generic_server' client_cache_keys_correct.
+  Proof.
+    red. unfold client_cache_keys_correct in *. simpl in *. intros. subst.
+    find_higher_order_rewrite.
+    destruct_update; simpl in *; eauto.
+    find_apply_lem_hyp doGenericServer_spec.
+    intuition; repeat find_rewrite; eauto.
+    break_exists. intuition.
+    find_apply_lem_hyp applyEntries_log_to_ks'.
+    repeat find_rewrite.
+    eapply a_equiv_trans; eauto.
+    get_invariant_pre logs_sorted_invariant.
+    unfold logs_sorted in *; intuition.
+    erewrite removeAfterIndex_app; eauto.
+    rewrite rev_app_distr.
+    rewrite log_to_ks'_app.
+    match goal with
+      | |- a_equiv _ (_ (_ ?l) _) (_ (_ ?l') _) =>
+        enough (l = l') by (repeat find_rewrite; now apply log_to_ks'_a_equiv)
+    end.
+    apply filter_fun_ext_eq.
+    intros.
+    rewrite <- Bool.andb_true_l.
+    f_equal.
+    apply Nat.ltb_lt.
+    find_apply_lem_hyp findGtIndex_necessary. intuition.
+  Qed.
+                                          
+  
   Theorem state_machine_correct_invariant :
     forall net,
       raft_intermediate_reachable net ->
