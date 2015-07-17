@@ -195,6 +195,17 @@ Section SpecLemmas.
     repeat break_match; find_inversion; simpl in *; auto; right;
     intuition eauto using advanceCurrentTerm_currentTerm; right; congruence.
   Qed.
+
+  Lemma handleRequestVote_currentTerm_leaderId :
+    forall h st t c li lt st' m,
+      handleRequestVote h st t c li lt = (st', m) ->
+      currentTerm st < currentTerm st' \/
+      (currentTerm st = currentTerm st' /\ leaderId st' = leaderId st).
+  Proof.
+    intros. unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat (break_match; try find_inversion; simpl in *; auto);
+    do_bool; auto.
+  Qed.
   
   Theorem handleClientRequest_log :
     forall h st client id c out st' ps,

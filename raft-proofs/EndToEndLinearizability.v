@@ -109,6 +109,9 @@ Require Import EveryEntryWasCreatedHostLogProof.
 Require Import LeaderLogsVotesWithLogInterface.
 Require Import LeaderLogsVotesWithLogProof.
 
+Require Import AllEntriesLogInterface.
+Require Import AllEntriesLogProof.
+
 Require Import AllEntriesVotesWithLogInterface.
 Require Import AllEntriesVotesWithLogProof.
 
@@ -266,6 +269,7 @@ Hint Extern 4 (@prefix_within_term_interface _ _ _) => apply pwti : typeclass_in
 Hint Extern 4 (@every_entry_was_created_interface _ _ _) => apply eewci : typeclass_instances.
 Hint Extern 4 (@every_entry_was_created_host_log_interface _ _ _) => apply eewchli : typeclass_instances.
 Hint Extern 4 (@leaderLogs_votesWithLog_interface _ _ _) => apply llvwli : typeclass_instances.
+Hint Extern 4 (@allEntries_log_interface _ _ _) => apply aeli : typeclass_instances.
 Hint Extern 4 (@allEntries_votesWithLog_interface _ _ _) => apply aevwli : typeclass_instances.
 Hint Extern 4 (@votesWithLog_sorted_interface _ _ _) => apply vwlsi : typeclass_instances.
 Hint Extern 4 (@terms_and_indices_from_one_interface _ _ _) => apply taifoi : typeclass_instances.
