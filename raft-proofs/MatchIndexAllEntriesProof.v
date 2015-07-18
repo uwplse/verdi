@@ -128,10 +128,10 @@ Section MatchIndexAllEntries.
   Qed.
 
   Lemma lifted_append_entries_reply_sublog :
-    forall net p t es res h e,
+    forall net p t es h e,
       refined_raft_intermediate_reachable net ->
       In p (nwPackets net) ->
-      pBody p = AppendEntriesReply t es res ->
+      pBody p = AppendEntriesReply t es true ->
       currentTerm (snd (nwState net h)) = t ->
       type (snd (nwState net h)) = Leader ->
       In e es ->
