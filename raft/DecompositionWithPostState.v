@@ -334,6 +334,8 @@ Section DecompositionWithPostState.
          intros; simpl in *; repeat break_if; intuition; subst; intuition eauto.
          eapply RIR_step_f; eauto.
          now econstructor; eauto.
+    - eapply_prop raft_net_invariant_state_same_packet_subset; [ | | |eauto]; eauto.
+      repeat find_rewrite. eauto.
     - eapply raft_invariant_handle_input'; eauto using RIR_handleInput.
     - eapply raft_invariant_handle_message'; eauto using RIR_handleMessage.
     - eapply_prop raft_net_invariant_do_leader'; eauto using RIR_doLeader.
