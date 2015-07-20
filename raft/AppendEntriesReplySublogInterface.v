@@ -11,9 +11,9 @@ Section AppendEntriesReplySublog.
   Context {raft_params : RaftParams orig_base_params}.
 
   Definition append_entries_reply_sublog net :=
-    forall p t es res h e,
+    forall p t es h e,
       In p (nwPackets net) ->
-      pBody p = AppendEntriesReply t es res ->
+      pBody p = AppendEntriesReply t es true ->
       currentTerm (nwState net h) = t ->
       type (nwState net h) = Leader ->
       In e es ->

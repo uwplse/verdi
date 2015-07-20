@@ -181,6 +181,12 @@ Section RaftRefinementInterface.
         refined_raft_intermediate_reachable net ->
         step_f (failed, net) (failed', net') out ->
         refined_raft_intermediate_reachable net'
+  | RRIR_subset :
+      forall net net',
+        refined_raft_intermediate_reachable net ->
+        nwState net' = nwState net ->
+        (forall p, In p (nwPackets net') -> In p (nwPackets net)) ->
+        refined_raft_intermediate_reachable net'
   | RRIR_handleInput :
       forall net h inp gd out d l ps' st',
         refined_raft_intermediate_reachable net ->
