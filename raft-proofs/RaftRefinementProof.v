@@ -196,8 +196,6 @@ Section RaftRefinementProof.
        + eapply_prop refined_raft_net_invariant_reboot; eauto;
          intros; simpl in *; repeat break_if; intuition; subst; intuition eauto.
          destruct (nwState net h); auto.
-    - eapply_prop refined_raft_net_invariant_state_same_packet_subset; [ | | | eauto ]; eauto.
-      repeat find_rewrite. eauto.
     - eapply refined_raft_invariant_handle_input; eauto.
     - eapply refined_raft_invariant_handle_message; eauto.
     - eapply_prop refined_raft_net_invariant_do_leader; eauto.
@@ -409,8 +407,6 @@ Section RaftRefinementProof.
          intros; simpl in *; repeat break_if; intuition; subst; intuition eauto.
          * econstructor. eauto. eapply SF_reboot; eauto.
          * destruct (nwState net h); auto.
-    - eapply_prop refined_raft_net_invariant_state_same_packet_subset; [ | | | eauto]; eauto.
-      repeat find_rewrite. eauto.
     - eapply refined_raft_invariant_handle_input'; eauto.
       eapply RRIR_handleInput; eauto.
     - eapply refined_raft_invariant_handle_message'; eauto.
@@ -452,15 +448,6 @@ Section RaftRefinementProof.
       specialize (H1 failed (deghost net) failed' (deghost net') out).
       apply H1; auto.
       apply ghost_simulation_1; auto.
-    - pose proof (RIR_subset).
-      specialize (H2 (deghost net) (deghost net')).
-      concludes.
-      simpl in *.
-      repeat break_match; simpl in *. subst.
-      concludes.
-      forwards; [intros; apply in_map_iff; do_in_map;
-                 eexists; eauto|].
-      auto.
     - unfold deghost in *. simpl in *.
       eapply RIR_handleInput; eauto.
       + simpl in *. repeat break_match. simpl in *.
@@ -545,23 +532,6 @@ Section RaftRefinementProof.
       subst.
       exists x0. intuition.
       eapply RRIR_step_f; eauto.
-    - break_exists.
-      intuition. subst. simpl in *.
-      exists {| nwPackets := map ghost_packet (Net.nwPackets net') ;
-           nwState := nwState x
-        |}.
-      intuition; simpl in *; eauto.
-      + repeat break_match. subst. simpl in *.
-        destruct net'. simpl in *.
-        unfold deghost. simpl.
-        rewrite map_map. simpl.
-        repeat find_rewrite.
-        erewrite map_ext; [erewrite map_id|]; auto.
-        intros. simpl. destruct a; auto.
-      + eapply RRIR_subset; [eauto | |]; simpl; auto.
-        intros. do_in_map.
-        subst. find_apply_hyp_hyp. do_in_map.
-        subst. simpl. destruct x1. simpl. auto.
     - break_exists. break_and.
       subst.
       exists {| nwPackets := map ghost_packet ps' ;

@@ -529,12 +529,6 @@ Section Raft.
         raft_intermediate_reachable net ->
         step_f (failed, net) (failed', net') out ->
         raft_intermediate_reachable net'
-  | RIR_subset :
-      forall net net',
-        raft_intermediate_reachable net ->
-        nwState net' = nwState net ->
-        (forall p, In p (nwPackets net') -> In p (nwPackets net)) ->
-        raft_intermediate_reachable net'
   | RIR_handleInput :
       forall net h inp out d l ps' st',
         raft_intermediate_reachable net ->
@@ -590,6 +584,21 @@ Section Raft.
     intros.
     replace net with (snd (failed, net)); [|simpl; auto].
     eapply step_f_star_raft_intermediate_reachable'; eauto.
+  Qed.
+
+  Lemma step_f_star_raft_intermediate_reachable_extend :
+    forall f net f' net' tr,
+      step_f_star (f, net) (f', net') tr ->
+      raft_intermediate_reachable net ->
+      raft_intermediate_reachable net'.
+  Proof.
+    intros.
+    prep_induction H.
+    induction H using refl_trans_1n_trace_n1_ind; intros; subst.
+    - find_inversion. auto.
+    - destruct x'. simpl in *.
+      eapply RIR_step_f; [|eauto].
+      eauto.
   Qed.
 
   Definition raft_net_invariant_client_request (P : network -> Prop) :=
@@ -842,8 +851,6 @@ Section Raft.
        + auto.
        + eapply_prop raft_net_invariant_reboot; eauto;
          intros; simpl in *; repeat break_if; intuition; subst; intuition eauto.
-    - eapply_prop raft_net_invariant_state_same_packet_subset; [ | | | eauto]; eauto.
-      repeat find_rewrite; auto.
     - eapply raft_invariant_handle_input; eauto.
     - eapply raft_invariant_handle_message; eauto.
     - eapply_prop raft_net_invariant_do_leader; eauto.

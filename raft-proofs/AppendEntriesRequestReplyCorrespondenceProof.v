@@ -17,6 +17,8 @@ Require Import DecompositionWithPostState.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 Require Import AppendEntriesRequestReplyCorrespondenceInterface.
 
+Require Import DupDropReordering.
+
 Section AppendEntriesRequestReplyCorrespondence.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
@@ -195,7 +197,15 @@ Section AppendEntriesRequestReplyCorrespondence.
       raft_intermediate_reachable net ->
       raft_intermediate_reachable net'.
   Proof.
-    intros. eauto using RIR_subset.
+    intros.
+    pose proof dup_drop_reorder _ packet_eq_dec _ _ $(eauto)$.
+    match goal with
+    | [ H : dup_drop_step_star _ _ _ |- _ ] =>
+      eapply step_f_dup_drop_step with (f := []) (Sigma := nwState net) in H
+    end.
+    eapply step_f_star_raft_intermediate_reachable_extend with (f := []) (f' := []) (tr := []); [|eauto].
+    destruct net, net'. simpl in *. subst.
+    auto.
   Qed.
   
   Lemma append_entries_request_reply_correspondence_state_same_packet_subset :
