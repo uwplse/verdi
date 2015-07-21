@@ -586,6 +586,21 @@ Section Raft.
     eapply step_f_star_raft_intermediate_reachable'; eauto.
   Qed.
 
+  Lemma step_f_star_raft_intermediate_reachable_extend :
+    forall f net f' net' tr,
+      step_f_star (f, net) (f', net') tr ->
+      raft_intermediate_reachable net ->
+      raft_intermediate_reachable net'.
+  Proof.
+    intros.
+    prep_induction H.
+    induction H using refl_trans_1n_trace_n1_ind; intros; subst.
+    - find_inversion. auto.
+    - destruct x'. simpl in *.
+      eapply RIR_step_f; [|eauto].
+      eauto.
+  Qed.
+
   Definition raft_net_invariant_client_request (P : network -> Prop) :=
     forall h net st' ps' out d l client id c,
       handleClientRequest h (nwState net h) client id c = (out, d, l) ->
