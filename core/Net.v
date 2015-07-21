@@ -250,6 +250,10 @@ Section StepAsync.
 
   Definition send_packets src ps := (map (fun m => mkPacket src (fst m) (snd m)) ps).
 
+  Definition packet_eq_dec (p q : packet) : {p = q} + {p <> q}.
+    decide equality; auto using name_eq_dec, msg_eq_dec.
+  Defined.
+
   Record network := mkNetwork { nwPackets : list packet;
                                 nwState   : name -> data }.
 
