@@ -331,7 +331,7 @@ Section AllEntriesCandidateEntries.
   Qed.
 
 
-  Instance arcei : allEntries_candidate_entries_interface.
+  Instance aecei : allEntries_candidate_entries_interface.
   Proof.
     constructor. exact allEntries_candidateEntries_invariant.
   Qed.
