@@ -166,6 +166,9 @@ Require Import RefinedLogMatchingLemmasProof.
 Require Import LeaderLogsCandidateEntriesInterface.
 Require Import LeaderLogsCandidateEntriesProof.
 
+Require Import AllEntriesCandidateEntriesInterface.
+Require Import AllEntriesCandidateEntriesProof.
+
 Require Import AllEntriesLogMatchingInterface.
 Require Import AllEntriesLogMatchingProof.
 
@@ -296,6 +299,7 @@ Hint Extern 4 (@leaders_have_leaderLogs_strong_interface _ _ _) => apply lhllsi 
 Hint Extern 4 (@nextIndex_safety_interface _ _ _) => apply nisi : typeclass_instances.
 Hint Extern 4 (@refined_log_matching_lemmas_interface _ _ _) => apply rlmli : typeclass_instances.
 Hint Extern 4 (@leaderLogs_candidate_entries_interface _ _ _) => apply llcei : typeclass_instances.
+Hint Extern 4 (@allEntries_candidate_entries_interface _ _ _) => apply aecei : typeclass_instances.
 Hint Extern 4 (@allEntries_log_matching_interface _ _ _) => apply aelmi : typeclass_instances.
 Hint Extern 4 (@append_entries_request_term_sanity_interface _ _ _) => apply aertsi : typeclass_instances.
 Hint Extern 4 (@allEntries_leader_sublog_interface _ _ _) => apply aelsi : typeclass_instances.
