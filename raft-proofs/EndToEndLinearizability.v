@@ -79,6 +79,9 @@ Require Import MaxIndexSanityInterface.
 Require Import LeaderCompletenessInterface.
 Require Import LeaderCompletenessProof.
 
+Require Import TransitiveCommitInterface.
+Require Import TransitiveCommitProof.
+
 Require Import AllEntriesLeaderLogsInterface.
 Require Import AllEntriesLeaderLogsProof.
 
@@ -271,6 +274,7 @@ Hint Extern 4 (@input_before_output_interface _ _ _) => apply iboi : typeclass_i
 Hint Extern 4 (@output_correct_interface _ _ _) => apply oci : typeclass_instances.
 Hint Extern 4 (@max_index_sanity_interface _ _ _) => apply misi : typeclass_instances.
 Hint Extern 4 (@leader_completeness_interface _ _ _) => apply lci : typeclass_instances.
+Hint Extern 4 (@transitive_commit_interface _ _ _) => apply tci : typeclass_instances.
 Hint Extern 4 (@all_entries_leader_logs_interface _ _ _) => apply aelli : typeclass_instances.
 Hint Extern 4 (@commit_recorded_committed_interface _ _ _) => apply crci : typeclass_instances.
 Hint Extern 4 (@leaderLogs_term_sanity_interface _ _ _) => apply lltsi : typeclass_instances.
