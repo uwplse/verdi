@@ -27,6 +27,8 @@ Require Import OneLeaderLogPerTermInterface.
 Require Import MatchIndexLeaderInterface.
 Require Import MatchIndexSanityInterface.
 Require Import AppendEntriesReplySublogInterface.
+Require Import AppendEntriesRequestReplyRefinedCorrespondenceInterface.
+Require Import CandidateEntriesInterface.
 
 Require Import MatchIndexAllEntriesInterface.
 
@@ -49,6 +51,9 @@ Section MatchIndexAllEntries.
   Context {mili : match_index_leader_interface}.
   Context {matchisi : match_index_sanity_interface}.
   Context {aersi : append_entries_reply_sublog_interface}.
+  Context {aerrrci : append_entries_request_reply_refined_correspondence_interface}.
+  Context {cei : candidate_entries_interface}.
+
 
   Definition match_index_all_entries_nw (net : network) : Prop :=
     forall p t es e,
@@ -148,7 +153,7 @@ Section MatchIndexAllEntries.
   Lemma match_index_all_entries_client_request :
     refined_raft_net_invariant_client_request match_index_all_entries_inv.
   Proof.
-    unfold refined_raft_net_invariant_client_request, match_index_all_entries_inv.
+(*    unfold refined_raft_net_invariant_client_request, match_index_all_entries_inv.
     simpl. intros. break_and. split.
     - unfold match_index_all_entries in *. simpl in *. intros.
       repeat find_higher_order_rewrite. update_destruct.
@@ -222,7 +227,7 @@ Section MatchIndexAllEntries.
             - repeat find_rewrite. auto.
           }
       + find_apply_lem_hyp handleClientRequest_packets. subst. simpl in *. intuition.
-  Qed.
+  Qed. *) Admitted.
 
   Lemma handleTimeout_matchIndex :
     forall h st out st' l,
@@ -510,6 +515,7 @@ Section MatchIndexAllEntries.
 
   Lemma match_index_all_entries_append_entries :
     refined_raft_net_invariant_append_entries' match_index_all_entries_inv.
+(*
   Proof.
     unfold refined_raft_net_invariant_append_entries', match_index_all_entries_inv.
     simpl. intros. break_and.
@@ -616,7 +622,7 @@ Section MatchIndexAllEntries.
               repeat find_rewrite. auto.
             - apply entries_sorted_invariant. auto.
           }
-  Qed.
+  Qed. *) Admitted.
 
   Lemma handleAppendEntriesReply_spec :
     forall n st src t es b st' l,
@@ -650,6 +656,7 @@ Section MatchIndexAllEntries.
 
   Lemma match_index_all_entries_append_entries_reply :
     refined_raft_net_invariant_append_entries_reply match_index_all_entries_inv.
+(*
   Proof.
     unfold refined_raft_net_invariant_append_entries_reply, match_index_all_entries_inv.
     simpl. intros. split.
@@ -707,31 +714,379 @@ Section MatchIndexAllEntries.
         * eauto using in_middle_insert.
       + do_in_map. find_apply_lem_hyp handleAppendEntriesReply_packets. subst.
         simpl in *. intuition.
+  Qed. *) Admitted.
+
+  Lemma handleRequestVote_sends_RVR :
+    forall st h h' t lli llt st' m,
+      handleRequestVote h st t h' lli llt = (st', m) ->
+      exists t b, m = RequestVoteReply t b.
+  Proof.
+    unfold handleRequestVote.
+    intros.
+    repeat break_match; repeat find_inversion; eauto.
   Qed.
 
   Lemma match_index_all_entries_request_vote :
     refined_raft_net_invariant_request_vote match_index_all_entries_inv.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_request_vote, match_index_all_entries_inv.
+    simpl. intros. split.
+    - unfold match_index_all_entries in *. simpl. intros. break_and.
+      repeat find_higher_order_rewrite.
+      update_destruct.
+      + find_copy_apply_lem_hyp handleRequestVote_type.
+        intuition; try congruence.
+        find_copy_apply_lem_hyp handleRequestVote_matchIndex_preserved.
+        unfold matchIndex_preserved in *. intuition.
+        update_destruct.
+        * rewrite update_elections_data_requestVote_allEntries.
+          repeat find_reverse_rewrite.
+          match goal with
+          | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+            apply H with (leader := pDst p)
+          end; auto;
+            repeat find_rewrite; auto.
+        * repeat find_reverse_rewrite.
+          match goal with
+          | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+            apply H with (leader := pDst p)
+          end; auto;
+            repeat find_rewrite; auto.
+      + update_destruct.
+        * rewrite update_elections_data_requestVote_allEntries.
+          repeat find_reverse_rewrite.
+          match goal with
+          | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+            eapply H; eauto
+          end.
+        * repeat find_reverse_rewrite.
+          match goal with
+          | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+            eapply H; eauto
+          end.
+    - break_and.
+      unfold match_index_all_entries_nw in *.
+      simpl. intros.
+      find_apply_hyp_hyp. break_or_hyp.
+      + repeat find_higher_order_rewrite.
+        update_destruct.
+        * { find_copy_apply_lem_hyp handleRequestVote_type.
+            intuition; try congruence.
+            find_copy_apply_lem_hyp handleRequestVote_matchIndex_preserved.
+            unfold matchIndex_preserved in *. intuition.
+            update_destruct.
+            - rewrite update_elections_data_requestVote_allEntries.
+              repeat find_rewrite.
+              match goal with
+              | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+                apply H with (es := es); auto using in_middle_insert; try congruence
+              end.
+            - match goal with
+              | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+                apply H with (es := es); auto using in_middle_insert; try congruence
+              end.
+          }
+        * { update_destruct.
+            - rewrite update_elections_data_requestVote_allEntries.
+              repeat find_rewrite.
+              match goal with
+              | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+                apply H with (es := es); auto using in_middle_insert; try congruence
+              end.
+            - match goal with
+              | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+                apply H with (es := es); auto using in_middle_insert; try congruence
+              end.
+          }
+      + simpl in *.
+        find_apply_lem_hyp handleRequestVote_sends_RVR.
+        break_exists.
+        congruence.
+  Qed.
+
+  Lemma handleRequestVoteReply_spec :
+    forall h st h' t r st',
+      handleRequestVoteReply h st h' t r = st' ->
+      type st' = Follower \/
+      st' = st \/
+      (log st' = log st /\
+       currentTerm st' = currentTerm st /\
+       matchIndex st' = assoc_set name_eq_dec nil h (maxIndex (log st))).
+  Proof.
+    unfold handleRequestVoteReply.
+    intros.
+    repeat break_match; repeat find_inversion; subst; simpl; intuition.
+  Qed.
+
+  Lemma handleRequestVoteReply_spec' :
+    forall h st h' t r st',
+      handleRequestVoteReply h st h' t r = st' ->
+      type st' = Follower \/
+      st' = st \/
+      type st' = Candidate \/
+      (type st' = Leader /\
+       type st = Candidate /\
+       log st' = log st /\
+       currentTerm st' = currentTerm st).
+  Proof.
+    unfold handleRequestVoteReply.
+    intros.
+    repeat break_match; repeat find_inversion; subst; simpl; intuition.
+  Qed.
+
 
   Lemma match_index_all_entries_request_vote_reply :
     refined_raft_net_invariant_request_vote_reply match_index_all_entries_inv.
+  Proof.
+    unfold refined_raft_net_invariant_request_vote_reply, match_index_all_entries_inv.
+    simpl. intros. split.
+    - unfold match_index_all_entries in *. simpl. intros. break_and.
+      find_apply_lem_hyp handleRequestVoteReply_spec.
+      repeat find_higher_order_rewrite.
+      update_destruct.
+      + intuition; try congruence.
+        * subst.
+          { update_destruct.
+            - rewrite update_elections_data_requestVoteReply_allEntries.
+              repeat find_reverse_rewrite. eauto.
+            - repeat find_reverse_rewrite. eauto.
+          }
+        * repeat find_rewrite.
+          unfold assoc_default in *.
+          { break_match.
+            - simpl in *. break_if; try discriminate.
+              match goal with
+              | [ H : Some _ = Some _ |- _ ] => invc H
+              end.
+              rewrite_update.
+              simpl.
+              rewrite update_elections_data_requestVoteReply_allEntries.
+              match goal with
+              | [ |- In (?t, _) _ ] => replace t with (eTerm e) by congruence
+              end.
+              eapply log_all_entries_invariant; auto.
+            - find_apply_lem_hyp lifted_terms_and_indices_from_one_log; auto.
+              intuition. omega.
+          }
+      + update_destruct.
+        * rewrite update_elections_data_requestVoteReply_allEntries.
+          repeat find_reverse_rewrite. eauto.
+        * repeat find_reverse_rewrite. eauto.
+    - unfold match_index_all_entries_nw in *.
+      simpl in *.
+      intros.
+      find_apply_lem_hyp handleRequestVoteReply_spec'.
+      repeat find_higher_order_rewrite.
+      find_apply_hyp_hyp.
+      update_destruct.
+      + intuition; try congruence.
+        * subst.
+          { update_destruct.
+            - rewrite update_elections_data_requestVoteReply_allEntries.
+              repeat find_rewrite.
+              match goal with
+              | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+                eapply H; eauto; congruence
+              end.
+            - repeat find_rewrite.
+              match goal with
+              | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+                eapply H; eauto; congruence
+              end.
+          }
+        * exfalso.
+          pose proof append_entries_request_reply_refined_correspondence_invariant
+               net $(auto)$ p0 _ _ $(repeat find_rewrite; auto using in_middle_insert)$ $(eauto)$.
+          unfold exists_equivalent_network_with_aer_refined in *.
+          break_exists_name net'. break_exists. break_and.
   Admitted.
+
+
+  Lemma doLeader_sends_AE :
+    forall st h os st' ms m,
+      doLeader st h = (os, st', ms) ->
+      In m ms ->
+      is_append_entries (snd m).
+  Proof.
+    unfold doLeader.
+    intros.
+    repeat break_match; repeat find_inversion; simpl in *; intuition.
+    do_in_map.
+    subst.
+    unfold replicaMessage.
+    repeat break_match; simpl; eauto 10.
+  Qed.
 
   Lemma match_index_all_entries_do_leader :
     refined_raft_net_invariant_do_leader match_index_all_entries_inv.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_do_leader, match_index_all_entries_inv.
+    intros. break_and. split.
+    - unfold match_index_all_entries in *.
+      simpl in *. intros.
+      repeat find_higher_order_rewrite.
+      match goal with
+      | [ H : nwState ?net ?h = (?x, ?y) |- _ ] =>
+        replace x with (fst (nwState net h)) in * by (rewrite H; auto);
+        replace y with (snd (nwState net h)) in * by (rewrite H; auto);
+        clear H
+      end.
+      rewrite update_nop_fst.
+      update_destruct.
+      + repeat find_reverse_rewrite.
+        find_copy_apply_lem_hyp doLeader_type. intuition.
+        find_copy_apply_lem_hyp doLeader_matchIndex_preserved.
+        unfold matchIndex_preserved in *. intuition.
+        match goal with
+        | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+          eapply H; eauto; try congruence
+        end.
+      + repeat find_reverse_rewrite.
+        match goal with
+        | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+          eapply H; eauto; try congruence
+        end.
+    - unfold match_index_all_entries_nw in *.
+      simpl in *.
+      intros.
+      find_apply_hyp_hyp.
+      break_or_hyp.
+      + repeat find_higher_order_rewrite.
+        match goal with
+        | [ H : nwState ?net ?h = (?x, ?y) |- _ ] =>
+          replace x with (fst (nwState net h)) in * by (rewrite H; auto);
+            replace y with (snd (nwState net h)) in * by (rewrite H; auto);
+            clear H
+        end.
+        rewrite update_nop_fst in *.
+        find_copy_apply_lem_hyp doLeader_type. intuition.
+        update_destruct.
+        * find_copy_apply_lem_hyp doLeader_matchIndex_preserved.
+          unfold matchIndex_preserved in *. intuition.
+          match goal with
+          | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+            eapply H; eauto; try congruence
+          end.
+        * match goal with
+          | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+            eapply H; eauto; try congruence
+          end.
+      + do_in_map.
+        find_eapply_lem_hyp doLeader_sends_AE; [|eauto].
+        break_exists. subst.
+        simpl in *. congruence.
+  Qed.
 
   Lemma match_index_all_entries_do_generic_server :
     refined_raft_net_invariant_do_generic_server match_index_all_entries_inv.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_do_generic_server, match_index_all_entries_inv.
+    simpl. intros. break_and. split.
+    - unfold match_index_all_entries in *.
+      simpl in *. intros.
+      repeat find_higher_order_rewrite.
+      match goal with
+      | [ H : nwState ?net ?h = (?x, ?y) |- _ ] =>
+        replace x with (fst (nwState net h)) in * by (rewrite H; auto);
+        replace y with (snd (nwState net h)) in * by (rewrite H; auto);
+        clear H
+      end.
+      rewrite update_nop_fst.
+      update_destruct.
+      + repeat find_reverse_rewrite.
+        find_copy_apply_lem_hyp doGenericServer_type. intuition.
+        find_copy_apply_lem_hyp doGenericServer_matchIndex_preserved.
+        unfold matchIndex_preserved in *. intuition.
+        match goal with
+        | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+          eapply H; eauto; try congruence
+        end.
+      + repeat find_reverse_rewrite.
+        match goal with
+        | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+          eapply H; eauto; try congruence
+        end.
+    - unfold match_index_all_entries_nw in *.
+      simpl in *.
+      intros.
+      find_apply_hyp_hyp.
+      break_or_hyp.
+      + repeat find_higher_order_rewrite.
+        match goal with
+        | [ H : nwState ?net ?h = (?x, ?y) |- _ ] =>
+          replace x with (fst (nwState net h)) in * by (rewrite H; auto);
+            replace y with (snd (nwState net h)) in * by (rewrite H; auto);
+            clear H
+        end.
+        rewrite update_nop_fst in *.
+        find_copy_apply_lem_hyp doGenericServer_type. intuition.
+        update_destruct.
+        * find_copy_apply_lem_hyp doGenericServer_matchIndex_preserved.
+          unfold matchIndex_preserved in *. intuition.
+          match goal with
+          | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+            eapply H; eauto; try congruence
+          end.
+        * match goal with
+          | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+            eapply H; eauto; try congruence
+          end.
+      + do_in_map.
+        find_apply_lem_hyp doGenericServer_packets.
+        subst. simpl in *. intuition.
+  Qed.
 
   Lemma match_index_all_entries_state_same_packet_subset :
     refined_raft_net_invariant_state_same_packet_subset match_index_all_entries_inv.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_state_same_packet_subset, match_index_all_entries_inv.
+    simpl. intros. break_and. split.
+    - unfold match_index_all_entries in *.
+      intros.
+      repeat find_reverse_higher_order_rewrite.
+      eauto.
+    - unfold match_index_all_entries_nw in *.
+      intros.
+      find_apply_hyp_hyp.
+      repeat find_reverse_higher_order_rewrite.
+      eauto.
+  Qed.
+
 
   Lemma match_index_all_entries_reboot :
     refined_raft_net_invariant_reboot match_index_all_entries_inv.
-  Admitted.
+  Proof.
+    unfold refined_raft_net_invariant_reboot, match_index_all_entries_inv.
+    intros. break_and. subst. split.
+    - unfold match_index_all_entries in *.
+      intros.
+      repeat find_higher_order_rewrite.
+      match goal with
+      | [ H : nwState ?net ?h = (?x, ?y) |- _ ] =>
+        replace x with (fst (nwState net h)) in * by (rewrite H; auto);
+          replace y with (snd (nwState net h)) in * by (rewrite H; auto);
+          clear H
+      end.
+      rewrite update_nop_fst.
+      update_destruct.
+      + discriminate.
+      + repeat find_reverse_rewrite.
+        eauto.
+    - unfold match_index_all_entries_nw in *.
+      intros.
+      repeat find_higher_order_rewrite.
+      match goal with
+      | [ H : nwState ?net ?h = (?x, ?y) |- _ ] =>
+        replace x with (fst (nwState net h)) in * by (rewrite H; auto);
+          replace y with (snd (nwState net h)) in * by (rewrite H; auto);
+          clear H
+      end.
+      rewrite update_nop_fst.
+      update_destruct.
+      + discriminate.
+      + repeat find_reverse_rewrite.
+        eauto.
+  Qed.
 
   Lemma match_index_all_entries_invariant :
     forall net,
