@@ -29,6 +29,8 @@ Require Import MatchIndexSanityInterface.
 Require Import AppendEntriesReplySublogInterface.
 Require Import AppendEntriesRequestReplyRefinedCorrespondenceInterface.
 Require Import CandidateEntriesInterface.
+Require Import VotesCorrectInterface.
+Require Import CroniesCorrectInterface.
 
 Require Import MatchIndexAllEntriesInterface.
 
@@ -53,6 +55,8 @@ Section MatchIndexAllEntries.
   Context {aersi : append_entries_reply_sublog_interface}.
   Context {aerrrci : append_entries_request_reply_refined_correspondence_interface}.
   Context {cei : candidate_entries_interface}.
+  Context {vci : votes_correct_interface}.
+  Context {cci : cronies_correct_interface}.
 
 
   Definition match_index_all_entries_nw (net : network) : Prop :=
@@ -153,7 +157,7 @@ Section MatchIndexAllEntries.
   Lemma match_index_all_entries_client_request :
     refined_raft_net_invariant_client_request match_index_all_entries_inv.
   Proof.
-(*    unfold refined_raft_net_invariant_client_request, match_index_all_entries_inv.
+    unfold refined_raft_net_invariant_client_request, match_index_all_entries_inv.
     simpl. intros. break_and. split.
     - unfold match_index_all_entries in *. simpl in *. intros.
       repeat find_higher_order_rewrite. update_destruct.
@@ -227,7 +231,7 @@ Section MatchIndexAllEntries.
             - repeat find_rewrite. auto.
           }
       + find_apply_lem_hyp handleClientRequest_packets. subst. simpl in *. intuition.
-  Qed. *) Admitted.
+  Qed.
 
   Lemma handleTimeout_matchIndex :
     forall h st out st' l,
@@ -515,7 +519,6 @@ Section MatchIndexAllEntries.
 
   Lemma match_index_all_entries_append_entries :
     refined_raft_net_invariant_append_entries' match_index_all_entries_inv.
-(*
   Proof.
     unfold refined_raft_net_invariant_append_entries', match_index_all_entries_inv.
     simpl. intros. break_and.
@@ -622,7 +625,7 @@ Section MatchIndexAllEntries.
               repeat find_rewrite. auto.
             - apply entries_sorted_invariant. auto.
           }
-  Qed. *) Admitted.
+  Qed.
 
   Lemma handleAppendEntriesReply_spec :
     forall n st src t es b st' l,
@@ -656,7 +659,6 @@ Section MatchIndexAllEntries.
 
   Lemma match_index_all_entries_append_entries_reply :
     refined_raft_net_invariant_append_entries_reply match_index_all_entries_inv.
-(*
   Proof.
     unfold refined_raft_net_invariant_append_entries_reply, match_index_all_entries_inv.
     simpl. intros. split.
@@ -714,7 +716,7 @@ Section MatchIndexAllEntries.
         * eauto using in_middle_insert.
       + do_in_map. find_apply_lem_hyp handleAppendEntriesReply_packets. subst.
         simpl in *. intuition.
-  Qed. *) Admitted.
+  Qed.
 
   Lemma handleRequestVote_sends_RVR :
     forall st h h' t lli llt st' m,
@@ -827,11 +829,14 @@ Section MatchIndexAllEntries.
       (type st' = Leader /\
        type st = Candidate /\
        log st' = log st /\
+       r = true /\
+       t = currentTerm st /\
+       wonElection (dedup name_eq_dec (h' :: votesReceived st)) = true /\
        currentTerm st' = currentTerm st).
   Proof.
     unfold handleRequestVoteReply.
     intros.
-    repeat break_match; repeat find_inversion; subst; simpl; intuition.
+    repeat break_match; repeat find_inversion; do_bool; subst; simpl; intuition.
   Qed.
 
 
@@ -894,13 +899,38 @@ Section MatchIndexAllEntries.
                 eapply H; eauto; congruence
               end.
           }
-        * exfalso.
-          pose proof append_entries_request_reply_refined_correspondence_invariant
-               net $(auto)$ p0 _ _ $(repeat find_rewrite; auto using in_middle_insert)$ $(eauto)$.
-          unfold exists_equivalent_network_with_aer_refined in *.
-          break_exists_name net'. break_exists. break_and.
-  Admitted.
-
+        * subst.
+          intro_refined_invariant candidate_entries_invariant.
+          match goal with
+          | [ H : candidateEntries_host_invariant _ |- _ ] =>
+            pose proof H (pDst p) e
+          end.
+          unfold raft_data in *.
+          conclude_using congruence.
+          { find_eapply_lem_hyp wonElection_candidateEntries_rvr; eauto.
+            - intuition.
+            - eauto using votes_correct_invariant.
+            - eauto using cronies_correct_invariant.
+            - unfold raft_refined_base_params, raft_refined_multi_params in *. congruence.
+            - unfold raft_refined_multi_params, raft_refined_base_params in *.
+              simpl in *.
+              unfold raft_data in *.
+              congruence.
+          }
+      + { update_destruct.
+            - rewrite update_elections_data_requestVoteReply_allEntries.
+              repeat find_rewrite.
+              match goal with
+              | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+                eapply H; eauto; congruence
+              end.
+            - repeat find_rewrite.
+              match goal with
+              | [ H : context [ In _ (allEntries _) ] |- _ ] =>
+                eapply H; eauto; congruence
+              end.
+          }
+  Qed.
 
   Lemma doLeader_sends_AE :
     forall st h os st' ms m,
