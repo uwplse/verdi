@@ -2317,6 +2317,31 @@ Section CommonTheorems.
     destruct l; [auto|discriminate].
   Qed.
 
+  Lemma moreUpToDate_refl :
+    forall x y,
+      moreUpToDate x y x y = true.
+  Proof.
+    intros.
+    unfold moreUpToDate in *.
+    apply Bool.orb_true_intro.
+    right. do_bool.
+    intuition; do_bool; intuition.
+  Qed.
+
+  Lemma wonElection_dedup_spec :
+    forall l,
+      wonElection (dedup name_eq_dec l) = true ->
+      exists quorum,
+        NoDup quorum /\
+        length quorum > div2 (length nodes) /\
+        (forall h, In h quorum -> In h l).
+  Proof.
+    intros.
+    exists (dedup name_eq_dec l). intuition; eauto using NoDup_dedup, in_dedup_was_in.
+    unfold wonElection in *.
+    do_bool. omega.
+  Qed.
+  
 End CommonTheorems.
 
 Notation is_append_entries m :=

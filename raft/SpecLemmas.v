@@ -298,7 +298,10 @@ Section SpecLemmas.
        \/ type st' <> Candidate) /\
       (type st <> Leader /\ type st' = Leader ->
        (type st = Candidate /\ wonElection (dedup name_eq_dec
-                                                  (votesReceived st')) = true)).
+                                                 (votesReceived st')) = true) /\
+       currentTerm st' = currentTerm st /\
+       currentTerm st = t /\
+       votesReceived st' = (h' :: (votesReceived st))).
   Proof.
     intros.
     unfold handleRequestVoteReply, advanceCurrentTerm in *.
@@ -306,6 +309,25 @@ Section SpecLemmas.
     do_bool; intuition; try right; congruence.
   Qed.
 
+  Lemma handleRequestVoteReply_spec' :
+    forall h st h' t r st',
+      st' = handleRequestVoteReply h st h' t r ->
+      log st' = log st /\
+      (forall v, In v (votesReceived st) -> In v (votesReceived st')) /\
+      (type st <> Leader /\ type st' = Leader ->
+       (type st = Candidate /\ wonElection (dedup name_eq_dec
+                                                 (votesReceived st')) = true) /\
+       r = true /\
+       currentTerm st' = currentTerm st /\
+       currentTerm st = t /\
+       votesReceived st' = (h' :: (votesReceived st))).
+  Proof.
+    intros.
+    unfold handleRequestVoteReply, advanceCurrentTerm in *.
+    repeat break_match; try find_inversion; subst; simpl in *; intuition;
+    do_bool; intuition; try right; congruence.
+  Qed.
+  
   Theorem handleTimeout_not_is_append_entries :
     forall h st st' ms m,
       handleTimeout h st = (st', ms) ->
@@ -890,6 +912,132 @@ Section SpecLemmas.
     find_inversion. simpl. do_in_map. subst.
     simpl in *. find_inversion.
     eauto using findGtIndex_in.
+  Qed.
+
+
+  Theorem handleAppendEntries_log_term_type :
+    forall h st t n pli plt es ci st' ps,
+      handleAppendEntries h st t n pli plt es ci = (st', ps) ->
+      (log st' = log st /\ currentTerm st' = currentTerm st /\ type st' = type st) \/
+      type st' = Follower.
+  Proof.
+    intros. unfold handleAppendEntries, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; simpl in *; auto.
+  Qed.
+
+  Theorem handleAppendEntries_votesReceived :
+    forall h st t n pli plt es ci st' ps,
+      handleAppendEntries h st t n pli plt es ci = (st', ps) ->
+      votesReceived st' = votesReceived st.
+  Proof.
+    intros. unfold handleAppendEntries, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; simpl in *; auto.
+  Qed.
+
+  Theorem handleAppendEntriesReply_log_term_type :
+    forall h st n t es r st' ps,
+      handleAppendEntriesReply h st n t es r = (st', ps) ->
+      (log st' = log st /\ currentTerm st' = currentTerm st /\ type st' = type st) \/
+      type st' = Follower.
+  Proof.
+    intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; simpl in *; auto.
+  Qed.
+
+  Theorem handleAppendEntriesReply_votesReceived :
+    forall h st n t es r st' ps,
+      handleAppendEntriesReply h st n t es r = (st', ps) ->
+      votesReceived st' = votesReceived st.
+  Proof.
+    intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; simpl in *; auto.
+  Qed.
+
+
+  Theorem handleRequestVote_log_term_type :
+    forall h st t c li lt st' m,
+      handleRequestVote h st t c li lt = (st', m) ->
+      (log st' = log st /\ currentTerm st' = currentTerm st /\ type st' = type st) \/
+      type st' = Follower.
+  Proof.
+    intros. unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; simpl in *; auto.
+  Qed.
+
+  Theorem handleRequestVote_votesReceived :
+    forall h st t c li lt st' m,
+      handleRequestVote h st t c li lt = (st', m) ->
+      votesReceived st' = votesReceived st.
+  Proof.
+    intros. unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; simpl in *; auto.
+  Qed.
+  
+
+  Theorem handleRequestVoteReply_log_term_type :
+    forall h st t h' r st',
+      type st' = Candidate ->
+      handleRequestVoteReply h st h' t r = st' ->
+      (log st' = log st /\ currentTerm st' = currentTerm st /\ type st' = type st).
+  Proof.
+    intros. unfold handleRequestVoteReply, advanceCurrentTerm in *.
+    repeat break_match; subst; simpl in *; auto; congruence.
+  Qed.
+
+  Theorem handleRequestVoteReply_votesReceived :
+    forall h st t h' r v,
+      In v (votesReceived (handleRequestVoteReply h st h' t r)) ->
+      In v (votesReceived st) \/
+      (r = true /\ v = h' /\ currentTerm (handleRequestVoteReply h st h' t r) = t).
+  Proof.
+    intros. unfold handleRequestVoteReply, advanceCurrentTerm in *.
+    repeat break_match; subst; simpl in *; do_bool; intuition.
+  Qed.
+
+  Theorem handleTimeout_log_term_type :
+    forall h st out st' ps,
+      handleTimeout h st = (out, st', ps) ->
+      (log st' = log st /\ currentTerm st' = currentTerm st /\ type st' = type st) \/
+      currentTerm st' = S (currentTerm st).
+  Proof.
+    intros. unfold handleTimeout, tryToBecomeLeader in *.
+    repeat break_match; find_inversion; simpl in *; intuition.
+  Qed.
+  
+  Lemma handleClientRequest_candidate :
+    forall h st client id c os st' m,
+      handleClientRequest h st client id c = (os, st', m) ->
+      type st' = Candidate ->
+      st' = st.
+  Proof.
+    intros.
+    unfold handleClientRequest in *.
+    repeat break_match; find_inversion; simpl in *; congruence.
+  Qed.
+
+  Lemma doLeader_candidate :
+    forall st h os st' ms,
+      doLeader st h = (os, st', ms) ->
+      type st' = Candidate ->
+      st' = st.
+  Proof.
+    unfold doLeader, advanceCommitIndex in *.
+    intros.
+    repeat break_match; find_inversion; simpl in *; congruence.
+  Qed.
+
+  Lemma doGenericServer_log_type_term_votesReceived :
+    forall h st os st' ps,
+      doGenericServer h st = (os, st', ps) ->
+      log st' = log st /\
+      type st' = type st /\
+      currentTerm st' = currentTerm st /\
+      votesReceived st' = votesReceived st.
+  Proof.
+    intros. unfold doGenericServer in *.
+    repeat break_match; find_inversion;
+    use_applyEntries_spec; simpl in *;
+    subst; auto.
   Qed.
 
 End SpecLemmas.
