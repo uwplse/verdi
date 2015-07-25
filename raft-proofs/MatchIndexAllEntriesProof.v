@@ -27,7 +27,6 @@ Require Import OneLeaderLogPerTermInterface.
 Require Import MatchIndexLeaderInterface.
 Require Import MatchIndexSanityInterface.
 Require Import AppendEntriesReplySublogInterface.
-Require Import AppendEntriesRequestReplyRefinedCorrespondenceInterface.
 Require Import CandidateEntriesInterface.
 Require Import VotesCorrectInterface.
 Require Import CroniesCorrectInterface.
@@ -53,7 +52,6 @@ Section MatchIndexAllEntries.
   Context {mili : match_index_leader_interface}.
   Context {matchisi : match_index_sanity_interface}.
   Context {aersi : append_entries_reply_sublog_interface}.
-  Context {aerrrci : append_entries_request_reply_refined_correspondence_interface}.
   Context {cei : candidate_entries_interface}.
   Context {vci : votes_correct_interface}.
   Context {cci : cronies_correct_interface}.
