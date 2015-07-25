@@ -298,10 +298,7 @@ Section SpecLemmas.
        \/ type st' <> Candidate) /\
       (type st <> Leader /\ type st' = Leader ->
        (type st = Candidate /\ wonElection (dedup name_eq_dec
-                                                 (votesReceived st')) = true) /\
-       currentTerm st' = currentTerm st /\
-       currentTerm st = t /\
-       votesReceived st' = (h' :: (votesReceived st))).
+                                                 (votesReceived st')) = true)).
   Proof.
     intros.
     unfold handleRequestVoteReply, advanceCurrentTerm in *.
