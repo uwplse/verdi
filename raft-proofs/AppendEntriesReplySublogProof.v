@@ -17,7 +17,7 @@ Require Import AppendEntriesReplySublogInterface.
 
 Require Import AppendEntriesRequestReplyCorrespondenceInterface.
 Require Import RaftRefinementInterface.
-Require Import AllEntriesLeaderLogsInterface.
+Require Import AppendEntriesLeaderInterface.
 
 Section AppendEntriesReplySublog.
   Context {orig_base_params : BaseParams}.
@@ -26,7 +26,7 @@ Section AppendEntriesReplySublog.
 
   Context {aerrci : append_entries_request_reply_correspondence_interface}.
   Context {rri : raft_refinement_interface}.
-  Context {aelli : all_entries_leader_logs_interface}.
+  Context {aeli : append_entries_leaders_interface}.
 
   Definition lowered_appendEntries_leader (net : @network _ multi_params)  :=
     forall p t leaderId prevLogIndex prevLogTerm entries leaderCommit h e,
@@ -46,8 +46,7 @@ Section AppendEntriesReplySublog.
     intros.
     apply (lower_prop lowered_appendEntries_leader); auto.
     intros.
-    find_apply_lem_hyp all_entries_leader_logs_invariant.
-    unfold all_entries_leader_logs in *. intuition.
+    find_apply_lem_hyp append_entries_leaders_invariant.
     unfold lowered_appendEntries_leader, appendEntries_leader in *.
     intros. simpl in *.
     repeat break_match. simpl in *.
