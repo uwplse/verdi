@@ -5,7 +5,7 @@ Require Import Net.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 
-Section AllEntriesLeaderLogs.
+Section AppendEntriesLeader.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
@@ -21,11 +21,11 @@ Section AllEntriesLeaderLogs.
       In e (log (snd (nwState net h))).
 
 
-  Class append_entries_leaders_interface : Prop :=
+  Class append_entries_leader_interface : Prop :=
     {
-      append_entries_leaders_invariant :
+      append_entries_leader_invariant :
         forall net,
           refined_raft_intermediate_reachable net ->
           appendEntries_leader net
     }.
-End AllEntriesLeaderLogs.
+End AppendEntriesLeader.

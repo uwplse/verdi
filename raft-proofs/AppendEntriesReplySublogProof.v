@@ -26,7 +26,7 @@ Section AppendEntriesReplySublog.
 
   Context {aerrci : append_entries_request_reply_correspondence_interface}.
   Context {rri : raft_refinement_interface}.
-  Context {aeli : append_entries_leaders_interface}.
+  Context {aeli : append_entries_leader_interface}.
 
   Definition lowered_appendEntries_leader (net : @network _ multi_params)  :=
     forall p t leaderId prevLogIndex prevLogTerm entries leaderCommit h e,
@@ -46,7 +46,7 @@ Section AppendEntriesReplySublog.
     intros.
     apply (lower_prop lowered_appendEntries_leader); auto.
     intros.
-    find_apply_lem_hyp append_entries_leaders_invariant.
+    find_apply_lem_hyp append_entries_leader_invariant.
     unfold lowered_appendEntries_leader, appendEntries_leader in *.
     intros. simpl in *.
     repeat break_match. simpl in *.

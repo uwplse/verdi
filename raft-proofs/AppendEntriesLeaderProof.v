@@ -30,7 +30,7 @@ Section AllEntriesLeaderLogs.
       appendEntries_leader net.
   Admitted.
 
-  Instance appendeli : append_entries_leaders_interface.
+  Instance appendeli : append_entries_leader_interface.
   Proof.
     split.
     exact appendEntries_leader_invariant.
