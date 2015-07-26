@@ -766,6 +766,19 @@ Section SpecLemmas.
     rewrite get_set_same in *; try congruence; find_inversion; auto.
   Qed.
 
+  Theorem handleClientRequest_matchIndex :
+    forall h st client id c out st' ps,
+      handleClientRequest h st client id c = (out, st', ps) ->
+      (maxIndex (log st') = maxIndex (log st) /\
+       matchIndex st' = matchIndex st) \/
+      matchIndex st' = assoc_set name_eq_dec (matchIndex st) h (maxIndex (log st')) /\
+      maxIndex (log st') = S (maxIndex (log st)).
+  Proof.
+    unfold handleClientRequest.
+    intros.
+    repeat break_match; repeat find_inversion; auto.
+  Qed.
+
   Lemma tryToBecomeLeader_matchIndex_preserved :
     forall n st out st' ms,
       tryToBecomeLeader n st = (out, st', ms) ->
