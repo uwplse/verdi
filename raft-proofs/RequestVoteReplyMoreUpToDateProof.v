@@ -30,7 +30,7 @@ Section RequestVoteReplyMoreUpToDate.
   Context {raft_params : RaftParams orig_base_params}.
 
   Context {rri : raft_refinement_interface}.
-  Context {rvrmutdi : requestVote_maxIndex_maxTerm_interface}.
+  Context {rvmimti : requestVote_maxIndex_maxTerm_interface}.
   Context {rvrtsi : requestVoteReply_term_sanity_interface}.
   Context {vfmutdi : votedFor_moreUpToDate_interface}.
 
