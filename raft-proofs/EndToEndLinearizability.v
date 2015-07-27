@@ -253,6 +253,27 @@ Require Import AppendEntriesRequestReplyCorrespondenceProof.
 Require Import AppendEntriesLeaderInterface.
 Require Import AppendEntriesLeaderProof.
 
+Require Import RequestVoteMaxIndexMaxTermInterface.
+Require Import RequestVoteMaxIndexMaxTermProof.
+
+Require Import RequestVoteReplyMoreUpToDateInterface.
+Require Import RequestVoteReplyMoreUpToDateProof.
+
+Require Import RequestVoteReplyTermSanityInterface.
+Require Import RequestVoteReplyTermSanityProof.
+
+Require Import RequestVoteTermSanityInterface.
+Require Import RequestVoteTermSanityProof.
+
+Require Import VotedForMoreUpToDateInterface.
+Require Import VotedForMoreUpToDateProof.
+
+Require Import VotedForTermSanityInterface.
+Require Import VotedForTermSanityProof.
+
+Require Import VotesReceivedMoreUpToDateInterface.
+Require Import VotesReceivedMoreUpToDateProof.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -334,6 +355,13 @@ Hint Extern 4 (@append_entries_reply_sublog_interface _ _ _) => apply aersi : ty
 Hint Extern 4 (@log_properties_hold_on_leader_logs_interface _ _ _) => apply lpholli : typeclass_instances.
 Hint Extern 4 (@append_entries_request_reply_correspondence_interface _ _ _) => apply aerrci : typeclass_instances.
 Hint Extern 4 (@append_entries_leader_interface _ _ _) => apply appendeli : typeclass_instances.
+Hint Extern 4 (@requestVote_maxIndex_maxTerm_interface _ _ _) => apply rvmimti : typeclass_instances.
+Hint Extern 4 (@requestVoteReply_moreUpToDate_interface _ _ _) => apply rvrmutdi : typeclass_instances.
+Hint Extern 4 (@requestVoteReply_term_sanity_interface _ _ _) => apply rvrtsi : typeclass_instances.
+Hint Extern 4 (@requestVote_term_sanity_interface _ _ _) => apply rvtsi : typeclass_instances.
+Hint Extern 4 (@votedFor_moreUpToDate_interface _ _ _) => apply vfmutdi : typeclass_instances.
+Hint Extern 4 (@votedFor_term_sanity_interface _ _ _) => apply vftsi : typeclass_instances.
+Hint Extern 4 (@votesReceived_moreUpToDate_interface _ _ _) => apply vrmutdi : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
