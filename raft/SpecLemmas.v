@@ -1036,13 +1036,25 @@ Section SpecLemmas.
     repeat break_match; find_inversion; simpl in *; congruence.
   Qed.
 
+  Lemma doLeader_term_votedFor :
+    forall st h os st' ms,
+      doLeader st h = (os, st', ms) ->
+      currentTerm st' = currentTerm st /\
+      votedFor st' = votedFor st.
+  Proof.
+    unfold doLeader, advanceCommitIndex in *.
+    intros.
+    repeat break_match; find_inversion; simpl in *; intuition.
+  Qed.
+
   Lemma doGenericServer_log_type_term_votesReceived :
     forall h st os st' ps,
       doGenericServer h st = (os, st', ps) ->
       log st' = log st /\
       type st' = type st /\
       currentTerm st' = currentTerm st /\
-      votesReceived st' = votesReceived st.
+      votesReceived st' = votesReceived st /\
+      votedFor st' = votedFor st.
   Proof.
     intros. unfold doGenericServer in *.
     repeat break_match; find_inversion;
@@ -1050,4 +1062,59 @@ Section SpecLemmas.
     subst; auto.
   Qed.
 
+  
+  Lemma handleClientRequest_term_votedFor :
+    forall h st client id c os st' m,
+      handleClientRequest h st client id c = (os, st', m) ->
+      type st' = type st /\
+      votedFor st' = votedFor st.
+  Proof.
+    intros.
+    unfold handleClientRequest in *.
+    repeat break_match; find_inversion; simpl in *; intuition.
+  Qed.
+
+
+  Theorem handleAppendEntries_term_votedFor :
+    forall h st t n pli plt es ci st' ps h',
+      handleAppendEntries h st t n pli plt es ci = (st', ps) ->
+      votedFor st' = Some h' ->
+      currentTerm st' = currentTerm st /\ votedFor st' = votedFor st.
+  Proof.
+    intros. unfold handleAppendEntries, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; simpl in *; auto; congruence.
+  Qed.
+
+  Theorem handleAppendEntriesReply_term_votedFor :
+    forall h st n t es r st' ps h',
+      handleAppendEntriesReply h st n t es r = (st', ps) ->
+      votedFor st' = Some h' ->
+      currentTerm st' = currentTerm st /\ votedFor st' = votedFor st.
+  Proof.
+    intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; simpl in *; auto.
+  Qed.
+
+  Theorem handleRequestVoteReply_term_votedFor :
+    forall h st t h' h'' r st',
+      handleRequestVoteReply h st h' t r = st' ->
+      votedFor st' = Some h'' ->
+      currentTerm st' = currentTerm st /\ votedFor st' = votedFor st.
+  Proof.
+    intros. unfold handleRequestVoteReply, advanceCurrentTerm in *.
+    repeat break_match; subst; simpl in *; auto; congruence.
+  Qed.
+
+  Lemma handleRequestVote_reply_true:
+    forall h h' st t lli llt st' t',
+      handleRequestVote h st t h' lli llt =
+      (st', RequestVoteReply t' true) ->
+      votedFor st' = Some h' /\
+      currentTerm st' = t'.
+  Proof.
+    intros. unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; simpl in *; intuition.
+  Qed.
+
+  
 End SpecLemmas.
