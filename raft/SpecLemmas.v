@@ -1116,5 +1116,19 @@ Section SpecLemmas.
     repeat break_match; find_inversion; simpl in *; intuition.
   Qed.
 
+  Lemma handleTimeout_messages:
+    forall (out : list raft_output) 
+      (st : raft_data) (l : list (name * msg)) h
+      (mi : logIndex) (mt : term) m st' t n,
+      handleTimeout h st = (out, st', l) ->
+      In m l ->
+      snd m = RequestVote t n mi mt ->
+      maxIndex (log st') = mi /\ maxTerm (log st') = mt.
+  Proof.
+    intros.
+    unfold handleTimeout, tryToBecomeLeader in *.
+    repeat break_match; find_inversion; simpl in *; intuition;
+    do_in_map; subst; simpl in *; find_inversion; auto.
+  Qed.
   
 End SpecLemmas.
