@@ -47,6 +47,6 @@ Section OneLeaderLogPerTerm.
       one_leaderLog_per_term_host_invariant :
         forall net,
           refined_raft_intermediate_reachable net ->
-          one_leaderLog_per_term net
+          one_leaderLog_per_term_host net
     }.
 End OneLeaderLogPerTerm.
