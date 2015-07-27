@@ -9,9 +9,6 @@ Require Import Net.
 Require Import Util.
 Require Import Raft.
 
-Require Import CommonTheorems.
-Require Import SpecLemmas.
-
 
 Section AppendEntriesRequestReplyCorrespondence.
   Context {orig_base_params : BaseParams}.
