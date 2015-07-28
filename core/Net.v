@@ -724,7 +724,7 @@ Section MsgGhostVars.
   Context {failure_params : FailureParams multi_params}.
   Context {params : MsgGhostFailureParams failure_params}.
 
-  Definition add_ghost_msg (me : name) (st : data) (ps : list (name * msg) :
+  Definition add_ghost_msg (me : name) (st : data) (ps : list (name * msg)) :
                                                       list (name * (ghost_msg * msg)) :=
     map (fun m => (fst m, (write_ghost_msg me st, snd m))) ps.
 
