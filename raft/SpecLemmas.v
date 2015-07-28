@@ -1132,4 +1132,15 @@ Section SpecLemmas.
     do_in_map; subst; simpl in *; find_inversion; auto.
   Qed.
   
+  Lemma handleRequestVoteReply_currentTerm :
+    forall h st h' t r x,
+      x <= currentTerm st ->
+      x <= currentTerm (handleRequestVoteReply h st h' t r).
+  Proof.
+    intros. unfold handleRequestVoteReply, advanceCurrentTerm.
+    repeat break_match; subst; simpl in *; auto; try omega.
+    do_bool. omega.
+  Qed.
+
+  
 End SpecLemmas.
