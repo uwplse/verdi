@@ -114,7 +114,7 @@ Section RequestVoteMaxIndexMaxTerm.
         omega.
       + do_in_map. remember (pSrc p). subst p.
         simpl in *.
-        eauto using handleTimeout_messages.
+        intuition; eapply handleTimeout_messages; eauto.
     - find_apply_hyp_hyp. break_or_hyp; eauto.
       do_in_map. subst. simpl in *. intuition.
   Qed.
