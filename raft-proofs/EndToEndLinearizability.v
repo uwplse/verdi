@@ -274,10 +274,15 @@ Require Import VotedForTermSanityProof.
 Require Import VotesReceivedMoreUpToDateInterface.
 Require Import VotesReceivedMoreUpToDateProof.
 
+Require Import RaftMsgRefinementInterface.
+Require Import RaftMsgRefinementProof.
+
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
 Hint Extern 4 (@raft_refinement_interface _ _ _) => apply rri : typeclass_instances.
+Hint Extern 4 (@raft_msg_refinement_interface _ _ _) => apply rmri : typeclass_instances.
 Hint Extern 4 (@cronies_term_interface _ _ _) => apply cti : typeclass_instances.
 Hint Extern 4 (@votes_correct_interface _ _ _) => apply vci : typeclass_instances.
 Hint Extern 4 (@cronies_correct_interface _ _ _) => apply cci : typeclass_instances.
