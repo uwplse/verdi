@@ -1067,6 +1067,7 @@ Section SpecLemmas.
     forall h st client id c os st' m,
       handleClientRequest h st client id c = (os, st', m) ->
       type st' = type st /\
+      currentTerm st' = currentTerm st /\
       votedFor st' = votedFor st.
   Proof.
     intros.
@@ -1114,6 +1115,45 @@ Section SpecLemmas.
   Proof.
     intros. unfold handleRequestVote, advanceCurrentTerm in *.
     repeat break_match; find_inversion; simpl in *; intuition.
+  Qed.
+
+  Lemma handleTimeout_messages:
+    forall (out : list raft_output) 
+      (st : raft_data) (l : list (name * msg)) h
+      (mi : logIndex) (mt : term) m st' t n,
+      handleTimeout h st = (out, st', l) ->
+      In m l ->
+      snd m = RequestVote t n mi mt ->
+      maxIndex (log st') = mi /\ maxTerm (log st') = mt /\ t = currentTerm st'.
+  Proof.
+    intros.
+    unfold handleTimeout, tryToBecomeLeader in *.
+    repeat break_match; find_inversion; simpl in *; intuition;
+    do_in_map; subst; simpl in *; find_inversion; auto.
+  Qed.
+  
+  Lemma handleRequestVoteReply_currentTerm :
+    forall h st h' t r x,
+      x <= currentTerm st ->
+      x <= currentTerm (handleRequestVoteReply h st h' t r).
+  Proof.
+    intros. unfold handleRequestVoteReply, advanceCurrentTerm.
+    repeat break_match; subst; simpl in *; auto; try omega.
+    do_bool. omega.
+  Qed.
+
+  Lemma handleRequestVote_reply_true':
+  forall (h : name) 
+    (h' : fin N)
+    (st : RaftState.raft_data term name entry logIndex serverType data output)
+    (t lli llt : nat) (st' : raft_data) (t' : term),
+    handleRequestVote h st t h' lli llt = (st', RequestVoteReply t' true) ->
+    t' = t /\ currentTerm st' = t.
+  Proof.
+    unfold handleRequestVote, advanceCurrentTerm in *.
+    intros.
+    repeat break_match; find_inversion; simpl in *; auto; try congruence;
+    do_bool; try omega; eauto using le_antisym.
   Qed.
 
   
