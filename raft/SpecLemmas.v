@@ -1142,5 +1142,19 @@ Section SpecLemmas.
     do_bool. omega.
   Qed.
 
+  Lemma handleRequestVote_reply_true:
+  forall (h : name) 
+    (h' : fin N)
+    (st : RaftState.raft_data term name entry logIndex serverType data output)
+    (t lli llt : nat) (st' : raft_data) (t' : term),
+    handleRequestVote h st t h' lli llt = (st', RequestVoteReply t' true) ->
+    t' = t /\ currentTerm st' = t.
+  Proof.
+    unfold handleRequestVote, advanceCurrentTerm in *.
+    intros.
+    repeat break_match; find_inversion; simpl in *; auto; try congruence;
+    do_bool; try omega; eauto using le_antisym.
+  Qed.
+
   
 End SpecLemmas.
