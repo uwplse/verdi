@@ -1142,7 +1142,7 @@ Section SpecLemmas.
     do_bool. omega.
   Qed.
 
-  Lemma handleRequestVote_reply_true:
+  Lemma handleRequestVote_reply_true':
   forall (h : name) 
     (h' : fin N)
     (st : RaftState.raft_data term name entry logIndex serverType data output)

@@ -90,7 +90,7 @@ Section RequestVoteReplyTermSanity.
         eapply_prop_hyp pBody pBody; eauto; omega.
       + remember (pDst p0). subst p0. simpl in *.
         subst.
-        find_copy_apply_lem_hyp handleRequestVote_reply_true.
+        find_copy_apply_lem_hyp handleRequestVote_reply_true'.
         intuition.
     - find_apply_hyp_hyp. intuition.
       + assert (In p0 (nwPackets net)) by (repeat find_rewrite; in_crush).
@@ -99,7 +99,7 @@ Section RequestVoteReplyTermSanity.
         eapply_prop_hyp pBody pBody; eauto; omega.
       + remember (pDst p0). subst p0. simpl in *.
         subst.
-        find_copy_apply_lem_hyp handleRequestVote_reply_true.
+        find_copy_apply_lem_hyp handleRequestVote_reply_true'.
         intuition. subst.
         eapply requestVote_term_sanity_invariant; eauto.
   Qed.
