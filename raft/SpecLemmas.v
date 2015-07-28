@@ -1124,7 +1124,7 @@ Section SpecLemmas.
       handleTimeout h st = (out, st', l) ->
       In m l ->
       snd m = RequestVote t n mi mt ->
-      maxIndex (log st') = mi /\ maxTerm (log st') = mt.
+      maxIndex (log st') = mi /\ maxTerm (log st') = mt /\ t = currentTerm st'.
   Proof.
     intros.
     unfold handleTimeout, tryToBecomeLeader in *.
