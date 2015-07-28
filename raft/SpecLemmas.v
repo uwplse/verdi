@@ -1067,6 +1067,7 @@ Section SpecLemmas.
     forall h st client id c os st' m,
       handleClientRequest h st client id c = (os, st', m) ->
       type st' = type st /\
+      currentTerm st' = currentTerm st /\
       votedFor st' = votedFor st.
   Proof.
     intros.
