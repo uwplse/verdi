@@ -16,9 +16,9 @@ Section RequestVoteReplyTermSanity.
 
 
   Definition requestVoteReply_term_sanity (net : network) : Prop :=
-    forall t v p,
+    forall t p,
       In p (nwPackets net) ->
-      pBody p = RequestVoteReply t v ->
+      pBody p = RequestVoteReply t true ->
       t <= currentTerm (snd (nwState net (pDst p))).
 
   Class requestVoteReply_term_sanity_interface : Prop :=
