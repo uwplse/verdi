@@ -708,5 +708,323 @@ Section GhostVars.
   Qed.
 
 End GhostVars.
+
+Class MsgGhostFailureParams `(P : FailureParams) :=
+  {
+    ghost_msg : Type;
+    ghost_msg_eq_dec : forall x y : ghost_msg, {x = y} + {x <> y} ;
+    ghost_msg_default : ghost_msg ;
+    write_ghost_msg :
+      name -> data -> ghost_msg
+  }.
+
+Section MsgGhostVars.
+  Context {base_params : BaseParams}.
+  Context {multi_params : MultiParams base_params}.
+  Context {failure_params : FailureParams multi_params}.
+  Context {params : MsgGhostFailureParams failure_params}.
+
+  Definition add_ghost_msg (me : name) (st : data) (ps : list (name * msg) :
+                                                      list (name * (ghost_msg * msg)) :=
+    map (fun m => (fst m, (write_ghost_msg me st, snd m))) ps.
+
+  Definition mgv_refined_net_handlers me src (m : ghost_msg * msg) st :=
+    let '(out, st', ps) :=
+        net_handlers me src (snd m) st in
+    (out, st', add_ghost_msg me st' ps).
+
+  Definition mgv_refined_input_handlers me inp st :=
+    let '(out, st', ps) :=
+        input_handlers me inp st in
+    (out, st', add_ghost_msg me st' ps).
+
+  Definition mgv_msg_eq_dec :
+    forall x y : ghost_msg * msg, {x = y} + {x <> y}.
+  Proof.
+    intros.
+    decide equality; auto using msg_eq_dec, ghost_msg_eq_dec.
+  Qed.
+
+  Instance mgv_refined_base_params : BaseParams :=
+    {
+      data := data ;
+      input := input ;
+      output := output
+    }.
+
+  Instance mgv_refined_multi_params : MultiParams _ :=
+    {
+      name := name ;
+      msg := (ghost_msg * msg) ;
+      msg_eq_dec := mgv_msg_eq_dec ;
+      name_eq_dec := name_eq_dec ;
+      nodes := nodes ;
+      all_names_nodes := all_names_nodes ;
+      no_dup_nodes := no_dup_nodes ;
+      init_handlers := init_handlers;
+      net_handlers := mgv_refined_net_handlers ;
+      input_handlers := mgv_refined_input_handlers
+    }.
+  
+  Instance mgv_refined_failure_params : FailureParams _ :=
+    {
+      reboot := (@reboot base_params multi_params failure_params)
+    }.
+
+  Definition mgv_deghost_packet p :=
+    @mkPacket _ multi_params
+              (@pSrc _ mgv_refined_multi_params p)
+              (pDst p)
+              (snd (pBody p)).
+
+  Definition mgv_deghost (net : @network _ mgv_refined_multi_params) : (@network _ multi_params).
+    refine (@mkNetwork _ multi_params
+                       (map mgv_deghost_packet
+                          (nwPackets net))
+                       _
+           ).
+    intros.
+    destruct net.
+    concludes.
+    auto.
+  Defined.
+
+  Arguments mgv_deghost_packet /_.
+
+
+  Require Import FunctionalExtensionality.
+
+  Ltac workhorse :=
+    try match goal with
+        | [ |- mkNetwork _ _ = mkNetwork _ _ ] => f_equal
+      end;
+    try match goal with
+        | [ |- (fun _ => _) = (fun _ => _) ] => apply functional_extensionality; intros
+      end;
+      repeat break_match;
+      repeat match goal with
+               | [ H : (_, _) = (_, _) |- _ ] => invc H
+             end;
+      repeat (simpl in *; subst);
+      repeat rewrite map_app;
+      repeat rewrite map_map.
+
+  Theorem mgv_ghost_simulation_1 :
+    forall net net' failed failed' out,
+      @step_f _ _ mgv_refined_failure_params (failed, net) (failed', net') out ->
+      @step_f _ _ failure_params (failed, mgv_deghost net) (failed', mgv_deghost net') out.
+  Proof.
+    intros.
+    invcs H;
+      unfold mgv_refined_net_handlers,
+             mgv_refined_input_handlers,
+             reboot,
+             add_ghost_msg,
+             mgv_deghost
+               in *;
+      workhorse;
+    [(match goal with
+          [ p : packet |- _ ] =>
+            assert (pDst p = pDst (mgv_deghost_packet p)) by
+              (destruct p; simpl in *; solve_by_inversion);
+          repeat find_rewrite
+      end);
+      econstructor 1
+      | econstructor 2
+      | econstructor 3
+      | econstructor 4
+      | econstructor 5
+      | econstructor 6
+      ]; simpl; eauto;
+      workhorse;
+      congruence.
+  Qed.
+
+  Definition mgv_ghost_packet p :=
+    @mkPacket _ mgv_refined_multi_params
+              (@pSrc _ multi_params p)
+              (pDst p)
+              (ghost_msg_default, pBody p).
+
+
+  Definition mgv_reghost (net : @network _ multi_params) : @network _ mgv_refined_multi_params.
+    refine (@mkNetwork _ mgv_refined_multi_params
+                       (map mgv_ghost_packet
+                          (nwPackets net))
+                       _
+           ).
+    intros.
+    destruct net.
+    concludes.
+    auto.
+  Defined.
+
+  Arguments mgv_ghost_packet /_.
+
+  Lemma mgv_reghost_deghost_partial_inverses :
+    forall net,
+      mgv_deghost (mgv_reghost net) = net.
+  Proof.
+    destruct net. unfold mgv_deghost, mgv_reghost. simpl in *. f_equal.
+    rewrite map_map. map_id.
+  Qed.
+
+  Theorem mgv_ghost_simulation_2 :
+    forall net net' failed failed' out gnet,
+      @step_f _ _ failure_params (failed, net) (failed', net') out ->
+      mgv_deghost gnet = net ->
+      exists gnet',
+        step_f (failed, gnet) (failed', gnet') out /\
+        mgv_deghost gnet' = net'.
+  Proof.
+  Admitted.
+  (* intros.
+    invcs H.
+    - repeat break_match. simpl in *.
+      match goal with
+        | H : map _ ?la = ?lb |- _ =>
+          symmetry in H;
+            pose proof @map_inverses _ _ la lb deghost_packet ghost_packet
+      end.
+      repeat (forwards; [intro a; destruct a; reflexivity|]; concludes;
+              match goal with
+                | H :  forall _ : packet,  _ = _ |- _ => clear H
+              end).
+      concludes. map_crush.
+      match goal with
+        | [ _ : _ = ?xs ++ ?p :: ?ys,
+              _ : net_handlers ?h ?s ?m ?d = (_, ?d', ?l),
+                  _ : (?nwState ?h = (?g, ?d)) |- _ ] =>
+          exists {| nwPackets := (map ghost_packet (send_packets h l) ++ xs ++ ys) ;
+               nwState := update nwState h (ghost_net_handlers h s m (g, d), d') |}
+      end.
+      intuition.
+      + simpl in *. map_crush.
+        subst.
+        match goal with
+            [ p : packet |- _ ] =>
+            assert (pDst p = pDst (ghost_packet p)) by
+                (destruct p; simpl in *; solve_by_inversion);
+              repeat find_rewrite
+         end.
+        eapply (@SF_deliver _ _ refined_failure_params); simpl in *; eauto.
+        simpl in *.
+        unfold refined_net_handlers. repeat break_match.
+        subst.
+        repeat (find_rewrite; simpl in * ). find_inversion. eauto.
+      + unfold deghost. simpl in *. map_crush. repeat f_equal; try map_id.
+        apply functional_extensionality. intros.
+        repeat break_match; congruence.
+   - repeat break_match. subst. simpl in *.
+      match goal with
+        | [ pkts: list packet, _ : input_handlers ?h ?inp ?d = (_, ?d', ?l),
+                                   _ : (?nwState ?h = (?g, ?d)) |- _ ] =>
+          exists {| nwPackets := (map ghost_packet (send_packets h l)) ++ pkts ;
+               nwState := update nwState h (ghost_input_handlers h inp (g, d), d') |}
+      end.
+      intuition.
+      + simpl in *. map_crush.
+        subst. eapply (@SF_input _ _ refined_failure_params); simpl in *; eauto.
+        simpl in *.
+        unfold refined_input_handlers. repeat break_match.
+        subst.
+        repeat (find_rewrite; simpl in * ). find_inversion. auto.
+      + unfold deghost. simpl in *. map_crush. repeat f_equal; try map_id.
+        apply functional_extensionality. intros.
+        repeat break_match; congruence.
+   - match goal with
+        | H : map _ ?la = ?lb |- _ =>
+          symmetry in H;
+            pose proof @map_inverses _ _ la lb deghost_packet ghost_packet
+      end.
+      repeat (forwards; [intro a; destruct a; reflexivity|]; concludes;
+              match goal with
+                | H :  forall _ : packet,  _ = _ |- _ => clear H
+              end).
+      concludes. map_crush.
+      exists {| nwPackets := map ghost_packet (xs ++ ys) ;
+          nwState := fun h => nwState gnet h |}.
+     intuition.
+     + eapply (@SF_drop _ _ refined_failure_params); simpl in *; eauto.
+       map_crush. intuition.
+     + unfold deghost. simpl in *. map_crush. repeat f_equal; try map_id.
+       apply functional_extensionality. intros.
+       repeat break_match. simpl in *. congruence.
+   - match goal with
+        | H : map _ ?la = ?lb |- _ =>
+          symmetry in H;
+            pose proof @map_inverses _ _ la lb deghost_packet ghost_packet
+      end.
+      repeat (forwards; [intro a; destruct a; reflexivity|]; concludes;
+              match goal with
+                | H :  forall _ : packet,  _ = _ |- _ => clear H
+              end).
+      concludes. map_crush.
+      exists {| nwPackets := map ghost_packet (p :: xs ++ p :: ys) ;
+          nwState := fun h => nwState gnet h |}.
+     intuition.
+     + eapply (@SF_dup _ _ refined_failure_params); simpl in *; eauto.
+       map_crush. intuition.
+     + unfold deghost. simpl in *. map_crush.
+       repeat f_equal; try map_id; try match goal with
+                                         | [ |- _ = ?p] => destruct p; reflexivity
+                                       end.
+       apply functional_extensionality. intros.
+       repeat break_match. simpl in *. congruence.
+   - exists gnet. intuition.
+       apply (@SF_fail _ _ refined_failure_params).
+   - exists {| nwPackets := nwPackets gnet;
+          nwState := update (nwState gnet) h (refined_reboot (nwState gnet h))
+       |}.
+       intuition.
+       + eapply (@SF_reboot _ _ refined_failure_params); eauto.
+         f_equal. simpl in *. apply functional_extensionality.
+         intros. break_if; congruence.
+       + unfold deghost. simpl in *.  f_equal.
+         apply functional_extensionality. intros.
+         unfold refined_reboot.
+         repeat break_match; simpl in *.
+         * repeat find_inversion. repeat find_rewrite. reflexivity.
+         * congruence.
+  Qed. *)
+
+  Theorem mgv_ghost_invariant_lift :
+    forall P : _ -> Prop,
+      (forall net net' failed failed' out,
+         @step_f _ _ failure_params (failed, net) (failed', net') out ->
+         P net ->
+         P net') ->
+      (forall net net' failed failed' out,
+         step_f (failed, net) (failed', net') out ->
+         P (mgv_deghost net) ->
+         P (mgv_deghost net')).
+  Proof.
+    intros. eauto using mgv_ghost_simulation_1.
+  Qed.
+
+  Theorem mgv_ghost_invariant_lower :
+    forall P : _ -> Prop,
+      (forall net net' failed failed' out,
+         step_f (failed, net) (failed', net') out ->
+         P (mgv_deghost net) ->
+         P (mgv_deghost net')) ->
+      (forall net net' failed failed' out,
+         @step_f _ _ failure_params (failed, net) (failed', net') out ->
+         P net ->
+         P net').
+  Proof.
+    intros.
+    apply mgv_ghost_simulation_2 with (gnet := mgv_reghost net) in H0.
+    - break_exists. intuition. subst.
+      eapply H; eauto.
+      rewrite mgv_reghost_deghost_partial_inverses.
+      auto.
+    - eauto using mgv_reghost_deghost_partial_inverses.
+  Qed.
+
+End MsgGhostVars.
 Arguments deghost_packet /_ _ _ _ _.
 Arguments ghost_packet /_ _ _ _ _.
+
+Arguments mgv_deghost_packet /_ _ _ _ _.
+Arguments mgv_ghost_packet /_ _ _ _ _.
