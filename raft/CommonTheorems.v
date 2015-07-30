@@ -2350,8 +2350,17 @@ Section CommonTheorems.
       s < i <= maxIndex l ->
       exists e, findAtIndex l i = Some e.
   Proof.
-  Admitted.
-  
+    unfold contiguous_range_exact_lo.
+    intros.
+    intuition.
+    match goal with
+    | [ H : forall _, _ |- _ ] => specialize (H i)
+    end.
+    intuition.
+    break_exists_exists.
+    intuition.
+    eapply findAtIndex_intro; auto using sorted_uniqueIndices.
+  Qed.
 End CommonTheorems.
 
 Notation is_append_entries m :=
