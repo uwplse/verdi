@@ -277,6 +277,9 @@ Require Import VotesReceivedMoreUpToDateProof.
 Require Import RaftMsgRefinementInterface.
 Require Import RaftMsgRefinementProof.
 
+Require Import GhostLogCorrectInterface.
+Require Import GhostLogCorrectProof.
+
 
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
@@ -367,6 +370,7 @@ Hint Extern 4 (@requestVote_term_sanity_interface _ _ _) => apply rvtsi : typecl
 Hint Extern 4 (@votedFor_moreUpToDate_interface _ _ _) => apply vfmutdi : typeclass_instances.
 Hint Extern 4 (@votedFor_term_sanity_interface _ _ _) => apply vftsi : typeclass_instances.
 Hint Extern 4 (@votesReceived_moreUpToDate_interface _ _ _) => apply vrmutdi : typeclass_instances.
+Hint Extern 4 (@ghost_log_correct_interface _ _ _) => apply glci : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
