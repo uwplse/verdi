@@ -226,10 +226,18 @@ Section RaftMsgRefinementInterface.
         forall (P : _ -> Prop),
           (forall net, refined_raft_intermediate_reachable net -> P net) ->
           (forall net, msg_refined_raft_intermediate_reachable net -> P (mgv_deghost net));
+      msg_lift_prop_all_the_way :
+        forall (P : _ -> Prop),
+          (forall net, raft_intermediate_reachable net -> P net) ->
+          (forall (net : @network _ raft_msg_refined_multi_params), msg_refined_raft_intermediate_reachable net -> P (deghost (mgv_deghost net)));
       msg_lower_prop :
         forall P : _ -> Prop,
           (forall net, msg_refined_raft_intermediate_reachable net -> P (mgv_deghost net)) ->
           (forall net, refined_raft_intermediate_reachable net -> P net);
+      msg_lower_prop_all_the_way :
+        forall P : _ -> Prop,
+          (forall (net : @network _ raft_msg_refined_multi_params), msg_refined_raft_intermediate_reachable net -> P (deghost (mgv_deghost net))) ->
+          (forall net, raft_intermediate_reachable net -> P net);
       msg_deghost_spec :
         forall (net : @network _ raft_msg_refined_multi_params) h,
           nwState (mgv_deghost net) h = nwState net h;
