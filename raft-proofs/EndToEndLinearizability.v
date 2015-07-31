@@ -289,6 +289,10 @@ Require Import InLogInAllEntriesProof.
 Require Import GhostLogAllEntriesInterface.
 Require Import GhostLogAllEntriesProof.
 
+Require Import GhostLogLogMatchingInterface.
+Require Import GhostLogLogMatchingProof.
+
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
@@ -382,6 +386,7 @@ Hint Extern 4 (@votesReceived_moreUpToDate_interface _ _ _) => apply vrmutdi : t
 Hint Extern 4 (@ghost_log_correct_interface _ _ _) => apply glci : typeclass_instances.
 Hint Extern 4 (@in_log_in_all_entries_interface _ _ _) => apply iliaei : typeclass_instances.
 Hint Extern 4 (@ghost_log_allEntries_interface _ _ _) => apply glaei : typeclass_instances.
+Hint Extern 4 (@ghost_log_entries_match_interface _ _ _) => apply glemi : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
