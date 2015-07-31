@@ -21,12 +21,12 @@ Section GhostLogCorrectInterface.
       snd (pBody p) = AppendEntries t leaderId prevLogIndex prevLogTerm
                                     entries leaderCommit ->
       fst (pBody p) = l ->
-      (prevLogIndex = 0 /\ prevLogTerm = 0 /\ Prefix entries l) \/
+      (prevLogIndex = 0 /\ prevLogTerm = 0 /\ entries = l) \/
       (exists e,
          eIndex e = prevLogIndex /\
          eTerm e = prevLogTerm /\
          In e l) /\
-      Prefix entries (findGtIndex l prevLogIndex).
+      entries = findGtIndex l prevLogIndex.
 
 
   Class ghost_log_correct_interface : Prop :=

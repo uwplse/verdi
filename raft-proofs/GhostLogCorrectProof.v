@@ -185,18 +185,21 @@ Section GhostLogCorrectProof.
         remember (pred x) as index
     end.
     destruct index.
-    - left. intuition; eauto using findGtIndex_Prefix.
-      break_match; intuition.
-      find_apply_lem_hyp findAtIndex_elim.
-      intuition.
-      find_erewrite_lem doLeader_log; eauto.
-      enough (0 < eIndex e) by omega.
-      eapply lifted_entries_contiguous_invariant; eauto.
+    - left. intuition; eauto.
+      + break_match; intuition.
+        find_apply_lem_hyp findAtIndex_elim.
+        intuition.
+        find_erewrite_lem doLeader_log; eauto.
+        enough (0 < eIndex e) by omega.
+        eapply lifted_entries_contiguous_invariant; eauto.
+      + erewrite doLeader_log; eauto.
+        apply sorted_findGtIndex_0; [|eapply lifted_entries_sorted_invariant; eauto].
+        intros. eapply lifted_entries_contiguous_invariant; eauto.
     - right.
       enough (exists e, findAtIndex (log d') (S index) = Some e) by
           (break_exists_name e;
            find_copy_apply_lem_hyp findAtIndex_elim; intuition;
-           auto using Prefix_refl;
+           auto;
            exists e; intuition;
              repeat find_rewrite; auto).
       erewrite doLeader_log; eauto.
