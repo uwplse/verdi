@@ -204,6 +204,129 @@ Section RaftMsgRefinementInterface.
 
   Definition msg_refined_raft_net_invariant_init (P : network -> Prop) :=
     P step_m_init.
+  
+  Definition msg_refined_raft_net_invariant_client_request' (P : network -> Prop) :=
+    forall h net st' ps' gd out d l client id c,
+      handleClientRequest h (snd (nwState net h)) client id c = (out, d, l) ->
+      gd = update_elections_data_client_request h (nwState net h) client id c ->
+      P net ->
+      msg_refined_raft_intermediate_reachable net ->
+      msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
+      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall p', In p' ps' -> In p' (nwPackets net) \/
+                         In p' (send_packets h (add_ghost_msg h (gd, d) l))) ->
+      P (mkNetwork ps' st').
+
+  Definition msg_refined_raft_net_invariant_timeout' (P : network -> Prop) :=
+    forall net h st' ps' gd out d l,
+      handleTimeout h (snd (nwState net h)) = (out, d, l) ->
+      gd = update_elections_data_timeout h (nwState net h) ->
+      P net ->
+      msg_refined_raft_intermediate_reachable net ->
+      msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
+      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall p', In p' ps' -> In p' (nwPackets net) \/
+                               In p' (send_packets h (add_ghost_msg h (gd, d) l))) ->
+      P (mkNetwork ps' st').
+
+  Definition msg_refined_raft_net_invariant_append_entries' (P : network -> Prop) :=
+    forall xs p ys net st' ps' gd d m t n pli plt es ci,
+      handleAppendEntries (pDst p) (snd (nwState net (pDst p))) t n pli plt es ci = (d, m) ->
+      gd = update_elections_data_appendEntries (pDst p) (nwState net (pDst p)) t n pli plt es ci ->
+      snd (pBody p) = AppendEntries t n pli plt es ci ->
+      P net ->
+      msg_refined_raft_intermediate_reachable net ->
+      msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
+      nwPackets net = xs ++ p :: ys ->
+      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall p', In p' ps' -> In p' (xs ++ ys) \/
+                         p' = mkPacket (pDst p) (pSrc p) (write_ghost_log (pDst p) (gd, d), m)) ->
+      P (mkNetwork ps' st').
+
+  Definition msg_refined_raft_net_invariant_append_entries_reply' (P : network -> Prop) :=
+    forall xs p ys net st' ps' gd d m t es res,
+      handleAppendEntriesReply (pDst p) (snd (nwState net (pDst p))) (pSrc p) t es res = (d, m) ->
+      gd = (fst (nwState net (pDst p))) ->
+      snd (pBody p) = AppendEntriesReply t es res ->
+      P net ->
+      msg_refined_raft_intermediate_reachable net ->
+      msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
+      nwPackets net = xs ++ p :: ys ->
+      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall p', In p' ps' -> In p' (xs ++ ys) \/
+                         In p' (send_packets (pDst p) (@add_ghost_msg _ _ _ ghost_log_params (pDst p) (gd, d) m))) ->
+      P (mkNetwork ps' st').
+
+  Definition msg_refined_raft_net_invariant_request_vote' (P : network -> Prop) :=
+    forall xs p ys net st' ps' gd d m t cid lli llt,
+      handleRequestVote (pDst p) (snd (nwState net (pDst p))) t (pSrc p) lli llt  = (d, m) ->
+      gd = update_elections_data_requestVote (pDst p) (pSrc p) t (pSrc p) lli llt (nwState net (pDst p)) ->
+      snd (pBody p) = RequestVote t cid lli llt ->
+      P net ->
+      msg_refined_raft_intermediate_reachable net ->
+      msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
+      nwPackets net = xs ++ p :: ys ->
+      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall p', In p' ps' -> In p' (xs ++ ys) \/
+                         p' = mkPacket (pDst p) (pSrc p) (write_ghost_log (pDst p) (gd, d), m)) ->
+      P (mkNetwork ps' st').
+
+  Definition msg_refined_raft_net_invariant_request_vote_reply' (P : network -> Prop) :=
+    forall xs p ys net st' ps' gd d t v,
+      handleRequestVoteReply (pDst p) (snd (nwState net (pDst p))) (pSrc p) t v = d ->
+      gd = update_elections_data_requestVoteReply (pDst p) (pSrc p) t v (nwState net (pDst p)) ->
+      snd (pBody p) = RequestVoteReply t v ->
+      P net ->
+      msg_refined_raft_intermediate_reachable net ->
+      msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
+      nwPackets net = xs ++ p :: ys ->
+      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall p', In p' ps' -> In p' (xs ++ ys)) ->
+      P (mkNetwork ps' st').
+
+  Definition msg_refined_raft_net_invariant_do_leader' (P : network -> Prop) :=
+    forall net st' ps' gd d h os d' ms,
+      doLeader d h = (os, d', ms) ->
+      P net ->
+      msg_refined_raft_intermediate_reachable net ->
+      msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
+      nwState net h = (gd, d) ->
+      (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+      (forall p, In p ps' -> In p (nwPackets net) \/
+                             In p (send_packets h (add_ghost_msg h (gd, d') ms))) ->
+      P (mkNetwork ps' st').
+
+  Definition msg_refined_raft_net_invariant_do_generic_server' (P : network -> Prop) :=
+    forall net st' ps' gd d os d' ms h,
+      doGenericServer h d = (os, d', ms) ->
+      P net ->
+      msg_refined_raft_intermediate_reachable net ->
+      msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
+      nwState net h = (gd, d) ->
+      (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+      (forall p, In p ps' -> In p (nwPackets net) \/
+                             In p (send_packets h (add_ghost_msg h (gd, d') ms))) ->
+      P (mkNetwork ps' st').
+
+  Definition msg_refined_raft_net_invariant_state_same_packet_subset' (P : network -> Prop) :=
+    forall net net',
+      (forall h, nwState net h = nwState net' h) ->
+      (forall p, In p (nwPackets net') -> In p (nwPackets net)) ->
+      P net ->
+      msg_refined_raft_intermediate_reachable net ->
+      msg_refined_raft_intermediate_reachable net' ->
+      P net'.
+
+  Definition msg_refined_raft_net_invariant_reboot' (P : network -> Prop) :=
+    forall net net' gd d h d',
+      reboot d = d' ->
+      P net ->
+      msg_refined_raft_intermediate_reachable net ->
+      msg_refined_raft_intermediate_reachable net' ->
+      nwState net h = (gd, d) ->
+      (forall h', nwState net' h' = update (nwState net) h (gd, d') h') ->
+      nwPackets net = nwPackets net' ->
+      P net'.
 
   Class raft_msg_refinement_interface : Prop :=
     {
@@ -220,6 +343,21 @@ Section RaftMsgRefinementInterface.
           msg_refined_raft_net_invariant_do_generic_server P ->
           msg_refined_raft_net_invariant_state_same_packet_subset P ->
           msg_refined_raft_net_invariant_reboot P ->
+          msg_refined_raft_intermediate_reachable net ->
+          P net;
+      msg_refined_raft_net_invariant' :
+        forall P net,
+          msg_refined_raft_net_invariant_init P ->
+          msg_refined_raft_net_invariant_client_request' P ->
+          msg_refined_raft_net_invariant_timeout' P ->
+          msg_refined_raft_net_invariant_append_entries' P ->
+          msg_refined_raft_net_invariant_append_entries_reply' P ->
+          msg_refined_raft_net_invariant_request_vote' P ->
+          msg_refined_raft_net_invariant_request_vote_reply' P ->
+          msg_refined_raft_net_invariant_do_leader' P ->
+          msg_refined_raft_net_invariant_do_generic_server' P ->
+          msg_refined_raft_net_invariant_state_same_packet_subset' P ->
+          msg_refined_raft_net_invariant_reboot' P ->
           msg_refined_raft_intermediate_reachable net ->
           P net;
       msg_lift_prop :
