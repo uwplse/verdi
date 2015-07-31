@@ -731,12 +731,12 @@ Section MsgGhostVars.
   Definition mgv_refined_net_handlers me src (m : ghost_msg * msg) st :=
     let '(out, st', ps) :=
         net_handlers me src (snd m) st in
-    (out, st', add_ghost_msg me st' ps).
+    (out, st', add_ghost_msg me st ps).
 
   Definition mgv_refined_input_handlers me inp st :=
     let '(out, st', ps) :=
         input_handlers me inp st in
-    (out, st', add_ghost_msg me st' ps).
+    (out, st', add_ghost_msg me st ps).
 
   Definition mgv_msg_eq_dec :
     forall x y : ghost_msg * msg, {x = y} + {x <> y}.

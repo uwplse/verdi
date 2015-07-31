@@ -196,13 +196,14 @@ Section GhostLogCorrectProof.
         apply sorted_findGtIndex_0; [|eapply lifted_entries_sorted_invariant; eauto].
         intros. eapply lifted_entries_contiguous_invariant; eauto.
     - right.
-      enough (exists e, findAtIndex (log d') (S index) = Some e) by
+      erewrite doLeader_log; eauto.
+      enough (exists e, findAtIndex (log (snd (nwState net leaderId))) (S index) = Some e) by
           (break_exists_name e;
            find_copy_apply_lem_hyp findAtIndex_elim; intuition;
            auto;
            exists e; intuition;
+             do 2 (unfold raft_data in *; simpl in *);
              repeat find_rewrite; auto).
-      erewrite doLeader_log; eauto.
       eapply contiguous_findAtIndex;
         [eapply lifted_entries_sorted_invariant; eauto|
          eapply lifted_entries_contiguous_invariant; eauto|].
