@@ -280,6 +280,9 @@ Require Import RaftMsgRefinementProof.
 Require Import GhostLogCorrectInterface.
 Require Import GhostLogCorrectProof.
 
+Require Import GhostLogsLogPropertiesInterface.
+Require Import GhostLogsLogPropertiesProof.
+
 
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
@@ -361,6 +364,7 @@ Hint Extern 4 (@no_append_entries_replies_to_self_interface _ _ _) => apply noae
 Hint Extern 4 (@log_all_entries_interface _ _ _) => apply laei : typeclass_instances.
 Hint Extern 4 (@append_entries_reply_sublog_interface _ _ _) => apply aersi : typeclass_instances.
 Hint Extern 4 (@log_properties_hold_on_leader_logs_interface _ _ _) => apply lpholli : typeclass_instances.
+Hint Extern 4 (@log_properties_hold_on_ghost_logs_interface _ _ _) => apply lphogli : typeclass_instances.
 Hint Extern 4 (@append_entries_request_reply_correspondence_interface _ _ _) => apply aerrci : typeclass_instances.
 Hint Extern 4 (@append_entries_leader_interface _ _ _) => apply appendeli : typeclass_instances.
 Hint Extern 4 (@requestVote_maxIndex_maxTerm_interface _ _ _) => apply rvmimti : typeclass_instances.
