@@ -16,7 +16,7 @@ Section InLogInAllEntries.
     forall h e,
       In e (log (snd (nwState net h))) ->
       exists t,
-        In (t e, e) (allEntries (fst (nwState net h))).
+        In (t, e) (allEntries (fst (nwState net h))).
 
   Class in_log_in_all_entries_interface : Prop :=
     {
