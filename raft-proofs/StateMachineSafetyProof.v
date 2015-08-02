@@ -959,7 +959,12 @@ Section StateMachineSafetyProof.
       lifted_committed net e (currentTerm (snd (nwState net h))).
 
   Definition commit_invariant_nw (net : ghost_log_network) : Prop :=
-    True.
+    forall p t lid pli plt es lci e,
+      In p (nwPackets net) ->
+      snd (pBody p) = AppendEntries t lid pli plt es lci ->
+      In e (fst (pBody p)) ->
+      eIndex e <= lci ->
+      lifted_committed net e t.
 
   Definition commit_invariant (net : ghost_log_network) : Prop :=
     commit_invariant_host net /\
