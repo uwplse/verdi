@@ -1513,10 +1513,44 @@ Section StateMachineSafetyProof.
     intuition eauto using advanceCurrentTerm_term; congruence.
   Qed.
 
-  Lemma commit_invariant_append_entries :
-    msg_refined_raft_net_invariant_append_entries commit_invariant.
+  Definition lifted_entries_gt_0_nw (net : ghost_log_network) : Prop :=
+    forall p t n pli plt es ci e,
+      In p (nwPackets net) ->
+      snd (pBody p) = AppendEntries t n pli plt es ci ->
+      In e es ->
+      eIndex e > 0.
+
+  Lemma lifted_entries_gt_0_nw_invariant :
+    forall net,
+      msg_refined_raft_intermediate_reachable net ->
+      lifted_entries_gt_0_nw net.
   Proof.
-    unfold msg_refined_raft_net_invariant_append_entries, commit_invariant.
+    unfold lifted_entries_gt_0_nw.
+    intros.
+    pose proof msg_lift_prop _ entries_gt_0_nw_invariant _ $(eauto)$.
+    unfold entries_gt_0_nw in *.
+    find_apply_lem_hyp in_mgv_ghost_packet.
+    match goal with
+    | [ H : _ |- _ ] => eapply H; eauto
+    end.
+  Qed.
+
+  Lemma commit_invariant_append_entries :
+    forall xs p ys (net : ghost_log_network) st' ps' gd d m t n pli plt es ci,
+      handleAppendEntries (pDst p) (snd (nwState net (pDst p))) t n pli plt es ci = (d, m) ->
+      gd = update_elections_data_appendEntries (pDst p) (nwState net (pDst p)) t n pli plt es ci ->
+      snd (pBody p) = AppendEntries t n pli plt es ci ->
+      commit_invariant net ->
+      msg_refined_raft_intermediate_reachable net ->
+      lifted_maxIndex_sanity net ->
+      nwPackets net = xs ++ p :: ys ->
+      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall p', In p' ps' ->
+             In p' (xs ++ ys) \/ p' = mkPacket (pDst p) (pSrc p)
+                                             (write_ghost_log (pDst p) (nwState net (pDst p)), m)) ->
+      commit_invariant (mkNetwork ps' st').
+  Proof.
+    unfold commit_invariant.
     intros. split.
     - break_and.
        match goal with
@@ -1552,7 +1586,34 @@ Section StateMachineSafetyProof.
                     by thus e = e' by unique indices.
                     thus e is committed.
                   *)
-                 admit.
+                 assert (eIndex e > 0) by (eapply lifted_entries_gt_0_nw_invariant; eauto).
+                 assert (exists e', eIndex e' = eIndex e /\ In e' (log (snd (nwState net (pDst p))))).
+                 {
+                   eapply contiguous_range_exact_lo_elim_exists.
+                   - eapply lifted_entries_contiguous_invariant. auto.
+                   - split.
+                     + auto.
+                     + eapply le_trans; [eauto|].
+                       eapply_prop lifted_maxIndex_sanity.
+                 }
+                 break_exists_name e'.
+                 break_and.
+                 assert (lifted_committed net e' (currentTerm (snd (nwState net (pDst p))))) as He'committed
+                        by (apply Hhost; [auto|congruence]) .
+
+                 find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
+                 concludes.
+                 assert (sorted (log d)) by (eauto using lifted_handleAppendEntries_logs_sorted).
+                 intuition.
+                 * omega.
+                 * omega.
+                 * match goal with
+                   | [ H : _ |- _ ] => eapply maxIndex_is_max in H; eauto; [idtac]
+                   end.
+                   omega.
+                 * assert (e = e') by (eapply uniqueIndices_elim_eq; eauto using sorted_uniqueIndices).
+                   subst.
+                   eapply lifted_committed_monotonic; eauto.
                + (* eIndex e <= incoming ci.
                     result follows by the network invariant. *)
                  admit.
