@@ -1453,13 +1453,17 @@ Section StateMachineSafetyProof.
   Qed.
       
   Lemma handleAppendEntries_preserves_commit :
-    forall net net' h t n pli plt es ci d m e t',
+    forall net net' h p t n pli plt es ci d m e,
+      msg_refined_raft_intermediate_reachable net ->
+      In p (nwPackets net) ->
+      snd (pBody p) = AppendEntries t n pli plt es ci ->
       handleAppendEntries h (snd (nwState net h)) t n pli plt es ci = (d, m) ->
       (forall h', nwState net' h' = update (nwState net) h
                                       (update_elections_data_appendEntries
                                          h (nwState net h) t n pli plt es ci, d) h') ->
-      lifted_committed net e t' ->
-      lifted_committed net' e t'.
+      lifted_committed net e (currentTerm (snd (nwState net h))) ->
+      lifted_committed net' e (currentTerm (snd (nwState net h))).
+  Proof.
   Admitted.
 
   Lemma handleAppendEntries_currentTerm_le :
