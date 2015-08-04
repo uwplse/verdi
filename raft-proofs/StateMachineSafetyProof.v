@@ -1421,6 +1421,37 @@ Section StateMachineSafetyProof.
     intuition.
   Qed.
 
+  Definition lifted_state_machine_safety_nw' net :=
+    forall p t leaderId prevLogIndex prevLogTerm entries leaderCommit e t',
+      In p (nwPackets net) ->
+      snd (pBody p) = AppendEntries t leaderId prevLogIndex prevLogTerm
+                              entries leaderCommit ->
+      lifted_committed net e t' ->
+      t >= t' ->
+      (prevLogIndex > eIndex e \/
+       (prevLogIndex = eIndex e /\ prevLogTerm = eTerm e) \/
+       eIndex e > maxIndex entries \/
+       In e entries).
+
+  Lemma lifted_state_machine_safety_nw'_invariant :
+    forall (net : @network _ raft_msg_refined_multi_params),
+      msg_refined_raft_intermediate_reachable net ->
+      lifted_state_machine_safety_nw' net.
+  Proof.
+    intros.
+    unfold lifted_state_machine_safety_nw'.
+    intros.
+    find_apply_lem_hyp lifted_committed_committed.
+    find_apply_lem_hyp in_mgv_ghost_packet.
+    match goal with
+      | _ : snd (pBody ?p) = ?x |- _ =>
+        assert (pBody (@mgv_deghost_packet _ _ _ ghost_log_params p) = x)
+          by (rewrite pBody_mgv_deghost_packet; auto)
+    end.
+    eapply state_machine_safety'_invariant; eauto.
+    eapply msg_lift_prop; eauto.
+  Qed.
+      
   Lemma handleAppendEntries_preserves_commit :
     forall net net' h t n pli plt es ci d m e t',
       handleAppendEntries h (snd (nwState net h)) t n pli plt es ci = (d, m) ->
