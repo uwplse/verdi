@@ -1396,54 +1396,30 @@ Section StateMachineSafetyProof.
     find_higher_order_rewrite. auto.
   Qed.
 
-  Lemma committed_monotonic :
-    forall net t t' e,
-      committed net e t ->
-      t <= t' ->
-      committed net e t'.
+  Lemma lifted_committed_ext :
+    forall ps st st' t e,
+      (forall h, st' h = st h) ->
+      lifted_committed (mkNetwork ps st) e t ->
+      lifted_committed (mkNetwork ps st') e t.
   Proof.
-    unfold committed.
+    intros.
+    apply committed_lifted_committed.
+    find_apply_lem_hyp lifted_committed_committed.
+    unfold mgv_deghost in *.
+    eauto using committed_ext.
+  Qed.
+
+  Lemma lifted_committed_monotonic :
+    forall net t t' e,
+      lifted_committed net e t ->
+      t <= t' ->
+      lifted_committed net e t'.
+  Proof.
+    unfold lifted_committed.
     intros.
     break_exists_exists.
     intuition.
   Qed.
-
-(*
-  (* lemmas for old proof of CRC AE case *)
-  Lemma handleAppendEntries_preserves_directly_committed :
-    forall net net' h t n pli plt es ci d m e,
-      handleAppendEntries h (snd (nwState net h)) t n pli plt es ci = (d, m) ->
-      (forall h', nwState net' h' = update (nwState net) h
-                                      (update_elections_data_appendEntries
-                                         h (nwState net h) t n pli plt es ci, d) h') ->
-      directly_committed net e ->
-      directly_committed net' e.
-  Proof.
-    unfold directly_committed.
-    intros. break_exists_exists.
-    intuition.
-    find_higher_order_rewrite.
-    update_destruct; auto.
-    apply update_elections_data_appendEntries_preserves_allEntries.
-    auto.
-  Qed.
-
-  Lemma directly_committed_stays_in_log :
-    forall net net' h t n pli plt es ci d m e,
-      handleAppendEntries h (snd (nwState net h)) t n pli plt es ci = (d, m) ->
-      (forall h', nwState net' h' = update (nwState net) h
-                                      (update_elections_data_appendEntries
-                                         h (nwState net h) t n pli plt es ci, d) h') ->
-      directly_committed net e ->
-      In e (log (snd (nwState net h))) ->
-      In e (log d).
-  Admitted.
-
-  Lemma handleAppendEntries_entries_match :
-    forall h st t n pli plt es ci d m,
-      handleAppendEntries h st t n pli plt es ci = (d, m) ->
-      entries_match (log st) (log d).
-  Admitted.
 
   Lemma handleAppendEntries_preserves_commit :
     forall net net' h t n pli plt es ci d m e t',
@@ -1451,20 +1427,9 @@ Section StateMachineSafetyProof.
       (forall h', nwState net' h' = update (nwState net) h
                                       (update_elections_data_appendEntries
                                          h (nwState net h) t n pli plt es ci, d) h') ->
-      committed net e t' ->
-      committed net' e t'.
-  Proof.
-    unfold committed.
-    intros.
-    break_exists_exists. break_and.
-    find_higher_order_rewrite.
-    update_destruct.
-    - find_copy_eapply_lem_hyp directly_committed_stays_in_log; eauto.
-      find_eapply_lem_hyp handleAppendEntries_preserves_directly_committed; eauto.
-      intuition.
-      eapply handleAppendEntries_entries_match with (st := snd (nwState net x)); eauto.
-    - intuition. eauto using handleAppendEntries_preserves_directly_committed.
-  Qed.
+      lifted_committed net e t' ->
+      lifted_committed net' e t'.
+  Admitted.
 
   Lemma handleAppendEntries_currentTerm_le :
     forall h st t n pli plt es ci st' m,
@@ -1517,11 +1482,84 @@ Section StateMachineSafetyProof.
     intuition eauto using advanceCurrentTerm_term; congruence.
   Qed.
 
-  *)
-
   Lemma commit_invariant_append_entries :
     msg_refined_raft_net_invariant_append_entries commit_invariant.
   Proof.
+    unfold msg_refined_raft_net_invariant_append_entries, commit_invariant.
+    intros. split.
+    - break_and.
+       match goal with
+       | [ H : commit_invariant_host _ |- _ ] =>
+         rename H into Hhost;
+           unfold commit_invariant_host in *
+       end.
+       simpl. intros.
+       eapply lifted_committed_ext; eauto.
+       repeat find_higher_order_rewrite.
+       update_destruct.
+       + (* e is in h's log *)
+         eapply handleAppendEntries_preserves_commit; eauto.
+
+         find_copy_apply_lem_hyp handleAppendEntries_log_detailed.
+         break_or_hyp.
+         * break_and. repeat find_rewrite.
+           find_copy_apply_lem_hyp handleAppendEntries_currentTerm_le.
+           eapply lifted_committed_monotonic; eauto.
+         * { break_or_hyp; repeat break_and.
+             - (* beginning of time case *)
+               repeat find_rewrite.
+               find_apply_lem_hyp NPeano.Nat.max_le. break_or_hyp.
+               + (* my log is just the entries in the incoming AE.
+                    so e was in the incoming entries.
+                    but eIndex e <= old commit index.
+                    by maxIndex_commitIndex, exists e' in old log such that eIndex e = eIndex e'.
+                    note that e' is committed in the pre state by IH.
+                    now apply SMS'_nw invariant to e' to get four cases.
+                    first three are absurd by index calculation.
+                    it follows that e' is in es.
+                    but our new log is just es, so e' is in the new log.
+                    by thus e = e' by unique indices.
+                    thus e is committed.
+                  *)
+                 admit.
+               + (* eIndex e <= incoming ci.
+                    result follows by the network invariant. *)
+                 admit.
+             - (* middle of time case *)
+               repeat find_rewrite.
+               break_exists_name ple. break_and.
+               find_apply_lem_hyp NPeano.Nat.max_le. break_or_hyp.
+               + (* eIndex e <= old commit index *)
+                 match goal with
+                 | [ H : In e (_ ++ _) |- _ ] => apply in_app_or in H; destruct H
+                 end.
+                 * (* e is new *)
+                   (* same argument as BoT case for new entry <= old commit index.
+                      find way to factor this out? *)
+                   admit.
+                 * (* e is old *)
+                   { eapply lifted_committed_monotonic.
+                     - eapply Hhost with (h := pDst p); eauto using removeAfterIndex_in.
+                     - auto.
+                   }
+               + (* eIndex e <= new commit index *)
+                 match goal with
+                 | [ H : In e (_ ++ _) |- _ ] => apply in_app_or in H; destruct H
+                 end.
+                 * (* e is new *)
+                   (* follows from network invariant *)
+                   admit.
+                 * (* e is old *)
+                   (* eIndex e <= pli
+                      by ghost log contiguous, exists e' in ghost log such that eIndex e = eIndex e'.
+                      e' is committed by the nw invariant.
+                      by ghost log matching, e = e'.
+                      thus e is committed.
+                    *)
+                   admit.
+           }
+       + eapply handleAppendEntries_preserves_commit; eauto.
+    - (* nw invariant preserved *)
   Admitted.
 
   Lemma commit_invariant_append_entries_reply :
