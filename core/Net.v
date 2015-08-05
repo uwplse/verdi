@@ -731,12 +731,12 @@ Section MsgGhostVars.
   Definition mgv_refined_net_handlers me src (m : ghost_msg * msg) st :=
     let '(out, st', ps) :=
         net_handlers me src (snd m) st in
-    (out, st', add_ghost_msg me st ps).
+    (out, st', add_ghost_msg me st' ps).
 
   Definition mgv_refined_input_handlers me inp st :=
     let '(out, st', ps) :=
         input_handlers me inp st in
-    (out, st', add_ghost_msg me st ps).
+    (out, st', add_ghost_msg me st' ps).
 
   Definition mgv_msg_eq_dec :
     forall x y : ghost_msg * msg, {x = y} + {x <> y}.
@@ -910,7 +910,7 @@ Section MsgGhostVars.
       break_exists_name ys'.
       intuition. 
       exists {| nwPackets := (@send_packets _ mgv_refined_multi_params (pDst p)
-                                       (add_ghost_msg (pDst p) (nwState0 (pDst p)) l))
+                                       (add_ghost_msg (pDst p) d l))
                           ++ xs' ++ ys';
            nwState := update nwState0 (pDst p) d |}.
       intuition.
@@ -929,7 +929,7 @@ Section MsgGhostVars.
     - repeat break_match. subst. simpl in *.
       intuition.
       exists {| nwPackets := (@send_packets _ mgv_refined_multi_params h
-                                       (add_ghost_msg h (nwState0 h) l))
+                                       (add_ghost_msg h d l))
                           ++ nwPackets0;
            nwState := update nwState0 h d |}.
       intuition.

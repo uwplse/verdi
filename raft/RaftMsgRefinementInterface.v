@@ -58,7 +58,7 @@ Section RaftMsgRefinementInterface.
         update_elections_data_input h inp (nwState net h) = gd ->
         (forall h', st' h' = update (nwState net) h (gd, d) h') ->
         (forall p', In p' ps' -> In p' (nwPackets net) \/
-                           In p' (send_packets h (add_ghost_msg h (nwState net h) l))) ->
+                           In p' (send_packets h (add_ghost_msg h (gd, d) l))) ->
         msg_refined_raft_intermediate_reachable (mkNetwork ps' st')
   | MRRIR_handleMessage :
       forall p net xs ys st' ps' gd d l,
@@ -68,7 +68,7 @@ Section RaftMsgRefinementInterface.
         nwPackets net = xs ++ p :: ys ->
         (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
         (forall p', In p' ps' -> In p' (xs ++ ys) \/
-                           In p' (send_packets (pDst p) (@add_ghost_msg _ _ _ ghost_log_params (pDst p) (nwState net (pDst p)) l))) ->
+                           In p' (send_packets (pDst p) (@add_ghost_msg _ _ _ ghost_log_params (pDst p) (gd, d) l))) ->
         msg_refined_raft_intermediate_reachable (mkNetwork ps' st')
   | MRRIR_doLeader :
       forall net st' ps' h os gd d d' ms,
@@ -77,7 +77,7 @@ Section RaftMsgRefinementInterface.
         nwState net h = (gd, d) ->
         (forall h', st' h' = update (nwState net) h (gd, d') h') ->
         (forall p, In p ps' -> In p (nwPackets net) \/
-                         In p (send_packets h (add_ghost_msg h (gd, d) ms))) ->
+                         In p (send_packets h (add_ghost_msg h (gd, d') ms))) ->
         msg_refined_raft_intermediate_reachable (mkNetwork ps' st')
   | MRRIR_doGenericServer :
       forall net st' ps' os gd d d' ms h,
@@ -86,7 +86,7 @@ Section RaftMsgRefinementInterface.
         nwState net h = (gd, d) ->
         (forall h', st' h' = update (nwState net) h (gd, d') h') ->
         (forall p, In p ps' -> In p (nwPackets net) \/
-                         In p (send_packets h (add_ghost_msg h (gd, d) ms))) ->
+                         In p (send_packets h (add_ghost_msg h (gd, d') ms))) ->
         msg_refined_raft_intermediate_reachable (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_client_request (P : network -> Prop) :=
@@ -97,7 +97,7 @@ Section RaftMsgRefinementInterface.
       msg_refined_raft_intermediate_reachable net ->
       (forall h', st' h' = update (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
-                         In p' (send_packets h (add_ghost_msg h (nwState net h) l))) ->
+                         In p' (send_packets h (add_ghost_msg h (gd, d) l))) ->
       P (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_timeout (P : network -> Prop) :=
@@ -108,7 +108,7 @@ Section RaftMsgRefinementInterface.
       msg_refined_raft_intermediate_reachable net ->
       (forall h', st' h' = update (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
-                               In p' (send_packets h (add_ghost_msg h (nwState net h) l))) ->
+                               In p' (send_packets h (add_ghost_msg h (gd, d) l))) ->
       P (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_append_entries (P : network -> Prop) :=
@@ -121,7 +121,7 @@ Section RaftMsgRefinementInterface.
       nwPackets net = xs ++ p :: ys ->
       (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
-                         p' = mkPacket (pDst p) (pSrc p) (write_ghost_log (pDst p) (nwState net (pDst p)), m)) ->
+                         p' = mkPacket (pDst p) (pSrc p) (write_ghost_log (pDst p) (gd, d), m)) ->
       P (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_append_entries_reply (P : network -> Prop) :=
@@ -134,7 +134,7 @@ Section RaftMsgRefinementInterface.
       nwPackets net = xs ++ p :: ys ->
       (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
-                         In p' (send_packets (pDst p) (@add_ghost_msg _ _ _ ghost_log_params (pDst p) (nwState net (pDst p)) m))) ->
+                         In p' (send_packets (pDst p) (@add_ghost_msg _ _ _ ghost_log_params (pDst p) (gd, d) m))) ->
       P (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_request_vote (P : network -> Prop) :=
@@ -147,7 +147,7 @@ Section RaftMsgRefinementInterface.
       nwPackets net = xs ++ p :: ys ->
       (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
-                         p' = mkPacket (pDst p) (pSrc p) (write_ghost_log (pDst p) (nwState net (pDst p)), m)) ->
+                         p' = mkPacket (pDst p) (pSrc p) (write_ghost_log (pDst p) (gd, d), m)) ->
       P (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_request_vote_reply (P : network -> Prop) :=
@@ -170,7 +170,7 @@ Section RaftMsgRefinementInterface.
       nwState net h = (gd, d) ->
       (forall h', st' h' = update (nwState net) h (gd, d') h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
-                             In p (send_packets h (add_ghost_msg h (gd, d) ms))) ->
+                             In p (send_packets h (add_ghost_msg h (gd, d') ms))) ->
       P (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_do_generic_server (P : network -> Prop) :=
@@ -181,7 +181,7 @@ Section RaftMsgRefinementInterface.
       nwState net h = (gd, d) ->
       (forall h', st' h' = update (nwState net) h (gd, d') h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
-                             In p (send_packets h (add_ghost_msg h (gd, d) ms))) ->
+                             In p (send_packets h (add_ghost_msg h (gd, d') ms))) ->
       P (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_state_same_packet_subset (P : network -> Prop) :=
@@ -214,7 +214,7 @@ Section RaftMsgRefinementInterface.
       msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       (forall h', st' h' = update (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
-                         In p' (send_packets h (add_ghost_msg h (nwState net h) l))) ->
+                         In p' (send_packets h (add_ghost_msg h (gd, d) l))) ->
       P (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_timeout' (P : network -> Prop) :=
@@ -226,7 +226,7 @@ Section RaftMsgRefinementInterface.
       msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       (forall h', st' h' = update (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
-                               In p' (send_packets h (add_ghost_msg h (nwState net h) l))) ->
+                               In p' (send_packets h (add_ghost_msg h (gd, d) l))) ->
       P (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_append_entries' (P : network -> Prop) :=
@@ -240,7 +240,7 @@ Section RaftMsgRefinementInterface.
       nwPackets net = xs ++ p :: ys ->
       (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
-                         p' = mkPacket (pDst p) (pSrc p) (write_ghost_log (pDst p) (nwState net (pDst p)), m)) ->
+                         p' = mkPacket (pDst p) (pSrc p) (write_ghost_log (pDst p) (gd, d), m)) ->
       P (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_append_entries_reply' (P : network -> Prop) :=
@@ -254,7 +254,7 @@ Section RaftMsgRefinementInterface.
       nwPackets net = xs ++ p :: ys ->
       (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
-                         In p' (send_packets (pDst p) (@add_ghost_msg _ _ _ ghost_log_params (pDst p) (nwState net (pDst p)) m))) ->
+                         In p' (send_packets (pDst p) (@add_ghost_msg _ _ _ ghost_log_params (pDst p) (gd, d) m))) ->
       P (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_request_vote' (P : network -> Prop) :=
@@ -268,7 +268,7 @@ Section RaftMsgRefinementInterface.
       nwPackets net = xs ++ p :: ys ->
       (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
-                         p' = mkPacket (pDst p) (pSrc p) (write_ghost_log (pDst p) (nwState net (pDst p)), m)) ->
+                         p' = mkPacket (pDst p) (pSrc p) (write_ghost_log (pDst p) (gd, d), m)) ->
       P (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_request_vote_reply' (P : network -> Prop) :=
@@ -293,7 +293,7 @@ Section RaftMsgRefinementInterface.
       nwState net h = (gd, d) ->
       (forall h', st' h' = update (nwState net) h (gd, d') h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
-                             In p (send_packets h (add_ghost_msg h (gd, d) ms))) ->
+                             In p (send_packets h (add_ghost_msg h (gd, d') ms))) ->
       P (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_do_generic_server' (P : network -> Prop) :=
@@ -305,7 +305,7 @@ Section RaftMsgRefinementInterface.
       nwState net h = (gd, d) ->
       (forall h', st' h' = update (nwState net) h (gd, d') h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
-                             In p (send_packets h (add_ghost_msg h (gd, d) ms))) ->
+                             In p (send_packets h (add_ghost_msg h (gd, d') ms))) ->
       P (mkNetwork ps' st').
 
   Definition msg_refined_raft_net_invariant_state_same_packet_subset' (P : network -> Prop) :=
