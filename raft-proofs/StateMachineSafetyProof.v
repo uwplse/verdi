@@ -1429,9 +1429,70 @@ Section StateMachineSafetyProof.
         exfalso. eapply handleClientRequest_no_append_entries; eauto 10.
   Qed.
 
+  Lemma handleTimeout_preserves_committed :
+    forall h (net net' : ghost_log_network) out d' l e t,
+      handleTimeout h (snd (nwState net h)) = (out, d', l) ->
+      (forall h', nwState net' h' = update (nwState net) h (update_elections_data_timeout h (nwState net h), d') h') ->
+      lifted_committed net e t ->
+      lifted_committed net' e t.
+  Proof.
+    intros.
+    eapply lifted_committed_log_allEntries_preserved; eauto.
+    - intros. repeat find_higher_order_rewrite. update_destruct.
+      + now erewrite handleTimeout_log_same by eauto.
+      + auto.
+    - intros. repeat find_higher_order_rewrite. update_destruct.
+      + now rewrite update_elections_data_timeout_allEntries.
+      + auto.
+  Qed.
+
+  Lemma lifted_committed_monotonic :
+    forall net t t' e,
+      lifted_committed net e t ->
+      t <= t' ->
+      lifted_committed net e t'.
+  Proof.
+    unfold lifted_committed.
+    intros.
+    break_exists_exists.
+    intuition.
+  Qed.
+
+
   Lemma commit_invariant_timeout :
     msg_refined_raft_net_invariant_timeout commit_invariant.
-  Admitted.
+  Proof.
+    unfold msg_refined_raft_net_invariant_timeout, commit_invariant.
+    simpl. intuition.
+    - unfold commit_invariant_host in *.
+      simpl. intros.
+      repeat find_higher_order_rewrite.
+      update_destruct.
+      + eapply handleTimeout_preserves_committed; eauto.
+        match goal with
+        | [ H : context [commitIndex] |- _ ] => erewrite handleTimeout_commitIndex in H by eauto
+        end.
+        match goal with
+        | [ H : context [log] |- _ ] => erewrite handleTimeout_log_same in H by eauto
+        end.
+        eapply lifted_committed_monotonic; [eauto|].
+        find_apply_lem_hyp handleTimeout_type_strong.
+        intuition; repeat find_rewrite; auto.
+      + eapply handleTimeout_preserves_committed; eauto.
+    - unfold commit_invariant_nw in *.
+      simpl. intros.
+      find_apply_hyp_hyp.
+      intuition.
+      * eapply handleTimeout_preserves_committed; eauto.
+        simpl. intros. subst. auto.
+      * do_in_map.
+        subst. simpl in *.
+        unfold add_ghost_msg in *.
+        do_in_map.
+        subst. simpl in *.
+        find_eapply_lem_hyp handleTimeout_packets; eauto.
+        exfalso. eauto 10.
+  Qed.
 
   Lemma committed_ext :
     forall ps  st st' t e,
@@ -1459,18 +1520,6 @@ Section StateMachineSafetyProof.
     find_apply_lem_hyp lifted_committed_committed.
     unfold mgv_deghost in *.
     eauto using committed_ext.
-  Qed.
-
-  Lemma lifted_committed_monotonic :
-    forall net t t' e,
-      lifted_committed net e t ->
-      t <= t' ->
-      lifted_committed net e t'.
-  Proof.
-    unfold lifted_committed.
-    intros.
-    break_exists_exists.
-    intuition.
   Qed.
 
   Definition lifted_state_machine_safety_nw' net :=
@@ -2117,19 +2166,167 @@ Section StateMachineSafetyProof.
            }
        + eapply handleAppendEntries_preserves_commit; eauto.
     - (* nw invariant preserved *)
-  Admitted.
+      break_and.
+      unfold commit_invariant_nw in *.
+      simpl. intros.
+      find_apply_hyp_hyp.
+      intuition.
+      + eapply handleAppendEntries_preserves_commit; eauto.
+        simpl. subst. auto.
+      + subst. simpl in *.
+        find_apply_lem_hyp handleAppendEntries_not_append_entries.
+        subst. exfalso. eauto 10.
+  Qed.
+
+
+  Lemma handleAppendEntriesReply_preserves_commit :
+    forall (net net' : ghost_log_network) h src t es b st' l e t',
+      handleAppendEntriesReply h (snd (nwState net h)) src t es b = (st', l) ->
+      (forall h', nwState net' h' = update (nwState net) h (fst (nwState net h), st') h') ->
+      lifted_committed net e t' ->
+      lifted_committed net' e t'.
+  Proof.
+    intros.
+    eapply lifted_committed_log_allEntries_preserved; eauto.
+    - intros. repeat find_higher_order_rewrite. update_destruct.
+      + now erewrite handleAppendEntriesReply_same_log by eauto.
+      + auto.
+    - intros. repeat find_higher_order_rewrite. update_destruct; auto.
+  Qed.
 
   Lemma commit_invariant_append_entries_reply :
     msg_refined_raft_net_invariant_append_entries_reply commit_invariant.
-  Admitted.
+  Proof.
+    unfold msg_refined_raft_net_invariant_append_entries_reply, commit_invariant.
+    simpl. intros.
+    split.
+    - unfold commit_invariant_host in *.
+      simpl. intuition.
+      repeat find_higher_order_rewrite.
+      update_destruct.
+      + eapply handleAppendEntriesReply_preserves_commit; eauto.
+        match goal with
+        | [ H : context [commitIndex] |- _ ] => erewrite handleAppendEntriesReply_same_commitIndex in H by eauto
+        end.
+        match goal with
+        | [ H : context [log] |- _ ] => erewrite handleAppendEntriesReply_same_log in H by eauto
+        end.
+        eapply lifted_committed_monotonic; [eauto|].
+        find_apply_lem_hyp handleAppendEntriesReply_type_term.
+        intuition; repeat find_rewrite; auto.
+      + eapply handleAppendEntriesReply_preserves_commit; eauto.
+    - unfold commit_invariant_nw in *.
+      simpl. intros.
+      find_apply_hyp_hyp.
+      intuition.
+      + eapply handleAppendEntriesReply_preserves_commit; eauto.
+        simpl. subst. auto.
+      + do_in_map. unfold add_ghost_msg in *. do_in_map.
+        subst. simpl in *.
+        find_apply_lem_hyp handleAppendEntriesReply_packets.
+        subst. simpl in *. intuition.
+  Qed.
+
+  Lemma handleRequestVote_preserves_committed :
+    forall (net net' : ghost_log_network) h t c li lt st' ms e t',
+      handleRequestVote h (snd (nwState net h)) t c li lt = (st', ms) ->
+      (forall h', nwState net' h' = update (nwState net) h (update_elections_data_requestVote h c t c li lt (nwState net h), st') h') ->
+      lifted_committed net e t' ->
+      lifted_committed net' e t'.
+  Proof.
+    intros.
+    eapply lifted_committed_log_allEntries_preserved; eauto.
+    - intros. find_higher_order_rewrite. update_destruct.
+      + now erewrite handleRequestVote_same_log by eauto.
+      + auto.
+    - intros. find_higher_order_rewrite. update_destruct.
+      + now rewrite update_elections_data_requestVote_allEntries.
+      + auto.
+  Qed.
 
   Lemma commit_invariant_request_vote :
     msg_refined_raft_net_invariant_request_vote commit_invariant.
-  Admitted.
+  Proof.
+    unfold msg_refined_raft_net_invariant_request_vote, commit_invariant.
+    simpl. intuition.
+    - unfold commit_invariant_host in *.
+      simpl. intros.
+      repeat find_higher_order_rewrite.
+      update_destruct.
+      + eapply handleRequestVote_preserves_committed; eauto.
+        match goal with
+        | [ H : context [commitIndex] |- _ ] => erewrite handleRequestVote_same_commitIndex in H by eauto
+        end.
+        match goal with
+        | [ H : context [log] |- _ ] => erewrite handleRequestVote_same_log in H by eauto
+        end.
+        eapply lifted_committed_monotonic; eauto.
+        find_apply_lem_hyp handleRequestVote_currentTerm_leaderId.
+        intuition.
+        unfold mgv_refined_base_params, raft_refined_base_params, refined_base_params in *.
+        simpl in *.
+        repeat find_rewrite. auto.
+      + eapply handleRequestVote_preserves_committed; eauto.
+    - unfold commit_invariant_nw in *.
+      simpl. intros.
+      find_apply_hyp_hyp. intuition.
+      + eapply handleRequestVote_preserves_committed; eauto.
+        simpl. intros. subst. auto.
+      + subst. simpl in *. unfold write_ghost_log in *.
+        find_apply_lem_hyp handleRequestVote_no_append_entries.
+        subst.
+        exfalso. eauto 10.
+  Qed.
+
+  Lemma handleRequestVoteReply_preserves_committed :
+    forall (net net' : ghost_log_network) h src t v st' e t',
+      handleRequestVoteReply h (snd (nwState net h)) src t v = st' ->
+      (forall h', nwState net' h' = update (nwState net) h
+                                      (update_elections_data_requestVoteReply h
+                                                                              src t v (nwState net h), st') h') ->
+      lifted_committed net e t' ->
+      lifted_committed net' e t'.
+  Proof.
+    intros.
+    eapply lifted_committed_log_allEntries_preserved; eauto.
+    - intros. repeat find_higher_order_rewrite. update_destruct.
+      + erewrite handleRequestVoteReply_log; eauto.
+      + auto.
+    - intros. repeat find_higher_order_rewrite. update_destruct.
+      + rewrite update_elections_data_requestVoteReply_allEntries. auto.
+      + auto.
+  Qed.
 
   Lemma commit_invariant_request_vote_reply :
     msg_refined_raft_net_invariant_request_vote_reply commit_invariant.
-  Admitted.
+  Proof.
+    unfold msg_refined_raft_net_invariant_request_vote_reply, commit_invariant.
+    simpl. intuition.
+    - unfold commit_invariant_host in *. simpl. intuition.
+      match goal with
+      | [ H : forall h, st' h = _ |- _ ] => repeat rewrite H in *
+      end. destruct (name_eq_dec (pDst p) h).
+      + subst h. subst gd. rewrite_update. simpl in *.
+        eapply handleRequestVoteReply_preserves_committed; eauto.
+        find_copy_apply_lem_hyp handleRequestVoteReply_type.
+        subst.
+        match goal with
+        | [ H : context [commitIndex] |- _ ] => rewrite handleRequestVoteReply_same_commitIndex in H
+        end.
+        match goal with
+        | [ H : context [log] |- _ ] => erewrite handleRequestVoteReply_same_log in H
+        end.
+        eapply lifted_committed_monotonic; eauto.
+        intuition; repeat find_rewrite; auto.
+      + rewrite_update. eapply handleRequestVoteReply_preserves_committed; eauto.
+        simpl. subst. auto.
+    - unfold commit_invariant_nw. simpl.
+      intros.
+      find_apply_hyp_hyp.
+      eapply handleRequestVoteReply_preserves_committed; eauto.
+      simpl. subst. auto.
+  Qed.
+
 
   Lemma committed_ext' :
     forall ps ps' st st' t e,
@@ -2569,17 +2766,105 @@ Section StateMachineSafetyProof.
         intuition.
   Qed.
 
+  Lemma doGenericServer_preserves_committed :
+    forall (net net' : ghost_log_network) h out st' ms e t,
+      doGenericServer h (snd (nwState net h)) = (out, st', ms) ->
+      (forall h', nwState net' h' = update (nwState net) h (fst (nwState net h), st') h') ->
+      lifted_committed net e t ->
+      lifted_committed net' e t.
+  Proof.
+    intros.
+    eapply lifted_committed_log_allEntries_preserved; eauto;
+    intros; repeat find_higher_order_rewrite; update_destruct; auto.
+    now erewrite doGenericServer_log by eauto.
+  Qed.
+
   Lemma commit_invariant_do_generic_server :
     msg_refined_raft_net_invariant_do_generic_server commit_invariant.
-  Admitted.
+  Proof.
+    unfold msg_refined_raft_net_invariant_do_generic_server, commit_invariant.
+    simpl. intros.
+    match goal with
+    | [ H : nwState ?net ?h = (?x, ?y) |- _ ] =>
+      replace x with (fst (nwState net h)) in * by (rewrite H; auto);
+        replace y with (snd (nwState net h)) in * by (rewrite H; auto);
+        clear H
+    end.
+    intuition.
+    - unfold commit_invariant_host in *.
+      simpl. intros.
+      repeat find_higher_order_rewrite.
+
+      update_destruct.
+      + eapply doGenericServer_preserves_committed; eauto.
+        match goal with
+        | [ H : context [commitIndex] |- _ ] => erewrite doGenericServer_commitIndex  in H  by eauto
+        end.
+        match goal with
+        | [ H : context [log] |- _ ] => erewrite doGenericServer_log in H by eauto
+        end.
+        eapply lifted_committed_monotonic; eauto.
+        find_apply_lem_hyp doGenericServer_type.
+        intuition. repeat find_rewrite. auto.
+      + eapply doGenericServer_preserves_committed; eauto.
+    - unfold commit_invariant_nw in *.
+      simpl. intuition.
+      + find_apply_hyp_hyp. intuition.
+        * eapply doGenericServer_preserves_committed; eauto.
+        * do_in_map. unfold add_ghost_msg in *. do_in_map.
+          find_apply_lem_hyp doGenericServer_packets.
+          subst. simpl in *. intuition.
+  Qed.
 
   Lemma commit_invariant_state_same_packet_subset :
     msg_refined_raft_net_invariant_state_same_packet_subset commit_invariant.
-  Admitted.
+  Proof.
+    unfold msg_refined_raft_net_invariant_state_same_packet_subset, commit_invariant.
+    intuition.
+    - unfold commit_invariant_host in *. intros.
+      repeat find_reverse_higher_order_rewrite.
+      destruct net, net'. simpl in *.
+      eapply lifted_committed_ext; [|eauto]. simpl. auto.
+    - unfold commit_invariant_nw in *. intros.
+      find_apply_hyp_hyp.
+      destruct net, net'. simpl in *.
+      eapply lifted_committed_ext'; [|eauto]. auto.
+  Qed.
+
+  Lemma reboot_preserves_committed :
+    forall (net net' : ghost_log_network) h e t,
+      (forall h', nwState net' h' = update (nwState net) h (fst (nwState net h), reboot (snd (nwState net h))) h') ->
+      lifted_committed net e t ->
+      lifted_committed net' e t.
+  Proof.
+    unfold reboot.
+    intros.
+    eapply lifted_committed_log_allEntries_preserved; eauto;
+    intros; repeat find_higher_order_rewrite; update_destruct; auto.
+  Qed.
 
   Lemma commit_invariant_reboot :
     msg_refined_raft_net_invariant_reboot commit_invariant.
-  Admitted.
+  Proof.
+    unfold msg_refined_raft_net_invariant_reboot, commit_invariant.
+    intros.
+    match goal with
+    | [ H : nwState ?net ?h = (?x, ?y) |- _ ] =>
+      replace x with (fst (nwState net h)) in * by (rewrite H; auto);
+        replace y with (snd (nwState net h)) in * by (rewrite H; auto);
+        clear H
+    end.
+    intuition.
+    - unfold commit_invariant_host in *.
+      intros. repeat find_higher_order_rewrite.
+      update_destruct; eapply reboot_preserves_committed; eauto.
+    - unfold commit_invariant_nw in *.
+      intros.
+      unfold mgv_refined_base_params, raft_refined_base_params, refined_base_params in *.
+      simpl in *.
+      repeat find_reverse_rewrite.
+      eapply reboot_preserves_committed; eauto.
+  Qed.
 
   Lemma maxIndex_sanity_lift :
     forall net,
