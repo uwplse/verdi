@@ -328,6 +328,97 @@ Section RaftMsgRefinementInterface.
       nwPackets net = nwPackets net' ->
       P net'.
 
+  Lemma msg_refined_raft_net_invariant_client_request'_weak :
+    forall net,
+      msg_refined_raft_net_invariant_client_request net ->
+      msg_refined_raft_net_invariant_client_request' net.
+  Proof.
+    unfold msg_refined_raft_net_invariant_client_request, msg_refined_raft_net_invariant_client_request'.
+    intuition eauto.
+  Qed.
+
+  Lemma msg_refined_raft_net_invariant_timeout'_weak :
+    forall net,
+      msg_refined_raft_net_invariant_timeout net ->
+      msg_refined_raft_net_invariant_timeout' net.
+    Proof.
+      unfold msg_refined_raft_net_invariant_timeout, msg_refined_raft_net_invariant_timeout'.
+      intuition eauto.
+  Qed.
+
+  Lemma msg_refined_raft_net_invariant_append_entries'_weak :
+    forall net,
+      msg_refined_raft_net_invariant_append_entries net ->
+      msg_refined_raft_net_invariant_append_entries' net.
+    Proof.
+      unfold msg_refined_raft_net_invariant_append_entries, msg_refined_raft_net_invariant_append_entries'.
+      intuition eauto.
+  Qed.
+
+  Lemma msg_refined_raft_net_invariant_append_entries_reply'_weak :
+    forall net,
+      msg_refined_raft_net_invariant_append_entries_reply net ->
+      msg_refined_raft_net_invariant_append_entries_reply' net.
+    Proof.
+      unfold msg_refined_raft_net_invariant_append_entries_reply, msg_refined_raft_net_invariant_append_entries_reply'.
+      intuition eauto.
+  Qed.
+
+  Lemma msg_refined_raft_net_invariant_request_vote'_weak :
+    forall net,
+      msg_refined_raft_net_invariant_request_vote net ->
+      msg_refined_raft_net_invariant_request_vote' net.
+    Proof.
+      unfold msg_refined_raft_net_invariant_request_vote, msg_refined_raft_net_invariant_request_vote'.
+      intuition eauto.
+  Qed.
+
+  Lemma msg_refined_raft_net_invariant_request_vote_reply'_weak :
+    forall net,
+      msg_refined_raft_net_invariant_request_vote_reply net ->
+      msg_refined_raft_net_invariant_request_vote_reply' net.
+    Proof.
+      unfold msg_refined_raft_net_invariant_request_vote_reply, msg_refined_raft_net_invariant_request_vote_reply'.
+      intuition eauto.
+  Qed.
+
+  Lemma msg_refined_raft_net_invariant_do_leader'_weak :
+    forall net,
+      msg_refined_raft_net_invariant_do_leader net ->
+      msg_refined_raft_net_invariant_do_leader' net.
+    Proof.
+      unfold msg_refined_raft_net_invariant_do_leader, msg_refined_raft_net_invariant_do_leader'.
+      intuition eauto.
+  Qed.
+
+  Lemma msg_refined_raft_net_invariant_do_generic_server'_weak :
+    forall net,
+      msg_refined_raft_net_invariant_do_generic_server net ->
+      msg_refined_raft_net_invariant_do_generic_server' net.
+    Proof.
+      unfold msg_refined_raft_net_invariant_do_generic_server, msg_refined_raft_net_invariant_do_generic_server'.
+      intuition eauto.
+  Qed.
+
+  Lemma msg_refined_raft_net_invariant_reboot'_weak :
+    forall net,
+      msg_refined_raft_net_invariant_reboot net ->
+      msg_refined_raft_net_invariant_reboot' net.
+    Proof.
+      unfold msg_refined_raft_net_invariant_reboot, msg_refined_raft_net_invariant_reboot'.
+      intuition eauto.
+  Qed.
+
+  Lemma msg_refined_raft_net_invariant_subset'_weak :
+    forall net,
+      msg_refined_raft_net_invariant_state_same_packet_subset net ->
+      msg_refined_raft_net_invariant_state_same_packet_subset' net.
+  Proof.
+    unfold msg_refined_raft_net_invariant_state_same_packet_subset, msg_refined_raft_net_invariant_state_same_packet_subset'.
+    intuition eauto.
+  Qed.
+
+
   Class raft_msg_refinement_interface : Prop :=
     {
       msg_refined_raft_net_invariant :
