@@ -1370,7 +1370,7 @@ Section StateMachineSafetyProof.
       msg_refined_raft_intermediate_reachable net ->
       (forall h', st' h' = update (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
-                         In p' (send_packets h (add_ghost_msg (params := ghost_log_params) h (nwState net h) l))) ->
+                         In p' (send_packets h (add_ghost_msg (params := ghost_log_params) h (gd, d) l))) ->
       commit_invariant (mkNetwork ps' st').
   Proof.
     unfold msg_refined_raft_net_invariant_client_request, commit_invariant.
@@ -1927,7 +1927,7 @@ Section StateMachineSafetyProof.
       (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' ->
              In p' (xs ++ ys) \/ p' = mkPacket (pDst p) (pSrc p)
-                                             (write_ghost_log (pDst p) (nwState net (pDst p)), m)) ->
+                                             (write_ghost_log (pDst p) (gd, d), m)) ->
       commit_invariant (mkNetwork ps' st').
   Proof.
     unfold commit_invariant.
@@ -2686,7 +2686,7 @@ Section StateMachineSafetyProof.
       nwState net h = (gd, d) ->
       (forall h', st' h' = update (nwState net) h (gd, d') h') ->
       (forall p,
-          In p ps' -> In p (nwPackets net) \/ In p (send_packets h (add_ghost_msg (params := ghost_log_params) h (gd, d) ms))) ->
+          In p ps' -> In p (nwPackets net) \/ In p (send_packets h (add_ghost_msg (params := ghost_log_params) h (gd, d') ms))) ->
       commit_invariant {| nwPackets := ps'; nwState := st' |}.
   Proof.
     unfold commit_invariant.
@@ -2754,9 +2754,6 @@ Section StateMachineSafetyProof.
         find_copy_eapply_lem_hyp doLeader_message_term; eauto.
         unfold write_ghost_log in *.
         simpl in *.
-        match goal with
-        | [ H : In _ (log _) |- _ ] => erewrite <- doLeader_same_log in H by eauto
-        end.
         unfold commit_invariant_host in *.
         simpl in *.
         specialize (Hhostpost h e).
