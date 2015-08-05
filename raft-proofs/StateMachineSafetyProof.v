@@ -24,6 +24,9 @@ Require Import MatchIndexAllEntriesInterface.
 Require Import LeadersHaveLeaderLogsInterface.
 Require Import LeaderSublogInterface.
 Require Import TermsAndIndicesFromOneLogInterface.
+Require Import GhostLogCorrectInterface.
+Require Import GhostLogsLogPropertiesInterface.
+Require Import GhostLogLogMatchingInterface.
 
 Require Import RefinedLogMatchingLemmasInterface.
 
@@ -53,6 +56,9 @@ Section StateMachineSafetyProof.
   Context {lci : leader_completeness_interface}.
   Context {lsi : leader_sublog_interface}.
   Context {taifoli : terms_and_indices_from_one_log_interface}.
+  Context {glci : ghost_log_correct_interface}.
+  Context {lphogli : log_properties_hold_on_ghost_logs_interface}.
+  Context {glemi : ghost_log_entries_match_interface}.
 
   Context {rmri : raft_msg_refinement_interface}.
 
@@ -1539,6 +1545,26 @@ Section StateMachineSafetyProof.
     end.
   Qed.
 
+  Definition lifted_entries_sorted_nw (net : ghost_log_network) :=
+    forall p t n pli plt es ci,
+      In p (nwPackets net) ->
+      snd (pBody p) = AppendEntries t n pli plt es ci ->
+      sorted es.
+
+  Lemma lifted_entries_sorted_nw_invariant :
+    forall net,
+      msg_refined_raft_intermediate_reachable net ->
+      lifted_entries_sorted_nw net.
+  Proof.
+    intros.
+    pose proof msg_lift_prop _ entries_sorted_nw_invariant.
+    find_copy_apply_hyp_hyp.
+    unfold entries_sorted_nw, lifted_entries_sorted_nw in *.
+    intros.
+    find_apply_lem_hyp in_mgv_ghost_packet.
+    eapply_prop_hyp In In; eauto.
+  Qed.
+
   Lemma commit_invariant_append_entries :
     forall xs p ys (net : ghost_log_network) st' ps' gd d m t n pli plt es ci,
       handleAppendEntries (pDst p) (snd (nwState net (pDst p))) t n pli plt es ci = (d, m) ->
@@ -1555,7 +1581,10 @@ Section StateMachineSafetyProof.
       commit_invariant (mkNetwork ps' st').
   Proof.
     unfold commit_invariant.
-    intros. split.
+    intros.
+
+    assert (In p (nwPackets net)) by (repeat find_rewrite; auto with *).
+    split.
     - break_and.
        match goal with
        | [ H : commit_invariant_host _ |- _ ] =>
@@ -1564,19 +1593,23 @@ Section StateMachineSafetyProof.
        end.
        simpl. intros.
        eapply lifted_committed_ext; eauto.
-       repeat find_higher_order_rewrite.
+
+       match goal with
+       | [ H : forall _, _ = _ |- _ ] => rewrite H in *
+       end.
        update_destruct.
        + (* e is in h's log *)
-         eapply handleAppendEntries_preserves_commit; eauto.
-
          find_copy_apply_lem_hyp handleAppendEntries_log_detailed.
          break_or_hyp.
          * break_and. repeat find_rewrite.
-           find_copy_apply_lem_hyp handleAppendEntries_currentTerm_le.
-           eapply lifted_committed_monotonic; eauto.
+           eapply lifted_committed_monotonic; [
+               solve [eapply handleAppendEntries_preserves_commit; eauto] |
+               solve [eauto using handleAppendEntries_currentTerm_le] ].
          * { break_or_hyp; repeat break_and.
              - (* beginning of time case *)
-               repeat find_rewrite.
+               repeat match goal with
+               | [ H : _ <= _, H': _ |- _ ] => rewrite H' in H
+               end.
                find_apply_lem_hyp NPeano.Nat.max_le. break_or_hyp.
                + (* my log is just the entries in the incoming AE.
                     so e was in the incoming entries.
@@ -1617,34 +1650,116 @@ Section StateMachineSafetyProof.
                    omega.
                  * assert (e = e') by (eapply uniqueIndices_elim_eq; eauto using sorted_uniqueIndices).
                    subst.
-                   eapply lifted_committed_monotonic; eauto.
+                   eapply lifted_committed_monotonic; [
+                       solve [eapply handleAppendEntries_preserves_commit; eauto] |
+                       solve [eauto using handleAppendEntries_currentTerm_le] ].
                + (* eIndex e <= incoming ci.
                     result follows by the network invariant. *)
-                 admit.
+                 match goal with
+                 | [ H : commit_invariant_nw _ |- _ ] =>
+                   rename H into Hnet; unfold commit_invariant_nw in *
+                 end.
+                 eapply_prop_hyp In In; [| eauto | | eauto using Min.min_glb_l].
+                 * eapply handleAppendEntries_preserves_commit; eauto.
+                 * find_eapply_lem_hyp ghost_log_correct_invariant; eauto.
+                   conclude_using eauto.
+                   { intuition.
+                     - match goal with
+                       | [ H : In _ _, H' : _ |- _ ] => rewrite H' in H
+                       end. auto.
+                     - break_exists. break_and.
+                       pose proof log_properties_hold_on_ghost_logs_invariant _ $(eauto)$ as Hprop.
+                       unfold log_properties_hold_on_ghost_logs in *.
+                       unfold msg_log_property in *.
+                       specialize (Hprop (fun l => forall e, In e l -> eIndex e > 0) p).
+                       conclude_using ltac:(intros; eapply lifted_entries_gt_0_invariant; eauto).
+                       concludes. simpl in *.
+                       find_apply_hyp_hyp.
+                       omega.
+                   }
              - (* middle of time case *)
-               repeat find_rewrite.
                break_exists_name ple. break_and.
+               repeat match goal with
+                      | [ H : _ <= _, H': _ |- _ ] => rewrite H' in H
+                      end.
                find_apply_lem_hyp NPeano.Nat.max_le. break_or_hyp.
                + (* eIndex e <= old commit index *)
+                 repeat find_rewrite.
                  match goal with
                  | [ H : In e (_ ++ _) |- _ ] => apply in_app_or in H; destruct H
                  end.
                  * (* e is new *)
-                   (* same argument as BoT case for new entry <= old commit index.
-                      find way to factor this out? *)
-                   admit.
+                   { assert (eIndex e > 0) by (eapply lifted_entries_gt_0_nw_invariant; eauto).
+                     assert (exists e', eIndex e' = eIndex e /\ In e' (log (snd (nwState net (pDst p))))).
+                     {
+                       eapply contiguous_range_exact_lo_elim_exists.
+                       - eapply lifted_entries_contiguous_invariant. auto.
+                       - split.
+                         + auto.
+                         + eapply le_trans; [eauto|].
+                           eapply_prop lifted_maxIndex_sanity.
+                     }
+                     break_exists_name e'.
+                     break_and.
+                     assert (lifted_committed net e' (currentTerm (snd (nwState net (pDst p))))) as He'committed
+                         by (apply Hhost; [auto|congruence]) .
+
+                     find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
+                     concludes.
+                     assert (sorted es) by
+                         (eapply lifted_entries_sorted_nw_invariant; eauto).
+                     assert (contiguous_range_exact_lo es (eIndex ple)) by
+                         (eapply lifted_entries_contiguous_nw_invariant; eauto).
+                     find_eapply_lem_hyp contiguous_range_exact_lo_elim_lt; eauto.
+                     intuition.
+                     * omega.
+                     * omega.
+                     * match goal with
+                       | [ H : _ |- _ ] => eapply maxIndex_is_max in H; eauto with *; [idtac]
+                       end.
+                       omega.
+                     * assert (e = e') by (eapply uniqueIndices_elim_eq; eauto using sorted_uniqueIndices).
+                       subst.
+                       eapply lifted_committed_monotonic; [
+                           solve [eapply handleAppendEntries_preserves_commit; eauto] |
+                           solve [eauto using handleAppendEntries_currentTerm_le] ].
+                   }
                  * (* e is old *)
                    { eapply lifted_committed_monotonic.
-                     - eapply Hhost with (h := pDst p); eauto using removeAfterIndex_in.
-                     - auto.
+                     - eapply handleAppendEntries_preserves_commit; eauto.
+                       eapply Hhost with (h := pDst p); eauto using removeAfterIndex_in.
+                     - eauto using handleAppendEntries_currentTerm_le.
                    }
                + (* eIndex e <= new commit index *)
                  match goal with
-                 | [ H : In e (_ ++ _) |- _ ] => apply in_app_or in H; destruct H
+                 | [ H : In e _ |- _ ] =>
+                   repeat match goal with
+                   | [ H' : _ |- _ ] => rewrite H' in H
+                   end;
+                     apply in_app_or in H; destruct H
                  end.
                  * (* e is new *)
                    (* follows from network invariant *)
-                   admit.
+                   { match goal with
+                     | [ H : commit_invariant_nw _ |- _ ] =>
+                       rename H into Hnet; unfold commit_invariant_nw in *
+                     end.
+                     match goal with
+                     | [ H : In _ (nwPackets _), H' : _ |- _ ] => eapply H' in H
+                     end; [| eauto | | eauto using Min.min_glb_l].
+                     * eapply handleAppendEntries_preserves_commit; eauto.
+                     * find_copy_eapply_lem_hyp ghost_log_correct_invariant; eauto.
+                       conclude_using eauto.
+                       { intuition.
+                         - match goal with
+                           | [ H : In _ _, H' : _ |- _ ] => rewrite H' in H
+                           end. auto.
+                         - break_exists_name gple. break_and.
+                           subst.
+                           eauto using findGtIndex_in.
+                       }
+                   }
+
                  * (* e is old *)
                    (* eIndex e <= pli
                       by ghost log contiguous, exists e' in ghost log such that eIndex e = eIndex e'.
@@ -1652,7 +1767,57 @@ Section StateMachineSafetyProof.
                       by ghost log matching, e = e'.
                       thus e is committed.
                     *)
-                   admit.
+                   assert (eIndex e <= eIndex ple) by
+                       (eapply removeAfterIndex_In_le; eauto using msg_lifted_sorted_host).
+                   pose proof log_properties_hold_on_ghost_logs_invariant _ $(eauto)$ as Hprop.
+                   unfold log_properties_hold_on_ghost_logs in *.
+                   unfold msg_log_property in *.
+                   specialize (Hprop (fun l => contiguous_range_exact_lo l 0) p).
+                   conclude_using ltac:(intros; eapply lifted_entries_contiguous_invariant; eauto).
+                   concludes.
+                   simpl in *.
+
+                   find_copy_eapply_lem_hyp ghost_log_correct_invariant; eauto.
+                   conclude_using eauto.
+                   { intuition.
+                     - subst. find_apply_lem_hyp removeAfterIndex_in.
+                       pose proof lifted_entries_gt_0_invariant _ $(eauto)$ _ _ $(eauto)$.
+                       omega.
+                     - break_exists_name gple. break_and.
+                       assert (exists e', eIndex e' = eIndex e /\ In e' (fst (pBody p))).
+                       {
+                         eapply contiguous_range_exact_lo_elim_exists; eauto.
+                         split.
+                         + eapply lifted_entries_gt_0_invariant; eauto using removeAfterIndex_in.
+                         + eapply le_trans with (m := eIndex gple); try omega.
+                           apply maxIndex_is_max; auto.
+                           pose proof log_properties_hold_on_ghost_logs_invariant _ $(eauto)$ as Hsort.
+                           unfold log_properties_hold_on_ghost_logs in *.
+                           unfold msg_log_property in *.
+                           specialize (Hsort sorted p msg_lifted_sorted_host).
+                           auto.
+                       }
+                       break_exists_name e'. break_and.
+                       find_apply_lem_hyp removeAfterIndex_in.
+                       assert (e = e').
+                       {
+                         eapply uniqueIndices_elim_eq;
+                         eauto using msg_lifted_sorted_host, sorted_uniqueIndices.
+                         pose proof ghost_log_entries_match_invariant _ $(eauto)$ (pDst p) _ $(eauto)$
+                           as Hem.
+                         specialize (Hem ple gple e').
+                         repeat concludes. intuition.
+                       }
+                       subst.
+
+
+                       match goal with
+                       | [ H : commit_invariant_nw _ |- _ ] =>
+                         rename H into Hnet; unfold commit_invariant_nw in *
+                       end.
+                       eapply handleAppendEntries_preserves_commit; eauto.
+                       eapply Hnet; eauto using Min.min_glb_l.
+                   }
            }
        + eapply handleAppendEntries_preserves_commit; eauto.
     - (* nw invariant preserved *)
