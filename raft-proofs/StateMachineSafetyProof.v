@@ -2613,57 +2613,6 @@ Section StateMachineSafetyProof.
     eauto.
   Qed.
 
-  Lemma commitIndex_anywhere :
-    forall net leader h e,
-      msg_refined_raft_intermediate_reachable net ->
-      type (snd (nwState net leader)) = Leader ->
-      In e (log (snd (nwState net leader))) ->
-      eIndex e <= commitIndex (snd (nwState net h)) ->
-      currentTerm (snd (nwState net h)) <= currentTerm (snd (nwState net leader)) ->
-      lifted_maxIndex_sanity net ->
-      commit_invariant_host net ->
-      In e (log (snd (nwState net h))).
-  Proof.
-    intros.
-
-    unfold lifted_maxIndex_sanity in *. break_and.
-    pose proof lifted_entries_contiguous_invariant _ $(eauto)$ h.
-    pose proof contiguous_range_exact_lo_elim_exists _ _ (eIndex e) $(eauto)$
-         $(split; [solve [eapply lifted_entries_gt_0_invariant; eauto]| solve[eauto using le_trans]])$.
-    break_exists_name e'. break_and.
-    match goal with
-    | [ H : commit_invariant_host _ |- _ ] =>
-      unfold commit_invariant_host in H;
-        specialize (H h e' $(auto)$ $(repeat find_rewrite; auto)$)
-    end.
-    unfold lifted_committed in *. break_exists_name h'. break_exists_name e''. break_and.
-    assert (In e'' (log (snd (nwState net leader)))).
-    {
-      assert (eTerm e'' <= currentTerm (snd (nwState net leader))) by eauto using le_trans.
-      find_apply_lem_hyp le_lt_or_eq. break_or_hyp.
-      - find_copy_apply_lem_hyp lifted_leaders_have_leaderLogs_invariant; auto.
-        break_exists_name ll.
-        find_eapply_lem_hyp lifted_leaderLog_in_log; eauto.
-        pose proof lifted_leader_completeness_invariant _ $(eauto)$.
-        unfold lifted_leader_completeness in *. break_and.
-        eapply_prop lifted_leader_completeness_directly_committed; eauto.
-      - pose proof msg_lifted_leader_sublog_host_invariant _ $(eauto)$.
-        unfold msg_lifted_leader_sublog_host in *.
-        eauto.
-    }
-
-    pose proof lifted_entries_match_invariant _  h' leader $(eauto)$ e'' e'' e'.
-    repeat concludes.
-    intuition.
-    assert (e = e').
-    {
-      eapply uniqueIndices_elim_eq;
-      eauto  using sorted_uniqueIndices,  msg_lifted_sorted_host.
-    }
-    subst.
-    auto.
-  Qed.
-
   Lemma lifted_terms_and_indices_from_one_log : forall net h,
     refined_raft_intermediate_reachable net ->
     terms_and_indices_from_one (log (snd (nwState net h))).
