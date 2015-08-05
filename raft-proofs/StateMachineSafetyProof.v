@@ -1252,14 +1252,14 @@ Section StateMachineSafetyProof.
   Qed.
 
   Lemma hCR_preserves_committed :
-    forall (net net' : network (params := raft_refined_multi_params)) h client id c out d l e t,
+    forall (net net' : ghost_log_network) h client id c out d l e t,
       handleClientRequest h (snd (nwState net h)) client id c = (out, d, l) ->
       (forall h', nwState net' h' = update (nwState net) h (update_elections_data_client_request h (nwState net h) client id c, d) h') ->
-      committed net e t ->
-      committed net' e t.
+      lifted_committed net e t ->
+      lifted_committed net' e t.
   Proof.
     intros.
-    eapply committed_log_allEntries_preserved; simpl; eauto.
+    eapply lifted_committed_log_allEntries_preserved; simpl; eauto.
     - intros. find_higher_order_rewrite.
       update_destruct; eauto using handleClientRequest_preservers_log.
     - intros. find_higher_order_rewrite.
@@ -1381,7 +1381,18 @@ Section StateMachineSafetyProof.
           + simpl. intros. find_higher_order_rewrite.
             update_destruct; eauto using update_elections_data_client_request_preserves_allEntries.
       }
-  Admitted.
+    - unfold commit_invariant_nw in *.
+      simpl. intros.
+      find_apply_hyp_hyp.
+      intuition.
+      + eapply hCR_preserves_committed; eauto. simpl. subst. auto.
+      + unfold send_packets in *.
+        do_in_map.
+        unfold add_ghost_msg in *.
+        do_in_map.
+        subst. simpl in *.
+        exfalso. eapply handleClientRequest_no_append_entries; eauto 10.
+  Qed.
 
   Lemma commit_invariant_timeout :
     msg_refined_raft_net_invariant_timeout commit_invariant.
