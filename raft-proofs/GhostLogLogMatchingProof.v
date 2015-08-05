@@ -254,22 +254,53 @@ Section GhostLogLogMatching.
   Hint Resolve entries_match_sym.
     
   Lemma ghost_log_entries_match_append_entries :
-    msg_refined_raft_net_invariant_append_entries ghost_log_entries_match.
+    msg_refined_raft_net_invariant_append_entries' ghost_log_entries_match.
   Proof.
     red.
     split; red; intros; simpl in *; intuition;
     unfold ghost_log_entries_match in *; break_and.
     - repeat find_higher_order_rewrite; destruct_update; simpl in *; eauto.
-      + find_apply_hyp_hyp. intuition.
+      + match goal with
+        | [ H : msg_refined_raft_intermediate_reachable (mkNetwork _ _) |- _ ] => clear H
+        end.
+        find_apply_hyp_hyp. intuition.
         * find_eapply_lem_hyp handleAppendEntries_ghost_log; eauto.
           intuition; repeat find_rewrite; eauto.
-        *  find_eapply_lem_hyp handleAppendEntries_ghost_log; eauto.
-           intuition; repeat find_rewrite; eauto.
-           simpl. unfold write_ghost_log. eauto.
+        * subst. simpl in *.
+          find_eapply_lem_hyp handleAppendEntries_ghost_log; eauto.
       + find_apply_hyp_hyp. intuition; eauto.
         subst. simpl in *. unfold write_ghost_log.
-        eapply lifted_entries_match_invariant; eauto.
-    - repeat find_apply_hyp_hyp; intuition; subst; simpl in *; eauto.
+        simpl.
+        replace d with (snd (nwState {| nwPackets := ps'; nwState := st' |} (pDst p))) by
+            (simpl; find_higher_order_rewrite; rewrite_update; reflexivity).
+        replace (nwState net h) with (nwState {| nwPackets := ps'; nwState := st' |} h)by
+            (simpl; find_higher_order_rewrite; rewrite_update; reflexivity).
+        apply lifted_entries_match_invariant; auto.
+    - find_apply_hyp_hyp.
+      find_apply_hyp_hyp.
+      intuition.
+      + eauto.
+      + subst. simpl in *.
+        unfold write_ghost_log.
+        simpl.
+        match goal with
+        | [ H : context [handleAppendEntries] |- _ ] =>
+          eapply handleAppendEntries_ghost_log in H; eauto
+        end.
+        intuition.
+        * find_rewrite. eauto.
+        * find_rewrite. eauto.
+      + subst. simpl in *.
+        unfold write_ghost_log.
+        simpl.
+        match goal with
+        | [ H : context [handleAppendEntries] |- _ ] =>
+          eapply handleAppendEntries_ghost_log in H; eauto
+        end.
+        intuition.
+        * find_rewrite. eauto.
+        * find_rewrite. eauto.
+      + subst. simpl in *. apply entries_match_refl.
   Qed.
 
   Ltac packet_simpl :=
@@ -288,18 +319,34 @@ Section GhostLogLogMatching.
     - repeat find_higher_order_rewrite; destruct_update; simpl in *; eauto.
       + find_apply_hyp_hyp. intuition.
         * erewrite handleAppendEntriesReply_log; eauto.
-        * erewrite handleAppendEntriesReply_log; eauto.
-          packet_simpl. eauto.
+        * packet_simpl. apply entries_match_refl.
       + find_apply_hyp_hyp. intuition.
         * eauto.
         * packet_simpl.
+          erewrite handleAppendEntriesReply_log with (st'0 := d) by eauto.
           eapply lifted_entries_match_invariant; eauto.
-    - repeat find_apply_hyp_hyp; intuition; eauto;
-      repeat packet_simpl; eauto.
+    - find_apply_hyp_hyp.
+      find_apply_hyp_hyp.
+      intuition.
+      + eauto.
+      + subst. simpl in *.
+        do_in_map. subst. simpl in *.
+        unfold add_ghost_msg in *. do_in_map. subst. simpl in *.
+        erewrite handleAppendEntriesReply_same_log by eauto.
+        eauto.
+      + subst. simpl in *.
+        do_in_map. subst. simpl in *.
+        unfold add_ghost_msg in *. do_in_map. subst. simpl in *.
+        erewrite handleAppendEntriesReply_same_log by eauto.
+        eauto.
+      + subst. simpl in *.
+        repeat do_in_map. subst. simpl in *.
+        unfold add_ghost_msg in *. repeat do_in_map. subst. simpl in *.
+        auto.
   Qed.
 
   Lemma ghost_log_entries_match_request_vote :
-    msg_refined_raft_net_invariant_request_vote ghost_log_entries_match.
+    msg_refined_raft_net_invariant_request_vote' ghost_log_entries_match.
   Proof.
     red.
     split; red; intros; simpl in *; intuition;
@@ -307,14 +354,19 @@ Section GhostLogLogMatching.
     - repeat find_higher_order_rewrite; destruct_update; simpl in *; eauto.
       + find_apply_hyp_hyp. intuition.
         * erewrite handleRequestVote_log; eauto.
-        * erewrite handleRequestVote_log; eauto.
-          packet_simpl. eauto.
+        * packet_simpl. auto.
       + find_apply_hyp_hyp. intuition.
         * eauto.
         * packet_simpl.
+          erewrite handleRequestVote_log with (st'0 := d) by eauto.
           eapply lifted_entries_match_invariant; eauto.
-    - repeat find_apply_hyp_hyp; intuition; eauto;
-      repeat packet_simpl; eauto.
+    - find_apply_hyp_hyp.
+      find_apply_hyp_hyp.
+      intuition.
+      + eauto.
+      + subst. simpl in *. erewrite handleRequestVote_log; eauto.
+      + subst. simpl in *. erewrite handleRequestVote_log; eauto.
+      + subst. simpl in *. erewrite handleRequestVote_log; eauto.
   Qed.
 
   Lemma ghost_log_entries_match_request_vote_reply :
@@ -380,8 +432,10 @@ Section GhostLogLogMatching.
           repeat find_rewrite.
           find_copy_eapply_lem_hyp lifted_allEntries_leader_sublog_invariant; eauto.
           apply in_map_iff. eexists; intuition; eauto; auto.
-    - repeat find_apply_hyp_hyp; intuition; eauto;
-      repeat packet_simpl; eauto.
+    - find_apply_hyp_hyp.
+      find_apply_hyp_hyp.
+      find_copy_apply_lem_hyp handleClientRequest_packets.
+      subst. simpl in *. intuition.
   Qed.
 
   Lemma ghost_log_entries_match_timeout :
@@ -393,13 +447,22 @@ Section GhostLogLogMatching.
     - repeat find_higher_order_rewrite; destruct_update; simpl in *; eauto.
       + find_apply_hyp_hyp. intuition.
         * erewrite handleTimeout_log_same; eauto.
-        * erewrite handleTimeout_log_same; eauto.
-          packet_simpl. eauto.
+        * packet_simpl. eauto.
       + find_apply_hyp_hyp. intuition.
         packet_simpl.
+        erewrite handleTimeout_log_same with (d' := d) by eauto.
         eapply lifted_entries_match_invariant; eauto.
-    - repeat find_apply_hyp_hyp; intuition; eauto;
-      repeat packet_simpl; eauto.
+    - find_apply_hyp_hyp.
+      find_apply_hyp_hyp.
+      intuition.
+      + do_in_map. subst. unfold add_ghost_msg in *. do_in_map.
+        subst. simpl in *.
+        erewrite handleTimeout_log_same; eauto.
+      + do_in_map. subst. unfold add_ghost_msg in *. do_in_map.
+        subst. simpl in *.
+        erewrite handleTimeout_log_same; eauto.
+      + repeat do_in_map. subst. unfold add_ghost_msg in *. repeat do_in_map.
+        subst. simpl in *. auto.
   Qed.
 
   Lemma ghost_log_entries_match_do_leader :
@@ -417,13 +480,22 @@ Section GhostLogLogMatching.
     - repeat find_higher_order_rewrite; destruct_update; simpl in *; eauto.
       + find_apply_hyp_hyp. intuition.
         * erewrite doLeader_log; eauto.
-        * erewrite doLeader_log; eauto.
-          packet_simpl. eauto.
+        * packet_simpl. eauto.
       + find_apply_hyp_hyp. intuition.
         packet_simpl.
+        erewrite doLeader_log with (st'0 := d') by eauto.
         eapply lifted_entries_match_invariant; eauto.
-    - repeat find_apply_hyp_hyp; intuition; eauto;
-      repeat packet_simpl; eauto.
+    - find_apply_hyp_hyp.
+      find_apply_hyp_hyp.
+      intuition.
+      + do_in_map. subst. unfold add_ghost_msg in *. do_in_map.
+        subst. simpl in *.
+        erewrite doLeader_log; eauto.
+      + do_in_map. subst. unfold add_ghost_msg in *. do_in_map.
+        subst. simpl in *.
+        erewrite doLeader_log; eauto.
+      + repeat do_in_map. subst. unfold add_ghost_msg in *. repeat do_in_map.
+        subst. simpl in *. auto.
   Qed.
 
   Lemma ghost_log_entries_match_do_generic_server :
@@ -441,13 +513,22 @@ Section GhostLogLogMatching.
     - repeat find_higher_order_rewrite; destruct_update; simpl in *; eauto.
       + find_apply_hyp_hyp. intuition.
         * erewrite doGenericServer_log; eauto.
-        * erewrite doGenericServer_log; eauto.
-          packet_simpl. eauto.
+        * packet_simpl. eauto.
       + find_apply_hyp_hyp. intuition.
         packet_simpl.
+        erewrite doGenericServer_log with (st'0 := d') by eauto.
         eapply lifted_entries_match_invariant; eauto.
-    - repeat find_apply_hyp_hyp; intuition; eauto;
-      repeat packet_simpl; eauto.
+    - find_apply_hyp_hyp.
+      find_apply_hyp_hyp.
+      intuition.
+      + do_in_map. subst. unfold add_ghost_msg in *. do_in_map.
+        subst. simpl in *.
+        erewrite doGenericServer_log; eauto.
+      + do_in_map. subst. unfold add_ghost_msg in *. do_in_map.
+        subst. simpl in *.
+        erewrite doGenericServer_log; eauto.
+      + repeat do_in_map. subst. unfold add_ghost_msg in *. repeat do_in_map.
+        subst. simpl in *. auto.
   Qed.
 
   Lemma ghost_log_entries_match_reboot :
@@ -483,18 +564,25 @@ Section GhostLogLogMatching.
       ghost_log_entries_match net.
   Proof.
     intros.
-    apply msg_refined_raft_net_invariant; auto.
+    apply msg_refined_raft_net_invariant'; auto.
     - apply ghost_log_entries_match_init.
-    - apply ghost_log_entries_match_client_request.
-    - apply ghost_log_entries_match_timeout.
+    - apply msg_refined_raft_net_invariant_client_request'_weak.
+      apply ghost_log_entries_match_client_request.
+    - apply msg_refined_raft_net_invariant_timeout'_weak.
+      apply ghost_log_entries_match_timeout.
     - apply ghost_log_entries_match_append_entries.
-    - apply ghost_log_entries_match_append_entries_reply.
+    - apply msg_refined_raft_net_invariant_append_entries_reply'_weak.
+      apply ghost_log_entries_match_append_entries_reply.
     - apply ghost_log_entries_match_request_vote.
-    - apply ghost_log_entries_match_request_vote_reply.
-    - apply ghost_log_entries_match_do_leader.
-    - apply ghost_log_entries_match_do_generic_server.
-    - apply ghost_log_entries_match_state_same_packet_subset.
-    - apply ghost_log_entries_match_reboot.
+    - apply msg_refined_raft_net_invariant_request_vote_reply'_weak.
+      apply ghost_log_entries_match_request_vote_reply.
+    - apply msg_refined_raft_net_invariant_do_leader'_weak.
+      apply ghost_log_entries_match_do_leader.
+    - apply msg_refined_raft_net_invariant_do_generic_server'_weak.
+      apply ghost_log_entries_match_do_generic_server.
+    - apply msg_refined_raft_net_invariant_subset'_weak.
+      apply ghost_log_entries_match_state_same_packet_subset.
+    - apply msg_refined_raft_net_invariant_reboot'_weak. apply ghost_log_entries_match_reboot.
   Qed.
 
   Instance glemi : ghost_log_entries_match_interface.
