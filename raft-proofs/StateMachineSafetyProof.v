@@ -27,6 +27,8 @@ Require Import TermsAndIndicesFromOneLogInterface.
 Require Import GhostLogCorrectInterface.
 Require Import GhostLogsLogPropertiesInterface.
 Require Import GhostLogLogMatchingInterface.
+Require Import TransitiveCommitInterface.
+Require Import TermSanityInterface.
 
 Require Import RefinedLogMatchingLemmasInterface.
 
@@ -59,7 +61,9 @@ Section StateMachineSafetyProof.
   Context {glci : ghost_log_correct_interface}.
   Context {lphogli : log_properties_hold_on_ghost_logs_interface}.
   Context {glemi : ghost_log_entries_match_interface}.
-
+  Context {tci : transitive_commit_interface}.
+  Context {tsi : term_sanity_interface}.
+  
   Context {rmri : raft_msg_refinement_interface}.
 
   Lemma exists_deghost_packet :
@@ -161,6 +165,36 @@ Section StateMachineSafetyProof.
     eapply msg_lift_prop.
     - auto using lifted_sorted_host.
     - auto.
+  Qed.
+  
+  Lemma lifted_sorted_network :
+    forall net p t n pli plt es ci,
+      refined_raft_intermediate_reachable net ->
+      In p (nwPackets net) ->
+      pBody p = AppendEntries t n pli plt es ci ->
+      sorted es.
+  Proof.
+    intros. eapply entries_sorted_nw_invariant; eauto.
+  Qed.
+
+  Definition lifted_no_entries_past_current_term_host net :=
+    forall (h : name) e,
+      In e (log (snd (nwState net h))) ->
+      eTerm e <= currentTerm (snd (nwState net h)).
+
+  Lemma lifted_no_entries_past_current_term_host_invariant :
+    forall (net : @network _ raft_msg_refined_multi_params),
+      msg_refined_raft_intermediate_reachable net ->
+      lifted_no_entries_past_current_term_host net.
+  Proof.
+    intros.
+    enough (no_entries_past_current_term_host (deghost (mgv_deghost net))) by
+        (unfold no_entries_past_current_term_host, lifted_no_entries_past_current_term_host, deghost, mgv_deghost in *;
+         simpl in *;
+         repeat break_match; simpl in *; auto).
+    apply msg_lift_prop_all_the_way; eauto.
+    intros.
+    eapply no_entries_past_current_term_invariant; eauto.
   Qed.
 
   Lemma all_the_way_deghost_spec :
@@ -354,6 +388,7 @@ Section StateMachineSafetyProof.
     - rewrite deghost_spec. eauto.
     - auto.
   Qed.
+
 
   Lemma msg_lifted_sms_nw :
     forall (net : ghost_log_network) h p t leaderId prevLogIndex prevLogTerm entries leaderCommit e,
@@ -1468,7 +1503,56 @@ Section StateMachineSafetyProof.
     eapply state_machine_safety'_invariant; eauto.
     eapply msg_lift_prop; eauto.
   Qed.
+
+  Lemma lifted_entries_sorted_nw :
+    forall net p t n pli plt es ci,
+      msg_refined_raft_intermediate_reachable net ->
+      In p (nwPackets net) ->
+      snd (pBody p) = AppendEntries t n pli plt es ci ->
+      sorted es.
+  Proof.
+    intros.
+    find_apply_lem_hyp in_mgv_ghost_packet.
+    match goal with
+      | _ : snd (pBody ?p) = ?x |- _ =>
+        assert (pBody (@mgv_deghost_packet _ _ _ ghost_log_params p) = x)
+          by (rewrite pBody_mgv_deghost_packet; auto)
+    end.
+    find_eapply_lem_hyp entries_sorted_nw_invariant; eauto.
+    eapply msg_lift_prop; eauto.
+  Qed.
       
+  Lemma update_elections_data_appendEntries_preserves_allEntries' :
+    forall st h t n pli plt es ci x,
+      In x (allEntries (fst st)) ->
+      In x (allEntries (update_elections_data_appendEntries h st t n pli plt es ci)).
+  Proof.
+    unfold update_elections_data_appendEntries.
+    intros. break_let. break_match; auto.
+    break_if; auto.
+    simpl. intuition.
+  Qed.
+
+  Lemma lifted_transitive_commit_invariant :
+    forall net h e e' t,
+      msg_refined_raft_intermediate_reachable net ->
+      In e (log (snd (nwState net h))) ->
+      In e' (log (snd (nwState net h))) ->
+      eIndex e <= eIndex e' ->
+      lifted_committed net e' t ->
+      lifted_committed net e t.
+  Proof.
+    intros.
+    apply committed_lifted_committed.
+    find_apply_lem_hyp lifted_committed_committed.
+    repeat match goal with
+             | H : _ |- _ =>
+               rewrite <- msg_deghost_spec with (net0 := net) in H
+           end.
+    eapply transitive_commit_invariant; eauto.
+    eapply msg_lift_prop; eauto.
+  Qed.
+  
   Lemma handleAppendEntries_preserves_commit :
     forall net net' h p t n pli plt es ci d m e t',
       msg_refined_raft_intermediate_reachable net ->
@@ -1481,7 +1565,208 @@ Section StateMachineSafetyProof.
       lifted_committed net e t' ->
       lifted_committed net' e t'.
   Proof.
-  Admitted.
+    intros.
+    unfold lifted_committed in *.
+    break_exists_name host. break_exists_name e'.
+    exists host, e'.
+    intuition.
+    - (* directly committed doesn't change *)
+      unfold lifted_directly_committed in *.
+      break_exists_exists; intuition.
+      find_higher_order_rewrite.
+      update_destruct; eauto using update_elections_data_appendEntries_preserves_allEntries'.
+    - (* e is still around *)
+      find_higher_order_rewrite.
+      update_destruct; simpl in *; eauto.
+      assert (lifted_committed net e (currentTerm (snd (nwState net host)))) by
+            (unfold lifted_committed;
+             exists host, e'; intuition;
+             eapply lifted_no_entries_past_current_term_host_invariant; eauto).
+      find_eapply_lem_hyp handleAppendEntries_log_detailed. intuition; repeat find_rewrite; eauto.
+      + (* pli = 0, no entry at maxIndex es *)
+        find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
+        assert (eIndex e > 0) by (eapply lifted_entries_gt_0_invariant; eauto).
+        intuition; try omega.
+        find_copy_eapply_lem_hyp msg_lifted_sorted_host.
+        exfalso.
+	enough (exists e, eIndex e = (maxIndex es) /\ In e (log (snd (nwState net host)))) by
+            (break_exists;
+             intuition; eapply findAtIndex_None; eauto).
+        eapply contiguous_range_exact_lo_elim_exists;
+          [apply lifted_entries_contiguous_invariant; auto|].
+        intuition.
+        * find_apply_lem_hyp maxIndex_non_empty.
+          break_exists; intuition; repeat find_rewrite.
+          enough (eIndex x > 0) by omega.
+          eapply lifted_entries_contiguous_nw_invariant; eauto.
+        * enough (eIndex e <= maxIndex (log (snd (nwState net host)))) by omega.
+          apply maxIndex_is_max; auto.
+      + (* pli = 0, bad entry at maxIndex es *)
+        find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
+        assert (eIndex e > 0) by (eapply lifted_entries_gt_0_invariant; eauto).
+        intuition; try omega.
+        break_exists. intuition.
+        find_apply_lem_hyp maxIndex_non_empty.
+        break_exists_name maxEntry; intuition.
+        repeat find_rewrite.
+        find_false.
+        f_equal.
+        find_apply_lem_hyp findAtIndex_elim.
+        intuition.
+        eapply uniqueIndices_elim_eq; [| |eauto|];
+        eauto using sorted_uniqueIndices,lifted_entries_sorted_nw.
+        match goal with
+          | |- In ?e _ =>
+            assert (lifted_committed net e (currentTerm (snd (nwState net host)))) by
+                (unfold lifted_committed;
+                 exists host, e'; intuition;
+                 eapply lifted_no_entries_past_current_term_host_invariant; eauto)
+        end.
+        find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
+        assert (eIndex x > 0) by (eapply lifted_entries_gt_0_invariant; eauto).
+        intuition; omega.
+      + find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
+        intuition;
+          try solve
+              [apply in_app_iff; right; apply removeAfterIndex_le_In; auto; omega];
+          [idtac].
+        find_copy_eapply_lem_hyp msg_lifted_sorted_host.
+        exfalso.
+	enough (exists e, eIndex e = (maxIndex es) /\ In e (log (snd (nwState net host)))) by
+            (break_exists;
+             intuition; eapply findAtIndex_None; eauto).
+        eapply contiguous_range_exact_lo_elim_exists;
+          [apply lifted_entries_contiguous_invariant; auto|].
+        intuition.
+        * find_apply_lem_hyp maxIndex_non_empty.
+          break_exists; intuition; repeat find_rewrite.
+          enough (eIndex x0 > 0) by omega.
+          enough (eIndex x0 > pli) by omega.
+          eapply lifted_entries_contiguous_nw_invariant; eauto.
+        * enough (eIndex e <= maxIndex (log (snd (nwState net host)))) by omega.
+          apply maxIndex_is_max; auto.
+      + find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
+        intuition;
+          try solve
+              [apply in_app_iff; right; apply removeAfterIndex_le_In; auto; omega];
+          [idtac].
+        break_exists. intuition.
+        find_apply_lem_hyp maxIndex_non_empty.
+        break_exists_name maxEntry; intuition.
+        repeat find_rewrite.
+        find_false.
+        f_equal.
+        find_apply_lem_hyp findAtIndex_elim.
+        intuition.
+        eapply uniqueIndices_elim_eq; [| |eauto|];
+        eauto using sorted_uniqueIndices,lifted_entries_sorted_nw.
+        match goal with
+          | |- In ?e _ =>
+            assert (lifted_committed net e (currentTerm (snd (nwState net host)))) by
+                (unfold lifted_committed;
+                 exists host, e'; intuition;
+                 eapply lifted_no_entries_past_current_term_host_invariant; eauto)
+        end.
+        find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
+        intuition; try omega;
+        enough (pli < eIndex maxEntry) by omega;
+        eapply lifted_entries_contiguous_nw_invariant; eauto.
+    - find_higher_order_rewrite.
+      update_destruct; simpl in *; eauto.
+      assert (lifted_committed net e' (currentTerm (snd (nwState net host)))) by
+            (unfold lifted_committed;
+             exists host, e'; intuition;
+             eapply lifted_no_entries_past_current_term_host_invariant; eauto).
+      find_eapply_lem_hyp handleAppendEntries_log_detailed. intuition; repeat find_rewrite; eauto.
+      + (* pli = 0, no entry at maxIndex es *)
+        find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
+        assert (eIndex e' > 0) by (eapply lifted_entries_gt_0_invariant; eauto).
+        intuition; try omega.
+        find_copy_eapply_lem_hyp msg_lifted_sorted_host.
+        exfalso.
+	enough (exists e, eIndex e = (maxIndex es) /\ In e (log (snd (nwState net host)))) by
+            (break_exists;
+             intuition; eapply findAtIndex_None; eauto).
+        eapply contiguous_range_exact_lo_elim_exists;
+          [apply lifted_entries_contiguous_invariant; auto|].
+        intuition.
+        * find_apply_lem_hyp maxIndex_non_empty.
+          break_exists; intuition; repeat find_rewrite.
+          enough (eIndex x > 0) by omega.
+          eapply lifted_entries_contiguous_nw_invariant; eauto.
+        * enough (eIndex e' <= maxIndex (log (snd (nwState net host)))) by omega.
+          apply maxIndex_is_max; auto.
+      + (* pli = 0, bad entry at maxIndex es *)
+        find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
+        assert (eIndex e' > 0) by (eapply lifted_entries_gt_0_invariant; eauto).
+        intuition; try omega.
+        break_exists. intuition.
+        find_apply_lem_hyp maxIndex_non_empty.
+        break_exists_name maxEntry; intuition.
+        repeat find_rewrite.
+        find_false.
+        f_equal.
+        find_apply_lem_hyp findAtIndex_elim.
+        intuition.
+        eapply uniqueIndices_elim_eq; [| |eauto|];
+        eauto using sorted_uniqueIndices,lifted_entries_sorted_nw.
+        match goal with
+          | |- In ?e _ =>
+            assert (lifted_committed net e (currentTerm (snd (nwState net host)))) by
+                (unfold lifted_committed;
+                 exists host, e'; intuition;
+                 eapply lifted_no_entries_past_current_term_host_invariant; eauto)
+        end.
+        find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
+        assert (eIndex x > 0) by (eapply lifted_entries_gt_0_invariant; eauto).
+        intuition; omega.
+      + find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
+        intuition;
+          try solve
+              [apply in_app_iff; right; apply removeAfterIndex_le_In; auto; omega];
+          [idtac].
+        find_copy_eapply_lem_hyp msg_lifted_sorted_host.
+        exfalso.
+	enough (exists e, eIndex e = (maxIndex es) /\ In e (log (snd (nwState net host)))) by
+            (break_exists;
+             intuition; eapply findAtIndex_None; eauto).
+        eapply contiguous_range_exact_lo_elim_exists;
+          [apply lifted_entries_contiguous_invariant; auto|].
+        intuition.
+        * find_apply_lem_hyp maxIndex_non_empty.
+          break_exists; intuition; repeat find_rewrite.
+          enough (eIndex x0 > 0) by omega.
+          enough (eIndex x0 > pli) by omega.
+          eapply lifted_entries_contiguous_nw_invariant; eauto.
+        * enough (eIndex e' <= maxIndex (log (snd (nwState net host)))) by omega.
+          apply maxIndex_is_max; auto.
+      + find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
+        intuition;
+          try solve
+              [apply in_app_iff; right; apply removeAfterIndex_le_In; auto; omega];
+          [idtac].
+        break_exists. intuition.
+        find_apply_lem_hyp maxIndex_non_empty.
+        break_exists_name maxEntry; intuition.
+        repeat find_rewrite.
+        find_false.
+        f_equal.
+        find_apply_lem_hyp findAtIndex_elim.
+        intuition.
+        eapply uniqueIndices_elim_eq; [| |eauto|];
+        eauto using sorted_uniqueIndices,lifted_entries_sorted_nw.
+        match goal with
+          | |- In ?e _ =>
+            assert (lifted_committed net e (currentTerm (snd (nwState net host)))) by
+                (unfold lifted_committed;
+                 exists host, e'; intuition;
+                 eapply lifted_no_entries_past_current_term_host_invariant; eauto)
+        end.
+        find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
+        intuition; try omega;
+        enough (pli < eIndex maxEntry) by omega;
+        eapply lifted_entries_contiguous_nw_invariant; eauto.
+  Qed.
 
   Lemma handleAppendEntries_currentTerm_le :
     forall h st t n pli plt es ci st' m,
