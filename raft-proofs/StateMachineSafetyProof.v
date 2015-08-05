@@ -1890,21 +1890,21 @@ Section StateMachineSafetyProof.
     end.
   Qed.
 
-  Definition lifted_entries_sorted_nw (net : ghost_log_network) :=
+  Definition lifted_entries_sorted_nw' (net : ghost_log_network) :=
     forall p t n pli plt es ci,
       In p (nwPackets net) ->
       snd (pBody p) = AppendEntries t n pli plt es ci ->
       sorted es.
 
-  Lemma lifted_entries_sorted_nw_invariant :
+  Lemma lifted_entries_sorted_nw'_invariant :
     forall net,
       msg_refined_raft_intermediate_reachable net ->
-      lifted_entries_sorted_nw net.
+      lifted_entries_sorted_nw' net.
   Proof.
     intros.
     pose proof msg_lift_prop _ entries_sorted_nw_invariant.
     find_copy_apply_hyp_hyp.
-    unfold entries_sorted_nw, lifted_entries_sorted_nw in *.
+    unfold entries_sorted_nw, lifted_entries_sorted_nw' in *.
     intros.
     find_apply_lem_hyp in_mgv_ghost_packet.
     eapply_prop_hyp In In; eauto.
@@ -2052,7 +2052,7 @@ Section StateMachineSafetyProof.
                      find_copy_eapply_lem_hyp lifted_state_machine_safety_nw'_invariant; eauto.
                      concludes.
                      assert (sorted es) by
-                         (eapply lifted_entries_sorted_nw_invariant; eauto).
+                         (eapply lifted_entries_sorted_nw'_invariant; eauto).
                      assert (contiguous_range_exact_lo es (eIndex ple)) by
                          (eapply lifted_entries_contiguous_nw_invariant; eauto).
                      find_eapply_lem_hyp contiguous_range_exact_lo_elim_lt; eauto.
