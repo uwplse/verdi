@@ -314,7 +314,6 @@ Section RaftMsgRefinementInterface.
       (forall p, In p (nwPackets net') -> In p (nwPackets net)) ->
       P net ->
       msg_refined_raft_intermediate_reachable net ->
-      msg_refined_raft_intermediate_reachable net' ->
       P net'.
 
   Definition msg_refined_raft_net_invariant_reboot' (P : network -> Prop) :=
