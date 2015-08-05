@@ -2130,6 +2130,59 @@ Section StateMachineSafetyProof.
   Qed.
 
 
+  Lemma doLeader_preserves_committed :
+    forall (net net' : ghost_log_network) d h os d' ms gd  e t,
+      doLeader d h = (os, d', ms) ->
+      nwState net h = (gd, d) ->
+      (forall h', nwState net' h' = update (nwState net) h (gd, d') h') ->
+      lifted_committed net e t ->
+      lifted_committed net' e t.
+  Proof.
+    intros.
+    eapply lifted_committed_log_allEntries_preserved; eauto;
+    intros; find_higher_order_rewrite; update_destruct.
+    - intros. find_higher_order_rewrite.
+      erewrite doLeader_same_log; eauto.
+    - auto.
+    - repeat find_rewrite. auto.
+    - auto.
+  Qed.
+
+  Lemma doLeader_message_lci :
+    forall st h os st' ms m t n pli plt es ci,
+      doLeader st h = (os, st', ms) ->
+      In m ms ->
+      snd m = AppendEntries t n pli plt es ci ->
+      ci = commitIndex st'.
+  Proof.
+    unfold doLeader.
+    intros.
+    repeat break_match; repeat find_inversion; simpl in *; intuition.
+    do_in_map.
+    unfold replicaMessage in *.
+    simpl in *.
+    repeat break_match; repeat find_inversion; subst; simpl in *;
+    repeat find_inversion; auto.
+  Qed.
+
+  Lemma doLeader_message_term :
+    forall st h os st' ms m t n pli plt es ci,
+      doLeader st h = (os, st', ms) ->
+      In m ms ->
+      snd m = AppendEntries t n pli plt es ci ->
+      t = currentTerm st'.
+  Proof.
+    unfold doLeader.
+    intros.
+    repeat break_match; repeat find_inversion; simpl in *; intuition.
+    do_in_map.
+    subst.
+    unfold replicaMessage in *. simpl in *.
+    find_inversion.
+    auto.
+  Qed.
+
+
   Lemma commit_invariant_do_leader :
     forall net st' ps' gd d h os d' ms,
       doLeader d h = (os, d', ms) ->
@@ -2144,6 +2197,7 @@ Section StateMachineSafetyProof.
   Proof.
     unfold commit_invariant.
     simpl. intros. break_and.
+    apply and_imp_2.
     split.
     - find_apply_lem_hyp doLeader_spec. break_or_hyp.
       + break_and.
@@ -2190,7 +2244,34 @@ Section StateMachineSafetyProof.
             + simpl. intros. find_higher_order_rewrite. update_destruct; repeat find_rewrite; auto.
             + simpl. intros. find_higher_order_rewrite. update_destruct; repeat find_rewrite; auto.
           }
-  Admitted.
+    - intros Hhostpost.
+      unfold commit_invariant_nw in *.
+      simpl. intros.
+      find_apply_hyp_hyp.
+      intuition.
+      + (* old packet *)
+        eapply_prop_hyp In In; eauto.
+        eauto using doLeader_preserves_committed.
+      + (* new packet *)
+        do_in_map. subst. simpl in *.
+        unfold add_ghost_msg in *.
+        do_in_map. subst. simpl in *.
+        find_copy_eapply_lem_hyp doLeader_message_lci; eauto.
+        find_copy_eapply_lem_hyp doLeader_message_term; eauto.
+        unfold write_ghost_log in *.
+        simpl in *.
+        match goal with
+        | [ H : In _ (log _) |- _ ] => erewrite <- doLeader_same_log in H by eauto
+        end.
+        unfold commit_invariant_host in *.
+        simpl in *.
+        specialize (Hhostpost h e).
+        subst.
+        repeat find_higher_order_rewrite.
+        repeat rewrite_update.
+        simpl in *.
+        intuition.
+  Qed.
 
   Lemma commit_invariant_do_generic_server :
     msg_refined_raft_net_invariant_do_generic_server commit_invariant.
