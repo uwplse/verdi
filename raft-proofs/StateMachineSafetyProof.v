@@ -29,6 +29,8 @@ Require Import GhostLogsLogPropertiesInterface.
 Require Import GhostLogLogMatchingInterface.
 Require Import TransitiveCommitInterface.
 Require Import TermSanityInterface.
+Require Import LeadersHaveLeaderLogsStrongInterface.
+Require Import OneLeaderLogPerTermInterface.
 
 Require Import RefinedLogMatchingLemmasInterface.
 
@@ -64,6 +66,9 @@ Section StateMachineSafetyProof.
   Context {tci : transitive_commit_interface}.
   Context {tsi : term_sanity_interface}.
   
+  Context {lhllsi : leaders_have_leaderLogs_strong_interface}.
+  Context {ollpti : one_leaderLog_per_term_interface}.
+
   Context {rmri : raft_msg_refinement_interface}.
 
   Lemma exists_deghost_packet :
@@ -2455,16 +2460,63 @@ Section StateMachineSafetyProof.
     tauto.
   Qed.
 
+  Definition lifted_leaders_have_leaderLogs_strong (net : ghost_log_network) :=
+    forall h,
+      type (snd (nwState net h)) = Leader ->
+      exists ll es,
+        In (currentTerm (snd (nwState net h)), ll) (leaderLogs (fst (nwState net h))) /\
+        log (snd (nwState net h)) = es ++ ll /\
+        (forall e : entry, In e es -> eTerm e = currentTerm (snd (nwState net h))).
+
+  Lemma lifted_leaders_have_leaderLogs_strong_invariant :
+    forall net,
+      msg_refined_raft_intermediate_reachable net ->
+      lifted_leaders_have_leaderLogs_strong net.
+  Proof.
+    unfold lifted_leaders_have_leaderLogs_strong.
+    intros.
+    pose proof msg_lift_prop _ leaders_have_leaderLogs_strong_invariant _ $(eauto)$ h.
+    rewrite msg_deghost_spec' in *. auto.
+  Qed.
+
+  Definition lifted_one_leaderLog_per_term (net : ghost_log_network) : Prop :=
+    forall h h' t ll ll',
+      In (t, ll) (leaderLogs (fst (nwState net h))) ->
+      In (t, ll') (leaderLogs (fst (nwState net h'))) ->
+      h = h' /\ ll = ll'.
+
+  Lemma lifted_one_leaderLog_per_term_invariant :
+    forall net,
+      msg_refined_raft_intermediate_reachable net ->
+      lifted_one_leaderLog_per_term net.
+  Proof.
+    unfold lifted_one_leaderLog_per_term.
+    intros.
+    pose proof msg_lift_prop _ one_leaderLog_per_term_invariant _ $(eauto)$ h h' t ll ll'.
+    repeat rewrite msg_deghost_spec' in *. auto.
+  Qed.
+
   Lemma lifted_leaderLog_in_log :
     forall net leader ll e,
       msg_refined_raft_intermediate_reachable net ->
+      type (snd (nwState net leader)) = Leader ->
       In (currentTerm (snd (nwState net leader)), ll) (leaderLogs (fst (nwState net leader))) ->
       In e ll ->
       In e (log (snd (nwState net leader))).
   Proof.
-        (* use lifted versions of LeadersHaveLeaderLogsStrong and OneLeaderLogPerTerm *)
-  Admitted.
+    intros.
 
+    find_copy_apply_lem_hyp lifted_leaders_have_leaderLogs_strong_invariant; auto.
+
+    break_exists_name ll'.
+    break_exists_name es.
+    break_and.
+    find_eapply_lem_hyp (lifted_one_leaderLog_per_term_invariant _ $(eauto)$ leader leader _ ll ll' $(eauto)$).
+    intuition. subst.
+    unfold mgv_refined_base_params, raft_refined_base_params, refined_base_params in *.
+    simpl in *.
+    repeat find_rewrite. intuition.
+  Qed.
 
   Definition lifted_leaders_have_leaderLogs (net : ghost_log_network) : Prop :=
     forall h,
