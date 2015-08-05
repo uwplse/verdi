@@ -76,7 +76,7 @@ Section GhostLogAllEntriesProof.
   Qed.
 
   Lemma ghost_log_allEntries_append_entries :
-    msg_refined_raft_net_invariant_append_entries ghost_log_allEntries.
+    msg_refined_raft_net_invariant_append_entries' ghost_log_allEntries.
   Proof.
     red. unfold ghost_log_allEntries. intros. simpl in *.
     subst. repeat find_higher_order_rewrite.
@@ -89,17 +89,23 @@ Section GhostLogAllEntriesProof.
       + remember (pSrc p0).
         subst. simpl in *.
         unfold write_ghost_log in *.
+        simpl in *.
+        match goal with
+        | [ H : In _ (log ?d), H' : context [handleAppendEntries ?h],
+            H'' : msg_refined_raft_intermediate_reachable ?net |- _ ] =>
+          replace d with (snd (nwState net h)) in * by
+              (simpl; find_higher_order_rewrite; rewrite_update; auto)
+        end.
         find_eapply_lem_hyp lifted_in_log_in_all_entries_invariant; eauto.
         break_exists_exists.
-        eauto using update_elections_data_appendEntries_preserves_allEntries'.
+        simpl in *. find_higher_order_rewrite. rewrite_update. simpl in *.
+        auto.
     - find_apply_hyp_hyp; intuition; eauto.
-      subst. simpl in *.
-      unfold write_ghost_log in *.
-      eapply lifted_in_log_in_all_entries_invariant; eauto.
+      subst. simpl in *. congruence.
   Qed.
 
   Lemma ghost_log_allEntries_append_entries_reply :
-    msg_refined_raft_net_invariant_append_entries_reply ghost_log_allEntries.
+    msg_refined_raft_net_invariant_append_entries_reply' ghost_log_allEntries.
   Proof.
     red. unfold ghost_log_allEntries. intros. simpl in *.
     subst. repeat find_higher_order_rewrite.
@@ -110,16 +116,16 @@ Section GhostLogAllEntriesProof.
       + do_in_map.
         subst. simpl in *. unfold add_ghost_msg in *.
         do_in_map. subst. simpl in *. unfold write_ghost_log in *.
-        eapply lifted_in_log_in_all_entries_invariant; eauto.
+        pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) $(eauto)$ (pDst p) e.
+        simpl in *. find_higher_order_rewrite. rewrite_update.
+        simpl in *. auto.
     - find_apply_hyp_hyp; intuition; eauto.
       do_in_map.
-      subst. simpl in *. unfold add_ghost_msg in *.
-      do_in_map. subst. simpl in *. unfold write_ghost_log in *.
-      eapply lifted_in_log_in_all_entries_invariant; eauto.
+      subst. simpl in *. congruence.
   Qed.
 
   Lemma ghost_log_allEntries_request_vote :
-    msg_refined_raft_net_invariant_request_vote ghost_log_allEntries.
+    msg_refined_raft_net_invariant_request_vote' ghost_log_allEntries.
   Proof.
     red. unfold ghost_log_allEntries. intros. simpl in *.
     subst. repeat find_higher_order_rewrite.
@@ -129,10 +135,13 @@ Section GhostLogAllEntriesProof.
       + eapply_prop_hyp In In;
         repeat find_rewrite; eauto.
       + subst. simpl in *. unfold write_ghost_log in *.
-        eapply lifted_in_log_in_all_entries_invariant; eauto.
+        pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) $(eauto)$ (pDst p) e.
+        simpl in *. find_higher_order_rewrite. rewrite_update.
+        simpl in *. concludes. break_exists_exists.
+        find_rewrite_lem update_elections_data_requestVote_allEntries.
+        auto.
     - find_apply_hyp_hyp; intuition; eauto.
-      subst. simpl in *. unfold write_ghost_log in *.
-      eapply lifted_in_log_in_all_entries_invariant; eauto.
+      subst. simpl in *. congruence.
   Qed.
 
   Lemma ghost_log_allEntries_request_vote_reply :
@@ -148,7 +157,7 @@ Section GhostLogAllEntriesProof.
   Qed.
 
   Lemma ghost_log_allEntries_timeout :
-    msg_refined_raft_net_invariant_timeout ghost_log_allEntries.
+    msg_refined_raft_net_invariant_timeout' ghost_log_allEntries.
   Proof.
     red. unfold ghost_log_allEntries. intros. simpl in *.
     subst. repeat find_higher_order_rewrite.
@@ -159,40 +168,42 @@ Section GhostLogAllEntriesProof.
       remember (pSrc p).
       subst p. simpl in *. unfold add_ghost_msg in *.
       do_in_map. subst. simpl in *. unfold write_ghost_log in *.
-      eapply lifted_in_log_in_all_entries_invariant; eauto.
+      pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) $(eauto)$ n e.
+      simpl in *. find_higher_order_rewrite. rewrite_update.
+      simpl in *. concludes. break_exists_exists.
+      find_rewrite_lem update_elections_data_timeout_allEntries. auto.
     - find_apply_hyp_hyp; intuition; eauto.
       do_in_map.
       remember (pSrc p).
-      subst p. simpl in *. unfold add_ghost_msg in *.
-      do_in_map. subst. simpl in *. unfold write_ghost_log in *.
-      eapply lifted_in_log_in_all_entries_invariant; eauto.
+      subst p. simpl in *. congruence.
   Qed.
 
   Lemma ghost_log_allEntries_client_request :
-    msg_refined_raft_net_invariant_client_request ghost_log_allEntries.
+    msg_refined_raft_net_invariant_client_request' ghost_log_allEntries.
   Proof.
     red. unfold ghost_log_allEntries. intros. simpl in *.
     subst. repeat find_higher_order_rewrite.
     destruct_update; simpl in *; eauto.
-    - enough (exists t, In (t, e) (allEntries (fst (nwState net (pSrc p))))) by
-          (break_exists_exists;
-           eauto using update_elections_data_clientRequest_allEntries_old').
-      find_apply_hyp_hyp; intuition; eauto.
-      do_in_map.
-      remember (pSrc p).
-      subst p. simpl in *. unfold add_ghost_msg in *.
-      do_in_map. subst. simpl in *. unfold write_ghost_log in *.
-      eapply lifted_in_log_in_all_entries_invariant; eauto.
+    - find_apply_hyp_hyp.
+      intuition.
+      + eapply_prop_hyp In In; eauto.
+        break_exists_exists.
+        eauto using update_elections_data_clientRequest_allEntries_old'.
+      + do_in_map. unfold add_ghost_msg in *. do_in_map.
+        subst x. simpl in *. destruct p. simpl in *. find_inversion.
+        simpl in *. unfold write_ghost_log in *.
+        pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) $(eauto)$ pSrc e.
+        simpl in *. find_higher_order_rewrite. rewrite_update.
+        simpl in *. concludes. break_exists_exists.
+        auto.
     - find_apply_hyp_hyp; intuition; eauto.
       do_in_map.
       remember (pSrc p).
-      subst p. simpl in *. unfold add_ghost_msg in *.
-      do_in_map. subst. simpl in *. unfold write_ghost_log in *.
-      eapply lifted_in_log_in_all_entries_invariant; eauto.
+      subst p. simpl in *. congruence.
   Qed.
 
   Lemma ghost_log_allEntries_do_leader :
-    msg_refined_raft_net_invariant_do_leader ghost_log_allEntries.
+    msg_refined_raft_net_invariant_do_leader' ghost_log_allEntries.
   Proof.
     red. unfold ghost_log_allEntries. intros. simpl in *.
     match goal with
@@ -208,17 +219,17 @@ Section GhostLogAllEntriesProof.
       remember (pSrc p).
       subst p. simpl in *. unfold add_ghost_msg in *.
       do_in_map. subst. simpl in *. unfold write_ghost_log in *.
-      eapply lifted_in_log_in_all_entries_invariant; eauto.
+      pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) $(eauto)$ n e.
+      simpl in *. find_higher_order_rewrite. rewrite_update.
+      simpl in *. concludes. auto.
     - find_apply_hyp_hyp; intuition; eauto.
       do_in_map.
       remember (pSrc p).
-      subst p. simpl in *. unfold add_ghost_msg in *.
-      do_in_map. subst. simpl in *. unfold write_ghost_log in *.
-      eapply lifted_in_log_in_all_entries_invariant; eauto.
+      subst p. simpl in *. congruence.
   Qed.
 
   Lemma ghost_log_allEntries_do_generic_server :
-    msg_refined_raft_net_invariant_do_generic_server ghost_log_allEntries.
+    msg_refined_raft_net_invariant_do_generic_server' ghost_log_allEntries.
   Proof.
     red. unfold ghost_log_allEntries. intros. simpl in *.
     match goal with
@@ -234,13 +245,13 @@ Section GhostLogAllEntriesProof.
       remember (pSrc p).
       subst p. simpl in *. unfold add_ghost_msg in *.
       do_in_map. subst. simpl in *. unfold write_ghost_log in *.
-      eapply lifted_in_log_in_all_entries_invariant; eauto.
+      pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) $(eauto)$ n e.
+      simpl in *. find_higher_order_rewrite. rewrite_update.
+      simpl in *. concludes. auto.
     - find_apply_hyp_hyp; intuition; eauto.
       do_in_map.
       remember (pSrc p).
-      subst p. simpl in *. unfold add_ghost_msg in *.
-      do_in_map. subst. simpl in *. unfold write_ghost_log in *.
-      eapply lifted_in_log_in_all_entries_invariant; eauto.
+      subst p. simpl in *. congruence.
   Qed.
 
   Lemma ghost_log_allEntries_reboot :
@@ -279,17 +290,20 @@ Section GhostLogAllEntriesProof.
   Proof.
     split.
     intros.
-    apply msg_refined_raft_net_invariant; auto.
+    apply msg_refined_raft_net_invariant'; auto.
     - apply ghost_log_allEntries_init.
     - apply ghost_log_allEntries_client_request.
     - apply ghost_log_allEntries_timeout.
     - apply ghost_log_allEntries_append_entries.
     - apply ghost_log_allEntries_append_entries_reply.
     - apply ghost_log_allEntries_request_vote.
-    - apply ghost_log_allEntries_request_vote_reply.
+    - apply msg_refined_raft_net_invariant_request_vote_reply'_weak.
+      apply ghost_log_allEntries_request_vote_reply.
     - apply ghost_log_allEntries_do_leader.
     - apply ghost_log_allEntries_do_generic_server.
-    - apply ghost_log_allEntries_state_same_packet_subset.
-    - apply ghost_log_allEntries_reboot.
+    - apply msg_refined_raft_net_invariant_subset'_weak.
+      apply ghost_log_allEntries_state_same_packet_subset.
+    - apply msg_refined_raft_net_invariant_reboot'_weak.
+      apply ghost_log_allEntries_reboot.
   Qed.
 End GhostLogAllEntriesProof.
