@@ -869,6 +869,30 @@ Section MsgGhostVars.
     rewrite map_map. map_id.
   Qed.
 
+  Lemma map_partition :
+    forall A B p l (x : B) p' (f : A -> B),
+      map f l = (p ++ x :: p') ->
+      exists ap a ap',
+        l = ap ++ a :: ap' /\
+        map f ap = p /\
+        f a = x /\
+        map f ap' = p'.
+  Proof.
+    induction p; intros; intuition; simpl in *.
+    - destruct l; simpl in *; try congruence.
+      find_inversion.
+      exists [],a,l. simpl. auto.
+    - destruct l; simpl in *; try congruence.
+      find_inversion.
+      find_apply_hyp_hyp.
+      break_exists_name ap.
+      break_exists_name a.
+      break_exists_name ap'.
+      intuition.
+      exists (a0 :: ap), a, ap'. simpl.
+      repeat find_rewrite. intuition.
+  Qed.
+
   Theorem mgv_ghost_simulation_2 :
     forall net net' failed failed' out gnet,
       @step_f _ _ failure_params (failed, net) (failed', net') out ->
@@ -877,116 +901,91 @@ Section MsgGhostVars.
         step_f (failed, gnet) (failed', gnet') out /\
         mgv_deghost gnet' = net'.
   Proof.
-  Admitted.
-  (* intros.
+    intros.
     invcs H.
     - repeat break_match. simpl in *.
-      match goal with
-        | H : map _ ?la = ?lb |- _ =>
-          symmetry in H;
-            pose proof @map_inverses _ _ la lb deghost_packet ghost_packet
-      end.
-      repeat (forwards; [intro a; destruct a; reflexivity|]; concludes;
-              match goal with
-                | H :  forall _ : packet,  _ = _ |- _ => clear H
-              end).
-      concludes. map_crush.
-      match goal with
-        | [ _ : _ = ?xs ++ ?p :: ?ys,
-              _ : net_handlers ?h ?s ?m ?d = (_, ?d', ?l),
-                  _ : (?nwState ?h = (?g, ?d)) |- _ ] =>
-          exists {| nwPackets := (map ghost_packet (send_packets h l) ++ xs ++ ys) ;
-               nwState := update nwState h (ghost_net_handlers h s m (g, d), d') |}
-      end.
+      find_apply_lem_hyp map_partition.
+      break_exists_name xs'.
+      break_exists_name p'.
+      break_exists_name ys'.
+      intuition. 
+      exists {| nwPackets := (@send_packets _ mgv_refined_multi_params (pDst p)
+                                       (add_ghost_msg (pDst p) (nwState0 (pDst p)) l))
+                          ++ xs' ++ ys';
+           nwState := update nwState0 (pDst p) d |}.
       intuition.
-      + simpl in *. map_crush.
+      + simpl in *.
         subst.
-        match goal with
-            [ p : packet |- _ ] =>
-            assert (pDst p = pDst (ghost_packet p)) by
-                (destruct p; simpl in *; solve_by_inversion);
-              repeat find_rewrite
-         end.
-        eapply (@SF_deliver _ _ refined_failure_params); simpl in *; eauto.
+        eapply (@SF_deliver _ _ mgv_refined_failure_params); simpl in *; eauto.
+        unfold mgv_refined_net_handlers;
+           repeat break_match; subst; simpl in *; repeat find_rewrite;
+           find_inversion; auto.
+      + simpl.
+        unfold mgv_deghost.
+        subst.
         simpl in *.
-        unfold refined_net_handlers. repeat break_match.
-        subst.
-        repeat (find_rewrite; simpl in * ). find_inversion. eauto.
-      + unfold deghost. simpl in *. map_crush. repeat f_equal; try map_id.
-        apply functional_extensionality. intros.
-        repeat break_match; congruence.
-   - repeat break_match. subst. simpl in *.
-      match goal with
-        | [ pkts: list packet, _ : input_handlers ?h ?inp ?d = (_, ?d', ?l),
-                                   _ : (?nwState ?h = (?g, ?d)) |- _ ] =>
-          exists {| nwPackets := (map ghost_packet (send_packets h l)) ++ pkts ;
-               nwState := update nwState h (ghost_input_handlers h inp (g, d), d') |}
-      end.
+        unfold add_ghost_msg.
+        map_crush. auto.
+    - repeat break_match. subst. simpl in *.
       intuition.
-      + simpl in *. map_crush.
-        subst. eapply (@SF_input _ _ refined_failure_params); simpl in *; eauto.
-        simpl in *.
-        unfold refined_input_handlers. repeat break_match.
+      exists {| nwPackets := (@send_packets _ mgv_refined_multi_params h
+                                       (add_ghost_msg h (nwState0 h) l))
+                          ++ nwPackets0;
+           nwState := update nwState0 h d |}.
+      intuition.
+      + simpl in *. 
+        eapply (@SF_input _ _ mgv_refined_failure_params); simpl in *; eauto.
+        unfold mgv_refined_input_handlers;
+           repeat break_match; subst; simpl in *; repeat find_rewrite;
+           find_inversion; auto.
+      + simpl.
+        unfold mgv_deghost.
         subst.
-        repeat (find_rewrite; simpl in * ). find_inversion. auto.
-      + unfold deghost. simpl in *. map_crush. repeat f_equal; try map_id.
-        apply functional_extensionality. intros.
-        repeat break_match; congruence.
-   - match goal with
-        | H : map _ ?la = ?lb |- _ =>
-          symmetry in H;
-            pose proof @map_inverses _ _ la lb deghost_packet ghost_packet
-      end.
-      repeat (forwards; [intro a; destruct a; reflexivity|]; concludes;
-              match goal with
-                | H :  forall _ : packet,  _ = _ |- _ => clear H
-              end).
-      concludes. map_crush.
-      exists {| nwPackets := map ghost_packet (xs ++ ys) ;
-          nwState := fun h => nwState gnet h |}.
-     intuition.
-     + eapply (@SF_drop _ _ refined_failure_params); simpl in *; eauto.
-       map_crush. intuition.
-     + unfold deghost. simpl in *. map_crush. repeat f_equal; try map_id.
-       apply functional_extensionality. intros.
-       repeat break_match. simpl in *. congruence.
-   - match goal with
-        | H : map _ ?la = ?lb |- _ =>
-          symmetry in H;
-            pose proof @map_inverses _ _ la lb deghost_packet ghost_packet
-      end.
-      repeat (forwards; [intro a; destruct a; reflexivity|]; concludes;
-              match goal with
-                | H :  forall _ : packet,  _ = _ |- _ => clear H
-              end).
-      concludes. map_crush.
-      exists {| nwPackets := map ghost_packet (p :: xs ++ p :: ys) ;
-          nwState := fun h => nwState gnet h |}.
-     intuition.
-     + eapply (@SF_dup _ _ refined_failure_params); simpl in *; eauto.
-       map_crush. intuition.
-     + unfold deghost. simpl in *. map_crush.
-       repeat f_equal; try map_id; try match goal with
-                                         | [ |- _ = ?p] => destruct p; reflexivity
-                                       end.
-       apply functional_extensionality. intros.
-       repeat break_match. simpl in *. congruence.
-   - exists gnet. intuition.
-       apply (@SF_fail _ _ refined_failure_params).
-   - exists {| nwPackets := nwPackets gnet;
-          nwState := update (nwState gnet) h (refined_reboot (nwState gnet h))
-       |}.
-       intuition.
-       + eapply (@SF_reboot _ _ refined_failure_params); eauto.
-         f_equal. simpl in *. apply functional_extensionality.
+        simpl in *.
+        unfold add_ghost_msg.
+        map_crush. auto.
+    - find_apply_lem_hyp map_partition.
+      break_exists_name xs'.
+      break_exists_name p'.
+      break_exists_name ys'.
+      intuition.
+      exists {| nwPackets := xs' ++ ys';
+           nwState := fun h => nwState gnet h |}.
+      intuition.
+      + eapply (@SF_drop _ _ mgv_refined_failure_params); simpl in *; eauto.
+      + break_match.
+        unfold mgv_deghost. simpl.
+        f_equal.
+        subst.
+        map_crush. auto.
+    - find_apply_lem_hyp map_partition.
+      break_exists_name xs'.
+      break_exists_name p'.
+      break_exists_name ys'.
+      intuition.
+      exists {| nwPackets := p' :: xs' ++ p' :: ys';
+           nwState := fun h => nwState gnet h |}.
+      intuition.
+      + eapply (@SF_dup _ _ mgv_refined_failure_params); simpl in *; eauto.
+      + break_match.
+        unfold mgv_deghost. simpl.
+        f_equal.
+        subst.
+        map_crush. auto.
+    - (exists gnet). intuition.
+      apply (@SF_fail _ _ mgv_refined_failure_params).
+    - (exists {| nwPackets := nwPackets gnet;
+            nwState := update (nwState gnet) h (reboot (nwState gnet h))
+         |}).
+      intuition.
+      + eapply (@SF_reboot _ _ mgv_refined_failure_params); eauto.
+        f_equal. simpl in *. apply functional_extensionality.
          intros. break_if; congruence.
-       + unfold deghost. simpl in *.  f_equal.
-         apply functional_extensionality. intros.
-         unfold refined_reboot.
-         repeat break_match; simpl in *.
-         * repeat find_inversion. repeat find_rewrite. reflexivity.
-         * congruence.
-  Qed. *)
+      + unfold mgv_deghost. simpl in *.  f_equal.
+        break_match. 
+        apply functional_extensionality. intros.
+        repeat break_match; simpl in *; subst; auto.
+  Qed.
 
   Theorem mgv_ghost_invariant_lift :
     forall P : _ -> Prop,
