@@ -2341,7 +2341,26 @@ Section CommonTheorems.
     unfold wonElection in *.
     do_bool. omega.
   Qed.
-  
+
+
+  Lemma contiguous_findAtIndex :
+    forall l s i,
+      sorted l ->
+      contiguous_range_exact_lo l s ->
+      s < i <= maxIndex l ->
+      exists e, findAtIndex l i = Some e.
+  Proof.
+    unfold contiguous_range_exact_lo.
+    intros.
+    intuition.
+    match goal with
+    | [ H : forall _, _ |- _ ] => specialize (H i)
+    end.
+    intuition.
+    break_exists_exists.
+    intuition.
+    eapply findAtIndex_intro; auto using sorted_uniqueIndices.
+  Qed.
 End CommonTheorems.
 
 Notation is_append_entries m :=

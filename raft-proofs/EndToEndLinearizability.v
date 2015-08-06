@@ -274,10 +274,30 @@ Require Import VotedForTermSanityProof.
 Require Import VotesReceivedMoreUpToDateInterface.
 Require Import VotesReceivedMoreUpToDateProof.
 
+Require Import RaftMsgRefinementInterface.
+Require Import RaftMsgRefinementProof.
+
+Require Import GhostLogCorrectInterface.
+Require Import GhostLogCorrectProof.
+
+Require Import GhostLogsLogPropertiesInterface.
+Require Import GhostLogsLogPropertiesProof.
+
+Require Import InLogInAllEntriesInterface.
+Require Import InLogInAllEntriesProof.
+
+Require Import GhostLogAllEntriesInterface.
+Require Import GhostLogAllEntriesProof.
+
+Require Import GhostLogLogMatchingInterface.
+Require Import GhostLogLogMatchingProof.
+
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
 Hint Extern 4 (@raft_refinement_interface _ _ _) => apply rri : typeclass_instances.
+Hint Extern 4 (@raft_msg_refinement_interface _ _ _) => apply rmri : typeclass_instances.
 Hint Extern 4 (@cronies_term_interface _ _ _) => apply cti : typeclass_instances.
 Hint Extern 4 (@votes_correct_interface _ _ _) => apply vci : typeclass_instances.
 Hint Extern 4 (@cronies_correct_interface _ _ _) => apply cci : typeclass_instances.
@@ -353,6 +373,7 @@ Hint Extern 4 (@no_append_entries_replies_to_self_interface _ _ _) => apply noae
 Hint Extern 4 (@log_all_entries_interface _ _ _) => apply laei : typeclass_instances.
 Hint Extern 4 (@append_entries_reply_sublog_interface _ _ _) => apply aersi : typeclass_instances.
 Hint Extern 4 (@log_properties_hold_on_leader_logs_interface _ _ _) => apply lpholli : typeclass_instances.
+Hint Extern 4 (@log_properties_hold_on_ghost_logs_interface _ _ _) => apply lphogli : typeclass_instances.
 Hint Extern 4 (@append_entries_request_reply_correspondence_interface _ _ _) => apply aerrci : typeclass_instances.
 Hint Extern 4 (@append_entries_leader_interface _ _ _) => apply appendeli : typeclass_instances.
 Hint Extern 4 (@requestVote_maxIndex_maxTerm_interface _ _ _) => apply rvmimti : typeclass_instances.
@@ -362,6 +383,10 @@ Hint Extern 4 (@requestVote_term_sanity_interface _ _ _) => apply rvtsi : typecl
 Hint Extern 4 (@votedFor_moreUpToDate_interface _ _ _) => apply vfmutdi : typeclass_instances.
 Hint Extern 4 (@votedFor_term_sanity_interface _ _ _) => apply vftsi : typeclass_instances.
 Hint Extern 4 (@votesReceived_moreUpToDate_interface _ _ _) => apply vrmutdi : typeclass_instances.
+Hint Extern 4 (@ghost_log_correct_interface _ _ _) => apply glci : typeclass_instances.
+Hint Extern 4 (@in_log_in_all_entries_interface _ _ _) => apply iliaei : typeclass_instances.
+Hint Extern 4 (@ghost_log_allEntries_interface _ _ _) => apply glaei : typeclass_instances.
+Hint Extern 4 (@ghost_log_entries_match_interface _ _ _) => apply glemi : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
@@ -371,7 +396,7 @@ Section EndToEndProof.
   Theorem raft_linearizable :
     forall failed net tr,
       input_correct tr ->
-      step_f_star step_f_init (failed, net) tr ->
+      step_f_star (params := failure_params) step_f_init (failed, net) tr ->
       exists l tr1 st,
         equivalent _ (import tr) l /\
         exported (get_input tr) (get_output tr) l tr1 /\
