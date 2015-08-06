@@ -690,8 +690,21 @@ Section RaftMsgRefinement.
       exists l'',
         map f l' = map f l'' /\
         (forall x, In x l'' -> In x l).
-  Admitted.
-  
+  Proof.
+    induction l'; simpl; intros.
+    - exists nil. simpl in *. intuition.
+    - assert (exists x, In x l /\ f x = f a).
+      { specialize (H (f a)). concludes.
+        find_apply_lem_hyp in_map_iff.
+        firstorder.
+      }
+      specialize (IHl' $(intuition)$).
+      repeat break_exists.
+      break_and.
+      exists (x :: x0).
+      simpl. intuition; congruence.
+  Qed.
+
   Lemma mgv_deghost_packet_mgv_ghost_packet_partial_inverses :
     forall p,
       (@mgv_deghost_packet _ _ _ ghost_log_params (mgv_ghost_packet p)) = p.
