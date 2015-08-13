@@ -118,10 +118,10 @@ Section RaftRefinementProof.
                          (update_elections_data_net (pDst p)
                                                     (pSrc p) (pBody p) (nwState net (pDst p)), r1) |})
            by
-             (eapply RRIR_doGenericServer; eauto;
+             (eapply RRIR_doLeader; eauto;
               [simpl in *; break_if; try congruence; eauto| in_crush]).
-         eapply_prop refined_raft_net_invariant_do_leader. eauto.
          eapply_prop refined_raft_net_invariant_do_generic_server. eauto.
+         eapply_prop refined_raft_net_invariant_do_leader. eauto.
          eapply refined_raft_invariant_handle_message with (P := P); eauto using in_app_or.
          auto.
          simpl. break_if; intuition eauto.
@@ -162,10 +162,10 @@ Section RaftRefinementProof.
                          h
                          (update_elections_data_input h inp (nwState net h), r1) |})
            by
-             (eapply RRIR_doGenericServer; eauto;
+             (eapply RRIR_doLeader; eauto;
               [simpl in *; break_if; try congruence; eauto| in_crush]).
-         eapply_prop refined_raft_net_invariant_do_leader. eauto.
          eapply_prop refined_raft_net_invariant_do_generic_server. eauto.
+         eapply_prop refined_raft_net_invariant_do_leader. eauto.
          eapply refined_raft_invariant_handle_input with (P := P); eauto using in_app_or.
          auto.
          simpl. break_if; intuition eauto.
@@ -315,10 +315,10 @@ Section RaftRefinementProof.
                          (update_elections_data_net (pDst p)
                                                     (pSrc p) (pBody p) (nwState net (pDst p)), r1) |})
            by
-             (eapply RRIR_doGenericServer; eauto;
+             (eapply RRIR_doLeader; eauto;
               [simpl in *; break_if; try congruence; eauto| in_crush]).
-         eapply_prop refined_raft_net_invariant_do_leader'. eauto.
          eapply_prop refined_raft_net_invariant_do_generic_server'. eauto.
+         eapply_prop refined_raft_net_invariant_do_leader'. eauto.
          eapply refined_raft_invariant_handle_message' with (P := P); auto.
          eauto. eauto.   auto. eauto.  eauto. eauto using in_app_or. auto.
          eauto.
@@ -372,10 +372,10 @@ Section RaftRefinementProof.
                          h
                          (update_elections_data_input h inp (nwState net h), r1) |})
            by
-             (eapply RRIR_doGenericServer; eauto;
+             (eapply RRIR_doLeader; eauto;
               [simpl in *; break_if; try congruence; eauto| in_crush]).
-         eapply_prop refined_raft_net_invariant_do_leader'. eauto.
          eapply_prop refined_raft_net_invariant_do_generic_server'. eauto.
+         eapply_prop refined_raft_net_invariant_do_leader'. eauto.
          eapply refined_raft_invariant_handle_input' with (P := P); auto. 
          eauto. all:auto. all: eauto. eauto using in_app_or. 
          simpl. break_if; intuition eauto.

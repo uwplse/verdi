@@ -200,7 +200,7 @@ Section DecompositionWithPostState.
               {|
                 nwPackets := (send_packets (pDst p) (l0 ++ l1)) ++ xs ++ ys;
                 nwState := (update (update (nwState net) (pDst p) r) (pDst p) r0)
-              |}) by (eapply RIR_doGenericServer; eauto;
+              |}) by (eapply RIR_doLeader; eauto;
                       [simpl in *; break_if; try congruence; eauto| in_crush]).
          assert
            (HREACH3 : raft_intermediate_reachable
@@ -208,7 +208,7 @@ Section DecompositionWithPostState.
                 nwPackets := (send_packets (pDst p) (l0 ++ l1 ++ l3)) ++ xs ++ ys;
                 nwState := (update (update (update (nwState net) (pDst p) r) (pDst p) r0) (pDst p) d)
               |}).
-         { eapply RIR_doLeader; eauto.
+         { eapply RIR_doGenericServer; eauto.
            - simpl in *. break_if; try congruence; eauto.
            - intros. simpl.
              repeat do_in_app. intuition; try solve [in_crush].
@@ -217,8 +217,8 @@ Section DecompositionWithPostState.
              + left. in_crush. left. in_crush.
              + left. in_crush. left. in_crush.
              + in_crush. }
-         eapply_prop raft_net_invariant_do_leader'. eauto. 
          eapply_prop raft_net_invariant_do_generic_server'. eauto.
+         eapply_prop raft_net_invariant_do_leader'. eauto. 
          eapply raft_invariant_handle_message' with (P := P);
            try match goal with
                  | |- context [ update ] =>
@@ -234,7 +234,7 @@ Section DecompositionWithPostState.
            simpl in HREACH3.
            match goal with
              | _ : raft_intermediate_reachable (mkNetwork ?p ?s) |-
-                   raft_intermediate_reachable (mkNetwork ?p ?s') =>
+                   raft_intermediate_reachable (mkNetwork ?p' ?s') =>
                enough (s' = s) by (repeat find_rewrite; auto)
            end.
            apply functional_extensionality.
@@ -266,7 +266,7 @@ Section DecompositionWithPostState.
               {|
                 nwPackets := (send_packets h (l0 ++ l2)) ++ (nwPackets net);
                 nwState := (update (update (nwState net) h r) h r0)
-              |}) by (eapply RIR_doGenericServer; eauto;
+              |}) by (eapply RIR_doLeader; eauto;
                       [simpl in *; break_if; try congruence; eauto| in_crush]).
          assert
            (HREACH3 : raft_intermediate_reachable
@@ -274,7 +274,7 @@ Section DecompositionWithPostState.
                 nwPackets := (send_packets h (l0 ++ l2 ++ l4)) ++ (nwPackets net);
                 nwState := (update (update (update (nwState net) h r) h r0) h d)
               |}).
-          { eapply RIR_doLeader; eauto.
+          { eapply RIR_doGenericServer; eauto.
            - simpl in *. break_if; try congruence; eauto.
            - intros. simpl. 
              repeat do_in_app. intuition; try solve [in_crush].
@@ -283,8 +283,8 @@ Section DecompositionWithPostState.
              + left. in_crush. left. in_crush.
              + left. in_crush. left. in_crush.
              + in_crush. }
-         eapply_prop raft_net_invariant_do_leader'. eauto.
          eapply_prop raft_net_invariant_do_generic_server'. eauto.
+         eapply_prop raft_net_invariant_do_leader'. eauto.
          eapply raft_invariant_handle_input' with (P := P);
            try match goal with
                  | |- context [ update ] =>

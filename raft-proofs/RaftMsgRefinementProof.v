@@ -119,12 +119,12 @@ Section RaftMsgRefinement.
                                                        (post_ghost_state, r1) l5);
                 nwState := update (nwState net) (pDst p)
                                   (post_ghost_state, r1) |}) by
-             (eapply MRRIR_doGenericServer; eauto;
+             (eapply MRRIR_doLeader; eauto;
               try solve [in_crush];
               simpl in *; intros; repeat break_if; try congruence; auto).
          subst.
-         eapply_prop msg_refined_raft_net_invariant_do_leader. eauto.
          eapply_prop msg_refined_raft_net_invariant_do_generic_server. eauto.
+         eapply_prop msg_refined_raft_net_invariant_do_leader. eauto.
          eapply msg_refined_raft_invariant_handle_message with (P := P); eauto using in_app_or.
          auto.
          simpl. break_if; intuition eauto.
@@ -207,12 +207,12 @@ Section RaftMsgRefinement.
                                                        (post_ghost_state, r1) l6);
                 nwState := update (nwState net) h
                                   (post_ghost_state, r1) |}) by
-             (eapply MRRIR_doGenericServer; eauto;
+             (eapply MRRIR_doLeader; eauto;
               try solve [in_crush];
               simpl in *; intros; repeat break_if; try congruence; auto).
          subst.
-         eapply_prop msg_refined_raft_net_invariant_do_leader. eauto.
          eapply_prop msg_refined_raft_net_invariant_do_generic_server. eauto.
+         eapply_prop msg_refined_raft_net_invariant_do_leader. eauto.
          eapply msg_refined_raft_invariant_handle_input with (P := P); eauto using in_app_or.
          auto.
          simpl. break_if; intuition eauto.
@@ -397,12 +397,12 @@ Section RaftMsgRefinement.
                                                        (post_ghost_state, r1) l5);
                 nwState := update (nwState net) (pDst p)
                                   (post_ghost_state, r1) |}) by
-             (eapply MRRIR_doGenericServer; eauto;
+             (eapply MRRIR_doLeader; eauto;
               try solve [in_crush];
               simpl in *; intros; repeat break_if; try congruence; auto).
          subst.
-         eapply_prop msg_refined_raft_net_invariant_do_leader'. eauto.
          eapply_prop msg_refined_raft_net_invariant_do_generic_server'. eauto.
+         eapply_prop msg_refined_raft_net_invariant_do_leader'. eauto.
          eapply msg_refined_raft_invariant_handle_message' with (P := P); auto.
          eauto. eauto.   auto. eauto.  eauto. eauto using in_app_or. auto.
          eauto.
@@ -486,12 +486,12 @@ Section RaftMsgRefinement.
                                                        (post_ghost_state, r1) l6);
                 nwState := update (nwState net) h
                                   (post_ghost_state, r1) |}) by
-             (eapply MRRIR_doGenericServer; eauto;
+             (eapply MRRIR_doLeader; eauto;
               try solve [in_crush];
               simpl in *; intros; repeat break_if; try congruence; auto).
          subst.
-         eapply_prop msg_refined_raft_net_invariant_do_leader'. eauto.
          eapply_prop msg_refined_raft_net_invariant_do_generic_server'. eauto.
+         eapply_prop msg_refined_raft_net_invariant_do_leader'. eauto.
          eapply msg_refined_raft_invariant_handle_input' with (P := P); auto.
          eauto. eauto.   auto. eauto.  eauto. eauto using in_app_or. auto.
          eauto.
