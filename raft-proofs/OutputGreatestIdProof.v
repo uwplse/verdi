@@ -347,8 +347,9 @@ Section OutputGreatestId.
       unfold RaftNetHandler in *.
       repeat break_let. repeat find_inversion. simpl in *.
       find_eapply_lem_hyp RIR_handleMessage; eauto.
+      find_copy_eapply_lem_hyp RIR_doLeader; simpl in *; rewrite_update; eauto.
       find_apply_lem_hyp key_in_output_list_split.
-      intuition; [|exfalso; eapply doLeader_key_in_output_list; eauto].
+      intuition; [exfalso; eapply doLeader_key_in_output_list; eauto|].
       match goal with
         | _ : doLeader ?st ?h = _, _ : doGenericServer _ ?d = _ |- _ =>
           replace st with ((update (nwState net) h st) h) in *;
@@ -357,7 +358,6 @@ Section OutputGreatestId.
       find_apply_lem_hyp doLeader_appliedEntries.
       rewrite_update. repeat find_rewrite_lem update_overwrite.
       unfold data in *. simpl in *.
-      find_rewrite.
       match goal with
         | _ : raft_intermediate_reachable (mkNetwork ?ps ?st),
               H : doGenericServer ?h ?r = _ |- _ =>
@@ -366,14 +366,16 @@ Section OutputGreatestId.
       find_eapply_lem_hyp doGenericServer_key_in_output_list; [|idtac|eauto|]; eauto.
       simpl in *. find_rewrite_lem update_overwrite. auto.
     - unfold key_in_output_trace in *.
-      break_exists; simpl in *; intuition; find_inversion.
+      break_exists; simpl in *; intuition.
+      find_inversion.
       unfold RaftInputHandler in *.
       repeat break_let. repeat find_inversion. simpl in *.
       find_copy_eapply_lem_hyp RIR_handleInput; eauto.
+      find_copy_eapply_lem_hyp RIR_doLeader; simpl in *; rewrite_update; eauto.
       find_apply_lem_hyp key_in_output_list_split.
       intuition; [exfalso; eapply handleInput_key_in_output_list; eauto|].
       find_apply_lem_hyp key_in_output_list_split.
-      intuition; [|exfalso; eapply doLeader_key_in_output_list; eauto].
+      intuition; [exfalso; eapply doLeader_key_in_output_list; eauto|].
       match goal with
         | _ : doLeader ?st ?h = _, _ : doGenericServer _ ?d = _ |- _ =>
           replace st with ((update (nwState net) h st) h) in *;
@@ -382,15 +384,13 @@ Section OutputGreatestId.
       find_apply_lem_hyp doLeader_appliedEntries.
       rewrite_update. repeat find_rewrite_lem update_overwrite.
       unfold data in *. simpl in *.
-      find_rewrite.
       match goal with
         | _ : raft_intermediate_reachable (mkNetwork ?ps ?st),
               H : doGenericServer ?h ?r = _ |- _ =>
           replace r with (nwState (mkNetwork ps st) h) in H by (simpl in *; rewrite_update; auto)
       end.
       find_eapply_lem_hyp doGenericServer_key_in_output_list; [|idtac|eauto|]; eauto.
-      simpl in *.
-      find_rewrite_lem update_overwrite. auto.
+      simpl in *. find_rewrite_lem update_overwrite. auto.
   Qed.
 
   Section inner.
