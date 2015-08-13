@@ -267,25 +267,24 @@ Section AppliedImpliesInputProof.
       - unfold RaftNetHandler in *. repeat break_let. subst. find_inversion.
         find_apply_lem_hyp applied_implies_input_update_split.
         break_exists. intuition; break_exists.
-        + find_erewrite_lem doLeader_same_log.
-          find_erewrite_lem doGenericServer_log.
+        + find_erewrite_lem doGenericServer_log.
+          find_erewrite_lem doLeader_same_log.
           exfalso. eauto using aiis_intro_state, handleMessage_aais.
         + exfalso. eauto using aiis_intro_state.
         + intuition. do_in_app. intuition.
           * do_in_map. subst. simpl in *.
             { repeat (do_in_app; intuition).
               - exfalso. eauto using aiis_intro_state, handleMessage_sends_log.
-              - exfalso. eauto using doGenericServer_packets.
               - find_eapply_lem_hyp doLeader_messages; eauto.
-                find_erewrite_lem doGenericServer_log.
                 exfalso. eauto using aiis_intro_state, handleMessage_aais.
+              - exfalso. eauto using doGenericServer_packets.
             }
           * exfalso. eauto using aiis_intro_packet.
       - unfold RaftInputHandler in *. repeat break_let. subst. find_inversion.
         find_apply_lem_hyp applied_implies_input_update_split.
         break_exists. intuition; break_exists.
-        + find_erewrite_lem doLeader_same_log.
-          find_erewrite_lem doGenericServer_log.
+        + find_erewrite_lem doGenericServer_log.
+          find_erewrite_lem doLeader_same_log.
           eauto using handleInputs_aais.
         + exfalso. eauto using aiis_intro_state.
         + intuition. do_in_app. intuition.
@@ -295,10 +294,9 @@ Section AppliedImpliesInputProof.
                 + exfalso. eapply handleTimeout_not_is_append_entries; eauto.
                   eauto using mEntries_some_is_applied_entries.
                 + exfalso. eauto using handleClientRequest_no_messages.
-              - exfalso. eauto using doGenericServer_packets.
               - find_eapply_lem_hyp doLeader_messages; eauto.
-                find_erewrite_lem doGenericServer_log.
                 eauto using handleInputs_aais.
+              - exfalso. eauto using doGenericServer_packets.
             }
           * exfalso. eauto using aiis_intro_packet.
       - unfold applied_implies_input_state in H2.

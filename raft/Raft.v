@@ -419,10 +419,10 @@ Section Raft.
   Definition RaftNetHandler (me : name) (src : name) (m : msg)
              (state : raft_data) :=
     let (state, pkts) := handleMessage src me m state in
-    let '(genericOut, state, genericPkts) := doGenericServer me state in
     let '(leaderOut, state, leaderPkts) := doLeader state me in
-    (genericOut ++ leaderOut,
-     state, pkts ++ genericPkts ++ leaderPkts).
+    let '(genericOut, state, genericPkts) := doGenericServer me state in
+    (leaderOut ++ genericOut,
+     state, pkts ++ leaderPkts ++ genericPkts).
 
   Definition handleClientRequest (me : name) (state : raft_data) (client : nat) (id : nat) (c : input)
   : list raft_output * raft_data * list (name * msg) :=
@@ -457,10 +457,10 @@ Section Raft.
   Definition RaftInputHandler (me : name) (inp : raft_input)
              (state : raft_data) :=
     let '(handlerOut, state, pkts) := handleInput me inp state in
-    let '(genericOut, state, genericPkts) := doGenericServer me state in
     let '(leaderOut, state, leaderPkts) := doLeader state me in
-    (handlerOut ++ genericOut ++ leaderOut,
-     state, pkts ++ genericPkts ++ leaderPkts).
+    let '(genericOut, state, genericPkts) := doGenericServer me state in
+    (handlerOut ++ leaderOut ++ genericOut,
+     state, pkts ++ leaderPkts ++ genericPkts).
   
   Definition reboot state : raft_data :=
     mkRaft_data (currentTerm state)
@@ -790,10 +790,10 @@ Section Raft.
                 nwPackets := ((xs ++ ys) ++ (send_packets (pDst p) l0)) ++
                                 (send_packets (pDst p) l1) ;
                 nwState := (update (update (nwState net) (pDst p) r) (pDst p) r0)
-              |}) by (eapply RIR_doGenericServer; eauto;
+              |}) by (eapply RIR_doLeader; eauto;
                       [simpl in *; break_if; try congruence; eauto| in_crush]).
-         eapply_prop raft_net_invariant_do_leader. eauto. 
-         eapply_prop raft_net_invariant_do_generic_server. eauto.
+         eapply_prop raft_net_invariant_do_generic_server. eauto. 
+         eapply_prop raft_net_invariant_do_leader. eauto.
          eapply raft_invariant_handle_message with (P := P); eauto using in_app_or.
          auto.
          simpl. break_if; intuition eauto.
@@ -818,10 +818,10 @@ Section Raft.
               {|
                 nwPackets := ((nwPackets net ++ send_packets h l0) ++ send_packets h l2) ;
                 nwState := update (update (nwState net) h r) h r0
-              |})  by (eapply RIR_doGenericServer; eauto;
+              |})  by (eapply RIR_doLeader; eauto;
                        [simpl in *; break_if; try congruence; eauto| in_crush]).
-         eapply_prop raft_net_invariant_do_leader. eauto.
          eapply_prop raft_net_invariant_do_generic_server. eauto.
+         eapply_prop raft_net_invariant_do_leader. eauto.
          eapply raft_invariant_handle_input with (P := P); eauto using in_app_or.
          auto.
          simpl. break_if; intuition eauto.
