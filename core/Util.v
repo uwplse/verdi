@@ -1,10 +1,5 @@
-Require Import Arith.
-Require Import Omega.
-Require Import NPeano.
-Require Import List.
+Require Import Arith Omega NPeano List Sorting.Permutation VerdiTactics.
 Import ListNotations.
-Require Import Sorting.Permutation.
-Require Import VerdiTactics.
 
 Set Implicit Arguments.
 
@@ -22,11 +17,7 @@ Ltac do_in_app :=
 
 Lemma filter_app : forall A (f : A -> bool) xs ys,
     filter f (xs ++ ys) = filter f xs ++ filter f ys.
-Proof.
-  induction xs; intros.
-  - auto.
-  - simpl. rewrite IHxs. break_if; auto.
-Qed.
+Proof. induction xs;intros;simpl;try (break_if;simpl);(idtac + f_equal);solve [auto]. Qed.
 
 Section dedup.
   Variable A : Type.
@@ -44,140 +35,83 @@ Section dedup.
 
   Lemma dedup_eliminates_duplicates : forall (a : A) b c,
       (dedup (a :: b ++ a :: c) = dedup (b ++ a :: c)).
-  Proof.
-    intros. simpl in *.
-    break_match.
-    + auto.
-    + exfalso. intuition.
-  Qed.
+  Proof. intros;simpl in *;break_match;(idtac + exfalso);solve [auto;intuition]. Qed.
 
   Lemma dedup_In : forall (x : A) xs,
       In x xs ->
       In x (dedup xs).
-  Proof.
-    induction xs; intros.
-    - simpl in *. intuition.
-    - simpl in *. break_if; intuition.
-      + subst. auto.
-      + subst. simpl. auto.
-  Qed.
+  Proof. induction xs;simpl in *;intuition;subst;break_if;simpl;auto. Qed.
 
   Lemma filter_dedup (pred : A -> bool) :
     forall xs (p : A) ys,
       pred p = false ->
       filter pred (dedup (xs ++ ys)) = filter pred (dedup (xs ++ p :: ys)).
   Proof.
-    intros. induction xs.
-    - simpl. repeat (break_match; simpl; auto; try discriminate).
-    - simpl. repeat (break_match; simpl; auto).
-      + exfalso. apply n. apply in_app_iff. apply in_app_or in i. intuition.
-      + exfalso. apply n. apply in_app_or in i. intuition.
-        * simpl in *. intuition. subst. rewrite Heqb in H. discriminate.
-      + rewrite IHxs. auto.
-      + discriminate.
-      + discriminate.
+    intros;induction xs;repeat (break_match||discriminate||(auto using f_equal);simpl in *);
+    exfalso;apply n;apply in_app_or in i;simpl in *;dintuition;
+    subst;rewrite H in *;discriminate.
   Qed.
 
   Lemma dedup_app : forall (xs ys : list A),
       (forall x y, In x xs -> In y ys -> x <> y) ->
       dedup (xs ++ ys) = dedup xs ++ dedup ys.
   Proof.
-    intros. induction xs; simpl; auto.
-    repeat break_match.
-    - apply IHxs.
-      intros. apply H; intuition.
-    - exfalso. specialize (H a a).
-      apply H; intuition.
-      do_in_app. intuition.
-    - exfalso. apply n. intuition.
-    - simpl. f_equal.
-      apply IHxs.
-      intros. apply H; intuition.
+    intros;induction xs;simpl;auto;repeat break_match;simpl in *;intuition.
+    apply IHxs;intuition;eapply H;eauto.
+    apply in_app_or in i;specialize (H a a);intuition.
+    contradict n;intuition.
+    f_equal;apply IHxs;intuition;eauto.
   Qed.
 
   Lemma in_dedup_was_in :
     forall xs (x : A),
       In x (dedup xs) ->
       In x xs.
-  Proof.
-    induction xs; intros.
-    - simpl in *; intuition.
-    - simpl in *. break_if; simpl in *; intuition.
-  Qed.
+  Proof. induction xs;intros;simpl in *;try break_if;simpl in *;intuition. Qed.
 
   Lemma NoDup_dedup :
     forall (xs : list A),
       NoDup (dedup xs).
-  Proof.
-    induction xs.
-    - simpl. constructor.
-    - simpl. break_if; auto.
-      constructor; auto.
-      intro.
-      apply n.
-      eapply in_dedup_was_in; eauto.
-  Qed.
+  Proof. induction xs; simpl; try break_if; auto using NoDup_nil, NoDup_cons, in_dedup_was_in. Qed.
 
   Lemma remove_preserve :
     forall (x y : A) xs,
       x <> y ->
       In y xs ->
       In y (remove A_eq_dec x xs).
-  Proof.
-    induction xs; intros.
-    - intuition.
-    - simpl in *.
-      concludes.
-      intuition; break_if; subst; try congruence; intuition.
-  Qed.
+  Proof. induction xs;intros;simpl in *;intuition;break_if;subst;congruence||intuition. Qed.
 
   Lemma in_remove :
     forall (x y : A) xs,
       In y (remove A_eq_dec x xs) ->
       In y xs.
   Proof.
-    induction xs; intros.
-    - auto.
-    - simpl in *. break_if; simpl in *; intuition.
+    induction xs; intros; auto.
+    simpl in *;break_if;simpl in *;intuition.
   Qed.
 
   Lemma remove_dedup_comm : forall (x : A) xs,
       remove A_eq_dec x (dedup xs) =
       dedup (remove A_eq_dec x xs).
   Proof.
-    induction xs; intros.
-    - auto.
-    - simpl. repeat (break_match; simpl); auto.
-      + exfalso. apply n0. apply remove_preserve; auto.
-      + exfalso. apply n. eapply in_remove; eauto.
-      + f_equal. auto.
+    induction xs;intros;auto.
+    repeat (break_match||subst;simpl);auto using f_equal;
+    exfalso;eauto using remove_preserve, in_remove.
   Qed.
 
   Lemma remove_partition :
     forall xs (p : A) ys,
       remove A_eq_dec p (xs ++ p :: ys) = remove A_eq_dec p (xs ++ ys).
-  Proof.
-    induction xs; intros.
-    - simpl. break_if; congruence.
-    - simpl. break_if.
-      + auto.
-      + f_equal. auto.
-  Qed.
+  Proof. induction xs;intros;simpl;break_if;congruence||auto. Qed.
 
   Lemma remove_not_in : forall (x : A) xs,
       ~ In x xs ->
       remove A_eq_dec x xs = xs.
   Proof.
-    intros. induction xs.
-    - intuition.
-    - simpl. break_match.
-      + exfalso. apply H.
-        subst. intuition.
-      + f_equal. apply IHxs.
-        intro Hin.
-        apply H. simpl. intuition.
+    intros;induction xs;intuition;simpl;break_match;auto using f_equal.
+    exfalso;apply H;rewrite e;intuition.
   Qed.
-
+  (*refactor mark*)
   Lemma dedup_partition :
     forall xs (p : A) ys xs' ys',
       dedup (xs ++ p :: ys) = xs' ++ p :: ys' ->
