@@ -43,6 +43,8 @@ Class FailureParams `(P : MultiParams) :=
     reboot : data -> data
   }.
 
+Create HintDb NetDB discriminated.
+
 Section StepRelations.
   Variable A : Type.
   Variable trace : Type.
@@ -55,18 +57,16 @@ Section StepRelations.
                    step x x' cs ->
                    refl_trans_1n_trace step x' x'' cs' ->
                    refl_trans_1n_trace step x x'' (cs ++ cs').
+  Hint Constructors refl_trans_1n_trace : NetDB.
+  Ltac EAN := eauto with NetDB.
+  Ltac AN := auto with NetDB.
 
   Theorem refl_trans_1n_trace_trans : forall step (a b c : A) (os os' : list trace),
                                         refl_trans_1n_trace step a b os ->
                                         refl_trans_1n_trace step b c os' ->
                                         refl_trans_1n_trace step a c (os ++ os').
-  Proof.
-    intros.
-    induction H; simpl; auto.
-    concludes.
-    rewrite app_ass.
-    constructor 2 with x'; auto.
-  Qed.
+  Proof. intros;induction H;intuition idtac;rewrite app_ass;simpl;EAN. Qed.
+  Hint Resolve refl_trans_1n_trace : NetDB.
 
   Definition inductive (step : step_relation) (P : A -> Prop)  :=
     forall (a a': A) (os : list trace),
@@ -82,9 +82,8 @@ Section StepRelations.
         (refl_trans_1n_trace step) a a' os ->
         P a'.
   Proof.
-    unfold inductive. intros.
-    induction H1; auto.
-    forwards; eauto.
+    unfold inductive;intros.
+    induction H1;intuition eauto.
   Qed.
 
   Definition inductive_invariant (step : step_relation) (init : A) (P : A -> Prop) :=
@@ -115,8 +114,9 @@ Section StepRelations.
     match goal with H : P _ -> _ |- _ => apply H end;
       intros; break_exists;
       match goal with H : forall _ _ _, step _ _ _ -> _ |- _ => eapply H end;
-      eauto; eexists; econstructor; eauto.
+      EAN.
   Qed.
+  Hint Resolve true_in_reachable_reqs : NetDB.
 
   Theorem inductive_invariant_true_in_reachable :
     forall step init P,
@@ -128,13 +128,15 @@ Section StepRelations.
     match goal with H : refl_trans_1n_trace _ _ _ _ |- _ => induction H end;
       intuition eauto.
   Qed.
-  
+  Hint Resolve inductive_invariant_true_in_reachable : NetDB.
+
   Inductive refl_trans_n1_trace (step : step_relation) : step_relation :=
   | RTn1TBase : forall x, refl_trans_n1_trace step x x []
   | RTn1TStep : forall x x' x'' cs cs',
                   refl_trans_n1_trace step x x' cs ->
                   step x' x'' cs' ->
                   refl_trans_n1_trace step x x'' (cs ++ cs').
+  Hint Constructors refl_trans_n1_trace : NetDB.
 
   Lemma RTn1_step :
     forall (step : step_relation) x y z l l',
@@ -142,27 +144,17 @@ Section StepRelations.
       refl_trans_n1_trace step y z l' ->
       refl_trans_n1_trace step x z (l ++ l').
   Proof.
-    intros.
-    induction H0.
-    - rewrite app_nil_r. rewrite <- app_nil_l.
-      econstructor.
-      constructor.
-      auto.
-    - concludes.
-      rewrite <- app_ass.
-      econstructor; eauto.
+    intros;induction H0;intuition;
+    rewrite app_nil_r, <- app_nil_l||rewrite <- app_ass;eauto with NetDB.
   Qed.
+  Hint Resolve RTn1_step : NetDB.
 
   Lemma refl_trans_1n_n1_trace :
     forall step x y l,
       refl_trans_1n_trace step x y l ->
       refl_trans_n1_trace step x y l.
-  Proof.
-    intros.
-    induction H.
-    - constructor.
-    - eapply RTn1_step; eauto.
-  Qed.
+  Proof. intros;induction H;EAN. Qed.
+  Hint Resolve refl_trans_1n_n1_trace : NetDB.
 
   Lemma RT1n_step :
     forall (step : step_relation) x y z l l',
@@ -170,23 +162,16 @@ Section StepRelations.
       step y z l' ->
       refl_trans_1n_trace step x z (l ++ l').
   Proof.
-    intros.
-    induction H.
-    - simpl. rewrite <- app_nil_r. econstructor; eauto. constructor.
-    - concludes. rewrite app_ass.
-      econstructor; eauto.
+    intros;induction H;simpl;intuition;rewrite app_ass||rewrite <- app_nil_r;EAN.
   Qed.
+  Hint Resolve RT1n_step : NetDB.
 
   Lemma refl_trans_n1_1n_trace :
     forall step x y l,
       refl_trans_n1_trace step x y l ->
       refl_trans_1n_trace step x y l.
-  Proof.
-    intros.
-    induction H.
-    - constructor.
-    - eapply RT1n_step; eauto.
-  Qed.
+  Proof. intros;induction H;EAN. Qed.
+  Hint Resolve refl_trans_n1_1n_trace : NetDB.
 
   Lemma refl_trans_1n_trace_n1_ind :
     forall (step : step_relation) (P : A -> A -> list trace -> Prop),
@@ -199,12 +184,7 @@ Section StepRelations.
          P x x'' (tr1 ++ tr2)) ->
       forall x y l,
         refl_trans_1n_trace step x y l -> P x y l.
-  Proof.
-    intros.
-    find_apply_lem_hyp refl_trans_1n_n1_trace.
-    eapply refl_trans_n1_trace_ind; eauto.
-    intros. eapply H0; eauto using refl_trans_n1_1n_trace, RT1n_step.
-  Qed.
+  Proof. intros; eapply refl_trans_n1_trace_ind; EAN. Qed.
 
   Theorem true_in_reachable_elim :
     forall (step : step_relation) init (P : A -> Prop),
@@ -215,16 +195,8 @@ Section StepRelations.
          reachable step init a ->
          P a ->
          P a').
-  Proof.
-    intros. unfold true_in_reachable, reachable in *.
-    intros. intuition.
-    - apply H; eexists; econstructor.
-    - apply H.
-      break_exists.
-      eexists. apply refl_trans_n1_1n_trace.
-      find_apply_lem_hyp refl_trans_1n_n1_trace.
-      econstructor; eauto.
-  Qed.
+  Proof. intros;unfold true_in_reachable, reachable in *;intuition;try break_exists;EAN. Qed.
+  Hint Resolve true_in_reachable_elim : NetDB.
 End StepRelations.
 
 Section Step1.
@@ -234,7 +206,7 @@ Section Step1.
   | S1T_deliver : forall (i : input) s s' (out : output),
                     handler i s = (out, s') ->
                     step_1 s s' [(i, out)].
-
+  Hint Constructors step_1 : NetDB.
   Definition step_1_star := refl_trans_1n_trace step_1.
 End Step1.
 
@@ -266,7 +238,7 @@ Section StepAsync.
                      nwPackets net = xs ++ p :: ys ->
                      net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
                      net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
-                                      (update (nwState net) (pDst p) d) ->
+                                       (update (nwState net) (pDst p) d) ->
                      step_m net net' [(pDst p, inr out)]
   (* inject a message (f inp) into host h *)
   | SM_input : forall h net net' out inp d l,
@@ -274,7 +246,7 @@ Section StepAsync.
                    net' = mkNetwork (send_packets h l ++ nwPackets net)
                                     (update (nwState net) h d) ->
                    step_m net net' [(h, inl inp); (h, inr out)].
-
+  Hint Constructors step_m : NetDB.
   Definition step_m_star := refl_trans_1n_trace step_m.
 End StepAsync.
 

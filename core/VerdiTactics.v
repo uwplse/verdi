@@ -211,7 +211,7 @@ Ltac find_reverse_higher_order_rewrite :=
   end.
 
 Ltac clean :=
-  match goal with
+  repeat match goal with
     | [ H : ?X = ?X |- _ ] => clear H
   end.
 
