@@ -94,6 +94,19 @@ Section SpecLemmas.
     intros. repeat break_match; repeat tuple_inversion; intuition.
   Qed.
 
+  Lemma update_elections_data_request_vote_reply_votesWithLog :
+  forall  (h : name)
+    (st : electionsData *
+          RaftState.raft_data term name entry logIndex serverType data output)
+    (src : name) (t : nat) (r : bool),
+    votesWithLog (update_elections_data_requestVoteReply h src t r st) =
+    votesWithLog (fst st).
+  Proof.
+    intros.
+    unfold update_elections_data_requestVoteReply.
+    break_match; simpl in *; auto.
+  Qed.
+
   Lemma update_elections_data_client_request_leaderLogs :
     forall h st client id c,
       leaderLogs (update_elections_data_client_request h st client id c) =
@@ -441,4 +454,91 @@ Section SpecLemmas.
     break_if; auto.
     simpl. intuition.
   Qed.
+
+  Lemma update_elections_data_request_vote_votesWithLog_old :
+    forall (h : name)
+      (st : electionsData *
+            RaftState.raft_data term name entry logIndex serverType data output)
+      (t : nat) (src : fin N) (lli llt : nat)
+      (t' : term) (h' : name) (l' : list entry),
+      In (t', h', l') (votesWithLog (fst st)) ->
+      In (t', h', l')
+         (votesWithLog (update_elections_data_requestVote h src t src lli llt st)).
+  Proof.
+    intros.
+    unfold update_elections_data_requestVote in *.
+    repeat break_match; simpl in *; intuition.
+  Qed.
+
+  Lemma update_elections_data_timeout_votesWithLog_old :
+    forall h st t h' l,
+      In (t, h', l) (votesWithLog (fst st)) ->
+      In (t, h', l) (votesWithLog (update_elections_data_timeout h st)).
+  Proof.
+    intros.
+    unfold update_elections_data_timeout.
+    repeat break_match; simpl in *; auto.
+  Qed.
+
+
+  Lemma update_elections_data_timeout_votesWithLog_votesReceived :
+    forall h st out st' ps,
+      handleTimeout h (snd st) = (out, st', ps) ->
+      (votesReceived st' = votesReceived (snd st) /\
+       votesWithLog (update_elections_data_timeout h st) = votesWithLog (fst st) /\
+       type st' = Leader) \/
+      (votesReceived st' = [h] /\
+       votesWithLog (update_elections_data_timeout h st) =
+       (currentTerm st', h, (log st')) :: votesWithLog (fst st) /\
+       currentTerm st' = S (currentTerm (snd st))).
+  Proof.
+    unfold update_elections_data_timeout, handleTimeout, tryToBecomeLeader in *.
+    intros.
+    repeat break_match; simpl in *; intuition; repeat tuple_inversion; intuition;
+    simpl in *; repeat find_inversion; intuition; try congruence.
+  Qed.
+
+  Lemma update_elections_data_request_vote_votedFor :
+    forall h h' cid t lli llt st st' m,
+      handleRequestVote h (snd st) t h' lli llt = (st', m) ->
+      votedFor st' = Some cid ->
+      (votedFor (snd st) = Some cid /\
+       currentTerm st' = currentTerm (snd st)) \/
+      (cid = h' /\
+       currentTerm st' = t /\
+        votesWithLog (update_elections_data_requestVote
+                       h h' t h' lli llt st) =
+       (currentTerm st', cid, (log st')) :: votesWithLog (fst st) /\
+       moreUpToDate llt lli (maxTerm (log st')) (maxIndex (log st')) = true).
+  Proof.
+    intros.
+    unfold update_elections_data_requestVote.
+    repeat find_rewrite.
+    unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; repeat find_inversion; simpl in *; auto; try congruence;
+    find_inversion; auto; do_bool; intuition; try congruence.
+    do_bool. subst. intuition.
+  Qed.
+
+  Lemma update_elections_data_timeout_votedFor :
+    forall h cid st out st' m,
+      handleTimeout h (snd st) = (out, st', m) ->
+      votedFor st' = Some cid ->
+      (votedFor (snd st) = Some cid /\
+       currentTerm st' = currentTerm (snd st) /\
+       type st' = type (snd st) /\
+       votesWithLog (update_elections_data_timeout h st) = votesWithLog (fst st)) \/
+      (cid = h /\
+       currentTerm st' = S (currentTerm (snd st)) /\
+       votesWithLog (update_elections_data_timeout h st) =
+       (currentTerm st', cid, (log st')) :: votesWithLog (fst st)).
+  Proof.
+    intros.
+    unfold update_elections_data_timeout.
+    repeat find_rewrite.
+    unfold handleTimeout, tryToBecomeLeader in *.
+    repeat break_match; repeat find_inversion; simpl in *; auto; try congruence;
+    find_inversion; auto.
+  Qed.
+
 End SpecLemmas.

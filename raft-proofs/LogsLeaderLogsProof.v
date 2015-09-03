@@ -1,5 +1,6 @@
 Require Import List.
 Import ListNotations.
+Require Import Omega.
 
 Require Import VerdiTactics.
 Require Import Util.
@@ -24,6 +25,7 @@ Require Import RefinedLogMatchingLemmasInterface.
 Require Import LeadersHaveLeaderLogsStrongInterface.
 Require Import NextIndexSafetyInterface.
 Require Import SortedInterface.
+Require Import LeaderLogsLogPropertiesInterface.
 
 Section LogsLeaderLogs.
   Context {orig_base_params : BaseParams}.
@@ -38,7 +40,13 @@ Section LogsLeaderLogs.
   Context {lhllsi : leaders_have_leaderLogs_strong_interface}.
   Context {nisi : nextIndex_safety_interface}.
   Context {si : sorted_interface}.
+  Context {lpholli : log_properties_hold_on_leader_logs_interface}.
 
+  Definition weak_sanity pli ll ll' :=
+    pli = 0 ->
+    (exists e, eIndex e = 0 /\ In e ll) \/
+    ll = ll'.
+  
   Definition logs_leaderLogs_nw_weak net :=
     forall p t n pli plt es ci e,
       In p (nwPackets net) ->
@@ -48,17 +56,19 @@ Section LogsLeaderLogs.
         In (eTerm e, ll) (leaderLogs (fst (nwState net leader))) /\
         Prefix ll' ll /\
         removeAfterIndex es (eIndex e) = es' ++ ll' /\
-        (forall e', In e' es' -> eTerm e' = eTerm e).
+        (forall e', In e' es' -> eTerm e' = eTerm e) /\
+        weak_sanity pli ll ll'.
 
   Lemma logs_leaderLogs_nw_weaken :
     forall net,
       logs_leaderLogs_nw net ->
       logs_leaderLogs_nw_weak net.
   Proof.
-    intros. unfold logs_leaderLogs_nw, logs_leaderLogs_nw_weak in *.
+    intros. unfold logs_leaderLogs_nw, logs_leaderLogs_nw_weak, weak_sanity in *.
     intros.
     eapply_prop_hyp In In; eauto.
-    break_exists_exists; intuition.
+    break_exists_exists; intuition; subst; try omega.
+    break_exists; intuition; eauto.
   Qed.
     
   Definition logs_leaderLogs_inductive net :=
@@ -95,7 +105,6 @@ Section LogsLeaderLogs.
     eapply lift_prop; eauto using nextIndex_safety_invariant.
   Qed.
 
-  Require Import Omega.
   
   Lemma nextIndex_sanity :
     forall net h h',
@@ -192,6 +201,24 @@ Section LogsLeaderLogs.
     match goal with
     | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
     end.
+
+  Lemma contiguous_log_property :
+    log_property (fun l => contiguous_range_exact_lo l 0).
+  Proof.
+    red. intros.
+    apply entries_contiguous_invariant; auto.
+  Qed.
+
+  Lemma leaderLogs_contiguous :
+    forall net h t ll,
+      refined_raft_intermediate_reachable net ->
+      In (t, ll) (leaderLogs (fst (nwState net h))) ->
+      contiguous_range_exact_lo ll 0.
+  Proof.
+    intros. pattern ll.
+    eapply log_properties_hold_on_leader_logs_invariant; eauto using contiguous_log_property.
+  Qed.
+
   
   Lemma logs_leaderLogs_inductive_appendEntries :
     refined_raft_net_invariant_append_entries logs_leaderLogs_inductive.
@@ -223,7 +250,11 @@ Section LogsLeaderLogs.
               eapply sorted_Prefix_in_eq; eauto.
               intros.
               eapply prefix_contiguous with (i := 0); eauto.
-              + admit.
+              + unfold weak_sanity in *. concludes.
+                intuition; subst; simpl in *; intuition.
+                break_exists. intuition.
+                find_eapply_lem_hyp leaderLogs_contiguous_invariant; eauto.
+                omega.
               + eapply leaderLogs_contiguous_invariant; eauto.
               + assert (sorted (log d)) by (eapply entries_sorted_nw_invariant; eauto).
                 eapply contiguous_app with (l1 := x1).
@@ -305,7 +336,7 @@ Section LogsLeaderLogs.
                   find_copy_eapply_lem_hyp leaderLogs_sorted_invariant; eauto.
                   f_equal.
                   eapply thing; eauto using lift_logs_sorted;
-                  [admit|eapply leaderLogs_entries_match_invariant; eauto|].
+                  [eauto using leaderLogs_contiguous|eapply leaderLogs_entries_match_invariant; eauto|].
                   assert (sorted es) by (eapply entries_sorted_nw_invariant; eauto).
                   find_copy_apply_lem_hyp entries_contiguous_nw_invariant.
                   unfold entries_contiguous_nw in *.
@@ -389,7 +420,7 @@ Section LogsLeaderLogs.
         rewrite update_elections_data_appendEntries_leaderLogs; auto.
       + exfalso. subst. simpl in *.
         unfold handleAppendEntries in *; repeat break_match; find_inversion; congruence.
-  Admitted.
+  Qed.
   
   Lemma logs_leaderLogs_inductive_appendEntriesReply :
     refined_raft_net_invariant_append_entries_reply logs_leaderLogs_inductive.

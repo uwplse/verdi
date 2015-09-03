@@ -79,6 +79,9 @@ Require Import MaxIndexSanityInterface.
 Require Import LeaderCompletenessInterface.
 Require Import LeaderCompletenessProof.
 
+Require Import TransitiveCommitInterface.
+Require Import TransitiveCommitProof.
+
 Require Import AllEntriesLeaderLogsInterface.
 Require Import AllEntriesLeaderLogsProof.
 
@@ -108,6 +111,9 @@ Require Import EveryEntryWasCreatedHostLogProof.
 
 Require Import LeaderLogsVotesWithLogInterface.
 Require Import LeaderLogsVotesWithLogProof.
+
+Require Import AllEntriesLogInterface.
+Require Import AllEntriesLogProof.
 
 Require Import AllEntriesVotesWithLogInterface.
 Require Import AllEntriesVotesWithLogProof.
@@ -162,6 +168,9 @@ Require Import RefinedLogMatchingLemmasProof.
 
 Require Import LeaderLogsCandidateEntriesInterface.
 Require Import LeaderLogsCandidateEntriesProof.
+
+Require Import AllEntriesCandidateEntriesInterface.
+Require Import AllEntriesCandidateEntriesProof.
 
 Require Import AllEntriesLogMatchingInterface.
 Require Import AllEntriesLogMatchingProof.
@@ -226,16 +235,69 @@ Require Import NoAppendEntriesToLeaderProof.
 Require Import NoAppendEntriesToSelfInterface.
 Require Import NoAppendEntriesToSelfProof.
 
+Require Import NoAppendEntriesRepliesToSelfInterface.
+Require Import NoAppendEntriesRepliesToSelfProof.
+
 Require Import LogAllEntriesInterface.
 Require Import LogAllEntriesProof.
 
 Require Import AppendEntriesReplySublogInterface.
 Require Import AppendEntriesReplySublogProof.
 
+Require Import LeaderLogsLogPropertiesInterface.
+Require Import LeaderLogsLogPropertiesProof.
+
+Require Import AppendEntriesRequestReplyCorrespondenceInterface.
+Require Import AppendEntriesRequestReplyCorrespondenceProof.
+
+Require Import AppendEntriesLeaderInterface.
+Require Import AppendEntriesLeaderProof.
+
+Require Import RequestVoteMaxIndexMaxTermInterface.
+Require Import RequestVoteMaxIndexMaxTermProof.
+
+Require Import RequestVoteReplyMoreUpToDateInterface.
+Require Import RequestVoteReplyMoreUpToDateProof.
+
+Require Import RequestVoteReplyTermSanityInterface.
+Require Import RequestVoteReplyTermSanityProof.
+
+Require Import RequestVoteTermSanityInterface.
+Require Import RequestVoteTermSanityProof.
+
+Require Import VotedForMoreUpToDateInterface.
+Require Import VotedForMoreUpToDateProof.
+
+Require Import VotedForTermSanityInterface.
+Require Import VotedForTermSanityProof.
+
+Require Import VotesReceivedMoreUpToDateInterface.
+Require Import VotesReceivedMoreUpToDateProof.
+
+Require Import RaftMsgRefinementInterface.
+Require Import RaftMsgRefinementProof.
+
+Require Import GhostLogCorrectInterface.
+Require Import GhostLogCorrectProof.
+
+Require Import GhostLogsLogPropertiesInterface.
+Require Import GhostLogsLogPropertiesProof.
+
+Require Import InLogInAllEntriesInterface.
+Require Import InLogInAllEntriesProof.
+
+Require Import GhostLogAllEntriesInterface.
+Require Import GhostLogAllEntriesProof.
+
+Require Import GhostLogLogMatchingInterface.
+Require Import GhostLogLogMatchingProof.
+
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
 Hint Extern 4 (@raft_refinement_interface _ _ _) => apply rri : typeclass_instances.
+Hint Extern 4 (@raft_msg_refinement_interface _ _ _) => apply rmri : typeclass_instances.
 Hint Extern 4 (@cronies_term_interface _ _ _) => apply cti : typeclass_instances.
 Hint Extern 4 (@votes_correct_interface _ _ _) => apply vci : typeclass_instances.
 Hint Extern 4 (@cronies_correct_interface _ _ _) => apply cci : typeclass_instances.
@@ -256,6 +318,7 @@ Hint Extern 4 (@input_before_output_interface _ _ _) => apply iboi : typeclass_i
 Hint Extern 4 (@output_correct_interface _ _ _) => apply oci : typeclass_instances.
 Hint Extern 4 (@max_index_sanity_interface _ _ _) => apply misi : typeclass_instances.
 Hint Extern 4 (@leader_completeness_interface _ _ _) => apply lci : typeclass_instances.
+Hint Extern 4 (@transitive_commit_interface _ _ _) => apply tci : typeclass_instances.
 Hint Extern 4 (@all_entries_leader_logs_interface _ _ _) => apply aelli : typeclass_instances.
 Hint Extern 4 (@commit_recorded_committed_interface _ _ _) => apply crci : typeclass_instances.
 Hint Extern 4 (@leaderLogs_term_sanity_interface _ _ _) => apply lltsi : typeclass_instances.
@@ -266,6 +329,7 @@ Hint Extern 4 (@prefix_within_term_interface _ _ _) => apply pwti : typeclass_in
 Hint Extern 4 (@every_entry_was_created_interface _ _ _) => apply eewci : typeclass_instances.
 Hint Extern 4 (@every_entry_was_created_host_log_interface _ _ _) => apply eewchli : typeclass_instances.
 Hint Extern 4 (@leaderLogs_votesWithLog_interface _ _ _) => apply llvwli : typeclass_instances.
+Hint Extern 4 (@allEntries_log_interface _ _ _) => apply aeli : typeclass_instances.
 Hint Extern 4 (@allEntries_votesWithLog_interface _ _ _) => apply aevwli : typeclass_instances.
 Hint Extern 4 (@votesWithLog_sorted_interface _ _ _) => apply vwlsi : typeclass_instances.
 Hint Extern 4 (@terms_and_indices_from_one_interface _ _ _) => apply taifoi : typeclass_instances.
@@ -283,6 +347,7 @@ Hint Extern 4 (@leaders_have_leaderLogs_strong_interface _ _ _) => apply lhllsi 
 Hint Extern 4 (@nextIndex_safety_interface _ _ _) => apply nisi : typeclass_instances.
 Hint Extern 4 (@refined_log_matching_lemmas_interface _ _ _) => apply rlmli : typeclass_instances.
 Hint Extern 4 (@leaderLogs_candidate_entries_interface _ _ _) => apply llcei : typeclass_instances.
+Hint Extern 4 (@allEntries_candidate_entries_interface _ _ _) => apply aecei : typeclass_instances.
 Hint Extern 4 (@allEntries_log_matching_interface _ _ _) => apply aelmi : typeclass_instances.
 Hint Extern 4 (@append_entries_request_term_sanity_interface _ _ _) => apply aertsi : typeclass_instances.
 Hint Extern 4 (@allEntries_leader_sublog_interface _ _ _) => apply aelsi : typeclass_instances.
@@ -304,8 +369,24 @@ Hint Extern 4 (@match_index_leader_interface _ _ _) => apply mili : typeclass_in
 Hint Extern 4 (@match_index_sanity_interface _ _ _) => apply matchisi : typeclass_instances.
 Hint Extern 4 (@no_append_entries_to_leader_interface _ _ _) => apply noaetli : typeclass_instances.
 Hint Extern 4 (@no_append_entries_to_self_interface _ _ _) => apply noaetsi : typeclass_instances.
+Hint Extern 4 (@no_append_entries_replies_to_self_interface _ _ _) => apply noaertsi : typeclass_instances.
 Hint Extern 4 (@log_all_entries_interface _ _ _) => apply laei : typeclass_instances.
 Hint Extern 4 (@append_entries_reply_sublog_interface _ _ _) => apply aersi : typeclass_instances.
+Hint Extern 4 (@log_properties_hold_on_leader_logs_interface _ _ _) => apply lpholli : typeclass_instances.
+Hint Extern 4 (@log_properties_hold_on_ghost_logs_interface _ _ _) => apply lphogli : typeclass_instances.
+Hint Extern 4 (@append_entries_request_reply_correspondence_interface _ _ _) => apply aerrci : typeclass_instances.
+Hint Extern 4 (@append_entries_leader_interface _ _ _) => apply appendeli : typeclass_instances.
+Hint Extern 4 (@requestVote_maxIndex_maxTerm_interface _ _ _) => apply rvmimti : typeclass_instances.
+Hint Extern 4 (@requestVoteReply_moreUpToDate_interface _ _ _) => apply rvrmutdi : typeclass_instances.
+Hint Extern 4 (@requestVoteReply_term_sanity_interface _ _ _) => apply rvrtsi : typeclass_instances.
+Hint Extern 4 (@requestVote_term_sanity_interface _ _ _) => apply rvtsi : typeclass_instances.
+Hint Extern 4 (@votedFor_moreUpToDate_interface _ _ _) => apply vfmutdi : typeclass_instances.
+Hint Extern 4 (@votedFor_term_sanity_interface _ _ _) => apply vftsi : typeclass_instances.
+Hint Extern 4 (@votesReceived_moreUpToDate_interface _ _ _) => apply vrmutdi : typeclass_instances.
+Hint Extern 4 (@ghost_log_correct_interface _ _ _) => apply glci : typeclass_instances.
+Hint Extern 4 (@in_log_in_all_entries_interface _ _ _) => apply iliaei : typeclass_instances.
+Hint Extern 4 (@ghost_log_allEntries_interface _ _ _) => apply glaei : typeclass_instances.
+Hint Extern 4 (@ghost_log_entries_match_interface _ _ _) => apply glemi : typeclass_instances.
 
 Section EndToEndProof.
   Context {orig_base_params : BaseParams}.
@@ -315,7 +396,7 @@ Section EndToEndProof.
   Theorem raft_linearizable :
     forall failed net tr,
       input_correct tr ->
-      step_f_star step_f_init (failed, net) tr ->
+      step_f_star (params := failure_params) step_f_init (failed, net) tr ->
       exists l tr1 st,
         equivalent _ (import tr) l /\
         exported (get_input tr) (get_output tr) l tr1 /\

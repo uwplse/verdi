@@ -509,62 +509,68 @@ Section InputBeforeOutput.
       break_exists_exists. intuition.
       find_inversion.
       match goal with
-        | Hdgs : doGenericServer ?h ?st = _,
-          Hdl : doLeader ?st' ?h = _, _ :context [update (nwState ?net) ?h ?st''] |- _ =>
-          replace st with (update (nwState net) h st h) in Hdgs by eauto using update_eq;
-            replace st' with (update (update (nwState net) h st) h st' h) in Hdl by eauto using update_eq;
+        | Hdgs : doGenericServer ?h ?st' = _,
+          Hdl : doLeader ?st ?h = _, _ :context [update (nwState ?net) ?h ?st''] |- _ =>
+          replace st with (update (nwState net) h st h) in Hdl by eauto using update_eq;
+            replace st' with (update (update (nwState net) h st) h st' h) in Hdgs by eauto using update_eq;
             let H := fresh "H" in
             assert (update (nwState net) h st'' =
                     update (update (update (nwState net) h st) h st') h st'') as H by (repeat rewrite update_overwrite; auto); unfold data in *; simpl in *; rewrite H in *; clear H
       end.
-      find_apply_lem_hyp doLeader_appliedEntries.
-      find_rewrite.
       find_copy_eapply_lem_hyp RIR_handleMessage; eauto.
-      match goal with
-        | H : context [doGenericServer] |- _ =>
-          eapply doGenericServer_applied_entries in H; eauto
-      end.
+      find_eapply_lem_hyp RIR_doLeader; simpl in *; eauto.
+      simpl in *.
+      find_copy_apply_lem_hyp handleMessage_applied_entries; repeat find_rewrite; eauto;
+      try solve [destruct p; simpl in *; intuition].
+      find_copy_apply_lem_hyp doLeader_appliedEntries.
+      find_eapply_lem_hyp doGenericServer_applied_entries; eauto.
       break_exists. intuition.
       unfold ghost_data in *. simpl in *.
       repeat find_rewrite.
-      find_copy_apply_lem_hyp handleMessage_applied_entries; eauto;
-      [|destruct p; simpl in *; repeat find_rewrite; intuition].
-      repeat find_rewrite.
       do_in_app. intuition.
-      + find_false. eexists; intuition; eauto.
+      + find_false. eexists; intuition; repeat find_rewrite; eauto.
       + find_apply_hyp_hyp. break_exists. intuition.
-        eapply handleMessage_log; eauto.
-        destruct p; simpl in *; repeat find_rewrite; intuition.
+        eapply handleMessage_log with (h'' := x1); eauto;
+        [destruct p; simpl in *; repeat find_rewrite; intuition|].
+        update_destruct_hyp; subst; rewrite_update; eauto.
+        find_apply_lem_hyp doLeader_log. repeat find_rewrite. auto.
     - unfold RaftInputHandler in *. repeat break_let. subst.
       unfold in_applied_entries in *.
-      break_exists. intuition.
+      break_exists_exists. intuition.
       find_inversion.
       match goal with
-        | Hdgs : doGenericServer ?h ?st = _,
-          Hdl : doLeader ?st' ?h = _, _ :context [update (nwState ?net) ?h ?st''] |- _ =>
-          replace st with (update (nwState net) h st h) in Hdgs by eauto using update_eq;
-            replace st' with (update (update (nwState net) h st) h st' h) in Hdl by eauto using update_eq;
+        | Hdgs : doGenericServer ?h ?st' = _,
+          Hdl : doLeader ?st ?h = _, _ :context [update (nwState ?net) ?h ?st''] |- _ =>
+          replace st with (update (nwState net) h st h) in Hdl by eauto using update_eq;
+            replace st' with (update (update (nwState net) h st) h st' h) in Hdgs by eauto using update_eq;
             let H := fresh "H" in
             assert (update (nwState net) h st'' =
                     update (update (update (nwState net) h st) h st') h st'') as H by (repeat rewrite update_overwrite; auto); unfold data in *; simpl in *; rewrite H in *; clear H
       end.
-      find_apply_lem_hyp doLeader_appliedEntries.
-      find_rewrite.
       find_copy_eapply_lem_hyp RIR_handleInput; eauto.
-      match goal with
-        | H : context [doGenericServer] |- _ =>
-          eapply doGenericServer_applied_entries in H; eauto
-      end.
+      find_eapply_lem_hyp RIR_doLeader; simpl in *; eauto.
+      simpl in *.
+      find_copy_apply_lem_hyp handleInput_applied_entries; repeat find_rewrite; eauto;
+      try solve [destruct p; simpl in *; intuition].
+      find_copy_apply_lem_hyp doLeader_appliedEntries.
+      find_eapply_lem_hyp doGenericServer_applied_entries; eauto.
       break_exists. intuition.
       unfold ghost_data in *. simpl in *.
       repeat find_rewrite.
-      find_copy_apply_lem_hyp handleInput_applied_entries; eauto.
-      repeat find_rewrite.
+      match goal with
+        | H : In _ _ -> False |- _ => clear H
+      end.
       do_in_app. intuition.
-      + find_false. eexists; intuition; eauto.
+      + find_false. eexists; intuition; repeat find_rewrite; eauto.
       + find_apply_hyp_hyp. break_exists. intuition.
-        find_eapply_lem_hyp handleInput_log; eauto.
-        intuition; subst; eauto.
+        find_apply_lem_hyp doLeader_log.
+        match goal with
+          | H : _ |- _ =>
+            eapply handleInput_log with (h' := x1) in H
+        end; eauto;
+        [|update_destruct_hyp; subst; eauto; rewrite_update; repeat find_rewrite; eauto].
+        intuition; subst;
+        repeat find_rewrite; eauto.
     - find_false.
       unfold in_applied_entries in *.
       break_exists_exists. intuition.

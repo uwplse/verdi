@@ -193,26 +193,29 @@ Section OutputImpliesApplied.
       repeat break_let. repeat find_inversion. simpl in *.
       find_eapply_lem_hyp RIR_handleMessage; eauto.
       find_apply_lem_hyp key_in_output_list_split.
-      intuition; [|exfalso; eapply doLeader_key_in_output_list; eauto].
+      find_copy_apply_lem_hyp doLeader_key_in_output_list.
+      intuition.
       match goal with
-        | _ : doLeader ?st ?h = _, _ : doGenericServer _ ?d = _ |- _ =>
-          replace st with ((update (nwState net) h st) h) in *;
+        | H : doLeader ?st ?h = _ |- _ =>
+          replace st with ((update (nwState net) h st) h) in H;
             [|rewrite_update; auto]
       end.
-      find_apply_lem_hyp doLeader_appliedEntries.
-      rewrite_update. repeat find_rewrite_lem update_overwrite.
-      unfold data in *. simpl in *.
-      find_rewrite.
+      find_eapply_lem_hyp RIR_doLeader; eauto.
+      simpl in *.
       match goal with
-        | _ : raft_intermediate_reachable (mkNetwork ?ps ?st),
-          H : doGenericServer ?h ?r = _ |- _ =>
-          replace r with (nwState (mkNetwork ps st) h) in H by (simpl in *; rewrite_update; auto)
+        | _ : raft_intermediate_reachable ?net' |- context [update (nwState net) ?h ?d] =>
+          remember net' as n;
+            assert ((update (nwState net) h d) = (update (nwState n) h d)) by
+              (subst; simpl in *; repeat rewrite update_overwrite; auto)
       end.
-      find_eapply_lem_hyp doGenericServer_key_in_output_list; [|idtac|eauto]; eauto.
-      break_exists_exists. intuition. simpl in *.
-      find_rewrite_lem update_overwrite. auto.
+      unfold raft_data in *. simpl in *.
+      unfold raft_data in *. simpl in *.
+      repeat find_rewrite.
+      eapply doGenericServer_key_in_output_list; eauto.
+      simpl in *. rewrite_update; eauto.
     - unfold key_in_output_trace in *.
-      break_exists; simpl in *; intuition; find_inversion.
+      break_exists; simpl in *; intuition.
+      find_inversion.
       unfold in_applied_entries in *. simpl in *.
       unfold RaftInputHandler in *.
       repeat break_let. repeat find_inversion. simpl in *.
@@ -220,24 +223,25 @@ Section OutputImpliesApplied.
       find_apply_lem_hyp key_in_output_list_split.
       intuition; [exfalso; eapply handleInput_key_in_output_list; eauto|].
       find_apply_lem_hyp key_in_output_list_split.
-      intuition; [|exfalso; eapply doLeader_key_in_output_list; eauto].
+      intuition; [exfalso; eapply doLeader_key_in_output_list; eauto|].
       match goal with
-        | _ : doLeader ?st ?h = _, _ : doGenericServer _ ?d = _ |- _ =>
-          replace st with ((update (nwState net) h st) h) in *;
+        | H : doLeader ?st ?h = _ |- _ =>
+          replace st with ((update (nwState net) h st) h) in H;
             [|rewrite_update; auto]
       end.
-      find_apply_lem_hyp doLeader_appliedEntries.
-      rewrite_update. repeat find_rewrite_lem update_overwrite.
-      unfold data in *. simpl in *.
-      find_rewrite.
+      find_eapply_lem_hyp RIR_doLeader; eauto.
+      simpl in *.
       match goal with
-        | _ : raft_intermediate_reachable (mkNetwork ?ps ?st),
-          H : doGenericServer ?h ?r = _ |- _ =>
-          replace r with (nwState (mkNetwork ps st) h) in H by (simpl in *; rewrite_update; auto)
+        | _ : raft_intermediate_reachable ?net' |- context [update (nwState net) ?h ?d] =>
+          remember net' as n;
+            assert ((update (nwState net) h d) = (update (nwState n) h d)) by
+              (subst; simpl in *; repeat rewrite update_overwrite; auto)
       end.
-      find_eapply_lem_hyp doGenericServer_key_in_output_list; [|idtac|eauto]; eauto.
-      break_exists_exists. intuition. simpl in *.
-      find_rewrite_lem update_overwrite. auto.
+      unfold raft_data in *. simpl in *.
+      unfold raft_data in *. simpl in *.
+      repeat find_rewrite.
+      eapply doGenericServer_key_in_output_list; eauto.
+      simpl in *. rewrite_update; eauto.
   Qed.
 
   Instance TR : TraceRelation step_f :=

@@ -22,7 +22,6 @@ Require Import LeaderLogsTermSanityInterface.
 Require Import LeaderLogsSortedInterface.
 Require Import SortedInterface.
 Require Import LeaderLogsSublogInterface.
-Require Import AllEntriesLeaderLogsInterface.
 Require Import LeaderLogsContiguousInterface.
 Require Import TermsAndIndicesFromOneInterface.
 
@@ -39,7 +38,6 @@ Section LeaderLogsLogMatching.
   Context {lltsi : leaderLogs_term_sanity_interface}.
   Context {llsi : leaderLogs_sorted_interface}.
   Context {si : sorted_interface}.
-  Context {aelli : all_entries_leader_logs_interface}.
   Context {llsli : leaderLogs_sublog_interface}.
   Context {llci : leaderLogs_contiguous_interface}.
   Context {taifoi : terms_and_indices_from_one_interface}.

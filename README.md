@@ -36,7 +36,7 @@ examples. The files in the root directory include:
 The Raft Consensus Protocol
 ---------------------------
 
-The `raft` subdirectory contains an implementation and partial
+The `raft` subdirectory contains an implementation and
 verification of the Raft distributed consensus protocol. After
 building Verdi, running `make` in the `raft` subdirectory will compile
 the Raft implementation and proofs. The files in the Raft subdirectory

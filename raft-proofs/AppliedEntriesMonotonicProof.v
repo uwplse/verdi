@@ -421,35 +421,49 @@ Section AppliedEntriesMonotonicProof.
     - unfold RaftNetHandler in *. repeat break_let. subst.
       find_inversion.
       match goal with
-        | Hdgs : doGenericServer ?h ?st = _,
-          Hdl : doLeader ?st' ?h = _ |- context [update (nwState ?net) ?h ?st''] =>
-          replace st with (update (nwState net) h st h) in Hdgs by eauto using update_eq;
-            replace st' with (update (update (nwState net) h st) h st' h) in Hdl by eauto using update_eq;
+        | Hdl : doLeader ?st ?h = _,
+          Hdgs : doGenericServer ?h ?st' = _ |- context [update (nwState ?net) ?h ?st''] =>
+          replace st with (update (nwState net) h st h) in Hdl by eauto using update_eq;
+            replace st' with (update (update (nwState net) h st) h st' h) in Hdgs by eauto using update_eq;
             let H := fresh "H" in
             assert (update (nwState net) h st'' =
                     update (update (update (nwState net) h st) h st') h st'') by (repeat rewrite update_overwrite; auto); unfold data in *; simpl in *; rewrite H; clear H
       end.
-      find_apply_lem_hyp doLeader_appliedEntries. find_rewrite.
+      find_copy_apply_lem_hyp doLeader_appliedEntries.
       find_copy_eapply_lem_hyp RIR_handleMessage; eauto.
+      find_eapply_lem_hyp RIR_doLeader; simpl in *; eauto.
       find_apply_lem_hyp handleMessage_applied_entries; auto; [|destruct p; find_rewrite; in_crush].
-      find_rewrite.
+      unfold raft_data in *. simpl in *. unfold raft_data in *. simpl in *.
+      match goal with
+        | H : applied_entries (update (update _ _ _) _ _) =
+              applied_entries (update _ _ _) |- _ =>
+          symmetry in H
+      end.
+      repeat find_rewrite.
       repeat match goal with H : applied_entries _ = applied_entries _ |- _ => clear H end.
       eauto using doGenericServer_applied_entries.
     - unfold RaftInputHandler in *. repeat break_let. subst.
       find_inversion.
       match goal with
-        | Hdgs : doGenericServer ?h ?st = _,
-          Hdl : doLeader ?st' ?h = _ |- context [update (nwState ?net) ?h ?st''] =>
-          replace st with (update (nwState net) h st h) in Hdgs by eauto using update_eq;
-            replace st' with (update (update (nwState net) h st) h st' h) in Hdl by eauto using update_eq;
+        | Hdgs : doGenericServer ?h ?st' = _,
+          Hdl : doLeader ?st ?h = _ |- context [update (nwState ?net) ?h ?st''] =>
+          replace st with (update (nwState net) h st h) in Hdl by eauto using update_eq;
+            replace st' with (update (update (nwState net) h st) h st' h) in Hdgs by eauto using update_eq;
             let H := fresh "H" in
             assert (update (nwState net) h st'' =
                     update (update (update (nwState net) h st) h st') h st'') by (repeat rewrite update_overwrite; auto); unfold data in *; simpl in *; rewrite H; clear H
       end.
-      find_apply_lem_hyp doLeader_appliedEntries. find_rewrite.
+      find_copy_apply_lem_hyp doLeader_appliedEntries.
       find_copy_eapply_lem_hyp RIR_handleInput; eauto.
+      find_eapply_lem_hyp RIR_doLeader; simpl in *; eauto.      
       find_apply_lem_hyp handleInput_applied_entries; auto.
-      find_rewrite.
+      unfold raft_data in *. simpl in *. unfold raft_data in *. simpl in *.
+      match goal with
+        | H : applied_entries (update (update _ _ _) _ _) =
+              applied_entries (update _ _ _) |- _ =>
+          symmetry in H
+      end.
+      repeat find_rewrite.
       repeat match goal with H : applied_entries _ = applied_entries _ |- _ => clear H end.
       eauto using doGenericServer_applied_entries.
     - exists nil; intuition.

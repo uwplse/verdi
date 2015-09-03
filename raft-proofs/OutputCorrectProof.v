@@ -825,10 +825,10 @@ Section OutputCorrect.
 
   Ltac intermediate_networks :=
     match goal with
-      | Hdgs : doGenericServer ?h ?st = _,
-               Hdl : doLeader ?st' ?h = _ |- context [update (nwState ?net) ?h ?st''] =>
-        replace st with (update (nwState net) h st h) in Hdgs by eauto using update_eq;
-          replace st' with (update (update (nwState net) h st) h st' h) in Hdl by eauto using update_eq;
+      | Hdgs : doGenericServer ?h ?st' = _,
+               Hdl : doLeader ?st ?h = _ |- context [update (nwState ?net) ?h ?st''] =>
+        replace st with (update (nwState net) h st h) in Hdl by eauto using update_eq;
+          replace st' with (update (update (nwState net) h st) h st' h) in Hdgs by eauto using update_eq;
           let H := fresh "H" in
           assert (update (nwState net) h st'' =
                   update (update (update (nwState net) h st) h st') h st'') by (repeat rewrite update_overwrite; auto); unfold data in *; simpl in *; rewrite H; clear H
@@ -849,11 +849,12 @@ Section OutputCorrect.
       find_apply_lem_hyp in_output_trace_singleton_inv.
       find_apply_lem_hyp in_output_list_app_or.
       intuition.
-      + intermediate_networks.
-        find_apply_lem_hyp doLeader_appliedEntries. find_rewrite.
+      + exfalso. eapply doLeader_key_in_output_list; eauto.      
+      + find_copy_eapply_lem_hyp RIR_handleMessage; eauto.
+        find_copy_eapply_lem_hyp RIR_doLeader; simpl; rewrite_update; eauto.
+        intermediate_networks.
+        find_copy_apply_lem_hyp doLeader_appliedEntries. 
         eapply doGenericServer_output_correct; eauto.
-        eapply RIR_handleMessage; eauto.
-      + exfalso. eapply doLeader_key_in_output_list; eauto.
     - unfold RaftInputHandler in *. repeat break_let. repeat find_inversion.
       find_apply_lem_hyp in_output_trace_inp_inv.
       find_apply_lem_hyp in_output_trace_singleton_inv.
@@ -862,11 +863,12 @@ Section OutputCorrect.
       + exfalso. eapply handleInput_in_output_list; eauto.
       + find_apply_lem_hyp in_output_list_app_or.
         intuition.
-        * intermediate_networks.
-          find_apply_lem_hyp doLeader_appliedEntries. find_rewrite.
-          eapply doGenericServer_output_correct; eauto.
-          eapply RIR_handleInput; eauto.
         * exfalso. eapply doLeader_key_in_output_list; eauto.
+          * find_copy_eapply_lem_hyp RIR_handleInput; eauto.
+            find_copy_eapply_lem_hyp RIR_doLeader; simpl; rewrite_update; eauto.
+            intermediate_networks.
+            find_copy_apply_lem_hyp doLeader_appliedEntries. 
+            eapply doGenericServer_output_correct; eauto.
     - exfalso. eauto using in_output_trace_not_nil.
     - exfalso. eauto using in_output_trace_not_nil.
     - exfalso. eauto using in_output_trace_not_nil.
