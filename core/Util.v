@@ -436,7 +436,7 @@ Proof.
 Qed.
 
 Create HintDb OME.
-Hint Extern 1 => omega.
+Hint Extern 1 => omega : OME.
 
 Lemma subset_size_eq :
   forall A xs,
