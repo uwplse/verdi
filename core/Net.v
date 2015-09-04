@@ -210,6 +210,8 @@ Section Step1.
   Definition step_1_star := refl_trans_1n_trace step_1.
 End Step1.
 
+(*refactor mark*)
+
 Section StepAsync.
 
   Context `{params : MultiParams}.
