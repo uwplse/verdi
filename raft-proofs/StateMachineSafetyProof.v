@@ -1992,9 +1992,7 @@ Section StateMachineSafetyProof.
                  concludes.
                  assert (sorted (log d)) by (eauto using lifted_handleAppendEntries_logs_sorted).
                  intuition.
-                 * omega.
-                 * omega.
-                 * match goal with
+                 match goal with
                    | [ H : _ |- _ ] => eapply maxIndex_is_max in H; eauto; [idtac]
                    end.
                    omega.
@@ -2062,8 +2060,6 @@ Section StateMachineSafetyProof.
                          (eapply lifted_entries_contiguous_nw_invariant; eauto).
                      find_eapply_lem_hyp contiguous_range_exact_lo_elim_lt; eauto.
                      intuition.
-                     * omega.
-                     * omega.
                      * match goal with
                        | [ H : _ |- _ ] => eapply maxIndex_is_max in H; eauto with *; [idtac]
                        end.

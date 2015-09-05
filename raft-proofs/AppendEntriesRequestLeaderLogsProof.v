@@ -500,7 +500,7 @@ Section AppendEntriesRequestLeaderLogs.
     induction l1; intros; simpl in *.
     - destruct l2; simpl in *; intuition; subst; auto.
       break_if; try congruence. do_bool.
-      find_apply_hyp_hyp. intuition. omega.
+      find_apply_hyp_hyp. intuition.
     - simpl in *. break_if; try congruence.
       do_bool. find_inversion. intuition.
   Qed.

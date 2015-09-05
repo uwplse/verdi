@@ -869,9 +869,9 @@ Section MatchIndexAllEntries.
               end.
               eapply log_all_entries_invariant; auto.
             - find_apply_lem_hyp lifted_terms_and_indices_from_one_log; auto.
-              intuition. omega.
+              intuition.
           }
-      + update_destruct.
+       + update_destruct.
         * rewrite update_elections_data_requestVoteReply_allEntries.
           repeat find_reverse_rewrite. eauto.
         * repeat find_reverse_rewrite. eauto.

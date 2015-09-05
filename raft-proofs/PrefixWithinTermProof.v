@@ -929,7 +929,7 @@ Section PrefixWithinTerm.
     - subst. break_if; eauto.
       do_bool; omega.
     - break_if; eauto. do_bool.
-      specialize (H1 e); intuition. omega.
+      specialize (H1 e); intuition.
   Qed.
   
   Lemma prefix_within_term_inductive_append_entries :
@@ -1094,7 +1094,6 @@ Section PrefixWithinTerm.
               cut (eIndex e > 0); [intuition|]
           end.
           eapply entries_gt_0_nw_invariant; [|idtac|idtac|eauto]; [|idtac|eauto]; eauto.
-        * omega.
       + { unfold prefix_within_term. intros.
           do_in_app. intuition.
           - find_copy_apply_lem_hyp append_entries_append_entries_prefix_within_term_invariant.

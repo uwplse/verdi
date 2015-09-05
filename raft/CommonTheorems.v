@@ -443,7 +443,7 @@ Section CommonTheorems.
         match goal with
           | H : forall _, In _ _ -> _ |- _ =>
             specialize (H2 e)
-        end. intuition. omega.
+        end. intuition.
       + eauto.
   Qed.
 
@@ -948,15 +948,15 @@ Section CommonTheorems.
       + do_bool. right.
         find_apply_lem_hyp argmax_in; intuition.
         destruct (A_eq_dec a a1); destruct (A_eq_dec a a0); repeat subst; intuition.
-        * specialize (H a1); specialize (H0 a0); intuition. repeat find_rewrite. omega.
-        * specialize (H a1); specialize (H0 a0); intuition. repeat find_rewrite. omega.
+        * specialize (H a1); specialize (H0 a0); intuition.
+        * specialize (H a1); specialize (H0 a0); intuition.
     - find_rewrite. repeat break_match; subst; intuition.
       do_bool.
       repeat find_apply_lem_hyp argmax_elim; intuition.
       destruct (A_eq_dec a a1); destruct (A_eq_dec a a0); repeat subst; intuition.
-      + specialize (H a0); specialize (H0 a1); intuition. repeat find_rewrite. omega.
+      + specialize (H a0); specialize (H0 a1); intuition.
       + pose proof H a0; pose proof H a1; intuition. repeat find_rewrite.
-        specialize (H3 a1). intuition. omega.
+        specialize (H3 a1). intuition.
   Qed.
 
   Lemma argmin_fun_ext :
@@ -1030,15 +1030,15 @@ Section CommonTheorems.
       + do_bool. right.
         find_apply_lem_hyp argmin_in; intuition.
         destruct (A_eq_dec a a1); destruct (A_eq_dec a a0); repeat subst; intuition.
-        * specialize (H a1); specialize (H0 a0); intuition. repeat find_rewrite. omega.
-        * specialize (H a1); specialize (H0 a0); intuition. repeat find_rewrite. omega.
+        * specialize (H a1); specialize (H0 a0); intuition.
+        * specialize (H a1); specialize (H0 a0); intuition.
     - find_rewrite. repeat break_match; subst; intuition.
       do_bool.
       repeat find_apply_lem_hyp argmin_elim; intuition.
       destruct (A_eq_dec a a1); destruct (A_eq_dec a a0); repeat subst; intuition.
-      + specialize (H a0); specialize (H0 a1); intuition. repeat find_rewrite. omega.
+      + specialize (H a0); specialize (H0 a1); intuition.
       + pose proof H a0; pose proof H a1; intuition. repeat find_rewrite.
-        specialize (H3 a1). intuition. omega.
+        specialize (H3 a1). intuition.
   Qed.
 
   Ltac update_destruct :=
@@ -1635,7 +1635,6 @@ Section CommonTheorems.
         simpl in *. intuition;
           try (subst a; f_equal; eauto using Permutation_cons_inv).
         repeat find_apply_hyp_hyp. intuition.
-        omega.
   Qed.
 
   Lemma removeAfterIndex_same_sufficient :
@@ -1819,7 +1818,7 @@ Section CommonTheorems.
   Proof.
     intros; induction l; simpl in *; intuition.
     break_if; do_bool; intuition.
-    specialize (H a); intuition. omega.
+    specialize (H a); intuition.
   Qed.
 
   Lemma findGtIndex_removeAfterIndex_commute :
@@ -1902,7 +1901,7 @@ Section CommonTheorems.
       eapply IHl'; eauto.
       intros.
       specialize (H1 e0); intuition.
-      subst. specialize (H0 e0); intuition. omega.
+      subst. specialize (H0 e0); intuition.
   Qed.
 
   Lemma removeAfterIndex_eq :
@@ -1912,7 +1911,7 @@ Section CommonTheorems.
   Proof.
     induction l; intros; simpl in *; intuition.
     break_if; intuition.
-    do_bool. specialize (H a). intuition. omega.
+    do_bool. specialize (H a). intuition.
   Qed.
 
   Lemma removeAfterIndex_in_app :
@@ -1935,7 +1934,7 @@ Section CommonTheorems.
   Proof.
     induction l; intros; simpl in *; intuition;
     subst; break_if; do_bool; eauto using app_ass.
-    specialize (H a). intuition. omega.
+    specialize (H a). intuition.
   Qed.
 
   Lemma removeAfterIndex_maxIndex_sorted :

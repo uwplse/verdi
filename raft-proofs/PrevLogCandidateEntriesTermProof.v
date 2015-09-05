@@ -403,8 +403,7 @@ Section PrevLogCandidateEntriesTerm.
       subst. simpl in *.
       find_copy_eapply_lem_hyp doLeader_messages; eauto.
       break_and. intuition.
-      + omega.
-      + break_exists. break_and.
+      break_exists. break_and.
         red.
         find_apply_lem_hyp candidate_entries_invariant.
         unfold CandidateEntries, candidateEntries_host_invariant in *.

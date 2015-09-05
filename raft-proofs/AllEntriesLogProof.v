@@ -719,8 +719,7 @@ Ltac all f ls :=
             destruct (le_lt_dec (eIndex e) (eIndex x1));
               [apply in_app_iff; right; eapply removeAfterIndex_le_In; eauto|].
             repeat find_rewrite. apply in_app_iff; intuition.
-            - omega.
-            - break_exists; break_and.
+            break_exists; break_and.
               unfold Prefix_sane in *. break_or_hyp; try omega.
               left; apply in_app_iff; right.
               eapply prefix_contiguous; eauto.
@@ -846,7 +845,6 @@ Ltac all f ls :=
             destruct (le_lt_dec (eIndex e) (eIndex x2));
               [apply in_app_iff; right; eapply removeAfterIndex_le_In; eauto|].
             repeat find_rewrite. apply in_app_iff; intuition.
-            - omega.
             - break_exists; break_and.
               unfold Prefix_sane in *. break_or_hyp; try omega.
               left; apply in_app_iff; right.
