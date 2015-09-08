@@ -66,11 +66,8 @@ Section CommonTheorems.
       In e l ->
       maxTerm l >= eTerm e.
   Proof.
-    induction l; intros.
-    - simpl in *. intuition.
-    - simpl in *. intuition.
-      + subst. auto with *.
-      + find_apply_hyp_hyp. omega.
+    induction l; intros; simpl in *; intuition.
+    find_apply_hyp_hyp; omega.
   Qed.
 
   Theorem maxIndex_is_max :
@@ -79,11 +76,8 @@ Section CommonTheorems.
       In e l ->
       maxIndex l >= eIndex e.
   Proof.
-    induction l; intros.
-    - simpl in *. intuition.
-    - simpl in *. intuition.
-      + subst. auto with *.
-      + find_apply_hyp_hyp. omega.
+    induction l; intros; simpl in *; intuition.
+    find_apply_hyp_hyp; omega.
   Qed.
 
   Theorem S_maxIndex_not_in :
@@ -318,7 +312,6 @@ Section CommonTheorems.
     induction ys; intros.
     - simpl in *. break_match; intuition.
     - simpl in *. break_match; intuition.
-      + simpl. constructor.
       + subst. simpl in *. invc H0. constructor; auto.
         intro. apply H3.
         eapply subseq_In; eauto.
@@ -355,7 +348,6 @@ Section CommonTheorems.
     induction entries; intros.
     - simpl in *. intuition.
     - simpl in *. break_if; intuition.
-      + subst. in_crush.
       + subst. do_bool. omega.
       + do_bool. find_apply_hyp_hyp. omega.
   Qed.
@@ -915,7 +907,6 @@ Section CommonTheorems.
         | H : forall _, Some ?a = Some _ -> _ |- _ =>
           specialize (H a)
       end. intuition; subst; auto.
-      find_apply_hyp_hyp. omega.
     - intuition; subst; auto.
       find_apply_lem_hyp argmax_None.
       subst. solve_by_inversion.
@@ -997,7 +988,6 @@ Section CommonTheorems.
         | H : forall _, Some ?a = Some _ -> _ |- _ =>
           specialize (H a)
       end. intuition; subst; auto.
-      find_apply_hyp_hyp. omega.
     - intuition; subst; auto.
       find_apply_lem_hyp argmin_None.
       subst. solve_by_inversion.
@@ -1489,9 +1479,7 @@ Section CommonTheorems.
     forall i,
       contiguous_range_exact_lo [] i.
   Proof.
-    unfold contiguous_range_exact_lo. intuition.
-    - simpl in *. omega.
-    - contradiction.
+    unfold contiguous_range_exact_lo; simpl in *; intuition.
   Qed.
 
   Lemma contiguous_index_singleton :
@@ -1501,7 +1489,7 @@ Section CommonTheorems.
   Proof.
     intros. unfold contiguous_range_exact_lo in *. intuition.
     find_insterU. concludes. find_insterU. concludes. break_exists.
-    simpl in *. intuition. subst. auto.
+    simpl in *. intuition.
   Qed.
 
   Lemma contiguous_index_adjacent :
@@ -1515,8 +1503,6 @@ Section CommonTheorems.
       simpl in *. intuition. specialize (H0 b). concludes. intuition.
     specialize (H1 (S (eIndex b))). concludes.
     break_exists. simpl In in *. intuition; subst.
-    - auto.
-    - omega.
     - simpl in *. intuition. specialize (H x). concludes. omega.
   Qed.
 
@@ -1533,7 +1519,6 @@ Section CommonTheorems.
       intuition. simpl maxIndex in *. specialize (H0 i0).
       assert (i < i0 <= eIndex a0) by omega.
       concludes. break_exists. intuition. simpl in *. intuition; subst.
-      + omega.
       + exists x. intuition.
       + exists x. intuition.
   Qed.
@@ -1563,7 +1548,6 @@ Section CommonTheorems.
       + auto.
       + simpl. split.
         * intros. simpl in *. break_and. find_eapply_lem_hyp Prefix_in; eauto.
-          find_insterU. econcludes. subst. intuition.
         * apply IHl; simpl in *; intuition.
   Qed.
 
@@ -1581,7 +1565,6 @@ Section CommonTheorems.
     - contradiction.
     - destruct l'; try congruence.
       find_copy_apply_lem_hyp prefix_sorted; auto. simpl in *. intuition.
-      + left. subst. reflexivity.
       + right. subst. destruct l'.
         * find_apply_lem_hyp contiguous_index_singleton.
           specialize (H0 e). concludes. omega.
@@ -1771,9 +1754,8 @@ Section CommonTheorems.
       break_if; do_bool; try omega. eexists; intuition; eauto.
       simpl in *. intuition.
       eapply_prop_hyp sorted sorted; eauto. break_exists; intuition.
-      find_rewrite. eauto.
   Qed.
-  
+
   Lemma sorted_app_in_1 :
     forall l1 l2 e,
       sorted (l1 ++ l2) ->
@@ -1883,9 +1865,8 @@ Section CommonTheorems.
   Proof.
     intros. induction l; simpl in *; intuition.
     break_if; do_bool; simpl in *; intuition.
-    congruence.
   Qed.
-  
+
   Lemma sorted_Prefix_in_eq :
     forall l' l,
       sorted l ->
@@ -1952,8 +1933,8 @@ Section CommonTheorems.
       contiguous_range_exact_lo [x] n.
   Proof.
     red. intuition.
-    - exists x. intuition. simpl in *. inv H2; [reflexivity | omega].
-    - simpl in *. intuition. subst. omega.
+    - exists x. intuition.
+    - simpl in *. intuition.
   Qed.
 
   Lemma contiguous_adjacent_sufficient :
@@ -2135,7 +2116,7 @@ Section CommonTheorems.
     - intros. simpl in *. rewrite app_nil_r in *.
       eapply_prop (contiguous_range_exact_lo l). omega.
     - intros. find_eapply_lem_hyp contiguous_app_prefix_contiguous; eauto.
-      left. intuition. congruence.
+      left. intuition.
   Qed.
 
   Lemma contiguous_0_app :
@@ -2272,7 +2253,7 @@ Section CommonTheorems.
     find_copy_eapply_lem_hyp (sorted_app_gt l1 [e1]); simpl; eauto.
     assert (In e (l1 ++ [e1])). apply in_or_app. intuition.
     find_apply_hyp_hyp. find_apply_lem_hyp in_app_or. intuition.
-    simpl in *. intuition. subst. omega.
+    simpl in *. intuition.
   Qed.
 
   Lemma contiguous_sorted_subset_prefix :

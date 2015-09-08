@@ -308,7 +308,7 @@ Section AppendEntriesRequestReplyCorrespondence.
         destruct p; simpl in *; f_equal; intuition.
         subst.
         find_apply_lem_hyp handleAppendEntries_reply_spec; auto.
-        intuition. subst. auto.
+        intuition.
   Qed.
 
   Lemma append_entries_request_reply_correspondence_append_entries_reply :
@@ -418,7 +418,7 @@ Section AppendEntriesRequestReplyCorrespondence.
       simpl; repeat find_rewrite; eauto;
       simpl; repeat break_let; eauto; try find_inversion; eauto.
     intros. do_in_app. simpl in *.
-    intuition; try find_apply_hyp_hyp; intuition; in_crush.
+    ii; try find_apply_hyp_hyp; ii; in_crush.
   Qed.
 
   Instance aerrci : append_entries_request_reply_correspondence_interface.

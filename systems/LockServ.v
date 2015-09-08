@@ -125,8 +125,8 @@ Section LockServ.
   Proof.
     unfold Nodes, list_Clients.
     apply NoDup_cons.
-    - in_crush. discriminate.
-    - apply NoDup_map_injective.
+    in_crush.
+     apply NoDup_map_injective.
       + intros. congruence.
       + apply all_fin_NoDup.
   Qed.
@@ -396,7 +396,6 @@ Section LockServ.
   Proof.
     unfold at_head_of_queue.
     firstorder.
-    congruence.
   Qed.
 
   Lemma empty_queue_all_clients_false :
@@ -420,9 +419,6 @@ Section LockServ.
     intros.
     destruct (held (sigma (Client c))) eqn:?; auto.
     firstorder.
-    find_copy_apply_lem_hyp locks_correct_true_at_head_of_queue; auto.
-    unfold at_head_of_queue in *. break_exists.
-    congruence.
   Qed.
 
   Lemma locks_correct_at_head_preserved :
@@ -487,7 +483,7 @@ Section LockServ.
       locks_correct_unlock sigma p.
   Proof.
     unfold locks_correct_unlock.
-    intuition. congruence.
+    intuition.
   Qed.
 
   Lemma locks_correct_unlock_sent_locked :
@@ -496,7 +492,7 @@ Section LockServ.
       locks_correct_unlock sigma p.
   Proof.
     unfold locks_correct_unlock.
-    intuition. congruence.
+    intuition.
   Qed.
 
   Lemma locks_correct_unlock_input_handlers_old :
@@ -523,9 +519,6 @@ Section LockServ.
     intros.
     destruct (held (sigma (Client c))) eqn:?; auto.
     firstorder.
-    find_copy_apply_lem_hyp locks_correct_true_at_head_of_queue; auto.
-    unfold at_head_of_queue in *. break_exists.
-    congruence.
   Qed.
 
   Lemma locks_correct_locked_sent_lock :
@@ -534,7 +527,7 @@ Section LockServ.
       locks_correct_locked sigma p.
   Proof.
     unfold locks_correct_locked.
-    intuition. congruence.
+    intuition.
   Qed.
 
   Lemma locks_correct_locked_sent_unlock :
@@ -543,7 +536,7 @@ Section LockServ.
       locks_correct_locked sigma p.
   Proof.
     unfold locks_correct_locked.
-    intuition. congruence.
+    intuition.
   Qed.
 
   Lemma locks_correct_locked_input_handlers_old :
@@ -660,7 +653,6 @@ Section LockServ.
   Proof.
     unfold at_head_of_queue.
     firstorder.
-    congruence.
   Qed.
 
   Lemma locks_correct_unlock_net_handlers_old :
@@ -1087,7 +1079,6 @@ Section LockServ.
       last_holder' h (tr ++ [(Client c, inl Unlock)]) = None.
   Proof.
     induction tr; intros; simpl in *; repeat break_match; intuition.
-    congruence.
   Qed.
 
   Lemma last_holder_unlock_none :

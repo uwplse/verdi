@@ -150,7 +150,7 @@ Ltac all f ls :=
       | H : forall _, _ < _ <= _ -> _ |- _ =>
         specialize (H (eIndex e))
     end; conclude_using omega.
-    simpl in *. break_exists. intuition; subst; intuition.
+    simpl in *. break_exists. ii; subst; ii.
     eapply findAtIndex_None; eauto.
   Qed.
 
@@ -169,7 +169,7 @@ Ltac all f ls :=
     intuition.
     find_insterU. conclude_using eauto. omega.
   Qed.
-                                 
+
   Lemma sorted_app_in_in :
     forall l1 l2 e e',
       sorted (l1 ++ l2) ->
@@ -177,7 +177,7 @@ Ltac all f ls :=
       In e' l2 ->
       eIndex e' < eIndex e.
   Proof.
-    induction l1; intros; simpl in *; intuition; eauto.
+    induction l1; intros; simpl in *; ii; eauto.
     subst. find_insterU. conclude_using ltac:(apply in_app_iff; intuition eauto).
     intuition.
   Qed.
@@ -257,9 +257,7 @@ Ltac all f ls :=
       eTerm e' < eTerm e ->
       eIndex e' <= eIndex e.
   Proof.
-    induction l; intros; simpl in *; intuition; subst_max; intuition.
-    - find_apply_hyp_hyp. intuition.
-    - find_apply_hyp_hyp. intuition.
+    induction l; intros; simpl in *; ii; subst_max; intuition; find_apply_hyp_hyp; intuition.
   Qed.
   Lemma term_ne_in_l2 :
     forall l e e' l1 l2,
@@ -291,7 +289,7 @@ Ltac all f ls :=
   Proof.
     intros.
     induction l; simpl in *; intuition.
-    break_match; intuition. subst. simpl. auto.
+    break_match; intuition.
   Qed.
 
   Lemma sorted_gt_maxIndex :
@@ -314,25 +312,25 @@ Ltac all f ls :=
     red. unfold allEntries_log in *. simpl in *. intros.
     repeat find_higher_order_rewrite.
     destruct_update; simpl in *;
-    [|find_apply_hyp_hyp; intuition;
+    [|find_apply_hyp_hyp; ii;
       right; break_exists_exists; intuition;
       repeat find_higher_order_rewrite;
       destruct_update; simpl in *;
       eauto; rewrite update_elections_data_appendEntries_leaderLogs; eauto].
     find_eapply_lem_hyp update_elections_data_appendEntries_allEntries_detailed; eauto.
-    intuition;
+    ii;
       [|repeat find_rewrite;
          find_eapply_lem_hyp appendEntries_haveNewEntries_false; eauto].
-    find_copy_apply_hyp_hyp. intuition;
-      [|right; break_exists_exists; intuition;
+    find_copy_apply_hyp_hyp. ii;
+      [|right; break_exists_exists; ii;
         repeat find_higher_order_rewrite; destruct_update; simpl in *; eauto;
         try rewrite update_elections_data_appendEntries_leaderLogs; eauto; subst;
-        find_apply_lem_hyp handleAppendEntries_currentTerm_leaderId; intuition;
+        find_apply_lem_hyp handleAppendEntries_currentTerm_leaderId; ii;
         repeat find_rewrite; auto].
-    destruct (in_dec entry_eq_dec e (log d)); intuition.
+    destruct (in_dec entry_eq_dec e (log d)); ii.
     right.
     find_copy_apply_lem_hyp handleAppendEntries_log_detailed.
-    intuition; repeat find_rewrite; intuition.
+    intuition; repeat find_rewrite; ii.
     - subst.
       find_copy_eapply_lem_hyp allEntries_term_sanity_invariant; eauto.
       destruct (lt_eq_lt_dec t0 (currentTerm d)); intuition; unfold ghost_data in *; simpl in *; try omega.
@@ -347,7 +345,7 @@ Ltac all f ls :=
             destruct_update; simpl in *;
             eauto; rewrite update_elections_data_appendEntries_leaderLogs; eauto|];
           split; auto; intuition;
-          [break_exists; intuition;
+          [break_exists; ii;
            find_eapply_lem_hyp leaderLogs_contiguous_invariant; eauto; omega|].
           subst. repeat find_rewrite. intuition.
       + subst.
@@ -378,12 +376,12 @@ Ltac all f ls :=
           do_in_app; intuition.
           assert (exists e', eIndex e' = eIndex e /\ In e' (x1 ++ x4)) by
               (eapply entries_contiguous_nw_invariant; eauto;
-               intuition; [eapply entries_contiguous_invariant; eauto|];
+               ii; [eapply entries_contiguous_invariant; eauto|];
                eapply le_trans; [eapply maxIndex_is_max; eauto|];
                eapply maxIndex_le'; eauto;
                [eapply entries_contiguous_invariant; eauto|
                 eapply entries_contiguous_nw_invariant; eauto]).
-          break_exists. intuition.
+          break_exists. ii.
           find_copy_eapply_lem_hyp sorted_app_sorted_app_in1_in2. Focus 5. eauto. Focus 4. eauto.
           all:(try solve [eapply entries_sorted_nw_invariant; eauto]).
           all:(try solve [repeat find_reverse_rewrite; eauto using removeAfterIndex_sorted]).
@@ -393,7 +391,6 @@ Ltac all f ls :=
             | H : eIndex _ = eIndex _ |- _ =>
               eapply uniqueIndices_elim_eq in H
           end; eauto using sorted_uniqueIndices.
-          subst. auto.
         * exfalso.
           find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
           break_exists; intuition;
@@ -423,8 +420,7 @@ Ltac all f ls :=
           split; auto.
         intuition;
           [break_exists; intuition;
-           find_eapply_lem_hyp leaderLogs_contiguous_invariant; eauto; omega|].
-        subst. repeat find_rewrite. intuition.
+           find_eapply_lem_hyp leaderLogs_contiguous_invariant; eauto; omega].
       + subst.
         find_eapply_lem_hyp allEntries_leaderLogs_term_invariant; eauto. intuition.
         * { subst. exfalso.
@@ -472,7 +468,6 @@ Ltac all f ls :=
                 | H : eIndex _ = eIndex _ |- _ =>
                   eapply uniqueIndices_elim_eq in H
               end; eauto using sorted_uniqueIndices.
-              subst. auto.
             - exfalso.
               repeat find_rewrite.
               match goal with
@@ -483,12 +478,12 @@ Ltac all f ls :=
                       (eapply removeAfterIndex_le_In; auto; omega)
               end.
               repeat find_rewrite.
-              do_in_app. intuition.
+              do_in_app. ii.
               + find_copy_eapply_lem_hyp sorted_app_sorted_app_in1_in2. Focus 4. eauto.
                 all:eauto.
                 all:(try solve [eapply entries_sorted_nw_invariant; eauto]).
                 all:(try solve [repeat find_reverse_rewrite; eauto using removeAfterIndex_sorted]).
-                repeat find_apply_hyp_hyp. repeat find_rewrite. intuition.
+                repeat find_apply_hyp_hyp. repeat find_rewrite. ii.
               + find_eapply_lem_hyp leaderLogs_sorted_invariant; eauto.
                 find_copy_eapply_lem_hyp sorted_app_in2_in2. Focus 3. eauto.
                 all:eauto.
@@ -497,7 +492,6 @@ Ltac all f ls :=
                   | H : eIndex ?e1 = eIndex ?e2, _ : In ?e1 ?ll, _ : In ?e2 ?ll |- _ =>
                     eapply uniqueIndices_elim_eq with (xs0 := ll) in H
                 end; eauto using sorted_uniqueIndices.
-                subst. intuition.
           }
         * exfalso.
           find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
@@ -533,7 +527,7 @@ Ltac all f ls :=
           find_eapply_lem_hyp leaderLogs_sorted_invariant; eauto.
           eapply le_trans; [eapply maxIndex_is_max; eauto|]. omega.
         * {
-            break_exists. intuition. unfold Prefix_sane in *. intuition.
+            break_exists. ii. unfold Prefix_sane in *. ii.
             - destruct (le_lt_dec (eIndex e) (eIndex x3)).
               + match goal with
                   | H : In e _ -> False |- _ => apply H
@@ -565,7 +559,7 @@ Ltac all f ls :=
             break_exists. break_and.
             repeat find_rewrite.
             find_eapply_lem_hyp one_leaderLog_per_term_log_invariant; eauto.
-            conclude_using eauto. subst. intuition.
+            conclude_using eauto. subst. ii.
             - repeat find_rewrite.
               destruct (le_lt_dec (eIndex e) (eIndex x6)).
               + match goal with
@@ -607,7 +601,6 @@ Ltac all f ls :=
                   | H : _ = _ |- _ =>
                     eapply uniqueIndices_elim_eq in H
                 end; eauto; eauto using sorted_uniqueIndices.
-                subst. auto.
             - break_exists. break_and.
               destruct (le_lt_dec (eIndex e) (eIndex x6)).
               + match goal with
@@ -627,7 +620,7 @@ Ltac all f ls :=
                        eapply maxIndex_le'; eauto;
                        [eapply entries_contiguous_invariant; eauto|
                         eapply entries_contiguous_nw_invariant; eauto]).
-                do_in_app. intuition.
+                do_in_app. ii.
                 * break_exists. break_and.
                   match goal with
                     | H : eIndex _ = eIndex _ |- _ =>
@@ -647,10 +640,10 @@ Ltac all f ls :=
                   match goal with
                     | H : eIndex _ = eIndex _ |- _ =>
                       copy_eapply uniqueIndices_elim_eq H
-                  end; eauto using sorted_uniqueIndices. subst. auto.
+                  end; eauto using sorted_uniqueIndices.
                 * find_copy_eapply_lem_hyp leaderLogs_sorted_invariant; eauto.
                   unfold Prefix_sane in *.
-                  intuition; [|find_eapply_lem_hyp maxIndex_is_max; eauto; omega].
+                  ii; [|find_eapply_lem_hyp maxIndex_is_max; eauto; omega].
                   find_eapply_lem_hyp prefix_contiguous. Focus 2. eauto.
                   all:eauto.
                   all:try solve [eapply contiguous_app; [|eapply entries_contiguous_nw_invariant; eauto];
@@ -677,7 +670,7 @@ Ltac all f ls :=
                        eapply maxIndex_le'; eauto;
                        [eapply entries_contiguous_invariant; eauto|
                         eapply entries_contiguous_nw_invariant; eauto]).
-                do_in_app. intuition.
+                do_in_app. ii.
                 * break_exists. break_and.
                   match goal with
                     | H : eIndex _ = eIndex _ |- _ =>
@@ -697,7 +690,7 @@ Ltac all f ls :=
                   match goal with
                     | H : eIndex _ = eIndex _ |- _ =>
                       copy_eapply uniqueIndices_elim_eq H
-                  end; eauto using sorted_uniqueIndices. subst. auto.
+                  end; eauto using sorted_uniqueIndices.
                 * match goal with
                     | H : In e _ -> False |- _ => apply H
                   end. intuition.
@@ -725,7 +718,6 @@ Ltac all f ls :=
               eapply prefix_contiguous; eauto.
               eapply contiguous_app; [|eapply entries_contiguous_nw_invariant; eauto];
               eapply entries_sorted_nw_invariant; eauto.
-            - subst. intuition.
           }
     - find_copy_eapply_lem_hyp allEntries_term_sanity_invariant; eauto.
       destruct (lt_eq_lt_dec t0 t); intuition; unfold ghost_data in *; simpl in *; try omega.
@@ -748,7 +740,7 @@ Ltac all f ls :=
           find_eapply_lem_hyp leaderLogs_sorted_invariant; eauto.
           eapply le_trans; [eapply maxIndex_is_max; eauto|]. omega.
         * {
-            break_exists. intuition. unfold Prefix_sane in *. intuition.
+            break_exists. intuition. unfold Prefix_sane in *. ii.
             - destruct (le_lt_dec (eIndex e) (eIndex x4)).
               + match goal with
                   | H : In e _ -> False |- _ => apply H
@@ -817,20 +809,19 @@ Ltac all f ls :=
                    eapply leaderLogs_sorted_invariant; eauto).
               assert (eIndex x7 < eIndex e0) by
                   (eapply entries_contiguous_nw_invariant; eauto; intuition).
-              intuition.
+              ii; [auto with *| |].
               + break_exists. break_and.
-                unfold Prefix_sane in *. intuition.
+                unfold Prefix_sane in *. ii; auto with *.
                 find_copy_eapply_lem_hyp Prefix_maxIndex_eq; eauto.
                 find_eapply_lem_hyp entries_sorted_nw_invariant; eauto.
                 find_eapply_lem_hyp sorted_gt_maxIndex; eauto; omega.
               + subst.
                 find_eapply_lem_hyp entries_sorted_nw_invariant; eauto.
                 find_eapply_lem_hyp sorted_gt_maxIndex; eauto; try omega.
-                destruct x4; simpl in *; congruence.
           }
         * { exfalso.
             find_copy_apply_lem_hyp append_entries_leaderLogs_invariant; eauto.
-            break_exists; intuition. subst.
+            break_exists; ii. subst.
             copy_eapply_prop_hyp append_entries_leaderLogs pBody; eauto.
             break_exists; break_and.
             subst. 
@@ -851,8 +842,16 @@ Ltac all f ls :=
               eapply prefix_contiguous; eauto.
               eapply contiguous_app; [|eapply entries_contiguous_nw_invariant; eauto];
               eapply entries_sorted_nw_invariant; eauto.
-            - subst. intuition.
           }
+        - omega.
+        - omega.
+        - omega.
+        - auto with *.
+        - omega.
+        - omega.
+        - omega.
+        - auto with *.
+        - auto with *.
   Qed.
 
   Lemma handleAppendEntriesReply_currentTerm_leaderId :
@@ -884,8 +883,7 @@ Ltac all f ls :=
       leaderLogs (fst st).
   Proof.
     unfold update_elections_data_requestVote.
-    intros.
-    repeat break_match; auto.
+    intros; repeat break_match; auto.
   Qed.
 
   Lemma update_elections_data_requestVoteReply_leaderLogs :
@@ -961,7 +959,7 @@ Ltac all f ls :=
     subst.
     break_match; try find_inversion; simpl in *; auto.
   Qed.
-  
+
   Lemma allEntries_log_client_request :
     refined_raft_net_invariant_client_request allEntries_log.
   Proof.
@@ -969,13 +967,13 @@ Ltac all f ls :=
     repeat find_higher_order_rewrite.
     destruct_update; simpl in *;
     try (find_eapply_lem_hyp update_elections_data_client_request_allEntries'; eauto; [idtac]);
-    intuition;
+    ii;
     find_copy_apply_lem_hyp handleClientRequest_log;
     find_apply_lem_hyp handleClientRequest_currentTerm_leaderId;
-    intuition;
-    try break_exists; intuition; repeat find_rewrite; intuition; simpl in *;
-    find_apply_hyp_hyp; intuition; repeat right;
-    break_exists_exists; intuition;
+    ii;
+    try break_exists; intuition; repeat find_rewrite; ii; simpl in *;
+    find_apply_hyp_hyp; ii; repeat right;
+    break_exists_exists; ii;
     repeat find_higher_order_rewrite;
     destruct_update; simpl in *; auto;
     rewrite update_elections_data_client_request_leaderLogs; auto.
@@ -988,10 +986,9 @@ Ltac all f ls :=
       currentTerm st' = currentTerm st /\ leaderId st' = leaderId st.
   Proof.
     intros. unfold handleTimeout, tryToBecomeLeader in *.
-    subst.
-    break_match; try find_inversion; simpl in *; auto.
+    subst; break_match; try find_inversion; simpl in *; auto.
   Qed.
-  
+
   Lemma allEntries_log_timeout :
     refined_raft_net_invariant_timeout allEntries_log.
   Proof.
@@ -1002,11 +999,11 @@ Ltac all f ls :=
     find_copy_apply_lem_hyp handleTimeout_log_same;
     find_apply_lem_hyp handleTimeout_currentTerm_leaderId;
     repeat find_rewrite;
-    find_apply_hyp_hyp; intuition;
-    right; break_exists_exists; intuition;
+    find_apply_hyp_hyp; ii;
+    right; break_exists_exists; ii;
     repeat find_higher_order_rewrite;
     destruct_update; simpl in *; auto;
-    rewrite update_elections_data_timeout_leaderLogs; auto.
+    try rewrite update_elections_data_timeout_leaderLogs; auto with *.
   Qed.
 
   Lemma doLeader_currentTerm_leaderId :
@@ -1018,7 +1015,7 @@ Ltac all f ls :=
     intros. unfold doLeader, advanceCommitIndex in *.
     repeat break_match; find_inversion; simpl in *; auto.
   Qed.
-  
+
   Lemma allEntries_log_do_leader :
     refined_raft_net_invariant_do_leader allEntries_log.
   Proof.
@@ -1032,11 +1029,10 @@ Ltac all f ls :=
     repeat find_higher_order_rewrite.
     find_copy_apply_lem_hyp doLeader_log.
     find_apply_lem_hyp doLeader_currentTerm_leaderId.
-    destruct_update; simpl in *; eauto; find_apply_hyp_hyp; repeat find_rewrite; intuition;
-    right; break_exists_exists; intuition; find_higher_order_rewrite;
-    destruct_update; simpl in *; auto.
+    destruct_update; simpl in *; eauto; find_apply_hyp_hyp; repeat find_rewrite; ii;
+    right; break_exists_exists; ii; find_higher_order_rewrite;
+    destruct_update; simpl in *; auto with *.
   Qed.
-
 
   Lemma doGenericServer_currentTerm_leaderId :
     forall st h out st' m,
@@ -1049,7 +1045,7 @@ Ltac all f ls :=
     use_applyEntries_spec; subst; simpl in *;
     auto.
   Qed.
-  
+
   Lemma allEntries_log_do_generic_server :
     refined_raft_net_invariant_do_generic_server allEntries_log.
   Proof.
@@ -1095,8 +1091,8 @@ Ltac all f ls :=
     end.
     repeat find_higher_order_rewrite.
     subst. unfold reboot in *.
-    destruct_update; simpl in *; eauto; find_apply_hyp_hyp; repeat find_rewrite; intuition;
-    right; break_exists_exists; intuition; find_higher_order_rewrite;
+    destruct_update; simpl in *; eauto; find_apply_hyp_hyp; repeat find_rewrite; ii;
+    right; break_exists_exists; ii; find_higher_order_rewrite;
     destruct_update; simpl in *; auto.
   Qed.
 

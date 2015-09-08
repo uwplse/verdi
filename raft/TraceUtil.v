@@ -96,7 +96,7 @@ Section TraceUtil.
     - find_apply_lem_hyp find_some. break_and.
       unfold is_client_response in *. break_match; try discriminate.
       subst. do_bool. break_and. break_if; try congruence.
-      repeat (do_bool; intuition). subst. intuition.
+      repeat (do_bool; intuition).
     - right. intro. break_exists.
       eapply find_none in H; eauto. unfold is_client_response in *.
       find_apply_lem_hyp Bool.andb_false_elim. repeat (do_bool; intuition); try congruence.

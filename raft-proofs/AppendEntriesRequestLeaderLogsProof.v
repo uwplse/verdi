@@ -450,9 +450,8 @@ Section AppendEntriesRequestLeaderLogs.
       break_if; do_bool; try omega. eexists; intuition; eauto.
       simpl in *. intuition.
       eapply_prop_hyp sorted sorted; eauto. break_exists; intuition.
-      find_rewrite. eauto.
   Qed.
-  
+
   Lemma sorted_app_in_1 :
     forall l1 l2 e,
       sorted (l1 ++ l2) ->
@@ -570,13 +569,13 @@ Section AppendEntriesRequestLeaderLogs.
         do_in_app. intuition.
         * find_copy_eapply_lem_hyp findGtIndex_app_in_1; eauto.
           break_exists_exists. exists nil.
-          intuition; simpl in *; auto; eauto using sorted_app_in_1;
+          ii; simpl in *; auto; eauto using sorted_app_in_1;
           [rewrite app_nil_r; auto|].
           find_higher_order_rewrite. rewrite_update.
           simpl in *. auto.
         * { find_copy_eapply_lem_hyp findGtIndex_app_in_2; eauto.
             exists x2. break_exists_exists.
-            intuition; simpl in *; auto; intuition eauto.
+            ii; simpl in *; auto; intuition eauto.
             - find_higher_order_rewrite. rewrite_update. auto.
             - right. left. eexists; intuition; eauto.
               match goal with
@@ -584,10 +583,9 @@ Section AppendEntriesRequestLeaderLogs.
                     unfold Prefix_sane; destruct l; intuition
               end;
                 try rewrite app_nil_r in *; eauto using findGtIndex_app_eq.
-              left. intuition. congruence.
           }
       + exfalso.
-        break_exists. intuition.
+        break_exists. ii; subst.
         replace d with (snd (nwState net h)) in * by (repeat find_rewrite; reflexivity).
         find_eapply_lem_hyp nextIndex_sanity; eauto. break_exists. congruence.
   Qed.
@@ -604,7 +602,7 @@ Section AppendEntriesRequestLeaderLogs.
   Proof.
     red. unfold append_entries_leaderLogs. intros.
     find_apply_hyp_hyp. eapply_prop_hyp In In; eauto.
-    break_exists_exists; intuition; eauto;
+    break_exists_exists; ii; eauto;
     repeat find_reverse_higher_order_rewrite; eauto.
   Qed.
 
@@ -614,12 +612,10 @@ Section AppendEntriesRequestLeaderLogs.
     red. unfold append_entries_leaderLogs. intros.
     repeat find_rewrite.
     eapply_prop_hyp In In; eauto.
-    break_exists_exists; intuition; eauto;
+    break_exists_exists; ii; eauto;
     repeat find_higher_order_rewrite; update_destruct; subst; rewrite_update;
     simpl in *; repeat find_rewrite; auto.
   Qed.
-  
-
 
   Theorem append_entries_leaderLogs_invariant :
     forall net,
@@ -639,10 +635,10 @@ Section AppendEntriesRequestLeaderLogs.
     - apply append_entries_leaderLogs_doGenericServer.
     - apply append_entries_leaderLogs_state_same_packets_subset.
     - apply append_entries_leaderLogs_reboot.
-  Qed.    
+  Qed.
 
   Instance aerlli : append_entries_leaderLogs_interface.
   split. exact append_entries_leaderLogs_invariant.
   Qed.
-  
+
 End AppendEntriesRequestLeaderLogs.

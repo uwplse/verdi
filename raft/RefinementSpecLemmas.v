@@ -157,7 +157,6 @@ Section SpecLemmas.
     intros.
     repeat break_match; repeat find_inversion; intuition.
     simpl in *. intuition.
-    find_inversion. intuition.
   Qed.
 
   Lemma update_elections_data_requestVoteReply_old :
@@ -191,7 +190,6 @@ Section SpecLemmas.
     intuition.
     - repeat find_rewrite. do_bool. omega.
     - right.  break_exists_exists. intuition.
-      congruence.
   Qed.
 
   Lemma update_elections_data_client_request_log_allEntries :
@@ -250,7 +248,6 @@ Section SpecLemmas.
     find_apply_lem_hyp handleAppendEntriesReply_entries. subst.
     do_in_map. do_in_app. subst. intuition.
     - do_in_map. subst. simpl in *. auto.
-    - left. apply in_map_iff. eexists; eauto.
   Qed.
 
 
@@ -305,15 +302,14 @@ Section SpecLemmas.
     intros. unfold update_elections_data_appendEntries, handleAppendEntries in *.
     repeat break_match; repeat find_inversion; auto; simpl in *.
     - right. intuition. right. left. do_bool. intuition; eauto using advanceCurrentTerm_term.
-      find_apply_lem_hyp haveNewEntries_not_empty. congruence.
     - rewrite advanceCurrentTerm_log.
       right. intuition. left. intuition.
       do_bool.
       eauto using advanceCurrentTerm_term.
     - right. intuition. right. right. do_bool. intuition.
       + eauto using advanceCurrentTerm_term.
-      + find_apply_lem_hyp haveNewEntries_not_empty. congruence.
-      + find_apply_lem_hyp findAtIndex_elim. intuition; do_bool; eauto.
+      + find_apply_lem_hyp haveNewEntries_not_empty.
+        find_apply_lem_hyp findAtIndex_elim. intuition; do_bool; eauto.
     - rewrite advanceCurrentTerm_log. do_bool. rewrite advanceCurrentTerm_term; auto.
       intuition.
   Qed.
@@ -327,9 +323,9 @@ Section SpecLemmas.
     intros.
     unfold update_elections_data_appendEntries in *.
     repeat break_match; subst; simpl in *; auto.
-    find_apply_lem_hyp handleAppendEntriesReply_entries. intuition.
+    find_apply_lem_hyp handleAppendEntriesReply_entries. ii.
     find_inversion.
-    do_in_app. intuition.
+    do_in_app. ii.
     do_in_map. find_inversion. find_copy_apply_hyp_hyp. intuition.
   Qed.
 
@@ -343,14 +339,13 @@ Section SpecLemmas.
   Proof.
     intros.
     unfold update_elections_data_client_request in *.
-    repeat break_match; subst; simpl in *; auto. intuition. subst.
+    repeat break_match; subst; simpl in *; auto. ii. subst.
     do_bool. find_apply_lem_hyp handleClientRequest_log.
-    intuition.
+    ii.
     - match goal with
         | H : log _ = log (snd _) |- _ => symmetry in H
       end. repeat find_rewrite. simpl in *. omega.
-    - break_exists. intuition. repeat find_rewrite.
-      find_inversion. intuition.
+    - break_exists. intuition.
   Qed.
 
   Lemma update_elections_data_clientRequest_allEntries_old :
@@ -467,7 +462,7 @@ Section SpecLemmas.
   Proof.
     intros.
     unfold update_elections_data_requestVote in *.
-    repeat break_match; simpl in *; intuition.
+    repeat break_match; simpl in *; ii.
   Qed.
 
   Lemma update_elections_data_timeout_votesWithLog_old :
@@ -494,8 +489,8 @@ Section SpecLemmas.
   Proof.
     unfold update_elections_data_timeout, handleTimeout, tryToBecomeLeader in *.
     intros.
-    repeat break_match; simpl in *; intuition; repeat tuple_inversion; intuition;
-    simpl in *; repeat find_inversion; intuition; try congruence.
+    repeat break_match; simpl in *; ii; repeat tuple_inversion; ii;
+    simpl in *; repeat find_inversion; intuition congruence.
   Qed.
 
   Lemma update_elections_data_request_vote_votedFor :

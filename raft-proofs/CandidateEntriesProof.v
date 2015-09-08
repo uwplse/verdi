@@ -57,7 +57,7 @@ Section CandidateEntriesProof.
   Proof.
     intros. unfold handleClientRequest in *.
     break_match; find_inversion; intuition.
-    simpl in *. intuition. subst. auto.
+    simpl in *. intuition.
   Qed.
 
   Lemma candidate_entries_client_request :
@@ -79,7 +79,7 @@ Section CandidateEntriesProof.
         find_apply_hyp_hyp.
         intuition.
         * rewrite_update.
-          eapply candidateEntries_same; eauto; intuition;
+          eapply candidateEntries_same; eauto; ii;
           destruct (name_eq_dec h0 h); subst; rewrite_update; auto.
           repeat break_match; simpl; auto.
         * find_apply_lem_hyp cronies_correct_invariant.
@@ -382,7 +382,6 @@ Section CandidateEntriesProof.
       simpl in *.
       find_apply_lem_hyp handleAppendEntriesReply_spec.
       intuition; repeat find_rewrite; intuition.
-      congruence.
   Qed.
 
 
@@ -421,7 +420,6 @@ Section CandidateEntriesProof.
         prove_in.
         eapply candidateEntries_ext; eauto.
         find_eapply_lem_hyp handleAppendEntriesReply_preserves_candidate_entries; eauto.
-        subst. auto.
       + exfalso.
         do_in_map.
         find_eapply_lem_hyp handleAppendEntriesReply_spec; eauto.
@@ -470,8 +468,7 @@ Section CandidateEntriesProof.
       | [ |- context [advanceCurrentTerm ?st ?t] ] =>
         pose proof advanceCurrentTerm_same_or_type_follower st t
       end.
-      intuition; try congruence.
-      repeat find_rewrite. auto.
+      intuition; repeat find_rewrite; auto.
   Qed.
 
   Lemma handleRequestVote_preserves_candidateEntries :
@@ -491,7 +488,7 @@ Section CandidateEntriesProof.
         repeat (rewrite update_fun_comm; simpl in * );
         update_destruct; subst; rewrite_update;
         auto using update_elections_data_requestVote_cronies_same.
-    - do_bool. intuition. congruence.
+    - do_bool. intuition.
     - unfold candidateEntries in *. break_exists. break_and. exists x.
       simpl.
       split.
@@ -737,7 +734,7 @@ Section CandidateEntriesProof.
     break_and.
     rewrite update_fun_comm. simpl in *.
     my_update_destruct; subst; rewrite_update; auto.
-    repeat find_rewrite. simpl in *. intuition. discriminate.
+    repeat find_rewrite. simpl in *. intuition.
   Qed.
 
   Lemma candidate_entries_reboot :

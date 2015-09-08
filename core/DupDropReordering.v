@@ -127,7 +127,6 @@ Section dup_drop_reorder.
     - auto.
     - invc H.
       + simpl in *. intuition.
-        subst. auto.
       + apply IHclos_refl_trans_n1.
         find_apply_lem_hyp in_app_or.
         intuition.
@@ -203,14 +202,12 @@ Section dup_drop_reorder.
         intuition.
         find_apply_hyp_hyp.
         simpl in *. intuition.
-        exfalso. eauto.
       + eapply dup_drop_step_star_step_1n.
         eapply DDS_drop with (xs := []).
         apply IHl.
         simpl in *. intros.
         find_copy_apply_hyp_hyp.
         intuition.
-        subst. exfalso. eauto.
   Qed.
 End dup_drop_reorder.
 

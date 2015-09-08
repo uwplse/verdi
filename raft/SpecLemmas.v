@@ -22,7 +22,7 @@ Section SpecLemmas.
       es <> [].
   Proof.
     intros. unfold haveNewEntries, not_empty in *.
-    do_bool. intuition. repeat break_match; congruence.
+    do_bool. intuition.
   Qed.
 
   Lemma advanceCurrentTerm_log :
@@ -56,7 +56,6 @@ Section SpecLemmas.
       find_inversion; subst; simpl in *.
       right. right.
       find_apply_lem_hyp findAtIndex_elim. intuition; do_bool; eauto.
-      find_apply_lem_hyp haveNewEntries_not_empty. congruence.
     - repeat break_match; find_inversion; subst; eauto.
       simpl in *. eauto using advanceCurrentTerm_log.
   Qed.
