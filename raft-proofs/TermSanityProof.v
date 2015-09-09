@@ -156,7 +156,7 @@ Section TermSanityProof.
       unfold handleClientRequest in *.
       subst.
       break_match; find_inversion; eauto.
-      simpl in *. intuition. subst; simpl in *; auto.
+      simpl in *. intuition.
     - eauto using no_entries_past_current_term_nw_no_append_entries,
                   handleClientRequest_messages.
   Qed.
@@ -199,8 +199,8 @@ Section TermSanityProof.
   Proof.
     intros.
     unfold handleAppendEntries, advanceCurrentTerm in *.
-    repeat break_match; try find_inversion; subst; simpl in *; intuition;
-    do_bool; intuition; try solve [break_exists; congruence];
+    repeat break_match; try find_inversion; subst; simpl in *; ii;
+    do_bool; ii; try solve [break_exists; congruence];
     in_crush; eauto using removeAfterIndex_in.
   Qed.
 
@@ -404,7 +404,7 @@ Section TermSanityProof.
     intuition.
     - repeat find_higher_order_rewrite. simpl in *.
       subst. break_if; simpl in *; intuition.
-     - find_reverse_rewrite. eauto.
+    - find_reverse_rewrite. eauto.
   Qed.
 
   Theorem no_entries_past_current_term_invariant :

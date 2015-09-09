@@ -191,7 +191,6 @@ Section VotesCorrect.
       try solve [find_rewrite; try discriminate; repeat prove_eq; subst; intuition].
     - repeat (do_bool; break_and). omega.
     - repeat (do_bool; break_and). congruence.
-    - repeat find_rewrite. left. congruence.
   Qed.
 
   Lemma handleRequestVoteReply_spec :

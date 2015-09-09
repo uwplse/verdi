@@ -103,7 +103,7 @@ Section InputBeforeOutput.
     match goal with
       | |- context [update ?sigma ?h ?st] => pose proof applied_entries_update sigma h st
     end.
-    simpl in *. concludes. intuition; [find_rewrite; exists nil; simpl in *; intuition|].
+    simpl in *. concludes. ii; [find_rewrite; exists nil; simpl in *; intuition|].
     pose proof applied_entries_cases sigma.
     intuition; repeat find_rewrite; eauto;
     [eexists; intuition; eauto;
@@ -176,7 +176,7 @@ Section InputBeforeOutput.
     end.
     break_exists_exists. intuition. apply findAtIndex_intro; eauto using sorted_uniqueIndices.
   Qed.
-  
+
   Lemma entries_max_thing :
     forall net p es,
       raft_intermediate_reachable net ->
@@ -241,17 +241,15 @@ Section InputBeforeOutput.
     find_inversion.
     find_apply_hyp_hyp. intuition.
   Qed.
-  
+
   Lemma sorted_app :
     forall l l',
       sorted (l ++ l') ->
       sorted l.
   Proof.
-    induction l; simpl in *; intros; intuition eauto.
-    - apply H0. intuition.
-    - apply H0. intuition.
+    induction l; simpl in *; intros; intuition eauto; apply H0; intuition.
   Qed.
-  
+
   Lemma handleMessage_applied_entries :
     forall net h h' m st' ms,
       raft_intermediate_reachable net ->
@@ -268,7 +266,7 @@ Section InputBeforeOutput.
     - find_copy_eapply_lem_hyp handleAppendEntries_logs_sorted;
       eauto using logs_sorted_invariant.
       apply applied_entries_safe_update; eauto using handleAppendEntries_same_lastApplied.
-      find_apply_lem_hyp handleAppendEntries_log_detailed. intuition.
+      find_apply_lem_hyp handleAppendEntries_log_detailed. ii.
       + repeat find_rewrite. auto.
       + subst.
         find_copy_apply_lem_hyp state_machine_safety_invariant.
@@ -281,25 +279,24 @@ Section InputBeforeOutput.
           copy_eapply_prop_hyp state_machine_safety_nw In;
             unfold commit_recorded in *.
             simpl in *; repeat (forwards; eauto; concludes).
-            intuition; try omega;
-            exfalso;
+            ii; omega || exfalso;
             find_eapply_lem_hyp findAtIndex_max_thing; eauto; try break_exists; try congruence;
             eauto using entries_max_thing;
             find_apply_lem_hyp logs_contiguous; auto; omega.
         * intros.
           find_copy_apply_lem_hyp log_matching_invariant.
-          unfold log_matching, log_matching_hosts in *. intuition.
+          unfold log_matching, log_matching_hosts in *. ii.
           match goal with
             | H : forall _ _, _ <= _ <= _ -> _ |- _ => specialize (H h (eIndex e));
                 forward H
           end;
             copy_eapply_prop_hyp log_matching_nw AppendEntries; eauto;
-            repeat (forwards; [intuition eauto; omega|]; concludes);
+            repeat (forwards; [ii eauto; omega|]; concludes);
             intuition; [eapply le_trans; eauto|].
           match goal with
             | H : exists _, _ |- _ => destruct H as [e']
           end.
-          intuition.
+          ii.
           copy_eapply_prop_hyp state_machine_safety_nw In;
             unfold commit_recorded in *;
             simpl in *; repeat (forwards; [intuition eauto; omega|]; concludes).
@@ -314,9 +311,9 @@ Section InputBeforeOutput.
       + repeat find_rewrite.
         find_copy_apply_lem_hyp state_machine_safety_invariant.
         find_copy_apply_lem_hyp max_index_sanity_invariant.
-        unfold state_machine_safety, maxIndex_sanity in *. intuition.
+        unfold state_machine_safety, maxIndex_sanity in *. ii.
         find_copy_apply_lem_hyp logs_sorted_invariant.
-        unfold logs_sorted in *. intuition.
+        unfold logs_sorted in *. ii.
         eapply removeAfterIndex_same_sufficient'; eauto using logs_contiguous.
         * intros. eapply entries_gt_0; intuition eauto.
         * intros.
@@ -327,12 +324,12 @@ Section InputBeforeOutput.
           intuition; try omega; try solve [find_apply_lem_hyp logs_contiguous; auto; omega].
           exfalso.
           subst.
-          break_exists. intuition.
+          break_exists. ii.
           find_false.
           find_apply_lem_hyp maxIndex_non_empty.
-          break_exists. intuition. repeat find_rewrite.
+          break_exists. ii. repeat find_rewrite.
           f_equal.
-          find_apply_lem_hyp findAtIndex_elim. intuition.
+          find_apply_lem_hyp findAtIndex_elim. ii.
           eapply uniqueIndices_elim_eq with (xs := log st'); eauto using sorted_uniqueIndices.
           unfold state_machine_safety_nw in *.
           eapply_prop_hyp commit_recorded In; intuition; eauto; try omega;
@@ -340,9 +337,9 @@ Section InputBeforeOutput.
           unfold commit_recorded. intuition.
       + repeat find_rewrite.
         find_copy_apply_lem_hyp logs_sorted_invariant.
-        unfold logs_sorted in *. intuition.
+        unfold logs_sorted in *. ii.
         eapply removeAfterIndex_same_sufficient'; eauto using logs_contiguous.
-        * { intros. do_in_app. intuition.
+        * { intros. do_in_app. ii.
             - eapply entries_gt_0; eauto. reflexivity.
             - find_apply_lem_hyp removeAfterIndex_in.
               find_apply_lem_hyp logs_contiguous; eauto.
@@ -356,17 +353,17 @@ Section InputBeforeOutput.
           simpl in *. intuition eauto. forwards; eauto. concludes.
           forwards; [unfold commit_recorded in *; intuition eauto|].
           concludes.
-          intuition; apply in_app_iff;
+          ii; auto with *; apply in_app_iff;
           try solve [right; eapply removeAfterIndex_le_In; eauto; omega];
           exfalso.
           find_eapply_lem_hyp findAtIndex_max_thing; eauto using entries_max_thing.
           break_exists; congruence.
-      + break_exists. intuition. subst.
+      + break_exists. ii. subst.
         repeat find_rewrite.
         find_copy_apply_lem_hyp logs_sorted_invariant.
-        unfold logs_sorted in *. intuition.
+        unfold logs_sorted in *. ii.
         eapply removeAfterIndex_same_sufficient'; eauto using logs_contiguous.
-        * { intros. do_in_app. intuition.
+        * { intros. do_in_app. ii.
             - eapply entries_gt_0; eauto. reflexivity.
             - find_apply_lem_hyp removeAfterIndex_in.
               find_apply_lem_hyp logs_contiguous; eauto.
@@ -385,8 +382,8 @@ Section InputBeforeOutput.
             try solve [right; eapply removeAfterIndex_le_In; eauto; omega].
             subst.
             find_apply_lem_hyp maxIndex_non_empty.
-            break_exists. intuition. repeat find_rewrite.
-            find_apply_lem_hyp findAtIndex_elim. intuition.
+            break_exists. ii. repeat find_rewrite.
+            find_apply_lem_hyp findAtIndex_elim. ii.
             find_false. f_equal.
             eapply uniqueIndices_elim_eq with (xs := log (nwState net h));
               eauto using sorted_uniqueIndices.
@@ -439,7 +436,7 @@ Section InputBeforeOutput.
       update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
       unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
   Qed.
-  
+
   Lemma handleInput_applied_entries :
     forall net h inp os st' ms,
       raft_intermediate_reachable net ->
@@ -451,15 +448,13 @@ Section InputBeforeOutput.
     - apply applied_entries_log_lastApplied_update_same;
       eauto using handleTimeout_log_same, handleTimeout_lastApplied.
     - apply applied_entries_safe_update; eauto using handleClientRequest_lastApplied.
-
       destruct (log st') using (handleClientRequest_log_ind $(eauto)$); auto.
-
       simpl in *. break_if; auto.
       exfalso.
       do_bool.
       find_apply_lem_hyp max_index_sanity_invariant.
       unfold maxIndex_sanity, maxIndex_lastApplied in *.
-      intuition.
+      ii.
       match goal with
         | H : forall _, _ |- _ => specialize (H h)
       end. omega.
@@ -479,11 +474,11 @@ Section InputBeforeOutput.
       find_apply_lem_hyp handleTimeout_log_same.
       update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
       unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
-    - find_apply_lem_hyp handleClientRequest_log. intuition.
+    - find_apply_lem_hyp handleClientRequest_log. ii.
       + left.
         update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
         unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
-      + break_exists. intuition.
+      + break_exists. ii.
         update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
         try solve [left; unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto].
         simpl in *. intuition; subst; intuition.
@@ -580,7 +575,7 @@ Section InputBeforeOutput.
       end; auto;
       intros; simpl in *; break_if; auto.
   Qed.
-  
+
   Lemma in_applied_entries_step_applied_implies_input_state :
     forall (s : list name * network) s' tr o,
       refl_trans_1n_trace step_f step_f_init s tr ->

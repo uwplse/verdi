@@ -184,7 +184,7 @@ Section PrefixWithinTerm.
     end.
     find_eapply_lem_hyp one_leaderLog_per_term_log_invariant; eauto.
     conclude_using eauto. subst.
-    intuition; subst.
+    ii; subst.
     - destruct (lt_eq_lt_dec (eIndex e) pli'); intuition.
       left.
       match goal with
@@ -452,15 +452,6 @@ Section PrefixWithinTerm.
               cut (In e x); eauto
           end.
           eapply prefix_contiguous; eauto.
-          match goal with
-          | [ H : locked_or (x2 = [] -> _) _ |- _ ] =>
-            unfold locked_or in H; invc H; auto
-          end.
-          match goal with
-          | [ H : In ?e _, H' : _ < eIndex ?e |- _ ] =>
-            apply maxIndex_is_max in H; [|solve[eapply_prop leaderLogs_sorted; eauto]]
-          end.
-          omega.
     - left.
       break_exists.
       break_and.
@@ -661,12 +652,7 @@ Section PrefixWithinTerm.
                      | H : contiguous_range_exact_lo _ _ |- _ =>
                        eapply contiguous_app in H; eauto; [idtac]
                  end.
-          assert (x2 <> []).
-          {
-            unfold locked_or in *. intuition.
-            find_apply_lem_hyp maxIndex_is_max; [|solve[eapply_prop leaderLogs_sorted; eauto]].
-            omega.
-          }
+          assert (x2 <> []) by (unfold locked_or in *; intuition).
           match goal with
             |  _ : Prefix ?x ?ll |- In ?e _ =>
                assert (In e x2) by (eapply prefix_contiguous; eauto)
@@ -738,7 +724,7 @@ Section PrefixWithinTerm.
             eapply removeAfterIndex_in; rewrite H; apply in_app_iff; [idtac]
         end. eauto using Prefix_In.
   Qed.
-  
+
   Definition log_leaderLogs_prefix_within_term net :=
     forall h t ll leader,
       In (t, ll) (leaderLogs (fst (nwState net leader))) ->
@@ -816,7 +802,7 @@ Section PrefixWithinTerm.
     unfold update_elections_data_appendEntries.
     repeat break_match; subst; simpl in *; auto.
   Qed.
-  
+
   Lemma update_elections_data_requestVote_leaderLogs :
     forall h h' t lli llt st,
       leaderLogs (update_elections_data_requestVote h h' t h' lli llt st) =
@@ -860,7 +846,6 @@ Section PrefixWithinTerm.
     find_apply_lem_hyp handleAppendEntriesReply_entries. subst.
     do_in_map. do_in_app. subst. intuition.
     - do_in_map. subst. simpl in *. auto.
-    - left. apply in_map_iff. eexists; eauto.
   Qed.
 
   Lemma update_elections_data_clientRequest_allEntries_new :
@@ -879,8 +864,7 @@ Section PrefixWithinTerm.
     - match goal with
         | H : log _ = log (snd _) |- _ => symmetry in H
       end. repeat find_rewrite. simpl in *. omega.
-    - break_exists. intuition. repeat find_rewrite.
-      find_inversion. intuition.
+    - break_exists. intuition.
   Qed.
 
   Lemma update_elections_data_clientRequest_allEntries_old :
@@ -1150,7 +1134,6 @@ Section PrefixWithinTerm.
     intros. find_apply_lem_hyp handleClientRequest_log.
     intuition; repeat find_rewrite; intuition.
     break_exists; intuition; repeat find_rewrite; simpl in *; intuition.
-    subst. auto.
   Qed.
 
   Lemma prefix_within_term_inductive_client_request :
@@ -1458,7 +1441,7 @@ Section PrefixWithinTerm.
         intuition;
           [repeat find_reverse_rewrite; eauto|].
         do_in_map. subst. simpl in *.
-        find_eapply_lem_hyp doLeader_spec; eauto. intuition; subst.
+        find_eapply_lem_hyp doLeader_spec; eauto. ii; subst.
         * left. find_apply_lem_hyp findGtIndex_necessary. intuition.
           apply findGtIndex_sufficient; eauto using allEntries_gt_0_invariant.
           unfold allEntries_log_prefix_within_term, prefix_within_term in *. eauto.
@@ -1483,7 +1466,7 @@ Section PrefixWithinTerm.
               eapply uniqueIndices_elim_eq; eauto using sorted_uniqueIndices.
             - left. apply findGtIndex_sufficient; eauto.
           }
-        * break_exists. intuition.
+        * break_exists. ii.
           find_eapply_lem_hyp nextIndex_sanity; eauto. break_exists.
           unfold ghost_data in *. simpl in *. congruence.
     - unfold append_entries_leaderLogs_prefix_within_term in *.
@@ -1607,7 +1590,7 @@ Section PrefixWithinTerm.
     - unfold allEntries_append_entries_prefix_within_term_nw in *.
       intros. simpl in *.
       find_apply_hyp_hyp.
-      intuition;
+      ii;
         match goal with
           | H : forall _, _ _ = update _ _ _ _ |- _ =>
             rewrite H in *
@@ -1640,7 +1623,7 @@ Section PrefixWithinTerm.
     intros.
     unfold update_elections_data_timeout. repeat break_match; simpl; auto.
   Qed.
-  
+
   Lemma prefix_within_term_inductive_timeout :
     refined_raft_net_invariant_timeout prefix_within_term_inductive.
   Proof.
@@ -1669,9 +1652,9 @@ Section PrefixWithinTerm.
     - unfold allEntries_append_entries_prefix_within_term_nw.
       intros. simpl in *.
       find_apply_hyp_hyp.
-      intuition;
+      ii;
         [|do_in_map; subst; simpl in *; find_eapply_lem_hyp handleTimeout_packets; eauto;
-          find_rewrite; intuition; find_false; repeat eexists; eauto].
+          find_rewrite; ii; find_false; repeat eexists; eauto].
       match goal with
           | H : forall _, _ _ = update _ _ _ _ |- _ =>
             rewrite H in *
@@ -1745,10 +1728,10 @@ Section PrefixWithinTerm.
     - unfold allEntries_append_entries_prefix_within_term_nw.
       intros. simpl in *.
       find_apply_hyp_hyp.
-      intuition;
+      ii;
         [|subst; simpl in *;
           find_eapply_lem_hyp handleRequestVote_no_append_entries; subst;
-          intuition; find_false; repeat eexists; eauto].
+          ii; find_false; repeat eexists; eauto].
       match goal with
           | H : forall _, _ _ = update _ _ _ _ |- _ =>
             rewrite H in *
@@ -1798,8 +1781,7 @@ Section PrefixWithinTerm.
     end.
     find_copy_apply_lem_hyp doGenericServer_log.
     find_apply_lem_hyp doGenericServer_packets.
-    subst. simpl in *.
-intuition.
+    subst. simpl in *. intuition.
     - unfold allEntries_leaderLogs_prefix_within_term in *.
       intros. simpl in *.
       repeat find_higher_order_rewrite.
@@ -1815,7 +1797,7 @@ intuition.
     - unfold allEntries_append_entries_prefix_within_term_nw in *.
       intros. simpl in *.
       find_apply_hyp_hyp.
-      intuition;
+      ii;
         match goal with
           | H : forall _, _ _ = update _ _ _ _ |- _ =>
             rewrite H in *
@@ -1847,8 +1829,6 @@ intuition.
     red. unfold prefix_within_term_inductive in *.
     intuition;
     red; intros; simpl in *; intuition.
-    unfold prefix_within_term. intros. simpl in *.
-    intuition.
   Qed.
 
   Lemma prefix_within_term_inductive_state_same_packet_subset :
@@ -1874,7 +1854,7 @@ intuition.
     unfold prefix_within_term_inductive in *.
     intros.
     intros.
-    intuition; red; intros; try find_apply_hyp_hyp;
+    ii; red; intros; try find_apply_hyp_hyp;
     match goal with
       | H : forall _, _ _ _ = update _ _ _ _ |- _ =>
         repeat rewrite H in *
@@ -1885,8 +1865,7 @@ intuition.
     end;
     destruct_update; simpl in *; eauto.
   Qed.
-    
-  
+
   Theorem prefix_within_term_inductive_invariant :
     forall net,
       refined_raft_intermediate_reachable net ->
@@ -1905,7 +1884,7 @@ intuition.
     - apply prefix_within_term_inductive_state_same_packet_subset.
     - apply prefix_within_term_inductive_reboot.
   Qed.
-  
+
   Instance pwti : prefix_within_term_interface.
   split; intros.
   - apply prefix_within_term_inductive_invariant. auto.

@@ -1173,7 +1173,6 @@ Section StateMachineSafetyProof.
     intuition.
     - repeat find_rewrite. do_bool. omega.
     - right.  break_exists_exists. intuition.
-      congruence.
   Qed.
 
   Lemma update_elections_data_client_request_allEntries_ind :
@@ -1191,7 +1190,6 @@ Section StateMachineSafetyProof.
     intros.
     find_apply_lem_hyp update_elections_data_client_request_allEntries.
     intuition.
-    - find_rewrite. auto.
     - break_exists. intuition.
       repeat find_rewrite.  auto.
   Qed.
@@ -1425,7 +1423,7 @@ Section StateMachineSafetyProof.
       simpl. intros.
       find_apply_hyp_hyp.
       intuition.
-      + eapply hCR_preserves_committed; eauto. simpl. subst. auto.
+      + eapply hCR_preserves_committed; eauto.
       + unfold send_packets in *.
         do_in_map.
         unfold add_ghost_msg in *.
@@ -1489,7 +1487,6 @@ Section StateMachineSafetyProof.
       find_apply_hyp_hyp.
       intuition.
       * eapply handleTimeout_preserves_committed; eauto.
-        simpl. intros. subst. auto.
       * do_in_map.
         subst. simpl in *.
         unfold add_ghost_msg in *.
@@ -2097,9 +2094,6 @@ Section StateMachineSafetyProof.
                      * find_copy_eapply_lem_hyp ghost_log_correct_invariant; eauto.
                        conclude_using eauto.
                        { intuition.
-                         - match goal with
-                           | [ H : In _ _, H' : _ |- _ ] => rewrite H' in H
-                           end. auto.
                          - break_exists_name gple. break_and.
                            subst.
                            eauto using findGtIndex_in.
@@ -2173,7 +2167,6 @@ Section StateMachineSafetyProof.
       find_apply_hyp_hyp.
       intuition.
       + eapply handleAppendEntries_preserves_commit; eauto.
-        simpl. subst. auto.
       + subst. simpl in *.
         find_apply_lem_hyp handleAppendEntries_not_append_entries.
         subst. exfalso. eauto 10.
@@ -2221,7 +2214,6 @@ Section StateMachineSafetyProof.
       find_apply_hyp_hyp.
       intuition.
       + eapply handleAppendEntriesReply_preserves_commit; eauto.
-        simpl. subst. auto.
       + do_in_map. unfold add_ghost_msg in *. do_in_map.
         subst. simpl in *.
         find_apply_lem_hyp handleAppendEntriesReply_packets.
@@ -2272,7 +2264,6 @@ Section StateMachineSafetyProof.
       simpl. intros.
       find_apply_hyp_hyp. intuition.
       + eapply handleRequestVote_preserves_committed; eauto.
-        simpl. intros. subst. auto.
       + subst. simpl in *. unfold write_ghost_log in *.
         find_apply_lem_hyp handleRequestVote_no_append_entries.
         subst.
@@ -2320,12 +2311,10 @@ Section StateMachineSafetyProof.
         eapply lifted_committed_monotonic; eauto.
         intuition; repeat find_rewrite; auto.
       + rewrite_update. eapply handleRequestVoteReply_preserves_committed; eauto.
-        simpl. subst. auto.
     - unfold commit_invariant_nw. simpl.
       intros.
       find_apply_hyp_hyp.
       eapply handleRequestVoteReply_preserves_committed; eauto.
-      simpl. subst. auto.
   Qed.
 
 
@@ -2943,9 +2932,6 @@ Section StateMachineSafetyProof.
       intros.
       find_apply_hyp_hyp.
       intuition.
-      right.
-      subst.
-      unfold mgv_deghost_packet. auto.
     - eapply commit_invariant_append_entries; eauto.
     - apply state_machine_safety_deghost.
       + apply commit_invariant_lower_commit_recorded_committed. auto.

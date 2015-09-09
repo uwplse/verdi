@@ -284,10 +284,7 @@ Section SortedProof.
       In e' l ->
       eTerm e <= eTerm e'.
   Proof.
-    induction l; intros; simpl in *; intuition.
-    - subst_max. intuition.
-    - subst. find_apply_hyp_hyp. intuition.
-    - subst. find_apply_hyp_hyp. intuition.
+    induction l; intros; simpl in *; intuition; find_apply_hyp_hyp; intuition.
   Qed.
 
   Lemma handleAppendEntries_logs_sorted :

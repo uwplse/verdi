@@ -175,10 +175,6 @@ Section LeaderLogsVotesWithLog.
     end.
     find_eapply_lem_hyp handleRequestVoteReply_spec'.
     intuition.
-    conclude_using 
-      ltac:(repeat find_rewrite; congruence).
-    concludes.
-    intuition.
     repeat find_rewrite.
     find_apply_lem_hyp wonElection_dedup_spec.
     break_exists_exists. intuition.
