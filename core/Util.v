@@ -25,129 +25,81 @@ Lemma filter_app A (f : A -> bool) xs ys :
     filter f (xs ++ ys) = filter f xs ++ filter f ys.
 Proof. induction xs; intros; simpl; try (break_if;simpl); (idtac + f_equal); solve [auto]. Qed.
 
-Section dedup.
-  Variable A : Type.
-  Hypothesis A_eq_dec : forall x y : A, {x = y} + {x <> y}.
+Lemma nodup_eliminates_duplicates A DEC (a : A) b c :
+  (nodup DEC (a :: b ++ a :: c) = nodup DEC (b ++ a :: c)).
+Proof. intros; simpl in *; break_match; (idtac + exfalso); solve [auto; intuition]. Qed.
 
-  Fixpoint dedup (xs : list A) : list A :=
-    match xs with
-    | [] => []
-    | x :: xs => let tail := dedup xs in
-                 if in_dec A_eq_dec x xs then
-                   tail
-                 else
-                   x :: tail
-    end.
-
-  Lemma dedup_eliminates_duplicates : forall (a : A) b c,
-      (dedup (a :: b ++ a :: c) = dedup (b ++ a :: c)).
-  Proof. intros; simpl in *; break_match; (idtac + exfalso); solve [auto; intuition]. Qed.
-
-  Lemma dedup_In : forall (x : A) xs,
-      In x xs ->
-      In x (dedup xs).
-  Proof. induction xs; simpl in *; intuition; subst; break_if; simpl; auto. Qed.
-
-  Lemma filter_dedup (pred : A -> bool) :
-    forall xs (p : A) ys,
-      pred p = false ->
-      filter pred (dedup (xs ++ ys)) = filter pred (dedup (xs ++ p :: ys)).
-  Proof.
+Lemma filter_nodup A DEC (pred : A -> bool) xs (p : A) ys : pred p = false -> 
+  filter pred (nodup DEC (xs ++ ys)) = filter pred (nodup DEC (xs ++ p :: ys)).
+Proof.
     intros; induction xs; repeat (break_match||discriminate||(auto using f_equal);simpl in *);
     exfalso; apply n; apply in_app_or in i; simpl in *; dintuition;
     subst; rewrite H in *; discriminate.
-  Qed.
+Qed.
 
-  Lemma dedup_app : forall (xs ys : list A),
-      (forall x y, In x xs -> In y ys -> x <> y) ->
-      dedup (xs ++ ys) = dedup xs ++ dedup ys.
-  Proof.
-    intros; induction xs; simpl; auto; repeat break_match; simpl in *; intuition.
-    apply IHxs; intuition; eapply H; eauto.
-    apply in_app_or in i; specialize (H a a); intuition.
+Lemma nodup_app A DEC (xs ys : list A) :
+  (forall x y, In x xs -> In y ys -> x <> y) ->
+    nodup DEC (xs ++ ys) = nodup DEC xs ++ nodup DEC ys.
+Proof.
+    intros; induction xs; simpl; auto; repeat break_match; simpl in *; ii.
+    apply IHxs; ii; eapply H; eauto.
+    apply in_app_or in i; specialize (H a a); ii.
     contradict n; intuition.
     f_equal; apply IHxs; intuition; eauto.
-  Qed.
+Qed.
 
-  Lemma in_dedup_was_in :
-    forall xs (x : A),
-      In x (dedup xs) ->
-      In x xs.
-  Proof. induction xs; intros; simpl in *; try break_if; simpl in *; intuition. Qed.
+Lemma remove_preserve A DEC (x y : A) xs :
+  x <> y -> In y xs -> In y (remove DEC x xs).
+Proof. induction xs; simpl in *; ii; break_if; subst; congruence||intuition. Qed.
 
-  Lemma NoDup_dedup :
-    forall (xs : list A),
-      NoDup (dedup xs).
-  Proof. induction xs; simpl; try break_if; auto using NoDup_nil, NoDup_cons, in_dedup_was_in. Qed.
+Lemma in_remove A DEC (x y : A) xs : In y (remove DEC x xs) -> In y xs.
+Proof.
+  induction xs; intros; auto.
+  simpl in *; break_if; simpl in *; intuition.
+Qed.
 
-  Lemma remove_preserve :
-    forall (x y : A) xs,
-      x <> y ->
-      In y xs ->
-      In y (remove A_eq_dec x xs).
-  Proof. induction xs; intros; simpl in *; intuition; break_if; subst; congruence||intuition. Qed.
+Lemma remove_nodup_comm A DEC (x : A) xs :
+  remove DEC x (nodup DEC xs) =
+    nodup DEC (remove DEC x xs).
+Proof.
+  induction xs; intros; auto.
+  repeat (break_match||subst;simpl); auto using f_equal;
+  exfalso; eauto using remove_preserve, in_remove.
+Qed.
 
-  Lemma in_remove :
-    forall (x y : A) xs,
-      In y (remove A_eq_dec x xs) ->
-      In y xs.
-  Proof.
-    induction xs; intros; auto.
-    simpl in *; break_if; simpl in *; intuition.
-  Qed.
+Lemma remove_partition A DEC xs (p : A) ys :
+  remove DEC p (xs ++ p :: ys) = remove DEC p (xs ++ ys).
+Proof. induction xs; intros; simpl; break_if; congruence||auto. Qed.
 
-  Lemma remove_dedup_comm : forall (x : A) xs,
-      remove A_eq_dec x (dedup xs) =
-      dedup (remove A_eq_dec x xs).
-  Proof.
-    induction xs; intros; auto.
-    repeat (break_match||subst;simpl); auto using f_equal;
-    exfalso; eauto using remove_preserve, in_remove.
-  Qed.
+Lemma remove_not_in A DEC (x : A) xs : ~ In x xs -> remove DEC x xs = xs.
+Proof.
+  intros; induction xs; intuition; simpl; break_match; auto using f_equal.
+  exfalso; apply H; rewrite e; intuition.
+Qed.
 
-  Lemma remove_partition :
-    forall xs (p : A) ys,
-      remove A_eq_dec p (xs ++ p :: ys) = remove A_eq_dec p (xs ++ ys).
-  Proof. induction xs; intros; simpl; break_if; congruence||auto. Qed.
+Lemma dedup_partition A DEC xs (p : A) ys xs' ys' :
+  nodup DEC (xs ++ p :: ys) = xs' ++ p :: ys' ->
+    remove DEC p (nodup DEC (xs ++ ys)) = xs' ++ ys'.
+Proof.
+  intros; f_apply H (remove DEC p).
+  rewrite remove_nodup_comm, !remove_partition, H0 in *.
+  apply remove_not_in; apply NoDup_remove_2.
+  rewrite <- H; apply NoDup_nodup.
+Qed.
 
-  Lemma remove_not_in : forall (x : A) xs,
-      ~ In x xs ->
-      remove A_eq_dec x xs = xs.
-  Proof.
-    intros; induction xs; intuition; simpl; break_match; auto using f_equal.
-    exfalso; apply H; rewrite e; intuition.
-  Qed.
+Lemma dedup_NoDup_id A DEC (xs : list A) : NoDup xs -> nodup DEC xs = xs.
+Proof.
+  induction xs; intros; auto; simpl in *.
+  invcs H; intuition.
+  rewrite H; break_if; congruence.
+Qed.
 
-  Lemma dedup_partition :
-    forall xs (p : A) ys xs' ys',
-      dedup (xs ++ p :: ys) = xs' ++ p :: ys' ->
-      remove A_eq_dec p (dedup (xs ++ ys)) = xs' ++ ys'.
-  Proof.
-    intros; f_apply H (remove A_eq_dec p).
-    rewrite remove_dedup_comm, !remove_partition, H0 in *.
-    apply remove_not_in.
-    apply NoDup_remove_2.
-    rewrite <- H.
-    apply NoDup_dedup.
-  Qed.
-
-  Lemma dedup_NoDup_id : forall (xs : list A),
-      NoDup xs -> dedup xs = xs.
-  Proof.
-    induction xs; intros; auto; simpl in *.
-    invcs H; intuition.
-    rewrite H; break_if; congruence.
-  Qed.
-
-  Lemma dedup_not_in_cons :
-    forall x xs,
-      (~ In x xs) ->
-      x :: dedup xs = dedup (x :: xs).
-  Proof.
-    induction xs; intros; auto.
-    simpl in *; intuition; repeat break_match; intuition.
-  Qed.
-End dedup.
+Lemma dedup_not_in_cons A DEC (x : A) xs : 
+  (~ In x xs) -> x :: nodup DEC xs = nodup DEC (x :: xs).
+Proof.
+  induction xs; intros; auto.
+  simpl in *; ii; repeat break_match; intuition.
+Qed.
 
 Lemma filter_fun_ext_eq : forall A f g xs,
                             (forall a : A, In a xs -> f a = g a) ->
