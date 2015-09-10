@@ -227,7 +227,6 @@ Section StateMachineCorrect.
                                  (stateMachine st) [])).
   Proof.
     induction l; intros; simpl in *; intuition.
-    - find_inversion. auto.
     - repeat break_let. find_inversion.
       repeat break_match; simpl in *.
       + break_let.
@@ -311,8 +310,6 @@ Section StateMachineCorrect.
     Proof.
       intros. induction l; simpl in *; auto; try congruence.
       repeat break_match; simpl in *; intuition.
-      - subst. find_inversion. auto.
-      - repeat find_rewrite. auto.
     Qed.
 
     Lemma assoc_default_assoc_set :
@@ -450,13 +447,11 @@ Section StateMachineCorrect.
   Proof.
     intros. induction l; simpl in *; auto.
     repeat break_if; do_bool; simpl in *; auto.
-    - f_equal; eauto.
-    - intuition. congruence.
-    - intuition; try congruence.
-      assert (f a = true) by eauto.
-      congruence.
+    - f_equal; eauto; intuition.
+    - intuition; congruence.
+    - assert (f a = true) by eauto; intuition.
   Qed.
-  
+
   Lemma removeAfterIndex_app :
     forall l i i',
       sorted l ->
@@ -1035,7 +1030,7 @@ Section StateMachineCorrect.
     - do_bool.
       find_erewrite_lem assoc_assoc_default.
       rewrite assoc_set_same; eauto.
-      find_eapply_lem_hyp le_antisym; eauto. subst. auto.
+      find_eapply_lem_hyp le_antisym; eauto.
     - exfalso. do_bool.
       find_erewrite_lem assoc_assoc_default_missing. omega.
   Qed.
@@ -1092,7 +1087,7 @@ Section StateMachineCorrect.
         try now rewrite get_set_diff in *; auto.
       subst. rewrite get_set_same in *.
       find_inversion. repeat find_rewrite.
-      right. intuition. congruence.
+      right. intuition.
   Qed.
 
   Lemma applyEntries_app :
@@ -1143,8 +1138,6 @@ Section StateMachineCorrect.
               (log_to_ks' l (clientCache_to_ks (clientCache st))).
   Proof.
     induction l; intros; simpl in *; intuition.
-    - find_inversion. 
-      apply a_equiv_refl.
     - repeat break_let. find_inversion.
       break_if.
       + do_bool.

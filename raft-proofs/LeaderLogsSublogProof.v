@@ -292,7 +292,6 @@ Section LeaderLogsSublog.
     - repeat update_destruct.
       + find_eapply_lem_hyp leaderLogs_update_elections_data_RVR; eauto; intuition.
         * repeat find_rewrite. eauto.
-        * subst. unfold raft_data in *. repeat find_rewrite. auto.
       + repeat find_rewrite. eauto.
       + find_eapply_lem_hyp leaderLogs_update_elections_data_RVR; eauto; intuition.
         * repeat find_rewrite. eauto.

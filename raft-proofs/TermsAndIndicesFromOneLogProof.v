@@ -162,7 +162,6 @@ Section TermsAndIndicesFromOneLog.
     - find_higher_order_rewrite. update_destruct; subst; rewrite_update; auto.
       find_apply_lem_hyp doGenericServer_log. find_rewrite. auto.
     - find_apply_lem_hyp doGenericServer_packets. find_apply_hyp_hyp. subst. intuition; eauto.
-      do_in_map. contradiction.
   Qed.
 
   Lemma terms_and_indices_from_one_log_ind_state_same_packet_subset :

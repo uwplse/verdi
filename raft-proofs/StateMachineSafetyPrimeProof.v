@@ -319,19 +319,10 @@ Section StateMachineSafety'.
           eapply contiguous_app; eauto. eapply entries_sorted_nw_invariant; eauto.
         * cut (e = x5); [intros; subst; intuition|].
           eapply uniqueIndices_elim_eq; eauto using sorted_uniqueIndices.
-      + subst. right. right. right.
-        apply in_app_iff. right.
-        get_invariant leaderLogs_contiguous_invariant.
-        unfold leaderLogs_contiguous in *. find_copy_apply_hyp_hyp.
-        eapply prefix_contiguous with (i := 0); eauto;
-        [solve[eauto using in_not_nil]|match goal with
-           | _ : In (_, ?l) (leaderLogs _), H : contiguous_range_exact_lo ?l _ |- _ =>
-             unfold contiguous_range_exact_lo in H; intuition
-         end].
     - subst.
       find_copy_eapply_lem_hyp logs_leaderLogs_invariant; eauto.
       find_copy_eapply_lem_hyp append_entries_leaderLogs_invariant; eauto.
-      break_exists. simpl in *. intuition.
+      break_exists. simpl in *. ii.
       + subst.
         match goal with
           | _ : In (_, ?l) (leaderLogs _),
@@ -348,7 +339,7 @@ Section StateMachineSafety'.
             rename l1 into new_msg_entries; rename l2 into old_msg_entries
         end.
         assert (In e (new_entries ++ old_entries)) by (find_reverse_rewrite; eauto using removeAfterIndex_le_In).
-        do_in_app. intuition.
+        do_in_app. ii.
         * destruct (lt_eq_lt_dec prevLogIndex (eIndex e)); intuition;
           try solve [subst; find_apply_hyp_hyp; intuition].
           destruct (le_gt_dec (eIndex e) (maxIndex (new_msg_entries ++ old_msg_entries))); intuition.

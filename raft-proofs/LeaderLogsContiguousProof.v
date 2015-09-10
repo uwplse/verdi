@@ -102,8 +102,7 @@ Section LeaderLogsContiguous.
         pose proof handleRequestVoteReply_spec
              h s h' t r (handleRequestVoteReply h s h' t r)
     end. intuition; repeat find_rewrite; intuition.
-    congruence.
-  Qed.      
+  Qed.
 
   Theorem lift_log_matching :
     forall net,
@@ -138,8 +137,7 @@ Section LeaderLogsContiguous.
       cut (In e (log (nwState (deghost net) h))); intros; eauto.
       simpl in *. repeat break_match. simpl in *. repeat find_rewrite. simpl in *. auto.
   Qed.
-    
-  
+
   Ltac start :=
     red; unfold leaderLogs_contiguous; intros;
     subst; simpl in *; find_higher_order_rewrite;

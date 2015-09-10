@@ -54,7 +54,6 @@ Section EveryEntryWasCreated.
     break_exists_exists. eauto.
   Qed.
 
-  
   Ltac update_destruct :=
     match goal with
       | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
@@ -152,7 +151,6 @@ Section EveryEntryWasCreated.
       + match goal with
           | _ : In ?p' (_ ++ _) |- _ => eapply in_aer with (p1 := p'); eauto
         end.
-      + subst. simpl in *. intuition.
     - repeat find_higher_order_rewrite.
       destruct_update; simpl in *; eauto.
   Qed.
@@ -196,7 +194,6 @@ Section EveryEntryWasCreated.
     find_higher_order_rewrite;
     destruct_update; simpl in *; eauto;
     rewrite update_elections_data_client_request_leaderLogs; eauto.
-  
 
   Ltac cr_in_ll_in_leader_log :=
     find_eapply_lem_hyp in_ll; eauto; eapply_prop_hyp in_any_log_term_was_created in_any_log;
@@ -299,7 +296,6 @@ Section EveryEntryWasCreated.
       destruct_update; simpl in *; eauto.
   Qed.
 
-
   Lemma in_any_log_term_was_created_do_generic_server :
     refined_raft_net_invariant_do_generic_server in_any_log_term_was_created.
   Proof.
@@ -348,7 +344,6 @@ Section EveryEntryWasCreated.
       break_exists_exists; repeat find_higher_order_rewrite; eauto.
   Qed.
 
-
   Lemma in_any_log_term_was_created_reboot :
     refined_raft_net_invariant_reboot in_any_log_term_was_created.
   Proof.
@@ -389,7 +384,6 @@ Section EveryEntryWasCreated.
     iae_case; intuition.
   Qed.
 
-  
   Theorem in_any_log_term_was_created_invariant :
     forall net,
       refined_raft_intermediate_reachable net ->

@@ -530,8 +530,8 @@ Proof.
 Qed.
 
 Hint Extern 0 => congruence : UTIL.
-Hint Extern 0 => progress subst.
-Hint Resolve remove_preserve.
+Hint Extern 0 => progress subst : UTIL.
+Hint Resolve remove_preserve : UTIL.
 
 Lemma subset_length :
   forall A xs ys,
@@ -1495,7 +1495,7 @@ Proof.
   induction l; intros; simpl in *; intuition.
   - rewrite remove_all_nil in *. simpl in *. intuition.
   - pose proof remove_all_cons dec ys a l. intuition.
-    + repeat find_rewrite. right. intuition eauto.
+    + repeat find_rewrite. right. intuition eauto with UTIL.
     + repeat find_rewrite. simpl in *. intuition eauto.
 Qed.
 

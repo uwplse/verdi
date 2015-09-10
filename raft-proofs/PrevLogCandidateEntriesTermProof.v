@@ -171,7 +171,6 @@ Section PrevLogCandidateEntriesTerm.
     - rewrite update_elections_data_appendEntries_cronies.
       find_apply_lem_hyp handleAppendEntries_type.
       intuition; subst; repeat find_rewrite; auto.
-      discriminate.
     - intuition.
   Qed.
 
@@ -198,9 +197,7 @@ Section PrevLogCandidateEntriesTerm.
     unfold candidateEntriesTerm.
     intros. break_exists_exists.
     find_apply_lem_hyp handleAppendEntriesReply_type.
-    update_destruct.
-    - intuition; repeat find_rewrite; auto. discriminate.
-    - auto.
+    update_destruct; ii; repeat find_rewrite; auto with *.
   Qed.
 
   Lemma prevLog_candidateEntriesTerm_append_entries_reply :
@@ -256,7 +253,6 @@ Section PrevLogCandidateEntriesTerm.
       end.
       intuition.
       + repeat find_rewrite. auto.
-      + congruence.
   Qed.
 
   Lemma handleRequestVote_preserves_candidateEntriesTerm :
@@ -309,18 +305,15 @@ Section PrevLogCandidateEntriesTerm.
     | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
       remember (handleRequestVoteReply h st h' t r) as new_state
     end; find_copy_apply_lem_hyp handleRequestVoteReply_spec.
-    repeat (break_match); intuition; repeat find_rewrite; intuition;
+    repeat (break_match); ii; repeat find_rewrite; ii;
     simpl; break_if; auto.
     - find_apply_lem_hyp cronies_correct_invariant.
       unfold cronies_correct in *. intuition.
-      unfold votes_received_leaders in *.
-      match goal with
-      | H :  Leader = _ |- _ =>
-        symmetry in H
-      end. find_apply_hyp_hyp.
+    - destruct (serverType_eq_dec (type (snd (nwState net x))) Leader); ii; auto.
+      find_apply_lem_hyp cronies_correct_invariant; auto.
       eapply wonElection_no_dup_in;
         eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
-    - destruct (serverType_eq_dec (type (snd (nwState net x))) Leader); intuition.
+    - destruct (serverType_eq_dec (type (snd (nwState net x))) Leader); ii; auto.
       find_apply_lem_hyp cronies_correct_invariant; auto.
       eapply wonElection_no_dup_in;
         eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
@@ -360,8 +353,7 @@ Section PrevLogCandidateEntriesTerm.
         replace (x) with (snd (nwState net h)) in * by (rewrite H; auto); clear H
       end.
       find_apply_lem_hyp doLeader_type.
-      intuition. subst. repeat find_rewrite.
-      auto.
+      ii; subst. repeat find_rewrite; auto.
   Qed.
 
   Lemma getNextIndex_ext :
@@ -482,7 +474,6 @@ Section PrevLogCandidateEntriesTerm.
     update_destruct; auto.
     repeat find_rewrite.
     simpl in *. intuition.
-    discriminate.
   Qed.
 
   Lemma prevLog_candidateEntriesTerm_invariant :

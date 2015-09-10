@@ -98,7 +98,7 @@ Section OneLeaderLogPerTerm.
   Lemma one_leaderLog_per_term_append_entries_reply :
     refined_raft_net_invariant_append_entries_reply one_leaderLog_per_term.
   Proof.
-    start_unchanged. auto.
+    start_unchanged.
   Qed.
 
   Lemma one_leaderLog_per_term_request_vote :
@@ -210,14 +210,11 @@ Section OneLeaderLogPerTerm.
       + apply_prop_hyp leaderLogs_currentTerm_sanity_candidate nwState; auto.
         find_copy_apply_lem_hyp handleRequestVoteReply_type. intuition; unfold raft_data in *; simpl in *.
         * subst. repeat find_rewrite. discriminate.
-        * find_apply_lem_hyp lt_asym. congruence.
         * subst. repeat find_rewrite. find_apply_lem_hyp lt_irrefl. contradiction.
       + apply_prop_hyp leaderLogs_currentTerm_sanity_candidate nwState; auto.
         find_copy_apply_lem_hyp handleRequestVoteReply_type. intuition; unfold raft_data in *; simpl in *.
         * subst. repeat find_rewrite. discriminate.
-        * find_apply_lem_hyp lt_asym. congruence.
         * subst. repeat find_rewrite. find_apply_lem_hyp lt_irrefl. contradiction.
-      + subst. auto.
     - exfalso. eapply contradiction_case; eauto.
     - exfalso. eapply contradiction_case; eauto.
     - eauto.

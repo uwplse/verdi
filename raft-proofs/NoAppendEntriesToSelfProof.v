@@ -56,10 +56,7 @@ Section NoAppendEntriesToSelf.
     raft_net_invariant_append_entries no_append_entries_to_self.
   Proof.
     red. red. intros. simpl in *.
-    find_apply_hyp_hyp. intuition eauto.
-    subst. simpl in *. subst.
-    find_apply_lem_hyp handleAppendEntries_not_append_entries.
-    intuition. find_false. repeat eexists; eauto.
+    find_apply_hyp_hyp. intuition eauto with *.
   Qed.
   
   Lemma no_append_entries_to_self_append_entries_reply :
