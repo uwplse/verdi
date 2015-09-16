@@ -13,10 +13,12 @@ popd
 
 # vard
 git clone https://github.com/uwplse/verdi.git
+pushd verdi
 make systems
 make raft
-pushd verdi/extraction/vard
+pushd extraction/vard
 make
+popd
 popd
 ln -s verdi/extraction/vard vard
 
