@@ -585,7 +585,7 @@ Section MatchIndexAllEntries.
             - break_exists. break_and.
               find_copy_apply_lem_hyp handleAppendEntries_success_term.
               assert (In x (log (snd (nwState net (pSrc p))))).
-              { eapply appendEntries_sublog; eauto. subst. repeat find_rewrite. auto. }
+              { eapply appendEntries_sublog; eauto. }
               assert (entries_match (log d) (log (snd (nwState net (pSrc p))))).
               { match goal with
                 | [ H : refined_raft_intermediate_reachable (mkNetwork ?a ?b) |- _ ] =>
@@ -672,7 +672,6 @@ Section MatchIndexAllEntries.
             repeat find_rewrite. repeat concludes.
             find_erewrite_lem handleAppendEntriesReply_log.
             auto.
-          + congruence.
           + repeat find_rewrite.
             match goal with
             | [ H : context [ assoc_default _ (assoc_set _ _ ?x _) ?y _ ]  |- _ ] =>
@@ -869,9 +868,9 @@ Section MatchIndexAllEntries.
               end.
               eapply log_all_entries_invariant; auto.
             - find_apply_lem_hyp lifted_terms_and_indices_from_one_log; auto.
-              intuition. omega.
+              intuition.
           }
-      + update_destruct.
+       + update_destruct.
         * rewrite update_elections_data_requestVoteReply_allEntries.
           repeat find_reverse_rewrite. eauto.
         * repeat find_reverse_rewrite. eauto.

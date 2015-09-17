@@ -94,7 +94,7 @@ Section AllEntriesCandidateEntries.
           erewrite update_elections_data_client_request_cronies; eauto.
           intuition.
           find_apply_lem_hyp handleClientRequest_type.
-          intuition. repeat find_rewrite. eauto.
+          intuition.
     - find_apply_hyp_hyp.
       unfold candidateEntries in *.
       break_exists_exists.

@@ -196,9 +196,6 @@ Section LeaderLogsTermSanity.
     - find_apply_hyp_hyp. repeat find_rewrite. auto.
     - find_apply_hyp_hyp. omega.
     - find_apply_hyp_hyp. repeat find_rewrite. auto.
-    - subst. auto.
-    - subst. auto.
-    - subst. auto.
   Qed.
 
   Lemma leaderLogs_currentTerm_sanity_do_leader :
@@ -307,7 +304,7 @@ Section LeaderLogsTermSanity.
     ctsc_unchanged.
     - apply update_elections_data_appendEntries_leaderLogs.
     - find_apply_lem_hyp handleAppendEntries_type_term. intuition.
-    - find_apply_lem_hyp handleAppendEntries_type_term. intuition. right. congruence.
+    - find_apply_lem_hyp handleAppendEntries_type_term. intuition.
   Qed.
 
   Lemma leaderLogs_currentTerm_sanity_candidate_append_entries_reply :
@@ -315,7 +312,7 @@ Section LeaderLogsTermSanity.
   Proof.
     ctsc_unchanged.
     - find_apply_lem_hyp handleAppendEntriesReply_type_term. intuition.
-    - find_apply_lem_hyp handleAppendEntriesReply_type_term. intuition. right. congruence.
+    - find_apply_lem_hyp handleAppendEntriesReply_type_term. intuition.
   Qed.
 
   Lemma leaderLogs_currentTerm_sanity_candidate_request_vote :
@@ -324,7 +321,7 @@ Section LeaderLogsTermSanity.
     ctsc_unchanged.
     - apply leaderLogs_update_elections_data_requestVote.
     - find_apply_lem_hyp handleRequestVote_type_term. intuition.
-    - find_apply_lem_hyp handleRequestVote_type_term. intuition. right. congruence.
+    - find_apply_lem_hyp handleRequestVote_type_term. intuition.
   Qed.
 
   Lemma leaderLogs_currentTerm_sanity_candidate_request_vote_reply :
@@ -335,8 +332,6 @@ Section LeaderLogsTermSanity.
     intuition.
     - find_copy_apply_lem_hyp handleRequestVoteReply_type. intuition.
       + find_rewrite. find_apply_hyp_hyp. omega.
-      + find_contradiction.
-      + find_contradiction.
     - subst. unfold raft_data in *. simpl in *. find_contradiction.
   Qed.
 

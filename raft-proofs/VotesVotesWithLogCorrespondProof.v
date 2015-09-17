@@ -72,27 +72,16 @@ Section VotesVotesWithLogCorrespond.
       votes_votesWithLog_correspond net.
   Proof.
     intros.
-    apply refined_raft_net_invariant; auto.
+    apply refined_raft_net_invariant; try solve [try start; try find_rewrite; try finish; auto].
     - unfold_all. simpl. split; contradiction.
     - start. unfold update_elections_data_client_request in *. finish.
     - start. unfold update_elections_data_timeout in *. finish.
     - start. unfold update_elections_data_appendEntries in *. finish.
-    - start. subst; auto.
     - start. unfold update_elections_data_requestVote in *. finish.
     - start. unfold update_elections_data_requestVoteReply in *. finish.
-    - start. find_rewrite. auto.
-    - start. find_rewrite. auto.
     - unfold_all. split; intros; break_and;
       repeat find_reverse_higher_order_rewrite; eauto.
-    - unfold_all.
-      intuition; find_higher_order_rewrite;
-      (update_destruct; subst; rewrite_update; [|eauto]);
-      unfold reboot in *; simpl in *;
-      (eapply equates_1; [
-          match goal with
-          | H : _ |- _ => solve [ eapply H; aggresive_rewrite_goal; eauto ]
-          end |]);
-      find_rewrite; auto.
+    Unshelve. constructor.
   Qed.
 
   Instance vvci : votes_votesWithLog_correspond_interface.

@@ -63,18 +63,13 @@ Section SeqNumCorrect.
       (tmNum (snd p)) <> (tmNum (snd p')).
   Proof.
     induction l; intros; simpl in *.
-    - invcs H. intuition.
-    - break_match. invcs H.
-      intuition.
-      + subst. intuition.
-      + subst. simpl in *.
-        apply processPackets_correct with (p := p') in Heqp0; intuition.
-      + subst. simpl in *.
-        apply processPackets_correct with (p := p) in Heqp0; intuition.
+    invcs H; ii.
+    break_match; invcs H; ii; subst; simpl in *; intuition; subst; intuition.
+      + apply processPackets_correct with (p := p') in Heqp0; intuition.
+      + apply processPackets_correct with (p := p) in Heqp0; intuition.
       + apply IHl with n0 l0 p p'; intuition.
   Qed.
 
-  
   Lemma processPackets_seq_eq :
     forall n l n' l' x y,
       processPackets n l = (n', l') ->
@@ -575,7 +570,6 @@ Section SeqNumCorrect.
         eexists.
         apply refl_trans_n1_1n_trace.
         econstructor; eauto using refl_trans_1n_n1_trace.
-      + find_rewrite. auto.
   Qed.
 
   Theorem true_in_reachable_transform :
@@ -589,7 +583,6 @@ Section SeqNumCorrect.
     find_apply_lem_hyp reachable_revert_step; auto.
     intuition.
     - break_exists. eauto.
-    - repeat find_rewrite. auto.
   Qed.
 
 End SeqNumCorrect.

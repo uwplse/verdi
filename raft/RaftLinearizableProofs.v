@@ -415,7 +415,6 @@ Section RaftLinearizableProofs.
       In (ClientResponse (fst k) (snd k) out) l.
   Proof.
     induction l; intros; simpl in *; intuition.
-    - discriminate.
     - repeat break_match; subst; eauto.
       find_inversion. break_and. subst. eauto.
   Qed.
@@ -646,10 +645,7 @@ Section RaftLinearizableProofs.
       before_func g f l ->
       False.
   Proof.
-    induction l; simpl; intuition.
-    - eauto.
-    - congruence.
-    - congruence.
+    induction l; simpl; intuition; eauto.
   Qed.
 
   Lemma has_key_true_same_client :
@@ -771,22 +767,17 @@ Section RaftLinearizableProofs.
     {
       remember (deduplicate_log l) as l'; clear Heql'. clear Heql. clear l. rename l' into l.
       induction l; simpl in *; intuition.
-      - repeat break_match; subst; simpl in *; repeat (do_bool; intuition).
+      - repeat break_match; subst; simpl in *; repeat (do_bool; ii).
         + destruct k; simpl in *; subst. right. intuition.
-          find_inversion. simpl in *. intuition.
         + exfalso. destruct k; subst; simpl in *.
           find_apply_lem_hyp import_get_output. break_exists. congruence.
-      - repeat break_match; subst; simpl in *; repeat (do_bool; intuition).
+      - repeat break_match; subst; simpl in *; repeat (do_bool; ii).
         + right. destruct k'. simpl in *. intuition; try congruence.
-          destruct (key_eq_dec k (eClient, eId)); subst; intuition.
-          right. intuition; congruence.
         + right. destruct k'. simpl in *. intuition; try congruence.
-          destruct (key_eq_dec k (eClient, eId)); subst; intuition.
-          right. intuition; congruence.
-        + right. intuition; [find_inversion; simpl in *; intuition|].
-          right. intuition. congruence.
-        + right. intuition; [find_inversion; simpl in *; intuition|].
-          right. intuition. congruence.
+        + right. ii; [find_inversion; simpl in *; intuition|].
+          right. intuition.
+        + right. ii; [find_inversion; simpl in *; intuition|].
+          right. intuition.
     }
     {
       intros. subst.
@@ -811,7 +802,7 @@ Section RaftLinearizableProofs.
   Proof.
     intros; induction tr; simpl in *; intuition.
     - repeat break_match; subst; simpl in *; intuition; try congruence.
-      repeat (do_bool; intuition).
+      repeat (do_bool; ii).
       destruct k; subst; simpl in *; intuition.
     - repeat break_match; subst; simpl in *; intuition; try congruence.
       + destruct k.
@@ -824,10 +815,10 @@ Section RaftLinearizableProofs.
         apply before_remove_if; intuition.
       + break_if; try congruence.
         apply before_app_if; [apply before_remove_all_if|]; auto.
-        * intuition. find_apply_lem_hyp in_dedup_was_in.
+        * ii. find_apply_lem_hyp in_dedup_was_in.
           find_apply_lem_hyp In_filterMap. break_exists.
           break_match; intuition; congruence.
-        * intuition.
+        * ii.
           match goal with
             | H : _ -> False |- False => apply H
           end.
@@ -884,7 +875,6 @@ Section RaftLinearizableProofs.
         repeat find_rewrite. eauto using get_set_same.
       * eapply IHl with (id := id) in H1; try omega.
         rewrite get_set_diff; auto.
-    - congruence.
     - destruct (eq_nat_dec (eClient e) (eClient a)); repeat find_rewrite.
       * congruence.
       * eapply IHl with (id := id) in H1; try omega.
@@ -1033,8 +1023,8 @@ Section RaftLinearizableProofs.
       get_input tr (eClient e, eId e) = Some (eInput e).
   Proof.
     unfold in_input_trace, input_correct.
-    induction tr; intros; break_exists; simpl in *; intuition; subst;
-    repeat break_match; intuition; subst; eauto 10 using f_equal.
+    induction tr; intros; break_exists; simpl in *; ii; subst;
+    repeat break_match; ii; subst; eauto 10 using f_equal.
   Qed.
 
   Lemma get_output_in_output_trace :
@@ -1114,7 +1104,6 @@ Section RaftLinearizableProofs.
     induction l; intros; simpl in *; intuition.
     - eauto.
     - find_copy_apply_hyp_hyp. break_exists_exists. intuition.
-      right. intuition. congruence.
   Qed.
 
   Theorem raft_linearizable' :
@@ -1153,8 +1142,7 @@ Section RaftLinearizableProofs.
               intros. destruct x0.
               do_bool. intuition. do_bool. subst. omega.
             - red. find_apply_lem_hyp in_import_in_trace_O.
-              break_exists_exists. intuition. red.
-              simpl in *. subst. auto.
+              break_exists_exists. intuition.
           }
       + (* In IRO -> In O *)
         intros.

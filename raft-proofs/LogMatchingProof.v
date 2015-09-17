@@ -88,7 +88,7 @@ Section LogMatchingProof.
           specialize (H _ _ _ _ _ _ _ H'' H')
       end.
 
-      intuition;
+      ii;
         try match goal with
               | [ H : forall _, _ = _ |- _ ] => rewrite <- H in *
             end;
@@ -101,7 +101,7 @@ Section LogMatchingProof.
               | context [ nwState net ?host ] =>
                     specialize (H host e1 e2)
             end
-        end; repeat concludes; intuition;
+        end; repeat concludes; ii; auto with *;
         match goal with
           | [ H : forall _ _ _ _ _ _ _, In _ _ -> pBody _ = _ -> _,
                 _ : eIndex ?e = eIndex ?f,
@@ -230,7 +230,7 @@ Section LogMatchingProof.
       end].
 
     unfold log_matching_nw.
-    intuition.
+    ii.
     - repeat find_higher_order_rewrite.
       rewrite if_sum_bool_fun_comm  in *.
       repeat find_rewrite. match goal with H : log _ = log _ |- _ => clear H end.
@@ -243,7 +243,7 @@ Section LogMatchingProof.
           | [ _ : eIndex ?e = eIndex ?e',
               H : forall _ _ _, In _ _ -> _ |- context [(?h : name) ] ] =>
               specialize (H h e e')
-        end; repeat concludes; intuition.
+        end; repeat concludes; ii; auto with *.
       + simpl in *.
         shouldSend_true.
         unfold log_matching_hosts in *.
@@ -278,7 +278,7 @@ Section LogMatchingProof.
           | [ H : forall _ _, 1 <= _ <= _ -> _ |- context [eIndex _ = ?x] ] =>
             remember (x) as index; specialize (H leaderId index); forward H
         end.
-        * intuition; [destruct index; intuition; omega|].
+        * intuition; 
           match goal with
             | _ : eIndex ?e > index, _ : In ?e ?l |- _ =>
               pose proof maxIndex_is_max l e
@@ -382,8 +382,8 @@ Section LogMatchingProof.
         simpl in *. clean.
         repeat do_in_map. simpl in *. do 2 (find_inversion; simpl in *).
         repeat do_elim.
-        use_log_matching_nw_host; repeat concludes; intuition.
-        break_exists. intuition.
+        use_log_matching_nw_host; repeat concludes. intuition.
+        break_exists. intuition auto.
         match goal with
           | _ : eIndex ?x = eIndex ?y |- context [ ?y ] =>
             cut (x = y); [intros; subst; intuition|]
@@ -396,7 +396,7 @@ Section LogMatchingProof.
         repeat do_in_map. simpl in *. do 2 (find_inversion; simpl in *).
         break_match.
         * repeat do_elim. find_rewrite.
-          use_log_matching_nw_host. intuition.
+          use_log_matching_nw_host. ii.
           match goal with
             | H : forall _, _ -> In _ ?es -> In _ ?es' |- eTerm ?e = eTerm ?e' =>
               assert (In e es') by (apply H; auto; omega)

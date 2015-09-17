@@ -49,9 +49,9 @@ Section AllEntriesLeaderLogsTerm.
       destruct_update; simpl in *; eauto;
       rewrite update_elections_data_appendEntries_leaderLogs; eauto].
     find_apply_lem_hyp update_elections_data_appendEntries_allEntries_term.
-    intuition;
-      [find_apply_hyp_hyp; intuition;
-       right; break_exists_exists; intuition;
+    ii;
+      [find_apply_hyp_hyp; ii;
+       right; break_exists_exists; ii;
        find_higher_order_rewrite;
        destruct_update; simpl in *; eauto;
        rewrite update_elections_data_appendEntries_leaderLogs; eauto|].
@@ -89,10 +89,10 @@ Section AllEntriesLeaderLogsTerm.
     destruct_update.
     - simpl in *.
       find_copy_apply_lem_hyp update_elections_data_client_request_allEntries.
-      intuition.
+      ii.
       + repeat find_rewrite.
         find_apply_hyp_hyp.
-        intuition.
+        ii.
         right.
         break_exists_exists.
         find_higher_order_rewrite.
@@ -100,14 +100,13 @@ Section AllEntriesLeaderLogsTerm.
         * simpl in *. rewrite update_elections_data_client_request_leaderLogs.
           intuition.
         * intuition.
-      + break_exists. intuition.
-        find_rewrite. simpl in *. intuition.
+      + break_exists. ii.
+        find_rewrite. simpl in *. ii.
         * find_inversion.
           find_copy_apply_lem_hyp handleClientRequest_type.
           intuition.
-          repeat find_rewrite. intuition.
         * find_apply_hyp_hyp.
-          intuition.
+          ii.
           right.
           break_exists_exists.
           find_higher_order_rewrite.
@@ -117,7 +116,7 @@ Section AllEntriesLeaderLogsTerm.
             * intuition.
           }
     - find_apply_hyp_hyp.
-      intuition.
+      ii.
       right.
       break_exists_exists.
       find_higher_order_rewrite.
@@ -138,14 +137,14 @@ Section AllEntriesLeaderLogsTerm.
     - simpl in *.
       find_rewrite_lem update_elections_data_timeout_allEntries.
       find_apply_hyp_hyp.
-      intuition.
+      ii.
       right. break_exists_exists.
       find_higher_order_rewrite.
       destruct_update.
       + simpl in *. rewrite update_elections_data_timeout_leaderLogs. intuition.
       + intuition.
     - find_apply_hyp_hyp.
-      intuition.
+      ii.
       right.
       break_exists_exists.
       find_higher_order_rewrite.
@@ -163,7 +162,7 @@ Section AllEntriesLeaderLogsTerm.
     repeat find_higher_order_rewrite.
     destruct_update.
     - simpl in *. find_apply_hyp_hyp.
-      intuition.
+      ii.
       right.
       break_exists_exists.
       find_higher_order_rewrite.
@@ -171,7 +170,7 @@ Section AllEntriesLeaderLogsTerm.
       + simpl in *. auto.
       + intuition.
     - find_apply_hyp_hyp.
-      intuition.
+      ii.
       right.
       break_exists_exists.
       find_higher_order_rewrite.
@@ -190,7 +189,7 @@ Section AllEntriesLeaderLogsTerm.
     destruct_update.
     - simpl in *. find_rewrite_lem update_elections_data_requestVote_allEntries.
       find_apply_hyp_hyp.
-      intuition.
+      ii.
       right.
       break_exists_exists.
       find_higher_order_rewrite.
@@ -198,7 +197,7 @@ Section AllEntriesLeaderLogsTerm.
       + simpl in *. rewrite leaderLogs_update_elections_data_requestVote. auto.
       + intuition.
     - find_apply_hyp_hyp.
-      intuition.
+      ii.
       right.
       break_exists_exists.
       find_higher_order_rewrite.
@@ -226,7 +225,7 @@ Section AllEntriesLeaderLogsTerm.
         auto.
       + auto.
     - find_apply_hyp_hyp.
-      intuition.
+      ii.
       right.
       break_exists_exists.
       find_higher_order_rewrite.
@@ -251,13 +250,13 @@ Section AllEntriesLeaderLogsTerm.
     destruct_update.
     - simpl in *.
       find_apply_hyp_hyp.
-      intuition.
+      ii.
       right.
       break_exists_exists.
       find_higher_order_rewrite.
       destruct_update; auto.
     - find_apply_hyp_hyp.
-      intuition.
+      ii.
       right.
       break_exists_exists.
       repeat find_higher_order_rewrite.
@@ -278,13 +277,13 @@ Section AllEntriesLeaderLogsTerm.
     destruct_update.
     - simpl in *.
       find_apply_hyp_hyp.
-      intuition.
+      ii.
       right.
       break_exists_exists.
       find_higher_order_rewrite.
       destruct_update; auto.
     - find_apply_hyp_hyp.
-      intuition.
+      ii.
       right.
       break_exists_exists.
       repeat find_higher_order_rewrite.
@@ -299,7 +298,7 @@ Section AllEntriesLeaderLogsTerm.
     intros.
     find_reverse_higher_order_rewrite.
     find_apply_hyp_hyp.
-    intuition.
+    ii.
     right. break_exists_exists.
     find_reverse_higher_order_rewrite.
     auto.
@@ -320,7 +319,7 @@ Section AllEntriesLeaderLogsTerm.
     destruct_update.
     - simpl in *.
       find_apply_hyp_hyp.
-      intuition.
+      ii.
       right.
       break_exists_exists.
       find_higher_order_rewrite.
@@ -328,7 +327,7 @@ Section AllEntriesLeaderLogsTerm.
       + simpl. intuition.
       + auto.
     - find_apply_hyp_hyp.
-      intuition.
+      ii.
       right.
       break_exists_exists.
       find_higher_order_rewrite.

@@ -43,7 +43,7 @@ Section CandidateTermGtLog.
     find_copy_apply_lem_hyp handleClientRequest_type.
     find_apply_lem_hyp handleClientRequest_log. intuition.
     + repeat find_rewrite. eauto.
-    + break_exists. intuition. repeat find_rewrite. discriminate.
+    + break_exists. intuition.
   Qed.
 
   Lemma candidate_term_gt_log_timeout :
@@ -77,7 +77,7 @@ Section CandidateTermGtLog.
     start.
     find_copy_apply_lem_hyp handleAppendEntriesReply_type.
     find_copy_apply_lem_hyp handleAppendEntriesReply_log.
-    intuition; repeat find_rewrite; [eauto|discriminate].
+    intuition; repeat find_rewrite; eauto.
   Qed.
 
   Lemma candidate_term_gt_log_request_vote :
@@ -86,7 +86,7 @@ Section CandidateTermGtLog.
     start.
     find_copy_apply_lem_hyp handleRequestVote_type.
     find_copy_apply_lem_hyp handleRequestVote_log.
-    intuition; repeat find_rewrite; [eauto|discriminate].
+    intuition; repeat find_rewrite; eauto.
   Qed.
 
   Lemma candidate_term_gt_log_request_vote_reply :
@@ -96,7 +96,7 @@ Section CandidateTermGtLog.
       find_higher_order_rewrite; update_destruct; rewrite_update; auto.
     find_copy_apply_lem_hyp handleRequestVoteReply_type.
     find_copy_apply_lem_hyp handleRequestVoteReply_log.
-    intuition; repeat find_rewrite; [eauto|discriminate|discriminate].
+    intuition; repeat find_rewrite; eauto.
   Qed.
 
   Lemma candidate_term_gt_log_do_leader :

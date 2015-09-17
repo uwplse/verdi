@@ -64,7 +64,7 @@ Section PrimaryBackup.
     NoDup all_nodes.
   Proof.
     unfold all_nodes.
-    repeat constructor; intuition. simpl in *. intuition. congruence.
+    repeat constructor; intuition. simpl in *. intuition.
   Qed.
 
   Definition PB_init (n : name) :=
@@ -1115,7 +1115,7 @@ Section PrimaryBackup.
   Proof.
     unfold no_output_at_backup_trace, no_output_at_backup.
     simpl.
-    intuition.  subst. simpl in *. find_inversion. auto.
+    intuition.
   Qed.
 
   Lemma NOABT_singleton_inl :

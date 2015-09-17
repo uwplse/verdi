@@ -790,7 +790,6 @@ Section LogsLeaderLogs.
     - unfold logs_leaderLogs in *. intros.
       repeat find_reverse_higher_order_rewrite.
       find_apply_hyp_hyp. break_exists_exists; intuition.
-      find_reverse_higher_order_rewrite. auto.
     - unfold logs_leaderLogs_nw in *. intros.
       find_apply_hyp_hyp. eapply_prop_hyp pBody pBody; eauto.
       break_exists_exists; intuition; subst;

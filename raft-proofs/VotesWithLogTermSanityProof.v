@@ -86,8 +86,7 @@ Section VotesWithLogTermSanity.
       + solve_votesWithLog votesWithLog_update_elections_data_append_entries.
       + solve_currentTerm handleAppendEntries_type_term.
     - start_cases.
-      + intros. subst. auto.
-      + solve_currentTerm handleAppendEntriesReply_type_term.
+       solve_currentTerm handleAppendEntriesReply_type_term.
     - start_cases.
       + solve_votesWithLog votesWithLog_update_elections_data_request_vote.
       + solve_currentTerm handleRequestVote_type_term.

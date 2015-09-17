@@ -440,10 +440,6 @@ Proof.
             find_apply_lem_hyp refl_trans_n1_1n_trace.
             find_apply_lem_hyp no_dup_keys_invariant; eauto.
           - exfalso. intuition.
-            match goal with
-              | H : _ -> False |- _ => apply H
-            end.
-            find_higher_order_rewrite. auto.
         }
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
         rewrite get_del_diff; eauto.
@@ -452,11 +448,6 @@ Proof.
       * subst. rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
         break_if; simpl in *; intuition.
-        exfalso. intuition.
-        match goal with
-          | H : _ -> False |- _ => apply H
-        end.
-        find_higher_order_rewrite. auto.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
 Qed.
 

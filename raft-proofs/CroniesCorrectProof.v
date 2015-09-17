@@ -400,8 +400,7 @@ Section CroniesCorrectProof.
             remember x as cst; symmetry in Heqcst
         end.
         find_copy_apply_lem_hyp handleRequestVoteReply_leader; auto.
-        intuition; [repeat find_rewrite; eauto|].
-        find_eapply_lem_hyp handleRequestVoteReply_votesReceived; eauto.
+        intuition; find_eapply_lem_hyp handleRequestVoteReply_votesReceived; eauto.
         intuition.
         * unfold votes_nw in *.
           match goal with
@@ -447,8 +446,7 @@ Section CroniesCorrectProof.
             remember x as cst; symmetry in Heqcst
         end.
         find_copy_apply_lem_hyp handleRequestVoteReply_leader; auto.
-        intuition; [repeat find_rewrite; eauto|].
-        find_eapply_lem_hyp handleRequestVoteReply_votesReceived; eauto.
+        intuition; find_eapply_lem_hyp handleRequestVoteReply_votesReceived; eauto.
         intuition.
         * unfold votes_nw in *.
           match goal with
@@ -504,8 +502,7 @@ Section CroniesCorrectProof.
       intros. simpl in *.
       repeat find_higher_order_rewrite. break_if; [|eauto].
       simpl in *.
-      find_apply_lem_hyp handleRequestVoteReply_leader; auto. intuition; subst.
-      eauto.
+      find_apply_lem_hyp handleRequestVoteReply_leader; auto. intuition.
   Qed.
 
   Lemma doLeader_st :
@@ -533,7 +530,7 @@ Section CroniesCorrectProof.
     intros.
     unfold doLeader in *; repeat break_match; repeat find_inversion;
     simpl in *; find_apply_hyp_hyp; intuition.
-    in_crush. congruence.
+    in_crush.
   Qed.
 
   Lemma cronies_correct_do_leader :
@@ -701,7 +698,7 @@ Section CroniesCorrectProof.
   Proof.
     unfold refined_raft_net_invariant_init, cronies_correct, step_m_init.
     unfold votes_received_cronies, cronies_votes, votes_nw, votes_received_leaders.
-    simpl. intuition. discriminate.
+    simpl. intuition.
   Qed.
 
   Theorem cronies_correct_invariant :

@@ -55,7 +55,6 @@ Section PrevLogLeaderSublogProof.
     intros.
     find_apply_lem_hyp handleClientRequest_log.
     intuition.
-    - find_rewrite. auto.
     - break_exists. intuition. find_rewrite. intuition.
   Qed.
 
@@ -118,7 +117,6 @@ Section PrevLogLeaderSublogProof.
       find_rewrite. break_if; eauto.
       find_copy_apply_lem_hyp handleAppendEntries_type_log.
       intuition.
-      + congruence.
       + repeat find_rewrite.
         eapply_prop_hyp In In; eauto.
     - find_apply_lem_hyp handleAppendEntries_not_append_entries.
@@ -282,7 +280,6 @@ Section PrevLogLeaderSublogProof.
     find_copy_apply_lem_hyp handleRequestVoteReply_log.
     intuition; repeat find_rewrite.
     - eauto.
-    - discriminate.
     - exfalso.
       find_apply_lem_hyp handleRequestVoteReply_type_term_won.
       intuition; try congruence.
@@ -306,7 +303,6 @@ Section PrevLogLeaderSublogProof.
       simpl in *.
       find_copy_eapply_lem_hyp doLeader_messages; eauto.
       intuition.
-      + omega.
       + break_exists. break_and. subst.
         exists x0. find_apply_lem_hyp findAtIndex_elim. intuition.
         break_if.

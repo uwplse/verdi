@@ -187,7 +187,6 @@ Section AppliedEntriesMonotonicProof.
       apply applied_entries_safe_update; eauto using handleAppendEntries_same_lastApplied.
       find_apply_lem_hyp handleAppendEntries_log_detailed. intuition.
       + repeat find_rewrite. auto.
-      + subst.
         find_copy_apply_lem_hyp state_machine_safety_invariant.
         unfold state_machine_safety in *. intuition.
         find_copy_apply_lem_hyp max_index_sanity_invariant. intuition.

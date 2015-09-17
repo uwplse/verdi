@@ -159,7 +159,6 @@ Section OutputCorrect.
     unfold in_output_trace.
     intuition.
     break_exists. simpl in *. intuition.
-    find_inversion. auto.
   Qed.
 
   Lemma in_output_list_app_or :
@@ -179,14 +178,13 @@ Section OutputCorrect.
   Proof.
     unfold in_output_trace.
     intuition. break_exists_exists. simpl in *. intuition.
-    find_inversion.
   Qed.
 
   Lemma in_output_list_not_leader_singleton :
     forall a b,
       ~ in_output_list client id out [NotLeader a b].
   Proof.
-    unfold in_output_list. simpl. intuition. discriminate.
+    unfold in_output_list. simpl. intuition.
   Qed.
 
   Lemma handleInput_in_output_list :
@@ -209,7 +207,6 @@ Section OutputCorrect.
   Proof.
     unfold in_output_list.
     simpl. intuition.
-    find_inversion. auto.
   Qed.
 
   Lemma assoc_Some_In :
@@ -604,9 +601,9 @@ Section OutputCorrect.
   Proof.
     intros.
     eapply cacheAppliedEntry_clientCache_preserved in H; eauto.
-    break_exists. intuition. repeat find_rewrite. find_inversion. auto.
+    break_exists. intuition.
   Qed.
-  
+
   Lemma applyEntries_output_correct :
     forall l c i o h st os st' es,
       applyEntries h st l = (os, st') ->
@@ -815,11 +812,7 @@ Section OutputCorrect.
       simpl in *.
       intros. subst.
       find_apply_lem_hyp In_rev. find_apply_hyp_hyp.
-      break_exists. intuition. repeat find_rewrite.
-      match goal with
-        | H : Some _ = Some _ |- _ =>
-          invcs H
-      end. auto.
+      break_exists. intuition.
     - intros. find_apply_lem_hyp In_rev. eauto.
   Qed.
 

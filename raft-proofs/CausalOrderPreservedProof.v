@@ -52,13 +52,11 @@ Section CausalOrderPreserved.
     intros. find_eapply_lem_hyp before_func_app_necessary; eauto.
     intuition.
     break_exists. unfold in_input_trace in *.
-    break_exists. do_in_app. intuition;
-      [find_apply_hyp_hyp; simpl in *; repeat (do_bool; intuition)|].
+    break_exists. do_in_app. ii;
+      [find_apply_hyp_hyp; simpl in *; repeat (do_bool; ii)|].
     invcs H0; intuition.
-    - break_if; congruence.
-    - find_inversion; try congruence.
-      repeat (do_bool; intuition).
-    - find_inversion.
+    find_inversion.
+    do_bool; ii; find_apply_lem_hyp beq_nat_false; tauto.
   Qed.
 
 
@@ -83,17 +81,17 @@ Section CausalOrderPreserved.
       entries_ordered client id client' id' net.
   Proof.
     intros. unfold in_applied_entries, entries_ordered in *.
-    induction (applied_entries (nwState net)); simpl in *; break_exists; intuition.
+    induction (applied_entries (nwState net)); simpl in *; break_exists; ii.
     - subst. left. unfold has_key. break_match.
-      simpl. repeat (do_bool; intuition).
-    - right. intuition.
-      + apply Bool.not_true_iff_false. intuition.
+      simpl. repeat (do_bool; ii).
+    - right. ii; subst.
+      + apply Bool.not_true_iff_false. ii.
         find_false.
         unfold has_key in *. break_match; simpl in *; repeat (do_bool; intuition).
-        subst. eexists; intuition; eauto.
+        subst. eexists; ii; eauto.
       + eapply IHl.
-        * eexists; intuition; eauto.
-        * intuition. find_false. break_exists_exists. intuition.
+        * eexists; ii; eauto.
+        * ii. find_false. break_exists_exists. ii.
   Qed.
 
 
@@ -107,7 +105,7 @@ Section CausalOrderPreserved.
   Proof.
     intros.
     unfold in_applied_entries in *. break_exists_exists.
-    intuition. red. exists x. intuition.
+    intuition. red. exists x. ii.
     - red. auto.
     - unfold applied_entries in *. break_match.
       + find_apply_lem_hyp in_rev.
@@ -115,7 +113,7 @@ Section CausalOrderPreserved.
         eauto.
       + simpl in *. intuition.
   Qed.
-  
+
   Instance TR : TraceRelation step_f :=
     {
       init := step_f_init;
@@ -143,7 +141,7 @@ Section CausalOrderPreserved.
       find_eapply_lem_hyp output_implies_applied;
         [|eapply refl_trans_n1_1n_trace; econstructor; eauto using refl_trans_1n_n1_trace].
       eapply in_applied_entries_entries_ordered; auto.
-      intuition.
+      ii.
       find_false.
       find_apply_lem_hyp in_applied_entries_applied_implies_input_state.
       break_exists. intuition.

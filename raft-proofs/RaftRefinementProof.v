@@ -616,7 +616,7 @@ Section RaftRefinementProof.
   Proof.
     intros.
     find_apply_lem_hyp simulation_2.
-    break_exists. intuition. subst. eauto.
+    break_exists. intuition.
   Qed.
 
   Lemma deghost_spec :
