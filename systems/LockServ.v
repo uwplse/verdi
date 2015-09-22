@@ -849,6 +849,20 @@ Section LockServ.
   - eauto using LockServ_nwnw_net_handlers_new_new.
   Defined.
 
+  Theorem true_in_reachable_mutual_exclusion :
+    true_in_reachable step_m step_m_init (fun net => mutual_exclusion (nwState net)).
+  Proof.
+    pose proof decomposition_invariant.
+    find_apply_lem_hyp inductive_invariant_true_in_reachable.
+    unfold true_in_reachable in *.
+    intros.
+    apply locks_correct_implies_mutex.
+    match goal with
+    | [ H : _ |- _ ] => apply H
+    end.
+    auto.
+  Qed.
+
   Fixpoint last_holder' (holder : option Client_index) (trace : list (name * (input + list output))) : option Client_index :=
     match trace with
       | [] => holder
