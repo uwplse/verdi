@@ -28,6 +28,8 @@ examples. The files in the root directory include:
 - Verified system transformers
     - `SeqNum.v` and `SeqNumCorrect.v`, a system transformer
       implementing sequence numbering
+      - `LockServSeqNum.v`, the sequence numbering transformer
+         applied to the lock server
     - `PrimaryBackup.v`, a system transformer implementing asynchronous
       primary-backup replication
       - `VarDPB.v`, the primary-backup transformer applied to the
@@ -36,27 +38,29 @@ examples. The files in the root directory include:
 The Raft Consensus Protocol
 ---------------------------
 
-The `raft` subdirectory contains an implementation and
+The `raft` and `raft-proofs` subdirectories contain an implementation and
 verification of the Raft distributed consensus protocol. After
 building Verdi, running `make` in the `raft` subdirectory will compile
-the Raft implementation and proofs. The files in the Raft subdirectory
-include:
+the Raft implementation and proof interfaces. For each proof interface,
+there is a corresponding proof file in `raft-proofs`.
+Running `make` in `raft-proofs` will check all the proofs.
+The files in the `raft` subdirectory include:
 
 - `Raft.v`: an implementation of Raft in Verdi
-- `RaftRefinement.v`: an application of the ghost-variable transformer
+- `RaftRefinementInterface.v`: an application of the ghost-variable transformer
   to Raft which tracks several ghost variables used in the
   verification of Raft
 - `CommonTheorems.v`: several useful theorems about functions used by
   the Raft implementation
-- `OneLeaderPerTerm`: a statement and proof of Raft's **Election
-  safety** property
-  - `CandidatesVoteForSelves.v`, `VotesCorrect.v`, and
-    `CroniesCorrect.v`: statements and proofs of properties used by
-    `OneLeaderPerTerm.v`
-- `LogMatching.v`: a statement and proof of Raft's *Log Matching*
-    property
-  - `LeaderSublog.v`, `Sorted.v`, and `UniqueIndices.v`: statements
-    and proofs of properties used by `LogMatching.v`
+- `OneLeaderPerTermInterface`: a statement of Raft's **Election
+  safety** property. See also the corresponding proof file in `raft-proofs`.
+  - `CandidatesVoteForSelvesInterface.v`, `VotesCorrectInterface.v`, and
+    `CroniesCorrectInterface.v`: statements of properties used by the proof
+    `OneLeaderPerTermProof.v`
+- `LogMatchingInterface.v`: a statement of Raft's *Log Matching*
+    property. See also `raft-proofs/LogMatchingProof.v`
+  - `LeaderSublogInterface.v`, `SortedInterface.v`, and `UniqueIndicesInterface.v`: statements
+   of properties used by `LogMatchingProof.v`
 
 The vard Key-Value Store
 ------------------------
