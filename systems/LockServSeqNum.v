@@ -14,7 +14,6 @@ Section LockServSeqNum.
   Definition transformed_multi_params :=
     @SeqNum.multi_params (LockServ_BaseParams num_Clients) (LockServ_MultiParams num_Clients).
 
-
   Definition transformed_network :=
     @network transformed_base_params transformed_multi_params.
 
@@ -32,4 +31,5 @@ Section LockServSeqNum.
     unfold reachable.
     eauto.
   Qed.
+
 End LockServSeqNum.
