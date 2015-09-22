@@ -261,14 +261,13 @@ Section StepAsync.
     mkNetwork [] init_handlers.
 
   Inductive step_m : step_relation network (name * (input + list output)) :=
-  (* just like step_m *)
   | SM_deliver : forall net net' p xs ys out d l,
                      nwPackets net = xs ++ p :: ys ->
                      net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
                      net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
                                       (update (nwState net) (pDst p) d) ->
                      step_m net net' [(pDst p, inr out)]
-  (* inject a message (f inp) into host h *)
+  (* inject a message (f inp) into host h. analogous to step_1 *delivery* *)
   | SM_input : forall h net net' out inp d l,
                    input_handlers h inp (nwState net h) = (out, d, l) ->
                    net' = mkNetwork (send_packets h l ++ nwPackets net)
