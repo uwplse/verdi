@@ -18,8 +18,13 @@ clean:
 	$(MAKE) -C raft clean
 	$(MAKE) -C raft-proofs clean
 
+vard: core
+	cd systems; make Makefile.coq; make -f Makefile.coq VarD.vo
+	cd raft; make Makefile.coq; make -f Makefile.coq Raft.vo
+	cd extraction/vard; make
+
 lint:
 	echo "Possible use of hypothesis names:"
 	find . -name '*.v' -exec grep -Hn 'H[0-9][0-9]*' {} \;
 
-.PHONY: default core systems raft raft-proofs clean lint
+.PHONY: default core systems raft raft-proofs clean lint vard
