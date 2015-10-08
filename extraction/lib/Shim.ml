@@ -154,7 +154,6 @@ module Shim (A: ARRANGEMENT) = struct
       let _ = recv sock buf 0 len [MSG_PEEK] in
       let msg_len = (String.index buf '\n') + 1 in
       let buf2 = String.make msg_len '\x00' in
-      printf "doing 2nd recv with len %d\n" msg_len;
       let _ = recv sock buf2 0 msg_len [] in
       buf
     with
