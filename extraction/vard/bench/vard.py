@@ -56,8 +56,12 @@ class Client(object):
     def parse_response(self, data):
         if data.startswith('NotLeader'):
             raise LeaderChanged
-        match = self.response_re.match(data)
-        return [self.deserialize(match.group(n)) for n in (1,2,3,4,5)]
+        try:
+            match = self.response_re.match(data)
+            return [self.deserialize(match.group(n)) for n in (1,2,3,4,5)]
+        except Exception as e:
+            print "Parse error, data=%s" % data
+            raise e
         
     def process_response(self):
         data = self.sock.recv(256).strip()
