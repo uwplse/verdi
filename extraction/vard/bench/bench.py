@@ -26,6 +26,8 @@ def benchmark(ev, client, requests, keys, put_percentage, n):
             client.get('key' + key)
             end = time.time()
             gets.append(end-start)
+        if i % (requests / 10) == 0:
+            print 'Done with %d requests' % i
 
 def cluster(addrs):
     ret = []
