@@ -13,6 +13,7 @@ bind l selectp -R # switch to panel Right
 set -g prefix C-a
 unbind-key C-b
 bind-key C-a send-prefix
+set -s escape-time 0
 EOM
 
 # install NeoVim

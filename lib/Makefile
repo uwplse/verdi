@@ -2,7 +2,7 @@ default: Makefile.coq
 	$(MAKE) -f Makefile.coq
 
 Makefile.coq: 
-	coq_makefile -R ../core "" -R ../lib "" -R . "" *.v > Makefile.coq
+	coq_makefile -R ../core "" -R . "" *.v > Makefile.coq
 
 clean: Makefile.coq
 	$(MAKE) -f Makefile.coq clean
