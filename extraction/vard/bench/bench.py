@@ -41,7 +41,7 @@ def main():
     global DEBUG
     parser = argparse.ArgumentParser()
     parser.add_argument('--service', default='vard', choices=['etcd', 'vard'])
-    parser.add_argument('--cluster', type=cluster)
+    parser.add_argument('--cluster', type=cluster, required=True)
     parser.add_argument('--requests', default=1000, type=int)
     parser.add_argument('--threads', default=50, type=int)
     parser.add_argument('--keys', default=100, type=int)
