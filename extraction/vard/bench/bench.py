@@ -9,6 +9,7 @@ t = threading
 
 gets = []
 puts = []
+DEBUG = True
 
 def benchmark(ev, client, requests, keys, put_percentage, n):
     random.seed(n)
@@ -26,8 +27,8 @@ def benchmark(ev, client, requests, keys, put_percentage, n):
             client.get('key' + key)
             end = time.time()
             gets.append(end-start)
-        if i % (requests / 10) == 0:
-            print 'Done with %d requests' % i
+        if DEBUG:
+            print 'Thread %d Done with %d requests' % (n, i)
 
 def cluster(addrs):
     ret = []
@@ -37,6 +38,7 @@ def cluster(addrs):
     return ret
 
 def main():
+    global DEBUG
     parser = argparse.ArgumentParser()
     parser.add_argument('--service', default='vard', choices=['etcd', 'vard'])
     parser.add_argument('--cluster', type=cluster)
@@ -44,8 +46,11 @@ def main():
     parser.add_argument('--threads', default=50, type=int)
     parser.add_argument('--keys', default=100, type=int)
     parser.add_argument('--put-percentage', default=50, type=int)
+    parser.add_argument('--debug', default=false, action='store_true')
     args = parser.parse_args()
 
+    if args.debug:
+        DEBUG = True
     Client = vard.Client
     if args.service == 'etcd':
         Client = etcd.Client
