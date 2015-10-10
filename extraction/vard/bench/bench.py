@@ -9,7 +9,7 @@ t = threading
 
 gets = []
 puts = []
-DEBUG = True
+DEBUG = False
 
 def benchmark(ev, client, requests, keys, put_percentage, n):
     random.seed(n)
@@ -46,7 +46,7 @@ def main():
     parser.add_argument('--threads', default=50, type=int)
     parser.add_argument('--keys', default=100, type=int)
     parser.add_argument('--put-percentage', default=50, type=int)
-    parser.add_argument('--debug', default=false, action='store_true')
+    parser.add_argument('--debug', default=False, action='store_true')
     args = parser.parse_args()
 
     if args.debug:
