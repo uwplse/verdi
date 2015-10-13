@@ -67,7 +67,7 @@ def main():
     for i in range(args.threads):
         print 'Starting thread %s' % i
         c = Client(host, port)
-        thr = t.Thread(target=benchmark, args=(c, requests, args.keys, args.put_percentage, i))
+        thr = t.Thread(target=benchmark, args=(c, args.requests, args.keys, args.put_percentage, i))
         threads.append(thr)
         thr.start()
         time.sleep(10)
