@@ -9,26 +9,33 @@ t = threading
 
 gets = []
 puts = []
+reqs = []
 DEBUG = False
 
-def benchmark(ev, client, requests, keys, put_percentage, n):
+def benchmark(client, requests, keys, put_percentage, n):
     random.seed(n)
     put_prob = put_percentage / 100.0
-    ev.wait()
-    for i in range(requests):
+    i = 0
+    #ev.wait()
+    while True:
+        i += 1
         key = str(random.randint(0, keys))
         if random.random() < put_prob:
             start = time.time()
             client.put('key' + key, str(i))
             end = time.time()
             puts.append(end-start)
+            reqs.append((end, end-start))
         else:
             start = time.time()
             client.get('key' + key)
             end = time.time()
             gets.append(end-start)
+            reqs.append((end, end-start))
         if DEBUG:
             print 'Thread %d Done with %d requests' % (n, i)
+        if len(reqs) >= requests:
+            return
 
 def cluster(addrs):
     ret = []
@@ -58,20 +65,24 @@ def main():
     host, port = Client.find_leader(args.cluster)
     ev = t.Event()
     threads = []
+    start = time.time()
     for i in range(args.threads):
         c = Client(host, port)
-        thr = t.Thread(target=benchmark, args=(ev, c, args.requests, args.keys, args.put_percentage, i))
+        thr = t.Thread(target=benchmark, args=(c, requests, args.keys, args.put_percentage, i))
         threads.append(thr)
         thr.start()
-    start = time.time()
-    ev.set()
+        time.sleep(10)
+    #ev.set()
     for thr in threads:
         thr.join()
     end = time.time()
+    print 'Requests:'
+    for (ts, latency) in reqs:
+        print 'REQUEST: TIME %s LATENCY %s' % (ts, latency)
     print 'Total time: %f' % (end - start)
     print '%f gets, avg = %f' % (len(gets), sum(gets)/len(gets))
     print '%f puts, avg = %f' % (len(puts), sum(puts)/len(puts))
-    
+    print 'Requests:'
         
 if __name__ == '__main__':
     main()
