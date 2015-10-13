@@ -30,7 +30,7 @@ def benchmark(client, requests, keys, put_percentage, n):
             client.get('key' + key)
             end = time.time()
             gets.append(end-start)
-            reqs.append((end, end-start))
+            reqs.append((n, end, end-start))
         if DEBUG:
             print 'Thread %d Done with %d requests' % (n, i)
         if len(reqs) >= requests:
@@ -75,8 +75,8 @@ def main():
         thr.join()
     end = time.time()
     print 'Requests:'
-    for (ts, latency) in reqs:
-        print 'REQUEST: TIME %s LATENCY %s' % (ts, latency)
+    for (t, ts, latency) in reqs:
+        print 'REQUEST: THREAD %s TIME %s LATENCY %s' % (t, ts, latency)
     print 'Total time: %f' % (end - start)
     print '%f gets, avg = %f' % (len(gets), sum(gets)/len(gets))
     print '%f puts, avg = %f' % (len(puts), sum(puts)/len(puts))
