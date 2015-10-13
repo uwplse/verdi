@@ -16,7 +16,6 @@ def benchmark(client, requests, keys, put_percentage, n):
     random.seed(n)
     put_prob = put_percentage / 100.0
     i = 0
-    #ev.wait()
     while True:
         i += 1
         key = str(random.randint(0, keys))
@@ -63,7 +62,6 @@ def main():
         Client = etcd.Client
 
     host, port = Client.find_leader(args.cluster)
-    ev = t.Event()
     threads = []
     start = time.time()
     for i in range(args.threads):
@@ -72,7 +70,6 @@ def main():
         threads.append(thr)
         thr.start()
         time.sleep(10)
-    #ev.set()
     for thr in threads:
         thr.join()
     end = time.time()
