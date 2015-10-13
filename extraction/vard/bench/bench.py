@@ -24,7 +24,7 @@ def benchmark(client, requests, keys, put_percentage, n):
             client.put('key' + key, str(i))
             end = time.time()
             puts.append(end-start)
-            reqs.append((end, end-start))
+            reqs.append((n, end, end-start))
         else:
             start = time.time()
             client.get('key' + key)

@@ -17,7 +17,7 @@ module DebugParams = struct
 module BenchParams = struct
     let debug = false
     let heartbeat_timeout = 0.05
-    let election_timeout = 0.2
+    let election_timeout = 0.5
   end
 
 module VarDArrangement (M : VardParams) = struct
