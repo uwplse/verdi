@@ -100,7 +100,7 @@ Running vard on a cluster
 
 vard doesn't support run-time configuration, so in order to run vard
 in another configuration (i.e. on multiple hosts) you'll have to edit
-the `extraction/vard/vard.ml` file, specifically the 4 lines starting
+the `extraction/vard/ml/vard.ml` file, specifically the 4 lines starting
 with `let nodes = ...`. For instance, to run it on a cluster with ip
 addresses `192.168.0.1, 192.168.0.2, 192.168.0.3` you'd edit those
 lines to read
