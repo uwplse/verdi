@@ -25,15 +25,14 @@ Section Counter.
     decide equality.
   Defined.
 
-  Inductive Input := request_inc | request_read.
+  Inductive Input := request_inc.
   Definition Input_eq_dec : forall x y : Input, {x = y} + {x <> y}.
-    decide equality.
+    destruct x,y. auto.
   Defined.
 
-  Inductive Output := inc_executed | value : nat -> Output.
+  Inductive Output := inc_executed.
   Definition Output_eq_dec : forall x y : Output, {x = y} + {x <> y}.
-    decide equality.
-    apply eq_nat_dec.
+    destruct x,y. auto.
   Defined.
 
   Definition Data := nat.
@@ -51,7 +50,6 @@ Section Counter.
   Definition PrimaryInputHandler (i : Input) : Handler Data :=
     match i with
     | request_inc => modify S ;; send (backup, inc)
-    | request_read => n <- get ;; write_output (value n)
     end.
 
   Definition BackupNetHandler (m : Msg) : Handler Data :=
