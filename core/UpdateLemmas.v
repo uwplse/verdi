@@ -34,6 +34,14 @@ Section OU.
     break_if; congruence.
   Qed.
 
+  Lemma update_same :
+    forall A sigma x (v : A),
+      update sigma x v x = v.
+  Proof.
+    intros.
+    rewrite update_eq; auto.
+  Qed.
+
   Lemma update_nop_ext :
     forall A sigma h,
       update (A:=A) sigma h (sigma h) = sigma.
