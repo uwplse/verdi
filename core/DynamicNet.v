@@ -8,7 +8,7 @@ Section Dynamic.
   Variable payload : Type. (* must be serializable *)
   Variable data : Type.
   Variable start_handler : addr -> list (addr * payload) * data.
-  Variable recv_handler : addr -> addr -> payload -> list (addr * payload) * data.
+  Variable recv_handler : addr -> addr -> data -> payload -> list (addr * payload) * data.
   (* can clients send this payload? disallows forgery *)
   Variable client_payload : payload -> Prop.
 
@@ -65,11 +65,12 @@ Section Dynamic.
                             trace := trace gst ++ [e_recv m]
                          |}
   | Deliver_node :
-      forall gst m h xs ys ms st,
+      forall gst m h d xs ys ms st,
         msgs gst = xs ++ m :: ys ->
         h = fst (snd m) ->
         In h (nodes gst) ->
-        recv_handler h (fst m) (snd (snd m)) = (ms, st) ->
+        sigma gst h = Some d ->
+        recv_handler h (fst m) d (snd (snd m)) = (ms, st) ->
         step_dynamic gst {| nodes := nodes gst;
                             sigma := (sigma gst)[h => st];
                             msgs := map (send h) ms ++ xs ++ ys;
