@@ -388,3 +388,103 @@ Section StepFailure.
 
   Definition step_f_init : list name * network := ([], step_m_init).
 End StepFailure.
+
+Record handlerUpdate `(P : FailureParams) :=
+  {
+    huInput :  name -> input -> data -> (list output) * data * list (name * msg);
+    huNet : name -> name -> msg -> data -> (list output) * data * list (name * msg);
+    huReboot : data -> data;
+    huUpdate : name -> data -> (list output) * data * list (name * msg)
+  }.
+
+Class SimpleUpdateParams `(P : FailureParams) :=
+  {
+    updates : list (handlerUpdate P)
+  }.
+
+Inductive Nth {A : Type} : list A -> nat -> A -> Prop :=
+| Nth_0 : forall x l, Nth (x :: l) 0 x
+| Nth_S : forall l x n y, Nth l n x -> Nth (y :: l) (S n) x.
+
+Lemma nth_error_Nth :
+  forall A n l (x : A),
+    nth_error l n = Some x ->
+    Nth l n x.
+Proof.
+  induction n; intros; simpl in *; auto.
+  - break_match; try discriminate.
+    unfold value in *.
+    find_inversion.
+    constructor.
+  - break_match; try discriminate.
+    subst. constructor.
+    eauto.
+Qed.
+
+Lemma Nth_nth_error :
+  forall A n l (x : A),
+    Nth l n x ->
+    nth_error l n = Some x.
+Proof.
+  intros.
+  induction H; simpl in *; auto.
+Qed.
+
+Section StepSimpleUpdate.
+  Context `{params : SimpleUpdateParams}.
+
+    (* this step relation transforms a list of failed hosts (list name * network), but does not transform handlers (H : hosts) *)
+  Inductive step_u : step_relation ((name -> nat) * list name * network) (name * (input + list output)) :=
+  (* like step_m, but only delivers to hosts that haven't failed yet *)
+  | SU_deliver : forall up net net' handlers failed p xs ys out d l,
+                nwPackets net = xs ++ p :: ys ->
+                ~ In (pDst p) failed ->
+                Nth updates (up (pDst p)) handlers ->
+                (huNet handlers) (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
+                net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
+                                 (update (nwState net) (pDst p) d) ->
+                step_u (up, failed, net) (up, failed, net') [(pDst p, inr out)]
+  | SU_input : forall up h net net' handlers failed out inp d l,
+                 ~ In h failed ->
+                 Nth updates (up h) handlers ->
+                 (huInput handlers) h inp (nwState net h) = (out, d, l) ->
+                 net' = mkNetwork (send_packets h l ++ nwPackets net)
+                                  (update (nwState net) h d) ->
+                 step_u (up, failed, net) (up, failed, net') [(h, inl inp) ;  (h, inr out)]
+  (* drops a packet *)
+  | SU_drop : forall up net net' failed p xs ys,
+                nwPackets net = xs ++ p :: ys ->
+                net' = (mkNetwork (xs ++ ys) (nwState net)) ->
+                step_u (up, failed, net) (up, failed, net') []
+  (* duplicates a packet *)
+  | SU_dup : forall up net net' failed p xs ys,
+               nwPackets net = xs ++ p :: ys ->
+               net' = (mkNetwork (p :: xs ++ p :: ys) (nwState net)) ->
+               step_u (up, failed, net) (up, failed, net') []
+  (* a host fails (potentially again) *)
+  | SU_fail :  forall up h net failed,
+                 step_u (up, failed, net) (up, h :: failed, net) []
+  (* a host reboots (is not failing anymore). the new state is computed with the reboot function from the old state *)
+  | SU_reboot : forall up h net net' handlers failed failed',
+                  In h failed ->
+                  failed' = remove name_eq_dec h failed ->
+                  Nth updates (up h) handlers ->
+                  net' = mkNetwork (nwPackets net)
+                                   (fun nm => if name_eq_dec nm h then
+                                               (huReboot handlers (nwState net nm))
+                                             else
+                                               (nwState net nm)) ->
+                  step_u (up, failed, net) (up, failed', net') []
+  | SU_update : forall up h net net' handlers failed out d l,
+                  ~ In h failed ->
+                  Nth updates (S (up h)) handlers ->
+                  (huUpdate handlers) h (nwState net h) = (out, d, l) ->
+                  net' = mkNetwork (send_packets h l ++ nwPackets net)
+                                   (update (nwState net) h d) ->
+                  step_u (up, failed, net) ((update up h (S (up h))), failed, net') [(h, inr out)].
+
+  Definition step_f_star : step_relation (list name * network) (name * (input + list output)) :=
+    refl_trans_1n_trace step_f.
+
+  Definition step_f_init : list name * network := ([], step_m_init).
+End StepFailure.
