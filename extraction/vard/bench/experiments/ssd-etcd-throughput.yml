@@ -1,0 +1,88 @@
+provision: |
+  sudo umount /mnt
+  sudo mount /dev/xvdb /tmp
+  sudo chmod 777 /tmp
+  cd /
+  echo "yes" | sudo add-apt-repository ppa:avsm/ocaml41+opam12
+  sudo apt-get update -qq
+  sudo apt-get install -qq git make ocaml ocaml-native-compilers camlp4-extra
+  sudo wget http://homes.cs.washington.edu/~jrw12/coq-8.5beta2-build.tgz
+  sudo tar xf coq-8.5beta2-build.tgz
+  pushd coq-8.5beta2
+  sudo make install > /dev/null 2>&1
+  popd
+  # vard
+  sudo git clone https://github.com/uwplse/verdi.git
+  pushd verdi
+  sudo patch extraction/vard/ml/vard.ml <<EOF
+  --- verdi/extraction/vard/ml/vard.ml	2015-09-23 17:13:42.000000000 -0700
+  +++ verdi_vard_patch/extraction/vard/ml/vard.ml	2015-09-23 16:54:15.000000000 -0700
+  @@ -1,9 +1,9 @@
+   module VarDDebug = Shim.Shim(VarDArrangement.VarDArrangement(VarDArrangement.DebugParams))
+   module VarDBench = Shim.Shim(VarDArrangement.VarDArrangement(VarDArrangement.BenchParams))
+
+  -let nodes = [ (1, ("127.0.0.1", 9001))
+  -            ; (2, ("127.0.0.1", 9002))
+  -            ; (3, ("127.0.0.1", 9003))
+  +let nodes = [ (1, ("$db1", 9001))
+  +            ; (2, ("$db2", 9001))
+  +            ; (3, ("$db3", 9001))
+               ]
+  EOF
+  sudo make vard
+  popd
+  sudo ln -s verdi/extraction/vard vard
+  # etcd
+  sudo curl -L https://github.com/coreos/etcd/releases/download/v2.0.9/etcd-v2.0.9-linux-amd64.tar.gz -o etcd-v2.0.9-linux-amd64.tar.gz
+  sudo tar xzf etcd-v2.0.9-linux-amd64.tar.gz
+  sudo ln -s etcd-v2.0.9-linux-amd64 etcd
+vars:
+  keys: 50
+  threads: 8
+  requests: 100
+instances:
+  client:
+    type: m3.large
+  db1:
+    type: m3.large
+  db2:
+    type: m3.large
+  db3:
+    type: m3.large
+setup:
+  db1: |
+    /etcd/etcd --name=db1 \
+    --listen-client-urls http://$db1:8001 \
+    --advertise-client-urls http://$db1:8001 \
+    --initial-advertise-peer-urls http://$db1:9001 \
+    --listen-peer-urls http://$db1:9001 \
+    --data-dir=/tmp/etcd \
+    --initial-cluster "db1=http://$db1:9001,db2=http://$db2:9001,db3=http://$db3:9001"
+  db2: |
+    /etcd/etcd --name=db2 \
+    --listen-client-urls http://$db2:8001 \
+    --advertise-client-urls http://$db2:8001 \
+    --initial-advertise-peer-urls http://$db2:9001 \
+    --listen-peer-urls http://$db2:9001 \
+    --data-dir=/tmp/etcd \
+    --initial-cluster "db1=http://$db1:9001,db2=http://$db2:9001,db3=http://$db3:9001"
+  db3: |
+    /etcd/etcd --name=db3 \
+    --listen-client-urls http://$db3:8001 \
+    --advertise-client-urls http://$db3:8001 \
+    --initial-advertise-peer-urls http://$db3:9001 \
+    --listen-peer-urls http://$db3:9001 \
+    --data-dir=/tmp/etcd \
+    --initial-cluster "db1=http://$db1:9001,db2=http://$db2:9001,db3=http://$db3:9001"
+experiment:
+  client: |
+    ping -c 20 $db1
+    ping -c 20 $db2
+    ping -c 20 $db3
+    cd /vard
+    python2 bench/setup.py --service etcd --keys $keys \
+                           --cluster "$db1:8001,$db2:8001,$db3:8001"
+    python2 bench/bench.py --service etcd --keys $keys \
+                           --cluster "$db1:8001,$db2:8001,$db3:8001" \
+                           --threads $threads --requests $requests \
+                           --debug
