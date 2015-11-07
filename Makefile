@@ -6,7 +6,7 @@ core:
 lib: core
 	$(MAKE) -C lib
 
-systems: core
+systems: core lib
 	$(MAKE) -C systems
 
 raft: core
