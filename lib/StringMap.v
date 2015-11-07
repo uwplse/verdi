@@ -69,7 +69,7 @@ Module ITree(X: INDEXED_TYPE) (*<: TREE*).
     repeat break_if; try find_apply_lem_hyp X.index_inj; congruence.
   Qed.
 
-  Definition beq: forall {A: Type}, (A -> A -> bool) -> t A -> t A -> bool := PTree.beq.
+  (*Definition beq: forall {A: Type}, (A -> A -> bool) -> t A -> t A -> bool := PTree.beq.
   Theorem beq_correct:
     forall (A: Type) (eqA: A -> A -> bool) (t1 t2: t A),
     beq eqA t1 t2 = true <->
@@ -82,7 +82,7 @@ Module ITree(X: INDEXED_TYPE) (*<: TREE*).
   Proof.
   Admitted.
 
-  (*Definition map: forall (A B: Type), (elt -> A -> B) -> t A -> t B := PTree.map (fun i v => f (X.value i) v) m.
+  Definition map: forall (A B: Type), (elt -> A -> B) -> t A -> t B := PTree.map (fun i v => f (X.value i) v) m.
   Hypothesis gmap:
     forall (A B: Type) (f: elt -> A -> B) (i: elt) (m: t A),
     get i (map f m) = option_map (f i) (get i m).
