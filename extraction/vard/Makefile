@@ -1,4 +1,4 @@
-OCAMLBUILD = ocamlbuild -lib str -lib unix -I lib -I ml -I coq
+OCAMLBUILD = ocamlbuild -lib str -lib unix -lib libocamlviz -I lib -I ml -I coq
 
 default: vard.native
 

@@ -203,6 +203,7 @@ module Shim (A: ARRANGEMENT) = struct
       | (_, _, c :: cs) -> input_step c env nm s
       | (_, true, _) -> recv_step env nm s
       | _ -> timeout_step env nm s in
+    (*let _ = Point.observe (Point.create "observe f") in *)
     eloop env nm s'
 
   let default v o =
@@ -211,6 +212,7 @@ module Shim (A: ARRANGEMENT) = struct
     | Some v' -> v'
 
   let main nm nodes =
+    Ocamlviz.init ();
     print_endline "running setup";
     let env = setup nm nodes in
     print_endline "starting";
