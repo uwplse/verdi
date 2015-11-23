@@ -483,8 +483,8 @@ Section StepSimpleUpdate.
                                    (update (nwState net) h d) ->
                   step_u (up, failed, net) ((update up h (S (up h))), failed, net') [(h, inr out)].
 
-  Definition step_f_star : step_relation (list name * network) (name * (input + list output)) :=
-    refl_trans_1n_trace step_f.
+  Definition step_u_star : step_relation ((name -> nat) *list name * network) (name * (input + list output)) :=
+    refl_trans_1n_trace step_u.
 
-  Definition step_f_init : list name * network := ([], step_m_init).
-End StepFailure.
+  Definition step_u_init : (name -> nat) * list name * network := (fun _ => 0, [], step_m_init).
+End StepSimpleUpdate.
