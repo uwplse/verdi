@@ -1,3 +1,9 @@
+COQVERSION := $(shell coqc --version|grep "version 8.5")
+
+ifeq "$(COQVERSION)" ""
+$(error "Verdi is only compatible with Coq version 8.5")
+endif
+
 default: core lib systems raft raft-proofs
 
 core: 
