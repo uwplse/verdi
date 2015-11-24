@@ -9,6 +9,8 @@ Section Dynamic.
   Variable data : Type.
   Variable start_handler : addr -> list (addr * payload) * data.
   Variable recv_handler : addr -> addr -> data -> payload -> list (addr * payload) * data.
+  Variable timeout_handler : addr -> data -> list (addr * payload) * data.
+  
   (* can clients send this payload? disallows forgery *)
   Variable client_payload : payload -> Prop.
 
@@ -23,7 +25,8 @@ Section Dynamic.
   (* traces *)
   Inductive event :=
   | e_send : msg -> event
-  | e_recv : msg -> event.
+  | e_recv : msg -> event
+  | e_timeout : addr -> event.
   
   Record global_state :=
     { nodes : list addr;
@@ -53,6 +56,16 @@ Section Dynamic.
                             sigma := (sigma gst)[h => st];
                             msgs := new_msgs ++ msgs gst;
                             trace := trace gst ++ (map e_send new_msgs)
+                         |}
+  | Timeout :
+      forall h gst d ms st,
+        In h (nodes gst) ->
+        sigma gst h = Some d ->
+        timeout_handler h d = (ms, st) ->
+        step_dynamic gst {| nodes := nodes gst;
+                            sigma := (sigma gst)[h => st];
+                            msgs := map (send h) ms ++ msgs gst;
+                            trace := trace gst ++ [e_timeout h]
                          |}
   | Deliver_client :
       forall gst m h xs ys,
