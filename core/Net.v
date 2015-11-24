@@ -6,6 +6,7 @@ Require Import Sorting.Permutation.
 Require Import FunctionalExtensionality.
 Require Import Relations.Relation_Operators.
 Require Import Relations.Operators_Properties.
+Require Import Sumbool.
 Require Import Util.
 Require Import VerdiTactics.
 
@@ -1026,3 +1027,45 @@ Arguments ghost_packet /_ _ _ _ _.
 
 Arguments mgv_deghost_packet /_ _ _ _ _.
 Arguments mgv_ghost_packet /_ _ _ _ _.
+
+Section StepOrder.
+  Context `{params : MultiParams}.
+
+  Notation src := name (only parsing).
+  Notation dst := name (only parsing).
+
+  Record ordered_network :=
+    mkONetwork
+       { onwPackets : src -> dst -> list msg;
+         onwState   : name -> data
+       }.
+
+  Definition step_o_init : ordered_network :=
+    mkONetwork (fun _ _ => []) init_handlers.
+
+  Definition update2 {A} (f : name -> name -> A) (x y : name) (v : A) : name -> name -> A :=
+    fun x' y' => if sumbool_and _ _ _ _ (name_eq_dec x x') (name_eq_dec y y')
+              then v
+              else f x' y'.
+
+  Fixpoint collate (from : name) (f : name -> name -> list msg) (ms : list (name * msg)) : name -> name -> list msg :=
+    match ms with
+    | [] => f
+    | (to, m) :: ms' => collate from (update2 f from to (f from to ++ [m])) ms'
+    end.
+
+  Inductive step_o : step_relation ordered_network (name * (input + list output)) :=
+  | SO_deliver : forall net net' m ms out d l from to,
+                     onwPackets net from to = m :: ms ->
+                     net_handlers to from m (onwState net to) = (out, d, l) ->
+                     net' = mkONetwork (collate to (update2 (onwPackets net) from to ms) l)
+                                      (update (onwState net) to d) ->
+                     step_o net net' [(to, inr out)]
+  | SO_input : forall h net net' out inp d l,
+                   input_handlers h inp (onwState net h) = (out, d, l) ->
+                   net' = mkONetwork (collate h (onwPackets net) l)
+                                     (update (onwState net) h d) ->
+                   step_o net net' [(h, inl inp); (h, inr out)].
+
+  Definition step_o_star := refl_trans_1n_trace step_o.
+End StepOrder.
