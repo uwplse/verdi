@@ -9,7 +9,7 @@ Definition bind {W S O A B : Type} (m : GenHandler W S O A) (f : A -> GenHandler
   fun s =>
     let '(a, os1, s', ws1) := m s in
     let '(b, os2, s'', ws2) := f a s' in
-    (b, os2 ++ os1, s'', ws2 ++ ws1).
+    (b, os1 ++ os2, s'', ws1 ++ ws2).
 
 Definition send {W S O} (w : W) : GenHandler W S O unit := fun s => (tt, [], s, [w]).
 
