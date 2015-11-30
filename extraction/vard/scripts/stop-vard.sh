@@ -1,2 +1,2 @@
 #!/bin/bash
-pkill vard.p.native
+pkill vard.native

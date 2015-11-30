@@ -2,9 +2,8 @@ OCAMLVIZ='$(HOME)/.opam/system/lib/ocamlviz'
 
 OCAMLBUILD = ocamlbuild \
                -cflags '-I $(OCAMLVIZ)' \
-               -lflags '-I $(OCAMLVIZ) libocamlviz.cmxa' \
+               -lflags '-thread unix.cmxa threads.cmxa -I $(OCAMLVIZ) libocamlviz.cmxa' \
                -lib str \
-               -lib unix \
                -lib libocamlviz \
                -I lib \
                -I ml \

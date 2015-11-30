@@ -1,5 +1,6 @@
 open Printf
 open Unix
+open Ocamlviz_threads
 
 module M = Marshal
 
@@ -56,9 +57,9 @@ module Shim (A: ARRANGEMENT) = struct
   let update_state_from_log_entry log nm s =
     let op = ((M.from_channel log) : log_step) in
     (snd (fst (match op with
-               | LogInput inp -> A.handleIO nm inp s
-               | LogNet (src, m) -> A.handleNet nm src m s
-               | LogTimeout -> A.handleTimeout nm s)))
+               | LogInput inp -> (*(Time.time "time in handleIO" A.handleIO)*) A.handleIO nm inp s
+               | LogNet (src, m) -> (*(Time.time "time in handleNet" A.handleNet)*) A.handleNet nm src m s
+               | LogTimeout -> (*(Time.time "time in handleTimeout" A.handleTimeout)*) A.handleTimeout nm s)))
 
   let rec restore_from_log log nm s =
     try
@@ -72,7 +73,7 @@ module Shim (A: ARRANGEMENT) = struct
       let (restored_state : A.state) = M.from_channel csnap in
       close_in csnap; restored_state
     with
-      Sys_error _ -> A.init nm
+      Sys_error _ -> (*(Time.time "time in init" A.init)*) A.init nm
 
   let restore snapfile log_file nm =
     let initial_state = get_initial_state snapfile nm in
@@ -91,7 +92,7 @@ module Shim (A: ARRANGEMENT) = struct
     in
     let restored_state = restore snapfile clog nm in
     let env =
-      { restored_state = A.reboot restored_state
+      { restored_state = (*(Time.time "time in reboot" A.reboot)*) A.reboot restored_state
       ; snapfile = snapfile
       ; clog = out_channel_of_descr (openfile clog [O_WRONLY ; O_APPEND ; O_CREAT ; O_DSYNC] 0o640)
       ; usock = socket PF_INET SOCK_DGRAM 0
@@ -120,7 +121,7 @@ module Shim (A: ARRANGEMENT) = struct
     ignore (Unix.send sock (r ^ "\n") 0 (String.length r) [])
 
   let output env o =
-    let (id, s) = A.serialize o in
+    let (id, s) = (*(Time.time "time in serialize" A.serialize)*) A.serialize o in
     let socks = Hashtbl.find_all env.outstanding id in
     match socks with
     | sock :: _ ->
@@ -163,12 +164,12 @@ module Shim (A: ARRANGEMENT) = struct
   let input_step client_sock env nm s =
     let len = 1024 in
     let buf = read_from_socket client_sock len in
-    let d = A.deserialize buf in
+    let d = (*(Time.time "time in deserialize" A.deserialize)*) A.deserialize buf in
     match d with
     | Some (id, inp) ->
        save env (LogInput inp) s;
        Hashtbl.replace env.outstanding id client_sock;
-       respond env (A.handleIO nm inp s)
+       respond env ((*(Time.time "time in handleIO" A.handleIO)*) A.handleIO nm inp s)
     | None ->
        print_endline "received invalid input; closing connection";
        close client_sock;
@@ -181,13 +182,13 @@ module Shim (A: ARRANGEMENT) = struct
     let (_, from) = recvfrom env.usock buf 0 len [] in
     let (src, m) = (undenote env from, unpack_msg buf) in
     save env (LogNet (src, m)) s;
-    let s' = respond env (A.handleNet nm src m s) in
+    let s' = respond env ((*(Time.time "time in handleNet" A.handleNet)*) A.handleNet nm src m s) in
     (if A.debug then A.debugRecv s' (src, m)); s'
 
   let timeout_step env nm s =
     save env LogTimeout s;
     (if A.debug then A.debugTimeout s);
-    let x = A.handleTimeout nm s in
+    let x = (Time.time "time in handleTimeout" A.handleTimeout) nm s in
     respond env x
 
   let rec my_select rs ws es t =
@@ -195,15 +196,20 @@ module Shim (A: ARRANGEMENT) = struct
     with Unix_error (err, fn, arg) ->
       my_select rs ws es t
 
+  let eloop_timer = Time.create "time in eloop"
+  let point_tick = Point.create "tick"
+
   let rec eloop env nm s =
     let (fds, _, _) = my_select (List.append [env.usock; env.isock] env.csocks) [] [] (A.setTimeout nm s) in
+    Time.start eloop_timer;
     let s' =
       match (List.mem env.isock fds, List.mem env.usock fds, List.filter (fun c -> List.mem c fds) env.csocks) with
       | (true, _, _) -> new_conn env ; s
       | (_, _, c :: cs) -> input_step c env nm s
       | (_, true, _) -> recv_step env nm s
       | _ -> timeout_step env nm s in
-    (*let _ = Point.observe (Point.create "observe f") in *)
+    let _ = Point.observe point_tick in
+    Time.stop eloop_timer;
     eloop env nm s'
 
   let default v o =
@@ -212,7 +218,7 @@ module Shim (A: ARRANGEMENT) = struct
     | Some v' -> v'
 
   let main nm nodes =
-    Ocamlviz.init ();
+    Ocamlviz_threads.init ();
     print_endline "running setup";
     let env = setup nm nodes in
     print_endline "starting";
