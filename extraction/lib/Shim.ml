@@ -148,17 +148,27 @@ module Shim (A: ARRANGEMENT) = struct
     let (client_sock, _) = accept env.isock in
     env.csocks <- client_sock :: env.csocks
 
+  let disconnect env client_sock =
+    close client_sock;
+    env.csocks <- List.filter (fun c -> c <> client_sock) env.csocks
+
+  type severity =
+    | S_info
+    | S_error
+
+  exception Disconnect_client of (severity * string)
+
   let read_from_socket sock len =
     let buf = String.make len '\x00' in
     try
-      let _ = recv sock buf 0 len [MSG_PEEK] in
+      let bytes_read = recv sock buf 0 len [MSG_PEEK] in
+      (if bytes_read == 0 then raise (Disconnect_client (S_info, "client closed socket")));
       let msg_len = (String.index buf '\n') + 1 in
       let buf2 = String.make msg_len '\x00' in
       let _ = recv sock buf2 0 msg_len [] in
       buf
     with
-      Not_found -> ""
-    | Unix_error _ -> ""
+      Not_found -> raise (Disconnect_client (S_error, "client became invalid"))
 
   let input_step client_sock env nm s =
     let len = 1024 in
@@ -170,10 +180,7 @@ module Shim (A: ARRANGEMENT) = struct
        Hashtbl.replace env.outstanding id client_sock;
        respond env (A.handleIO nm inp s)
     | None ->
-       print_endline "received invalid input; closing connection";
-       close client_sock;
-       env.csocks <- List.filter (fun c -> c <> client_sock) env.csocks;
-       s
+       raise (Disconnect_client (S_error, "received invalid input"))
 
   let recv_step env nm s =
     let len = 4096 in
@@ -200,7 +207,23 @@ module Shim (A: ARRANGEMENT) = struct
     let s' =
       match (List.mem env.isock fds, List.mem env.usock fds, List.filter (fun c -> List.mem c fds) env.csocks) with
       | (true, _, _) -> new_conn env ; s
-      | (_, _, c :: cs) -> input_step c env nm s
+      | (_, _, c :: cs) ->
+         (try input_step c env nm s
+         with
+           Unix_error (err, fn, arg) ->
+             prerr_string fn;
+             prerr_string " failed: ";
+             prerr_endline (error_message err);
+             disconnect env c;
+             s
+         | Disconnect_client (sev, msg) ->
+             (match sev with
+             | S_info -> ()
+             | S_error ->
+                print_string "client disconnected: ";
+                print_endline msg);
+             disconnect env c;
+             s)
       | (_, true, _) -> recv_step env nm s
       | _ -> timeout_step env nm s in
     eloop env nm s'
