@@ -83,6 +83,15 @@ Section ExtensionalUpdate.
     snd (fst st) = snd (fst st') /\
     snd st = snd st'.
 
+  Lemma equiv_except_handlers_refl :
+    forall st st',
+      equiv_except_handlers st st' ->
+      equiv_except_handlers st' st.
+  Proof.
+    unfold equiv_except_handlers.
+    intros. intuition congruence.
+  Qed.
+
   Lemma Nth_nth :
     forall A (l : list A) n x y,
       Nth l n x ->
@@ -228,6 +237,131 @@ Section ExtensionalUpdate.
       end. solve_by_inversion.
   Qed.
 
+  Definition step_multi_step_one :
+    forall sto stm stm' tr,
+      reachable step_one step_u_init sto ->
+      reachable step_multi step_u_init stm ->
+      step_multi stm stm' tr ->
+      equiv_except_handlers stm sto ->
+      exists sto',
+        equiv_except_handlers stm' sto' /\
+        (step_one sto sto' tr \/ sto = sto').
+  Proof.
+    intros. invcs H1.
+    - destruct sto.
+      destruct p0.
+      copy_apply (inductive_invariant_true_in_reachable (@updates_valid_inductive _ _ _ _)) H.
+      unfold updates_valid in *. simpl in *.
+      unfold equiv_except_handlers in *. simpl in *.
+      intuition. subst.
+      match goal with
+        | |- context [(?x = _ /\ ?y = _)] =>
+          (exists (n0, x, y))
+      end.
+      intuition.
+      assert (n0 (pDst p) = 0) by
+          (match goal with
+             | H : forall _, _ \/ _ |- context [?h] =>
+               specialize (H h)
+           end; omega).
+      assert (Nth updates 0 first_update) by (unfold updates; simpl; constructor).
+      left.
+      econstructor; repeat find_rewrite; eauto.
+      + match goal with
+          | H : _ = (_, _, _) |- _ =>
+            erewrite <- H
+        end.
+        eapply all_handlers_ext_equal; eauto.
+      + simpl. auto.
+    - destruct sto.
+      destruct p.
+      copy_apply (inductive_invariant_true_in_reachable (@updates_valid_inductive _ _ _ _)) H.
+      unfold updates_valid in *. simpl in *.
+      unfold equiv_except_handlers in *. simpl in *.
+      intuition. subst.
+      match goal with
+        | |- context [(?x = _ /\ ?y = _)] =>
+          (exists (n0, x, y))
+      end.
+      intuition.
+      assert (n0 h = 0) by
+          (match goal with
+             | H : forall _, _ \/ _ |- context [?h] =>
+               specialize (H h)
+           end; omega).
+      assert (Nth updates 0 first_update) by (unfold updates; simpl; constructor).
+      left.
+      econstructor; repeat find_rewrite; eauto.
+      + match goal with
+          | H : _ = (_, _, _) |- _ =>
+            erewrite <- H
+        end.
+        eapply all_handlers_ext_equal; eauto.
+      + simpl. auto.
+    - destruct sto. destruct p0.
+      unfold equiv_except_handlers in *. simpl in *.
+      intuition. subst.
+      match goal with
+        | |- context [(?x = _ /\ ?y = _)] =>
+          (exists (n0, x, y))
+      end.
+      intuition.
+      left.
+      solve [econstructor; eauto].
+    - destruct sto. destruct p0.
+      unfold equiv_except_handlers in *. simpl in *.
+      intuition. subst.
+      match goal with
+        | |- context [(?x = _ /\ ?y = _)] =>
+          (exists (n0, x, y))
+      end.
+      intuition.
+      left.
+      solve [econstructor; eauto].
+    - destruct sto. destruct p.
+      unfold equiv_except_handlers in *. simpl in *.
+      intuition. subst.
+      match goal with
+        | |- context [(?x = _ /\ ?y = _)] =>
+          (exists (n0, x, y))
+      end.
+      intuition.
+      left.
+      solve [econstructor; eauto].
+    - destruct sto.
+      destruct p.
+      copy_apply (inductive_invariant_true_in_reachable (@updates_valid_inductive _ _ _ _)) H.
+      unfold updates_valid in *. simpl in *.
+      unfold equiv_except_handlers in *. simpl in *.
+      intuition. subst.
+      match goal with
+        | |- context [(?x = _ /\ ?y = _)] =>
+          (exists (n0, x, y))
+      end.
+      intuition.
+      left.
+      assert (n0 h = 0) by
+          (match goal with
+             | H : forall _, _ \/ _ |- context [?h] =>
+               specialize (H h)
+           end; omega).
+      assert (Nth updates 0 first_update) by (unfold updates; simpl; constructor).
+      econstructor. 1:eauto. all:repeat find_rewrite. all:eauto.
+      copy_eapply_prop_hyp huReboot @Nth; [|apply first_update_first].
+      intuition.
+      f_equal. apply functional_extensionality.
+      intros.
+      find_higher_order_rewrite. auto.      
+    - (exists sto). intuition.
+      unfold equiv_except_handlers in *. simpl in *. intuition.
+      erewrite updates_noop in *; eauto.
+      find_inversion. simpl.
+      destruct (snd sto).
+      simpl. f_equal.
+      apply functional_extensionality.
+      intros. break_if; subst; intuition.
+  Qed.
+  
       
   Definition inv_holds_one :=
     forall st' tr,
