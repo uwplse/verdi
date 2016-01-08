@@ -72,6 +72,8 @@ Section ExtensionalUpdate.
 
   Notation step_one := (@step_u _ _ _ one_update_params).
   Notation step_multi := (@step_u _ _ _ params).
+  Notation step_one_star := (@step_u_star _ _ _ one_update_params).
+  Notation step_multi_star := (@step_u_star _ _ _ params).
 
   Ltac get_invariant inv :=
     match goal with
@@ -83,7 +85,7 @@ Section ExtensionalUpdate.
     snd (fst st) = snd (fst st') /\
     snd st = snd st'.
 
-  Lemma equiv_except_handlers_refl :
+  Lemma equiv_except_handlers_sym :
     forall st st',
       equiv_except_handlers st st' ->
       equiv_except_handlers st' st.
@@ -116,6 +118,14 @@ Section ExtensionalUpdate.
   Proof.
     intros. inversion H; intuition. solve_by_inversion.
   Qed.
+
+  Inductive equiv_up_to_noops : list (name * (input + list output)) ->
+                                list (name * (input + list output)) ->
+                                Prop :=
+  | EUTN_nil : equiv_up_to_noops nil nil
+  | EUTN_cons : forall l l' x, equiv_up_to_noops l l' -> equiv_up_to_noops (x :: l) (x :: l')
+  | EUTN_noop_l : forall l l' h, equiv_up_to_noops l l' -> equiv_up_to_noops ((h, inr []) :: l) l'
+  | EUTN_noop_r : forall l l' h, equiv_up_to_noops l l' -> equiv_up_to_noops l ((h, inr []) :: l').
   
   Definition step_one_step_multi :
     forall sto sto' stm tr,
@@ -245,7 +255,7 @@ Section ExtensionalUpdate.
       equiv_except_handlers stm sto ->
       exists sto',
         equiv_except_handlers stm' sto' /\
-        (step_one sto sto' tr \/ sto = sto').
+        (step_one sto sto' tr \/ (sto = sto' /\ (exists h, tr = [(h, inr [])]))).
   Proof.
     intros. invcs H1.
     - destruct sto.
@@ -353,29 +363,136 @@ Section ExtensionalUpdate.
       intros.
       find_higher_order_rewrite. auto.      
     - (exists sto). intuition.
-      unfold equiv_except_handlers in *. simpl in *. intuition.
-      erewrite updates_noop in *; eauto.
-      find_inversion. simpl.
-      destruct (snd sto).
-      simpl. f_equal.
-      apply functional_extensionality.
-      intros. break_if; subst; intuition.
+      + unfold equiv_except_handlers in *. simpl in *. intuition.
+        erewrite updates_noop in *; eauto.
+        find_inversion. simpl.
+        destruct (snd sto).
+        simpl. f_equal.
+        apply functional_extensionality.
+        intros. break_if; subst; intuition.
+      + erewrite updates_noop in *; eauto.
+        find_inversion. intuition eauto.
   Qed.
+
+  Definition step_one_star_step_multi_star :
+    forall sto tr,
+      step_one_star step_u_init sto tr ->
+      exists stm,
+        step_multi_star step_u_init stm tr /\
+        equiv_except_handlers sto stm.
+  Proof.
+    intros.
+    remember step_u_init.
+    find_apply_lem_hyp refl_trans_1n_n1_trace.
+    induction H; intros.
+    - subst. exists step_u_init. unfold equiv_except_handlers. intuition. constructor.
+    - subst. intuition.
+      break_exists. intuition.
+      find_eapply_lem_hyp step_one_step_multi; eauto;
+      try solve [eexists; eauto using refl_trans_n1_1n_trace].
+      break_exists_exists. intuition.
+      find_apply_lem_hyp refl_trans_1n_n1_trace.
+      apply refl_trans_n1_1n_trace. econstructor; eauto.
+  Qed.
+
+  Lemma equiv_up_to_noops_refl :
+    forall tr,
+      equiv_up_to_noops tr tr.
+  Proof.
+    induction tr; constructor; auto.
+  Qed.
+
+  Hint Resolve equiv_up_to_noops_refl.
+
+  Lemma equiv_up_to_noops_snoc_noop :
+    forall tr tr' h,
+      equiv_up_to_noops tr tr' ->
+      equiv_up_to_noops tr (tr' ++ [(h, inr [])]).
+  Proof.
+    induction 1; intros; simpl in *; auto; constructor; auto.
+  Qed.
+
+  Hint Resolve equiv_up_to_noops_snoc_noop.
+
+  Lemma equiv_up_to_noops_append :
+    forall tr1 tr2 tr,
+      equiv_up_to_noops tr1 tr2 ->
+      equiv_up_to_noops (tr1 ++ tr) (tr2 ++ tr).
+  Proof.
+    induction 1; intros; simpl in *; auto; constructor; auto.
+  Qed.
+
+  Hint Resolve equiv_up_to_noops_append.
   
+  Lemma equiv_up_to_noops_sym :
+    forall tr1 tr2,
+      equiv_up_to_noops tr1 tr2 ->
+      equiv_up_to_noops tr2 tr1.
+  Proof.
+    induction 1; intros; simpl in *; auto; constructor; auto.
+  Qed.
+
+  Hint Resolve equiv_up_to_noops_sym.
+  
+  Definition step_multi_star_step_one_star :
+    forall stm tr,
+      step_multi_star step_u_init stm tr ->
+      exists sto tr',
+        step_one_star step_u_init sto tr' /\
+        equiv_except_handlers stm sto /\
+        equiv_up_to_noops tr tr'.
+  Proof.
+    intros.
+    remember step_u_init.
+    find_apply_lem_hyp refl_trans_1n_n1_trace.
+    induction H; intros.
+    - subst. exists step_u_init.
+      exists [].
+      unfold equiv_except_handlers. intuition; constructor.
+    - subst. intuition.
+      break_exists. intuition.
+      find_eapply_lem_hyp step_multi_step_one; eauto;
+      try solve [eexists; eauto using refl_trans_n1_1n_trace].
+      break_exists_exists. intuition.
+      + find_apply_lem_hyp refl_trans_1n_n1_trace.
+        exists (x0 ++ cs'). intuition.
+        apply refl_trans_n1_1n_trace. econstructor; eauto.
+      + subst. exists x0. intuition.
+        break_exists. subst. auto.
+  Qed.
+
+  Variable inv_equiv_up_to_noops :
+    forall st tr tr',
+      equiv_up_to_noops tr tr' ->
+      inv st tr ->
+      inv st tr'.
       
   Definition inv_holds_one :=
     forall st' tr,
       @step_u_star _ _ _ one_update_params step_u_init st' tr ->
-      inv st' tr.
+      inv (snd st') tr.
 
   Lemma inv_holds_multi_inv_holds_one :
     inv_holds_multi -> inv_holds_one.
   Proof.
-    intro IHM.
-    unfold inv_holds_multi, inv_holds_one in *.
+    unfold inv_holds_multi, inv_holds_one.
     intros.
-    intros. induction H.
-    - apply IHM. constructor.
-    -
-      
+    find_apply_lem_hyp step_one_star_step_multi_star.
+    break_exists. intuition.
+    find_apply_hyp_hyp. unfold equiv_except_handlers in *.
+    intuition. congruence.
+  Qed.
+
+  Lemma inv_holds_one_inv_holds_multi :
+    inv_holds_one -> inv_holds_multi.
+  Proof.
+    unfold inv_holds_multi, inv_holds_one.
+    intros.
+    find_apply_lem_hyp step_multi_star_step_one_star.
+    break_exists. intuition.
+    find_apply_hyp_hyp. unfold equiv_except_handlers in *.
+    intuition. repeat find_rewrite.
+    eauto.
+  Qed.
+
 End ExtensionalUpdate.
