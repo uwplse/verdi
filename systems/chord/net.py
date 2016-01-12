@@ -1,6 +1,7 @@
 from collections import defaultdict
 import errno
 from Queue import Queue, Empty
+import logging
 import select
 import socket
 import threading
@@ -8,7 +9,9 @@ import threading
 from data import Pointer, Message, MessageIncomplete
 
 CHORD_PORT = 6000
-MAX_CONNS = 10
+MAX_CONNS = 30
+
+logger = logging.getLogger(__name__)
 
 class Connection(object):
     def __init__(self, socket, remote_ip=None):
@@ -71,23 +74,34 @@ class IOThread(threading.Thread):
         # map from ips to lists of ServerConnection objects
         self.incoming_conns = defaultdict(list)
 
+        self.logger = logging.getLogger(__name__ + "({})".format(self.ip))
+
         # ok, all set
         super(IOThread, self).__init__()
         # we want these to die when the thread that spawns them does
         self.daemon = True
 
     def send(self, dst, msg):
-        print "sending {} to {}".format(msg, dst.id)
         self.sends.put((dst.ip, msg))
 
-    def recv(self):
-        while True:
+    def recv(self, timeout=None):
+        if timeout is None:
+            # busy polling because it makes it so ctrl-c works faster
+            # i don't know why that is
+            while True:
+                try:
+                    ip, msg = self.recvs.get(block=False)
+                except Empty:
+                    # nothing to receive.. keep polling
+                    pass
+        else:
             try:
-                ip, msg = self.recvs.get(block=0)
-                return Pointer(ip), msg
+                ip, msg = self.recvs.get(timeout=timeout)
             except Empty:
-                # nothing to receive.. keep polling
-                pass
+                # timed out
+                return None
+        return Pointer(ip), msg
+
 
     def listen(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -116,6 +130,13 @@ class IOThread(threading.Thread):
             writeable.append(self.outgoing_conns[sock.getpeername()[0]])
         return can_accept, readable, writeable
 
+    def connect_to(self, dst_ip):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind((self.ip, 0))
+        sock.connect((dst_ip, CHORD_PORT))
+        sock.setblocking(0)
+        self.outgoing_conns[dst_ip] = ClientConnection(sock)
+
     def run(self):
         self.listen()
         while True:
@@ -123,11 +144,8 @@ class IOThread(threading.Thread):
                 dst_ip, msg = self.sends.get(block=False)
                 # we only have one socket per destination
                 if dst_ip not in self.outgoing_conns:
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.bind((self.ip, 0))
-                    sock.connect((dst_ip, CHORD_PORT))
-                    sock.setblocking(0)
-                    self.outgoing_conns[dst_ip] = ClientConnection(sock)
+                    self.connect_to(dst_ip)
+                self.logger.debug("{} <= {}".format(dst_ip, msg))
                 self.outgoing_conns[dst_ip].queue_writes(msg.serialize())
             except Empty:
                 # nothing to send.
@@ -144,6 +162,7 @@ class IOThread(threading.Thread):
             for conn in readable:
                 msgs, closed = conn.read()
                 for msg in msgs:
+                    self.logger.debug("{} => {}".format(conn.remote_ip, msg))
                     self.recvs.put((conn.remote_ip, msg))
                 if closed:
-                    self.incoming_conns[ip].remove(conn)
+                    self.incoming_conns[conn.remote_ip].remove(conn)

@@ -1,10 +1,11 @@
 from collections import defaultdict
+import logging
 import time
 
-from data import Pointer, Message, MessageIncomplete
+from data import Pointer, Message, MessageIncomplete, SUCC_LIST_LEN
 from net import IOThread
 
-SUCC_LIST_LEN = 3
+DEFAULT_STABILIZE_INTERVAL = 3
 
 def between(a, x, b):
     if a < b:
@@ -14,10 +15,12 @@ def between(a, x, b):
 
 
 class Node(object):
-    def __init__(self, ip, pred=None, succ_list=None):
+    def __init__(self, ip, pred=None, succ_list=None,
+            stabilize_interval=DEFAULT_STABILIZE_INTERVAL):
         self.ip = ip
         self.ptr = Pointer(ip)
         self.id = self.ptr.id
+        self.stabilize_interval = stabilize_interval
 
         self.pred = pred
         if succ_list is None:
@@ -36,48 +39,116 @@ class Node(object):
         self.io = IOThread(self.ip)
         self.started = False
 
+        self.logger = logging.getLogger(__name__ + "({},{})".format(self.ip, self.id))
+
         # map from ids to the clients that have asked for the id's successor
         self.lookup_clients = defaultdict(list)
 
     # can only be run once we've joined and stabilized
     def main_loop(self):
         while True:
-            src, msg = self.io.recv()
-            outs = self.handle(src, msg)
-            for dst, msg in outs:
-                self.io.send(dst, msg)
+            if time.time() - self.last_stabilize > self.stabilize_interval:
+                self.stabilize()
 
-    def find_succ(self, id):
-        full_succ_list = [self.ptr] + self.succ_list
-        for i, cur in enumerate(full_succ_list[:-1]):
-            next = full_succ_list[i + 1]
-            if between(cur.id, id, next.id) or cur.id == id or id + 1 == next.id:
-                return next
-        return None
+            res = self.io.recv(timeout=1)
+            if res is not None:
+                src, msg = res
+                self.do_handle(src, msg)
+
+    def do_handle(self, src, msg):
+        outs = self.handle(src, msg)
+        for dst, msg in outs:
+            self.io.send(dst, msg)
+
+    def find_successor(self, id, known=None):
+        """look up the proper successor of the given id in the ring"""
+        pred = self.find_predecessor(id, known)
+        succ = self.get_succ(pred)
+        if succ.id == id:
+            return self.get_succ(succ)
+        else:
+            return succ
+
+    def find_predecessor(self, id, known=None):
+        """look up the proper predecessor of the given id in the ring"""
+        if known is None:
+            cur = self.ptr
+            succ_of_cur = self.succ_list[0]
+        else:
+            cur = known
+            succ_of_cur = self.get_succ(known)
+        arg = cur
+        while not between(cur.id, id, succ_of_cur.id + 1):
+            cur = self.get_best_predecessor(cur, id)
+            succ_of_cur = self.get_succ(cur)
+        self.logger.debug("find_predecessor({}, {}) = {}".format(id, arg, cur))
+        return cur
+
+    def get_best_predecessor(self, ptr, id):
+        if ptr == self.ptr:
+            return self.best_predecessor(id)
+        msg = Message("get_best_predecessor", [id])
+        res = self.query(ptr, msg, "got_best_predecessor")
+        self.logger.debug("get_best_predecessor({}, {}) = {}".format(ptr, id,
+            res[1]))
+        return res[1]
+
+    def get_succ(self, ptr):
+        return self.get_succ_list(ptr)[0]
+
+    # this is like closest_preceding_finger in the chord paper
+    # but I have no finger tables (yet)
+    def best_predecessor(self, id):
+        for node in reversed(self.succ_list):
+            if between(self.id, node.id, id):
+                return node
+        return self.ptr
 
     def handle(self, src, msg):
         kind = msg.kind
-        if kind == "lookup_succ":
+        if kind == "get_best_predecessor":
             id = msg.data[0]
-            succ = self.find_succ(id)
-            if succ is not None:
-                return [(src, Message("found_succ_for", [id, succ]))]
-            # otherwise we have to forward it
-            self.lookup_clients[id].append(src)
-            return [(self.succ_list[-1], Message("lookup_succ", [id]))]
-        elif kind == "found_succ_for":
-            id, succ = msg.data
-            # forward the message to whoever asked
-            packet = (self.lookup_clients[id][0], msg)
-            # and take them off the waiting list
-            del self.lookup_clients[id][0]
-            return [packet]
-        else:
-            print "ignoring a strange message: {}".format(msg)
+            pred = self.best_predecessor(id)
+            return [(src, Message("got_best_predecessor", [id, pred]))]
+        elif kind == "get_succ_list":
+            return [(src, Message("got_succ_list", self.succ_list))]
+        elif kind == "get_pred_and_succs":
+            msg = Message("got_pred_and_succs", [self.pred] + self.succ_list)
+            return [(src, msg)]
+        elif kind == "notify":
+            self.rectify(src)
+            # rectify(..) does io on its own, so we just return []
             return []
+        elif kind == "ping":
+            return [(src, Message("pong"))]
+        else:
+            self.logger.warning("ignoring a strange message: {}".format(msg))
+            return []
+
+    def rectify(self, new_pred):
+        self.logger.debug("rectifying with new_pred = {}".format(new_pred))
+        old_pred = self.pred
+        if self.pred is None:
+            self.pred = new_pred
+            return
+        else:
+            res = self.query(self.pred, Message("ping"), "pong")
+            if res is not None:
+                if between(self.pred.id, new_pred.id, self.id):
+                    self.pred = new_pred
+            else:
+                self.pred = new_pred
+        if self.pred != old_pred:
+            self.logger.info("rectify: changed pred to {}".format(self.pred))
+        self.logger.debug("rectified")
+
+    def notify(self, node):
+        self.logger.debug("notifying {}".format(node))
+        self.io.send(node, Message("notify"))
 
     def start(self, known=None):
         self.setup(known)
+        self.logger.debug("done setting up. proceeding to main loop")
         self.main_loop()
 
     def setup(self, known=None):
@@ -89,43 +160,92 @@ class Node(object):
             if known is None:
                 raise ValueError("can't join without a known node!")
             self.join(known)
+            self.logger.debug("joined successfully")
             self.stabilize()
+        else:
+            # fake it
+            self.last_stabilize = time.time()
 
-    def lookup_succ(self, ptr=None, id=None):
-        if id is None:
-            id = self.id
-        if ptr is None:
-            ptr = self.find_succ(id)
-            if ptr is not None:
-                return ptr
-        self.io.send(self.succ_list[-1], Message("lookup_succ", [id]))
-        #XXX src should be known
+    def stabilize(self):
+        self.logger.debug("stabilizing")
+        old_succ_list = self.succ_list
+        while len(self.succ_list) > 0:
+            succ = self.succ_list[0]
+            nodes = self.get_pred_and_succs(succ)
+            if nodes is not None:
+                new_succ = nodes[0]
+                succ_list_of_succ = nodes[1:]
+                self.succ_list = [succ] + succ_list_of_succ[:-1]
+                if between(self.id, new_succ.id, succ.id):
+                    succs = self.get_succ_list(new_succ)
+                    self.succ_list = [new_succ] + succs[:-1]
+                if self.succ_list != old_succ_list:
+                    self.logger.info("stabilize: updated succ_list to {}".format(
+                        self.succ_list))
+                self.notify(self.succ_list[0])
+                break
+            else:
+                self.succ_list = self.succ_list[1:]
+        self.last_stabilize = time.time()
+        self.logger.debug("stabilized")
+
+    def query(self, dst, msg, response_kind):
+        buffered = []
+        self.io.send(dst, msg)
+        #XXX this doesn't time out correctly yet
         while True:
-            src, msg = self.io.recv()
-            if msg.kind == "found_succ_for" and msg.data[0] == id:
-                return msg.data[1]
+            res = self.io.recv(timeout=1)
+            if res is not None:
+                src, msg = res
+                if msg.kind == response_kind and src.id == dst.id:
+                    for src, bufmsg in buffered:
+                        self.do_handle(src, bufmsg)
+                    return msg.data
+                else:
+                    buffered.append((src, msg))
 
-#    def join(self, known):
-#        succeeded = False
-#        while not succeeded:
-#            new_succ = self.lookup_succ(known)
-#            if new_succ is not None:
-#                self.io.send(new_succ, Message("get_succ_list", []))
-#                if succs is not None:
-#                    self.succ_list = [new_succ] + succs[:-1]
-#                    self.pred = None
-#                    succeeded = True
-#                else:
-#                    time.sleep(5)
-#            else:
-#                time.sleep(5)
+    def get_succ_list(self, node):
+        if node == self.ptr:
+            return self.succ_list
+        msg = Message("get_succ_list", [])
+        return self.query(node, msg, "got_succ_list")
+
+    def get_pred_and_succs(self, node):
+        msg = Message("get_pred_and_succs", [])
+        return self.query(node, msg, "got_pred_and_succs")
+
+    def join(self, known):
+        self.logger.debug("joining with known = {}".format(known))
+        succeeded = False
+        while not succeeded:
+            self.logger.debug("trying to join via {}".format(known.id))
+            new_succ = self.find_successor(self.id, known)
+            if new_succ is not None:
+                self.logger.debug("{} says my succ is {}".format(known.id,
+                    new_succ.id))
+                succs = self.get_succ_list(new_succ)
+                if succs is not None:
+                    self.logger.debug(
+                            "got new succ list from {}:".format(new_succ.id))
+                    self.succ_list = [new_succ] + succs[:-1]
+                    self.logger.info("join: got new succ_list {}".format(
+                            self.succ_list))
+                    self.pred = None
+                    succeeded = True
+                else:
+                    self.logger.debug("couldn't get succ_list. retrying in 5s")
+                    time.sleep(5)
+            else:
+                self.logger.debug("couldn't get succ. retrying in 5s")
+                time.sleep(5)
+        self.logger.debug("joined")
 
 
-if __name__ == "__main__":
-    ptrs = [Pointer(ip="127.0.0.1{}".format(i)) for i in range(0, 10)]
+def launch_ring_of(n):
+    ptrs = sorted([Pointer(ip="127.0.0.{}".format(i)) for i in range(1, n+1)])
     nodes = []
-    for i in range(0, 10):
-        localhost = "127.0.0.1{}".format(i)
+    for i, p in enumerate(ptrs):
+        localhost = p.ip
         succs = ptrs[i+1:i+1+SUCC_LIST_LEN]
         if len(succs) < SUCC_LIST_LEN:
             succs += ptrs[:SUCC_LIST_LEN-len(succs)]
@@ -133,17 +253,23 @@ if __name__ == "__main__":
         nodes.append(node)
 
     import multiprocessing
-    for node in nodes[1:]:
+    for node in nodes:
         p = multiprocessing.Process(target=node.start)
         p.daemon = True
         p.start()
 
-    me = nodes[0]
-    me.setup()
-    print "POINTERS:"
-    for ptr in ptrs:
-        print " {}\t{}".format(ptr.id, ptr.ip)
-    time.sleep(1)
-    # should be a pointer to 127.0.0.15 (id = 47)
-    for i in range(40, 52):
-        print "the successor of {} is {}".format(i, me.lookup_succ(id=i).id)
+    return nodes
+
+def join_demo():
+    nodes = launch_ring_of(10)
+    print "initial ring:", [node.ptr for node in nodes]
+    known = nodes[6].ptr
+    new_node = Node("127.0.0.100")
+    print "adding new node:", new_node.ptr
+    print
+    time.sleep(3)
+    new_node.start(known)
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    join_demo()

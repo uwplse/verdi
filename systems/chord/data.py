@@ -1,20 +1,26 @@
 from collections import namedtuple
 import socket
 import struct
+import hashlib
 
-ID_SPACE_SIZE = 100
+ID_SPACE_SIZE = 2048
+SUCC_LIST_LEN = 3
+
+def hash(string):
+    h = hashlib.sha256()
+    h.update(string)
+    return long(h.hexdigest(), 16) % ID_SPACE_SIZE
 
 class Pointer(object):
-    def __init__(self, ip):
+    def __init__(self, ip, id=None):
         self.ip = ip
-        self.id = self.hash(ip) % ID_SPACE_SIZE
+        self.id = hash(ip)
+        if id is not None and id != self.id:
+            raise ValueError("someone hashed something wrong: {} != {}".format(
+                id, self.id))
 
-    def __eq__(self, other):
-        return self.ip == other.ip and self.id == other.id
-
-    def hash(self, ip):
-        # should use a real hash function, or whatever
-        return struct.unpack("!L", socket.inet_aton(ip))[0]
+    def __cmp__(self, other):
+        return self.id - other.id
 
     def serialize(self):
         return socket.inet_aton(self.ip) + struct.pack(">I", self.id)
@@ -31,22 +37,35 @@ class Pointer(object):
         return ptr
 
     def __repr__(self):
-        return "Pointer(ip={}, id={})".format(self.ip, self.id)
+        return 'Pointer("{}", {})'.format(self.ip, self.id)
 
 class MessageIncomplete(ValueError):
     pass
+class Signature(object):
+    def __init__(self, arity, id_first=False, response=False):
+        self.arity = arity
+        self.id_first = id_first
+        self.response = response
 
 class Message(object):
-    kinds = [
-        "lookup_succ",
-        "found_succ_for"
-    ]
-    Signature = namedtuple("Signature", ["arity", "id_first"])
     signatures = {
-        "lookup_succ": Signature(1, True),
-        "found_succ_for": Signature(2, True)
+        "get_best_predecessor": Signature(1, True),
+        "got_best_predecessor": Signature(2, True),
+        "get_succ_list": Signature(0),
+        "got_succ_list": Signature(SUCC_LIST_LEN, False),
+        "get_pred": Signature(0),
+        "got_pred": Signature(1),
+        "get_pred_and_succs": Signature(0),
+        "got_pred_and_succs": Signature(SUCC_LIST_LEN + 1, False),
+        "notify": Signature(0),
+        "ping": Signature(0),
+        "pong": Signature(0)
     }
-    def __init__(self, kind, data):
+    kinds = list(signatures.keys())
+
+    def __init__(self, kind, data=None):
+        if data is None:
+            data = []
         if kind not in Message.kinds:
             raise ValueError("Unknown message kind {}".format(kind))
         self.kind = kind
@@ -78,7 +97,7 @@ class Message(object):
         bytes = bytes[4:]
         if len(bytes) < length:
             raise MessageIncomplete()
-        rest = bytes[length:]
+        leftovers = bytes[length:]
         bytes = bytes[:length]
         header = bytes[:8]
         rest = bytes[8:]
@@ -92,7 +111,7 @@ class Message(object):
             rest = rest[4:]
             arity = arity - 1
         for i in range(0, arity):
-            ptr = Pointer.deserialize(rest[:12])
-            rest = rest[12:]
+            ptr = Pointer.deserialize(rest[:8])
+            rest = rest[8:]
             data.append(ptr)
-        return cls(kind, data), rest
+        return cls(kind, data), leftovers
