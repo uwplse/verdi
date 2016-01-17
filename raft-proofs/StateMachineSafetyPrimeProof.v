@@ -4,6 +4,7 @@ Require Import Omega.
 Require Import VerdiTactics.
 Require Import Util.
 Require Import Net.
+Require Import GhostSimulations.
 
 Require Import CommonTheorems.
 Require Import Raft.

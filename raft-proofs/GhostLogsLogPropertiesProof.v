@@ -3,6 +3,7 @@ Import ListNotations.
 
 Require Import Util.
 Require Import Net.
+Require Import GhostSimulations.
 
 Require Import CommonDefinitions.
 Require Import CommonTheorems.

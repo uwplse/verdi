@@ -8,6 +8,7 @@ Require Import Sorting.Permutation.
 
 Require Import Util.
 Require Import Net.
+Require Import GhostSimulations.
 Require Import VerdiTactics.
 Require Import Raft.
 
