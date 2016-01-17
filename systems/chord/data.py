@@ -19,8 +19,11 @@ class Pointer(object):
             raise ValueError("someone hashed something wrong: {} != {}".format(
                 id, self.id))
 
-    def __cmp__(self, other):
-        return self.id - other.id
+    def __eq__(self, other):
+        if isinstance(other, Pointer):
+            return self.id == other.id
+        else:
+            return False
 
     def serialize(self):
         return socket.inet_aton(self.ip) + struct.pack(">I", self.id)

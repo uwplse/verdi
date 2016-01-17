@@ -10,34 +10,51 @@ from data import Pointer, Message, MessageIncomplete
 
 CHORD_PORT = 6000
 MAX_CONNS = 30
+RECV_TIMEOUT = 1
 
 logger = logging.getLogger(__name__)
 
+class DeadNode(RuntimeError):
+    def __init__(self, ptr):
+        super(DeadNode, self).__init__()
+        self.ptr = ptr
+
 class Connection(object):
-    def __init__(self, socket, remote_ip=None):
+    def __init__(self, socket, remote_ip):
         self.socket = socket
-        if remote_ip is None:
-            remote_ip, _ = socket.getpeername()
         self.remote_ip = remote_ip
         self.buffer = b""
+
+    def broken(self):
+        try:
+            self.socket.getpeername()
+        except socket.error:
+            return True
+        return False
 
 class ServerConnection(Connection):
     def read(self):
         closed = False
-        try:
-            # read in chunks of at most 4096 bytes until it breaks
-            while True:
+        # read in chunks of at most 4096 bytes until it breaks
+        while True:
+            try:
                 chunk = self.socket.recv(4096)
-                self.buffer += chunk
-                if len(chunk) == 0:
-                    closed = True
-                if len(chunk) < 4096:
-                    # definitely won't get more if we recv again
+            except socket.error, e:
+                if e.errno == errno.EAGAIN:
+                    # there's nothing to read right now
                     break
-        except socket.error, e:
-            if e.errno != errno.EAGAIN:
-                raise
-        return self.parse_buffer(), closed
+                else:
+                    raise
+            self.buffer += chunk
+            if len(chunk) == 0:
+                closed = True
+            if len(chunk) < 4096:
+                # won't get more if we recv again
+                break
+        msgs = self.parse_buffer()
+        if closed and len(self.buffer) != 0:
+            raise RuntimeError("connection closed with a message incomplete")
+        return msgs, closed
 
     def parse_buffer(self):
         msgs = []
@@ -55,10 +72,14 @@ class ClientConnection(Connection):
         self.buffer += bytes
 
     def write(self):
-        #XXX this won't work much of the time
-        bytes_sent = self.socket.send(self.buffer)
-        self.buffer = self.buffer[bytes_sent:]
+        try:
+            bytes_sent = self.socket.send(self.buffer)
+            self.buffer = self.buffer[bytes_sent:]
+        except socket.error, e:
+            if e.errno != errno.EAGAIN:
+                raise
         if len(self.buffer) == 0:
+            self.socket.shutdown(socket.SHUT_RDWR)
             self.socket.close()
             return True
         return False
@@ -73,6 +94,8 @@ class IOThread(threading.Thread):
         self.outgoing_conns = {}
         # map from ips to lists of ServerConnection objects
         self.incoming_conns = defaultdict(list)
+        # set of ip addresses
+        self.dead_nodes = set()
 
         self.logger = logging.getLogger(__name__ + "({})".format(self.ip))
 
@@ -82,26 +105,19 @@ class IOThread(threading.Thread):
         self.daemon = True
 
     def send(self, dst, msg):
+        if dst.ip in self.dead_nodes:
+            raise DeadNode(dst)
         self.sends.put((dst.ip, msg))
 
-    def recv(self, timeout=None):
-        if timeout is None:
-            # busy polling because it makes it so ctrl-c works faster
-            # i don't know why that is
-            while True:
-                try:
-                    ip, msg = self.recvs.get(block=False)
-                except Empty:
-                    # nothing to receive.. keep polling
-                    pass
-        else:
-            try:
-                ip, msg = self.recvs.get(timeout=timeout)
-            except Empty:
-                # timed out
-                return None
-        return Pointer(ip), msg
-
+    def recv(self, timeout=RECV_TIMEOUT):
+        try:
+            ip, msg = self.recvs.get(timeout=timeout)
+        except Empty:
+            # timed out
+            return None
+        # we ignore dead nodes completely
+        if ip not in self.dead_nodes:
+            return Pointer(ip), msg
 
     def listen(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -109,12 +125,45 @@ class IOThread(threading.Thread):
         sock.listen(MAX_CONNS)
         self.server_sock = sock
 
+    def prune_conns(self):
+        """Look through outgoing and incoming connections for broken
+        connections and remove them.
+
+        Returns the connections that were pruned."""
+        pruned = []
+        for ip, conn in self.outgoing_conns:
+            if conn.broken():
+                del self.outgoing_conns[ip]
+                pruned.append(conn)
+        for ip, conns in self.outgoing_conns:
+            for conn in conns:
+                if conn.broken():
+                    self.outgoing_conns[ip].remove(conn)
+                    pruned.append(conn)
+        return pruned
+
     def select(self):
         to_write = [c.socket for c in self.outgoing_conns.values()]
         to_read = [c.socket for l in self.incoming_conns.values() for c in l]
         to_read.append(self.server_sock)
-        readable_socks, writeable_socks, _ = select.select(to_read, to_write,
-                [], 0)
+        select_succeeded = False
+        while not select_succeeded:
+            try:
+                readable_socks, writeable_socks, _ = select.select(to_read,
+                        to_write, [], 0)
+                select_succeeded = True
+            except select.error, e:
+                if e.errno == errno.EBADF:
+                    # there's a broken or closed connection somewhere
+                    pruned = set(self.prune_conns())
+                    self.logger.debug("got EBADF, pruned {} connections"
+                            .format(len(pruned)))
+                    if len(pruned) == 0:
+                        raise
+                    readable_socks = set(readable_socks) - pruned
+                    writeable_socks = set(writeable_socks) - pruned
+                else:
+                    raise
         can_accept = False
         if self.server_sock in readable_socks:
             readable_socks.remove(self.server_sock)
@@ -133,9 +182,14 @@ class IOThread(threading.Thread):
     def connect_to(self, dst_ip):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind((self.ip, 0))
-        sock.connect((dst_ip, CHORD_PORT))
+        try:
+            sock.connect((dst_ip, CHORD_PORT))
+        except socket.error, e:
+            self.dead_nodes.add(dst_ip)
+            return None
         sock.setblocking(0)
-        self.outgoing_conns[dst_ip] = ClientConnection(sock)
+        conn = ClientConnection(sock, dst_ip)
+        return conn
 
     def run(self):
         self.listen()
@@ -144,9 +198,12 @@ class IOThread(threading.Thread):
                 dst_ip, msg = self.sends.get(block=False)
                 # we only have one socket per destination
                 if dst_ip not in self.outgoing_conns:
-                    self.connect_to(dst_ip)
-                self.logger.debug("{} <= {}".format(dst_ip, msg))
-                self.outgoing_conns[dst_ip].queue_writes(msg.serialize())
+                    conn = self.connect_to(dst_ip)
+                if conn is not None:
+                    self.logger.debug("{} <= {}".format(dst_ip, msg))
+                    self.outgoing_conns[dst_ip] = conn
+                    conn.queue_writes(msg.serialize())
+                # otherwise we just drop the message
             except Empty:
                 # nothing to send.
                 pass

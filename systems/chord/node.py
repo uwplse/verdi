@@ -3,9 +3,11 @@ import logging
 import time
 
 from data import Pointer, Message, MessageIncomplete, SUCC_LIST_LEN
-from net import IOThread
+from net import IOThread, DeadNode
 
+# these should be higher in real life, probably
 DEFAULT_STABILIZE_INTERVAL = 3
+QUERY_TIMEOUT = 5
 
 def between(a, x, b):
     if a < b:
@@ -13,6 +15,9 @@ def between(a, x, b):
     else:
         return a < x or x < b
 
+
+class QueryFailed(RuntimeError):
+    pass
 
 class Node(object):
     def __init__(self, ip, pred=None, succ_list=None,
@@ -50,15 +55,22 @@ class Node(object):
             if time.time() - self.last_stabilize > self.stabilize_interval:
                 self.stabilize()
 
-            res = self.io.recv(timeout=1)
+            res = self.io.recv()
             if res is not None:
                 src, msg = res
                 self.do_handle(src, msg)
 
+    def handle_all(self, packets):
+        for src, msg in packets:
+            self.do_handle(src, msg)
+
     def do_handle(self, src, msg):
         outs = self.handle(src, msg)
         for dst, msg in outs:
-            self.io.send(dst, msg)
+            try:
+                self.io.send(dst, msg)
+            except DeadNode, e:
+                mark_node_dead(e.ptr)
 
     def find_successor(self, id, known=None):
         """look up the proper successor of the given id in the ring"""
@@ -88,10 +100,10 @@ class Node(object):
         if ptr == self.ptr:
             return self.best_predecessor(id)
         msg = Message("get_best_predecessor", [id])
-        res = self.query(ptr, msg, "got_best_predecessor")
+        best_pred = self.query(ptr, msg, "got_best_predecessor")[1]
         self.logger.debug("get_best_predecessor({}, {}) = {}".format(ptr, id,
-            res[1]))
-        return res[1]
+            best_pred))
+        return best_pred
 
     def get_succ(self, ptr):
         return self.get_succ_list(ptr)[0]
@@ -130,13 +142,12 @@ class Node(object):
         old_pred = self.pred
         if self.pred is None:
             self.pred = new_pred
-            return
         else:
-            res = self.query(self.pred, Message("ping"), "pong")
-            if res is not None:
+            try:
+                res = self.query(self.pred, Message("ping"), "pong")
                 if between(self.pred.id, new_pred.id, self.id):
                     self.pred = new_pred
-            else:
+            except QueryFailed:
                 self.pred = new_pred
         if self.pred != old_pred:
             self.logger.info("rectify: changed pred to {}".format(self.pred))
@@ -144,7 +155,17 @@ class Node(object):
 
     def notify(self, node):
         self.logger.debug("notifying {}".format(node))
-        self.io.send(node, Message("notify"))
+        try:
+            self.io.send(node, Message("notify"))
+        except DeadNode, e:
+            self.mark_node_dead(e.ptr)
+            self.stabilize()
+
+    def mark_node_dead(self, ptr):
+        self.logger.info("marking a node dead: {}".format(ptr))
+        self.succ_list.remove(ptr)
+        if self.pred == ptr:
+            self.pred = None
 
     def start(self, known=None):
         self.setup(known)
@@ -171,38 +192,48 @@ class Node(object):
         old_succ_list = self.succ_list
         while len(self.succ_list) > 0:
             succ = self.succ_list[0]
-            nodes = self.get_pred_and_succs(succ)
-            if nodes is not None:
-                new_succ = nodes[0]
-                succ_list_of_succ = nodes[1:]
-                self.succ_list = [succ] + succ_list_of_succ[:-1]
-                if between(self.id, new_succ.id, succ.id):
-                    succs = self.get_succ_list(new_succ)
-                    self.succ_list = [new_succ] + succs[:-1]
-                if self.succ_list != old_succ_list:
-                    self.logger.info("stabilize: updated succ_list to {}".format(
-                        self.succ_list))
-                self.notify(self.succ_list[0])
-                break
-            else:
+            try:
+                nodes = self.get_pred_and_succs(succ)
+            except QueryFailed:
                 self.succ_list = self.succ_list[1:]
+                continue
+            new_succ = nodes[0]
+            succ_list_of_succ = nodes[1:]
+            self.succ_list = [succ] + succ_list_of_succ[:-1]
+            if between(self.id, new_succ.id, succ.id):
+                try:
+                    succs = self.get_succ_list(new_succ)
+                except QueryFailed:
+                    self.succ_list = self.succ_list[1:]
+                    continue
+                self.succ_list = [new_succ] + succs[:-1]
+            break
+        if self.succ_list != old_succ_list:
+            self.logger.info("stabilize: updated succ_list to {}".format(
+                self.succ_list))
+        self.notify(self.succ_list[0])
         self.last_stabilize = time.time()
         self.logger.debug("stabilized")
 
-    def query(self, dst, msg, response_kind):
+    def query(self, dst, msg, response_kind, timeout=QUERY_TIMEOUT):
         buffered = []
-        self.io.send(dst, msg)
-        #XXX this doesn't time out correctly yet
-        while True:
-            res = self.io.recv(timeout=1)
+        start_time = time.time()
+        try:
+            self.io.send(dst, msg)
+        except DeadNode, e:
+            self.mark_node_dead(e.ptr)
+            raise QueryFailed()
+        while time.time() - start_time < timeout:
+            res = self.io.recv()
             if res is not None:
                 src, msg = res
                 if msg.kind == response_kind and src.id == dst.id:
-                    for src, bufmsg in buffered:
-                        self.do_handle(src, bufmsg)
+                    self.handle_all(buffered)
                     return msg.data
                 else:
                     buffered.append((src, msg))
+        self.handle_all(buffered)
+        raise QueryFailed()
 
     def get_succ_list(self, node):
         if node == self.ptr:
@@ -219,25 +250,27 @@ class Node(object):
         succeeded = False
         while not succeeded:
             self.logger.debug("trying to join via {}".format(known.id))
-            new_succ = self.find_successor(self.id, known)
-            if new_succ is not None:
-                self.logger.debug("{} says my succ is {}".format(known.id,
-                    new_succ.id))
-                succs = self.get_succ_list(new_succ)
-                if succs is not None:
-                    self.logger.debug(
-                            "got new succ list from {}:".format(new_succ.id))
-                    self.succ_list = [new_succ] + succs[:-1]
-                    self.logger.info("join: got new succ_list {}".format(
-                            self.succ_list))
-                    self.pred = None
-                    succeeded = True
-                else:
-                    self.logger.debug("couldn't get succ_list. retrying in 5s")
-                    time.sleep(5)
-            else:
+            try:
+                new_succ = self.find_successor(self.id, known)
+            except QueryFailed:
                 self.logger.debug("couldn't get succ. retrying in 5s")
                 time.sleep(5)
+                continue
+            self.logger.debug("{} says my succ is {}".format(known.id,
+                new_succ.id))
+            try:
+                succs = self.get_succ_list(new_succ)
+            except QueryFailed:
+                self.logger.debug("couldn't get succ_list. retrying in 5s")
+                time.sleep(5)
+                continue
+            self.logger.debug(
+                    "got new succ list from {}:".format(new_succ.id))
+            self.succ_list = [new_succ] + succs[:-1]
+            self.logger.info("join: got new succ_list {}".format(
+                    self.succ_list))
+            self.pred = None
+            succeeded = True
         self.logger.debug("joined")
 
 
