@@ -4,6 +4,7 @@ Require Import Omega.
 Require Import Util.
 Require Import VerdiTactics.
 Require Import Net.
+Require Import GhostSimulations.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 

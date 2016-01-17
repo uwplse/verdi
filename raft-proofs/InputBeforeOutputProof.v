@@ -5,6 +5,7 @@ Require Import Nat.
 Require Import Omega.
 
 Require Import Net.
+Require Import GhostSimulations.
 Require Import Util.
 Require Import VerdiTactics.
 Require Import InverseTraceRelations.

@@ -9,6 +9,7 @@ Require Import FunctionalExtensionality.
 
 Require Import Util.
 Require Import Net.
+Require Import GhostSimulations.
 Require Import RaftState.
 Require Import Raft.
 Require Import VerdiTactics.

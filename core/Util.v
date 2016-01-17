@@ -1866,3 +1866,89 @@ Lemma equates_6 :
 Proof. intros. subst. auto. Qed.
 
 End equatesLemma.
+
+Lemma map_partition :
+  forall A B p l (x : B) p' (f : A -> B),
+    map f l = (p ++ x :: p') ->
+    exists ap a ap',
+      l = ap ++ a :: ap' /\
+      map f ap = p /\
+      f a = x /\
+      map f ap' = p'.
+Proof.
+  induction p; intros; intuition; simpl in *.
+  - destruct l; simpl in *; try congruence.
+    find_inversion.
+    exists [],a,l. simpl. auto.
+  - destruct l; simpl in *; try congruence.
+    find_inversion.
+    find_apply_hyp_hyp.
+    break_exists_name ap.
+    break_exists_name a.
+    break_exists_name ap'.
+    intuition.
+    exists (a0 :: ap), a, ap'. simpl.
+    repeat find_rewrite. intuition.
+Qed.
+
+Require Import ssreflect.
+
+Lemma map_eq_inv :
+  forall (A B : Type) (f : A -> B) (l : list A) xs ys,
+    map f l = xs ++ ys ->
+    exists l1, exists l2, l = l1 ++ l2 /\ map f l1 = xs /\ map f l2 = ys.
+Proof.
+move => A B f.
+elim => /=.
+- case => //.
+  case => //.
+  move => H_eq.
+  by exists []; exists [].
+- move => a l IH.
+  case => /=.
+  * move => ys.
+    rewrite /=.
+    case: ys => //.
+    move => b ys' H_eq.
+    inversion H_eq.
+    have IH' := IH [] ys'.
+    rewrite /= in IH'.
+    apply IH' in H1.
+    move: H1 => [l1 [l2 [H_eq_l [H_eq_l1 H_eq_l2]]]].   
+    exists ([]); exists (a :: l2).
+    case: l1 H_eq_l H_eq_l1 => //= H_eq_l H_eq_l1.
+    by rewrite /= H_eq_l H_eq_l2.    
+  * move => b xs' ys H_eq.
+    inversion H_eq.
+    apply IH in H1.
+    move: H1 => [l1 [l2 [H_eq_l [H_eq_l1 H_eq_l2]]]].
+    exists (a :: l1); exists l2.
+    rewrite /=.
+    by rewrite H_eq_l H_eq_l1 H_eq_l2.
+Qed.
+
+Lemma map_eq_inv_eq :
+  forall (A B : Type) (f : A -> B),
+    (forall a a', f a = f a' -> a = a') ->
+    forall l l', map f l = map f l' -> l = l'.
+Proof.
+move => A B f H_inj.
+elim; first by case.
+move => a l IH.
+case => //=.
+move => a' l' H_eq.
+inversion H_eq.
+have H_eq' := IH _ H1.
+apply H_inj in H0.
+by rewrite H0 H_eq'.
+Qed.
+
+Lemma map_fst_snd_id : 
+  forall A B l, map (fun t : A * B => (fst t, snd t)) l = l.
+Proof.
+move => A B.
+elim => //.
+move => a l IH.
+rewrite /= IH.
+by case: a.
+Qed.
