@@ -698,7 +698,7 @@ Section RaftMsgRefinement.
         find_apply_lem_hyp in_map_iff.
         firstorder.
       }
-      specialize (IHl' $(intuition)$).
+      specialize (IHl' ltac:(intuition)).
       repeat break_exists.
       break_and.
       exists (x :: x0).

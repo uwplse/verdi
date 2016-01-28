@@ -71,13 +71,13 @@ Section AllEntriesLeaderLogs.
     intros.
     find_copy_apply_lem_hyp append_entries_leaderLogs_invariant.
     unfold append_entries_leaderLogs in *.
-    pose proof entries_sorted_nw_invariant net $(auto)$ p _ _ _ _ _ _ $(auto)$ $(eauto)$.
+    pose proof entries_sorted_nw_invariant net ltac:(auto) p _ _ _ _ _ _ ltac:(auto) ltac:(eauto).
     match goal with
     | [ H : In _ (nwPackets _), H' : forall _, _ |- _ ] =>
       copy_eapply H' H
     end; eauto.
     break_exists. break_and.
-    pose proof one_leaderLog_per_term_invariant _ $(eauto)$ (pSrc p) x _ _  _ $(eauto)$ $(eauto)$.
+    pose proof one_leaderLog_per_term_invariant _ ltac:(eauto) (pSrc p) x _ _  _ ltac:(eauto) ltac:(eauto).
     break_and. subst.
     intro.
     match goal with
@@ -91,7 +91,7 @@ Section AllEntriesLeaderLogs.
     - break_exists. intuition. subst.
       unfold Prefix_sane in *. intuition.
       + eapply prefix_contiguous; eauto.
-        pose proof entries_contiguous_nw_invariant _ $(eauto)$ p _ _ _ _ _ _ $(auto)$ $(eauto)$.
+        pose proof entries_contiguous_nw_invariant _ ltac:(eauto) p _ _ _ _ _ _ ltac:(auto) ltac:(eauto).
         eapply contiguous_app ; eauto.
       + omega.
     - subst. auto.

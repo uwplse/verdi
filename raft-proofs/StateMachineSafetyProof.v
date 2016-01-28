@@ -140,7 +140,7 @@ Section StateMachineSafetyProof.
       maxIndex (log st) <= maxIndex (log st').
   Proof.
     intros.
-    destruct (log st') using (handleClientRequest_log_ind $(eauto)$).
+    destruct (log st') using (handleClientRequest_log_ind ltac:(eauto)).
     - auto.
     - simpl in *. break_and.
       destruct (log st); simpl in *.
@@ -453,7 +453,7 @@ Section StateMachineSafetyProof.
   Proof.
     unfold lifted_entries_contiguous.
     intros.
-    pose proof (msg_lift_prop _ entries_contiguous_invariant _ $(eauto)$ h).
+    pose proof (msg_lift_prop _ entries_contiguous_invariant _ ltac:(eauto) h).
     find_rewrite_lem msg_deghost_spec.
     auto.
   Qed.
@@ -471,7 +471,7 @@ Section StateMachineSafetyProof.
   Proof.
     unfold lifted_entries_contiguous_nw.
     intros.
-    pose proof msg_lift_prop _ entries_contiguous_nw_invariant _ $(eauto)$ (mgv_deghost_packet p).
+    pose proof msg_lift_prop _ entries_contiguous_nw_invariant _ ltac:(eauto) (mgv_deghost_packet p).
     match goal with
     | [ H : context [In] |- _ ] => eapply H
     end.
@@ -490,7 +490,7 @@ Section StateMachineSafetyProof.
   Proof.
     unfold lifted_entries_gt_0.
     intros.
-    pose proof msg_lift_prop _ entries_gt_0_invariant _ $(eauto)$.
+    pose proof msg_lift_prop _ entries_gt_0_invariant _ ltac:(eauto).
     unfold entries_gt_0 in *.
     match goal with
     | [ H : _ |- _ ] => eapply H; eauto
@@ -1206,7 +1206,7 @@ Section StateMachineSafetyProof.
     match goal with
       | [ |- context [ allEntries ?x ] ] =>
         destruct (allEntries x)
-                 using (update_elections_data_client_request_allEntries_ind $(eauto)$)
+                 using (update_elections_data_client_request_allEntries_ind ltac:(eauto))
     end; intuition.
   Qed.
 
@@ -1217,7 +1217,7 @@ Section StateMachineSafetyProof.
       In e (log st').
   Proof.
     intros.
-    destruct (log st') using (handleClientRequest_log_ind $(eauto)$); intuition.
+    destruct (log st') using (handleClientRequest_log_ind ltac:(eauto)); intuition.
   Qed.
 
   Lemma committed_log_allEntries_preserved :
@@ -1887,7 +1887,7 @@ Section StateMachineSafetyProof.
   Proof.
     unfold lifted_entries_gt_0_nw.
     intros.
-    pose proof msg_lift_prop _ entries_gt_0_nw_invariant _ $(eauto)$.
+    pose proof msg_lift_prop _ entries_gt_0_nw_invariant _ ltac:(eauto).
     unfold entries_gt_0_nw in *.
     find_apply_lem_hyp in_mgv_ghost_packet.
     match goal with
@@ -2018,7 +2018,7 @@ Section StateMachineSafetyProof.
                        | [ H : In _ _, H' : _ |- _ ] => rewrite H' in H
                        end. auto.
                      - break_exists. break_and.
-                       pose proof log_properties_hold_on_ghost_logs_invariant _ $(eauto)$ as Hprop.
+                       pose proof log_properties_hold_on_ghost_logs_invariant _ ltac:(eauto) as Hprop.
                        unfold log_properties_hold_on_ghost_logs in *.
                        unfold msg_log_property in *.
                        specialize (Hprop (fun l => forall e, In e l -> eIndex e > 0) p).
@@ -2119,7 +2119,7 @@ Section StateMachineSafetyProof.
                     *)
                    assert (eIndex e <= eIndex ple) by
                        (eapply removeAfterIndex_In_le; eauto using msg_lifted_sorted_host).
-                   pose proof log_properties_hold_on_ghost_logs_invariant _ $(eauto)$ as Hprop.
+                   pose proof log_properties_hold_on_ghost_logs_invariant _ ltac:(eauto) as Hprop.
                    unfold log_properties_hold_on_ghost_logs in *.
                    unfold msg_log_property in *.
                    specialize (Hprop (fun l => contiguous_range_exact_lo l 0) p).
@@ -2131,7 +2131,7 @@ Section StateMachineSafetyProof.
                    conclude_using eauto.
                    { intuition.
                      - subst. find_apply_lem_hyp removeAfterIndex_in.
-                       pose proof lifted_entries_gt_0_invariant _ $(eauto)$ _ _ $(eauto)$.
+                       pose proof lifted_entries_gt_0_invariant _ ltac:(eauto) _ _ ltac:(eauto).
                        omega.
                      - break_exists_name gple. break_and.
                        assert (exists e', eIndex e' = eIndex e /\ In e' (fst (pBody p))).
@@ -2141,7 +2141,7 @@ Section StateMachineSafetyProof.
                          + eapply lifted_entries_gt_0_invariant; eauto using removeAfterIndex_in.
                          + eapply le_trans with (m := eIndex gple); try omega.
                            apply maxIndex_is_max; auto.
-                           pose proof log_properties_hold_on_ghost_logs_invariant _ $(eauto)$ as Hsort.
+                           pose proof log_properties_hold_on_ghost_logs_invariant _ ltac:(eauto) as Hsort.
                            unfold log_properties_hold_on_ghost_logs in *.
                            unfold msg_log_property in *.
                            specialize (Hsort sorted p msg_lifted_sorted_host).
@@ -2153,7 +2153,7 @@ Section StateMachineSafetyProof.
                        {
                          eapply uniqueIndices_elim_eq;
                          eauto using msg_lifted_sorted_host, sorted_uniqueIndices.
-                         pose proof ghost_log_entries_match_invariant _ $(eauto)$ (pDst p) _ $(eauto)$
+                         pose proof ghost_log_entries_match_invariant _ ltac:(eauto) (pDst p) _ ltac:(eauto)
                            as Hem.
                          specialize (Hem ple gple e').
                          repeat concludes. intuition.
@@ -2475,7 +2475,7 @@ Section StateMachineSafetyProof.
   Proof.
     unfold lifted_leaders_have_leaderLogs_strong.
     intros.
-    pose proof msg_lift_prop _ leaders_have_leaderLogs_strong_invariant _ $(eauto)$ h.
+    pose proof msg_lift_prop _ leaders_have_leaderLogs_strong_invariant _ ltac:(eauto) h.
     rewrite msg_deghost_spec' in *. auto.
   Qed.
 
@@ -2492,7 +2492,7 @@ Section StateMachineSafetyProof.
   Proof.
     unfold lifted_one_leaderLog_per_term.
     intros.
-    pose proof msg_lift_prop _ one_leaderLog_per_term_invariant _ $(eauto)$ h h' t ll ll'.
+    pose proof msg_lift_prop _ one_leaderLog_per_term_invariant _ ltac:(eauto) h h' t ll ll'.
     repeat rewrite msg_deghost_spec' in *. auto.
   Qed.
 
@@ -2511,7 +2511,7 @@ Section StateMachineSafetyProof.
     break_exists_name ll'.
     break_exists_name es.
     break_and.
-    find_eapply_lem_hyp (lifted_one_leaderLog_per_term_invariant _ $(eauto)$ leader leader _ ll ll' $(eauto)$).
+    find_eapply_lem_hyp (lifted_one_leaderLog_per_term_invariant _ ltac:(eauto) leader leader _ ll ll' ltac:(eauto)).
     intuition. subst.
     unfold mgv_refined_base_params, raft_refined_base_params, refined_base_params in *.
     simpl in *.
@@ -2529,7 +2529,7 @@ Section StateMachineSafetyProof.
       lifted_leaders_have_leaderLogs net.
   Proof.
     intros.
-    pose proof msg_lift_prop _ leaders_have_leaderLogs_invariant _ $(eauto)$.
+    pose proof msg_lift_prop _ leaders_have_leaderLogs_invariant _ ltac:(eauto).
     unfold leaders_have_leaderLogs, lifted_leaders_have_leaderLogs in *.
     intros.
     match goal with
@@ -2560,7 +2560,7 @@ Section StateMachineSafetyProof.
       lifted_leader_completeness net.
   Proof.
     intros.
-    pose proof msg_lift_prop _ leader_completeness_invariant _ $(eauto)$.
+    pose proof msg_lift_prop _ leader_completeness_invariant _ ltac:(eauto).
     unfold lifted_leader_completeness, leader_completeness in *.
     intuition.
     - unfold lifted_leader_completeness_directly_committed, leader_completeness_directly_committed in *.
@@ -2588,7 +2588,7 @@ Section StateMachineSafetyProof.
       msg_lifted_leader_sublog_host net.
   Proof.
     intros.
-    pose proof msg_lift_prop _ (lift_prop _ leader_sublog_invariant_invariant) _ $(eauto)$.
+    pose proof msg_lift_prop _ (lift_prop _ leader_sublog_invariant_invariant) _ ltac:(eauto).
     simpl in *.
     unfold leader_sublog_invariant, leader_sublog_host_invariant, msg_lifted_leader_sublog_host in *.
     intuition.

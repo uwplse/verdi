@@ -343,7 +343,7 @@ Section AppendEntriesLeader.
       h = h'.
   Proof.
     intros.
-    eapply (lift_prop _ one_leader_per_term_invariant _ $(eauto)$);
+    eapply (lift_prop _ one_leader_per_term_invariant _ ltac:(eauto));
       simpl in *; repeat break_match; repeat (find_rewrite; simpl in *);
       auto; simpl in *; repeat find_rewrite; simpl in *; auto.
   Qed.

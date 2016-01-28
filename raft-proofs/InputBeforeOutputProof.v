@@ -452,7 +452,7 @@ Section InputBeforeOutput.
       eauto using handleTimeout_log_same, handleTimeout_lastApplied.
     - apply applied_entries_safe_update; eauto using handleClientRequest_lastApplied.
 
-      destruct (log st') using (handleClientRequest_log_ind $(eauto)$); auto.
+      destruct (log st') using (handleClientRequest_log_ind ltac:(eauto)); auto.
 
       simpl in *. break_if; auto.
       exfalso.

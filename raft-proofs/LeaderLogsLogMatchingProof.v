@@ -224,7 +224,7 @@ Section LeaderLogsLogMatching.
         simpl. intuition. subst. repeat find_higher_order_rewrite.
         repeat update_destruct.
         - find_rewrite_lem update_elections_data_client_request_leaderLogs.
-          destruct (log d) using (handleClientRequest_log_ind $(eauto)$).
+          destruct (log d) using (handleClientRequest_log_ind ltac:(eauto)).
           + eauto.
           + destruct ll.
             * apply entries_match_nil.
@@ -240,7 +240,7 @@ Section LeaderLogsLogMatching.
               }
         - find_rewrite_lem update_elections_data_client_request_leaderLogs.
           eauto.
-        - destruct (log d) using (handleClientRequest_log_ind $(eauto)$).
+        - destruct (log d) using (handleClientRequest_log_ind ltac:(eauto)).
           + eauto.
           + apply entries_match_cons_sublog; eauto.
             * eauto using lifted_logs_sorted_host.
@@ -367,7 +367,7 @@ Section LeaderLogsLogMatching.
   Qed.
 
   Ltac use_log_matching_nw :=
-    pose proof (lifted_log_matching_nw _ $(eauto)$);
+    pose proof (lifted_log_matching_nw _ ltac:(eauto));
     match goal with
       | [ H : _  |- _ ] =>
         eapply H; [|eauto];
@@ -398,7 +398,7 @@ Section LeaderLogsLogMatching.
         find_erewrite_lem update_nop_ext'.
         update_destruct; rewrite_update;
         try rewrite update_elections_data_appendEntries_leaderLogs in *; eauto.
-        destruct (log d) using (handleAppendEntries_log_ind $(eauto)$); eauto.
+        destruct (log d) using (handleAppendEntries_log_ind ltac:(eauto)); eauto.
         + subst. eapply entries_match_scratch with (plt0 := plt).
           * eauto using lifted_logs_sorted_nw.
           * apply sorted_uniqueIndices.
@@ -506,7 +506,7 @@ Section LeaderLogsLogMatching.
         * break_and. subst.
           rewrite handleRequestVoteReply_same_log.
           find_rewrite_lem handleRequestVoteReply_same_log.
-          pose proof (lifted_log_matching_nw _ $(eauto)$).
+          pose proof (lifted_log_matching_nw _ ltac:(eauto)).
           repeat find_reverse_rewrite.
           match goal with
             | [ H : _, pkt : packet  |- _ ] =>
@@ -581,7 +581,7 @@ Section LeaderLogsLogMatching.
                      H' : context [leaderLogs] |- _ ] =>
                     eapply H with (h := src)(e := e1)(e' := e2)(e'' := x) in H'; auto
                 end.
-                * pose proof lifted_logs_sorted_host net src $(auto)$.
+                * pose proof lifted_logs_sorted_host net src ltac:(auto).
                   repeat find_rewrite. simpl in *.
                   repeat find_erewrite_lem doLeader_same_log.
                   erewrite doLeader_same_log by eauto.

@@ -176,7 +176,7 @@ Section RaftLinearizableProofs.
           { repeat find_rewrite. auto using has_key_intro.
           }
           { find_apply_lem_hyp le_lt_or_eq. break_or_hyp.
-            - specialize (IHl _ $(eauto)$).
+            - specialize (IHl _ ltac:(eauto)).
               match goal with
                 | [ |- context [deduplicate_log' _ ?ks] ] =>
                   specialize (IHl ks)
@@ -192,7 +192,7 @@ Section RaftLinearizableProofs.
               break_exists_exists. intuition.
             - eauto.
           }
-        * specialize (IHl _ $(eauto)$).
+        * specialize (IHl _ ltac:(eauto)).
           match goal with
             | [ |- context [deduplicate_log' _ ?ks] ] =>
               specialize (IHl ks)
@@ -221,7 +221,7 @@ Section RaftLinearizableProofs.
           { repeat find_rewrite. auto using has_key_intro.
           }
           { find_apply_lem_hyp le_lt_or_eq. break_or_hyp.
-            - specialize (IHl _ $(eauto)$).
+            - specialize (IHl _ ltac:(eauto)).
               match goal with
                 | [ |- context [deduplicate_log' _ ?ks] ] =>
                   specialize (IHl ks)
@@ -237,7 +237,7 @@ Section RaftLinearizableProofs.
               break_exists_exists. intuition.
             - eauto.
           }
-        * specialize (IHl _ $(eauto)$).
+        * specialize (IHl _ ltac:(eauto)).
           match goal with
             | [ |- context [deduplicate_log' _ ?ks] ] =>
               specialize (IHl ks)

@@ -163,7 +163,7 @@ Section LeaderLogsSorted.
     match goal with
       | _ : context [ leaderLogs (update_elections_data_requestVoteReply ?h ?s ?t ?v ?st) ] |- _ =>
         destruct (leaderLogs (update_elections_data_requestVoteReply h s t v st))
-                 using (leaderLogs_update_elections_data_request_vote_reply $(eauto)$)
+                 using (leaderLogs_update_elections_data_request_vote_reply ltac:(eauto))
     end; eauto.
     simpl in *. intuition eauto.
     find_inversion. eauto using sorted_host_lifted.

@@ -311,7 +311,7 @@ Section PrevLogLeaderSublogProof.
         exists x0. find_apply_lem_hyp findAtIndex_elim. intuition.
         break_if.
         * congruence.
-        * pose proof (leader_sublog_invariant_invariant _ $(eauto)$).
+        * pose proof (leader_sublog_invariant_invariant _ ltac:(eauto)).
           unfold leader_sublog_invariant, leader_sublog_host_invariant in *. break_and.
           eauto.
   Qed.

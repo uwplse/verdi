@@ -50,7 +50,7 @@ Section AllEntriesLeaderSublog.
       In e (log (snd (nwState net h))).
   Proof.
     intros.
-    pose proof (lift_prop _ leader_sublog_invariant_invariant _ $(eauto)$) as Hinv.
+    pose proof (lift_prop _ leader_sublog_invariant_invariant _ ltac:(eauto)) as Hinv.
     unfold leader_sublog_invariant, leader_sublog_nw_invariant in *.
     destruct Hinv as [Hhost Hnw].
     find_apply_lem_hyp ghost_packet.
@@ -66,7 +66,7 @@ Section AllEntriesLeaderSublog.
       h = h'.
   Proof.
     intros.
-    eapply (lift_prop _ one_leader_per_term_invariant _ $(eauto)$);
+    eapply (lift_prop _ one_leader_per_term_invariant _ ltac:(eauto));
       simpl in *; repeat break_match; repeat (find_rewrite; simpl in *);
       auto; simpl in *; repeat find_rewrite; simpl in *; auto.
   Qed.

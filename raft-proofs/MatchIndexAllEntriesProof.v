@@ -118,7 +118,7 @@ Section MatchIndexAllEntries.
       maxIndex (log (snd (nwState net leader))).
   Proof.
     intros.
-    pose proof lift_prop _ match_index_leader_invariant _ $(eauto)$ leader.
+    pose proof lift_prop _ match_index_leader_invariant _ ltac:(eauto) leader.
     find_rewrite_lem deghost_spec. concludes. auto.
   Qed.
 
@@ -130,7 +130,7 @@ Section MatchIndexAllEntries.
       maxIndex (log (snd (nwState net leader))).
   Proof.
     intros.
-    pose proof lift_prop _ match_index_sanity_invariant _ $(eauto)$ leader h.
+    pose proof lift_prop _ match_index_sanity_invariant _ ltac:(eauto) leader h.
     find_rewrite_lem deghost_spec. concludes. auto.
   Qed.
 
@@ -145,7 +145,7 @@ Section MatchIndexAllEntries.
       In e (log (snd (nwState net h))).
   Proof.
     intros.
-    pose proof lift_prop _ append_entries_reply_sublog_invariant _ $(eauto)$.
+    pose proof lift_prop _ append_entries_reply_sublog_invariant _ ltac:(eauto).
     unfold append_entries_reply_sublog in *.
     find_apply_lem_hyp ghost_packet.
     eapply_prop_hyp In In; eauto; try rewrite deghost_spec; eauto.
@@ -179,7 +179,7 @@ Section MatchIndexAllEntries.
                   eapply_prop_hyp In In; eauto. repeat find_rewrite. auto.
               + do_bool. find_rewrite. simpl length in *. omega.
             - find_erewrite_lem get_set_diff_default.
-              pose proof lifted_match_index_sanity _ leader h0 $(eauto)$ $(auto)$.
+              pose proof lifted_match_index_sanity _ leader h0 ltac:(eauto) ltac:(auto).
               break_or_hyp.
               + simpl in *. omega.
               + find_apply_hyp_hyp. repeat find_rewrite. auto.
@@ -331,7 +331,7 @@ Section MatchIndexAllEntries.
       False.
   Proof.
     intros.
-    pose proof (lift_prop _ no_append_entries_to_leader_invariant _ $(eauto)$).
+    pose proof (lift_prop _ no_append_entries_to_leader_invariant _ ltac:(eauto)).
     unfold no_append_entries_to_leader in *.
     find_apply_lem_hyp ghost_packet.
     match goal with
@@ -350,7 +350,7 @@ Section MatchIndexAllEntries.
       False.
   Proof.
     intros.
-    pose proof (lift_prop _ no_append_entries_to_self_invariant _ $(eauto)$).
+    pose proof (lift_prop _ no_append_entries_to_self_invariant _ ltac:(eauto)).
     unfold no_append_entries_to_self in *.
     find_apply_lem_hyp ghost_packet.
     match goal with
@@ -408,14 +408,14 @@ Section MatchIndexAllEntries.
     - break_if; find_inversion; simpl;
       repeat (do_bool; repeat break_and).
       + find_apply_lem_hyp not_empty_true_elim.
-        pose proof maxIndex_non_empty es $(auto)$.
+        pose proof maxIndex_non_empty es ltac:(auto).
         break_exists_exists. intuition.
       + break_or_hyp.
         * find_apply_lem_hyp not_empty_false_elim. congruence.
         * break_match; try discriminate.
           do_bool. rewrite advanceCurrentTerm_log.
           find_apply_lem_hyp findAtIndex_elim. break_and.
-          pose proof maxIndex_non_empty es $(auto)$.
+          pose proof maxIndex_non_empty es ltac:(auto).
           break_exists_name e'. break_and.
           match goal with
           | [ H : forall _ _ _, In _ _ -> _ |- _ ] =>
@@ -432,14 +432,14 @@ Section MatchIndexAllEntries.
       break_if; find_inversion; simpl;
       repeat (do_bool; repeat break_and).
       + find_apply_lem_hyp not_empty_true_elim.
-        pose proof maxIndex_non_empty es $(auto)$.
+        pose proof maxIndex_non_empty es ltac:(auto).
         break_exists_exists. intuition.
       + break_or_hyp.
         * find_apply_lem_hyp not_empty_false_elim. congruence.
         * break_match; try discriminate.
           do_bool. rewrite advanceCurrentTerm_log.
           find_apply_lem_hyp findAtIndex_elim. break_and.
-          pose proof maxIndex_non_empty es $(auto)$.
+          pose proof maxIndex_non_empty es ltac:(auto).
           break_exists_name e'. break_and.
           match goal with
           | [ H : forall _ _ _, In _ _ -> _ |- _ ] =>
@@ -484,7 +484,7 @@ Section MatchIndexAllEntries.
       In e (log (snd (nwState net h))).
   Proof.
     intros.
-    pose proof (lift_prop _ leader_sublog_invariant_invariant _ $(eauto)$) as Hinv.
+    pose proof (lift_prop _ leader_sublog_invariant_invariant _ ltac:(eauto)) as Hinv.
     unfold leader_sublog_invariant, leader_sublog_nw_invariant in *.
     destruct Hinv as [Hhost Hnw].
     find_apply_lem_hyp ghost_packet.
@@ -510,7 +510,7 @@ Section MatchIndexAllEntries.
       eapply lifted_leader_sublog_nw; eauto. intuition.
     - find_eapply_lem_hyp leaders_have_leaderLogs_strong_invariant; auto.
       break_exists.  break_and.
-      pose proof one_leaderLog_per_term_invariant _ $(eauto)$ h x _ x3 x0 $(eauto)$ $(eauto)$.
+      pose proof one_leaderLog_per_term_invariant _ ltac:(eauto) h x _ x3 x0 ltac:(eauto) ltac:(eauto).
       break_and. subst.
       find_rewrite. eauto using Prefix_In with *.
   Qed.
@@ -618,8 +618,8 @@ Section MatchIndexAllEntries.
               match goal with
               | [ H : refined_raft_intermediate_reachable (mkNetwork _ _) |- _ ] => clear H
               end.
-              pose proof entries_match_nw_host_invariant _ $(eauto)$ _ _ _ _ _ _ _ (pDst p)
-                   e0 e' e'' $(eauto)$ $(eauto)$.
+              pose proof entries_match_nw_host_invariant _ ltac:(eauto) _ _ _ _ _ _ _ (pDst p)
+                   e0 e' e'' ltac:(eauto) ltac:(eauto).
               repeat find_rewrite. auto.
             - apply entries_sorted_invariant. auto.
           }

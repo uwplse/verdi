@@ -101,7 +101,7 @@ Section AllEntriesLogMatching.
       In e (log (snd (nwState net h))).
   Proof.
     intros.
-    pose proof (lift_prop _ leader_sublog_invariant_invariant _ $(eauto)$) as Hinv.
+    pose proof (lift_prop _ leader_sublog_invariant_invariant _ ltac:(eauto)) as Hinv.
     unfold leader_sublog_invariant, leader_sublog_nw_invariant in *.
     destruct Hinv as [Hhost Hnw].
     find_apply_lem_hyp ghost_packet.

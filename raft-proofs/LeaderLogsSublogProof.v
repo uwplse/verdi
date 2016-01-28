@@ -92,7 +92,7 @@ Section LeaderLogsSublog.
     find_rewrite_lem update_elections_data_client_request_leaderLogs.
     find_erewrite_lem update_nop_ext' .
     update_destruct.
-    - destruct (log d) using (handleClientRequest_log_ind $(eauto)$).
+    - destruct (log d) using (handleClientRequest_log_ind ltac:(eauto)).
       + eauto.
       + simpl. right. eauto.
     - eauto.
