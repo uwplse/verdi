@@ -94,7 +94,7 @@ class IOThread(threading.Thread):
         self.outgoing_conns = {}
         # map from ips to lists of ServerConnection objects
         self.incoming_conns = defaultdict(list)
-        # set of ip addresses
+        # set of ips
         self.dead_nodes = set()
 
         self.logger = logging.getLogger(__name__ + "({})".format(self.ip))
@@ -105,8 +105,6 @@ class IOThread(threading.Thread):
         self.daemon = True
 
     def send(self, dst, msg):
-        if dst.ip in self.dead_nodes:
-            raise DeadNode(dst)
         self.sends.put((dst.ip, msg))
 
     def recv(self, timeout=RECV_TIMEOUT):
@@ -115,9 +113,7 @@ class IOThread(threading.Thread):
         except Empty:
             # timed out
             return None
-        # we ignore dead nodes completely
-        if ip not in self.dead_nodes:
-            return Pointer(ip), msg
+        return Pointer(ip), msg
 
     def listen(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
