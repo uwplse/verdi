@@ -59,7 +59,7 @@ def get_best_predecessor(node, id, cb):
 # state -> pointer -> query
 def rectify_query(pred, notifier):
     def cb(state, pong):
-        if pong is None or between(state.pred.id, notifier.id, state.id):
+        if pong is None or between(state.pred.id, notifier.id, state.ptr.id):
             return None, state._replace(pred=notifier)
         else:
             return None, state
@@ -79,7 +79,7 @@ def stabilize_query(succ):
             new_succ = pred
             new_succs = trim_succs([succ] + succs)
             new_state = state._replace(succ_list=new_succs)
-            if between(state.id, new_succ.id, succ.id):
+            if between(state.ptr.id, new_succ.id, succ.id):
                 return stabilize2(new_succ), new_state
             else:
                 return notify(succ), new_state
@@ -104,7 +104,7 @@ def join_query(known):
             return join2(new_succ), state
         else:
             return None, state
-    return lookup_succ(known, state.id, cb)
+    return lookup_succ(known, state.ptr.id, cb)
 
 # pointer -> id -> (msg -> query * state) -> query
 def lookup_succ(node, id, cb):
@@ -170,12 +170,10 @@ class Node(object):
 
     def __init__(self, ip, pred=None, succ_list=None,
             stabilize_interval=DEFAULT_STABILIZE_INTERVAL):
-        self.ip = ip
-        self.ptr = Pointer(ip)
-        self.id = self.ptr.id
-        self.logger = logging.getLogger(__name__ + "({})".format(self.id))
+        ptr = Pointer(ip)
+        self.logger = logging.getLogger(__name__ + "({})".format(ptr.id))
         self.stabilize_interval = stabilize_interval
-        state = State(id=self.id, pred=pred, succ_list=[], joined=False,
+        state = State(ptr=ptr, pred=pred, succ_list=[], joined=False,
                 rectify_with=None)
         self.query = None
 
@@ -192,7 +190,7 @@ class Node(object):
 
         self.state = state
 
-        self.io = IOThread(self.ip)
+        self.io = IOThread(ip)
         self.started = False
 
         # map from ids to the clients that have asked for the id's successor
@@ -251,9 +249,9 @@ class Node(object):
     # but I have no finger tables (yet)
     def best_predecessor(self, state, id):
         for node in reversed(state.succ_list):
-            if between(state.id, node.id, id):
+            if between(state.ptr.id, node.id, id):
                 return node
-        return self.ptr
+        return state.ptr
 
     # state -> ptr -> msg -> [ptr * msg], state
     # side effects: changing self.query
@@ -380,7 +378,7 @@ def kill_demo():
     kill_idx = 17
     time.sleep(2)
     for kill_idx in [3,5]:
-        logging.warn("killing node {}".format(nodes[kill_idx].id))
+        logging.warn("killing node {}".format(nodes[kill_idx].state.ptr.id))
         procs[kill_idx].terminate()
     procs[0].join()
 

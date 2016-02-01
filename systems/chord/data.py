@@ -14,7 +14,7 @@ def hash(string):
 
 Query = namedtuple("Query", ["dst", "msg", "res_kind", "cb"])
 State = namedtuple("State", [
-    "id",
+    "ptr",
     "pred",
     "succ_list",
     "joined",
