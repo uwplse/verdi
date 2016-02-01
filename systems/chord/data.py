@@ -13,7 +13,12 @@ def hash(string):
     return long(h.hexdigest(), 16) % ID_SPACE_SIZE
 
 Query = namedtuple("Query", ["dst", "msg", "res_kind", "cb"])
-State = namedtuple("State", ["id", "pred", "succ_list", "joined"])
+State = namedtuple("State", [
+    "id",
+    "pred",
+    "succ_list",
+    "joined",
+    "rectify_with"])
 
 @total_ordering
 class Pointer(object):

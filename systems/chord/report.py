@@ -176,7 +176,12 @@ def print_report_for(nodes, line, buffered_lines, starting_up, last):
 
     # a node isn't *really* a node until its join operation has completed.
     visible_nodes = {id: node for id, node in nodes.items() if node.joined}
-    results, aux_results = report(dict(visible_nodes))
+    try:
+        results, aux_results = report(dict(visible_nodes))
+    except NodeLostSuccessors:
+        print indent + "\t" + line
+        print_state(visible_nodes)
+        raise
     if starting_up and all(results.values()):
         starting_up = False
     outputs = []
@@ -193,11 +198,14 @@ def print_report_for(nodes, line, buffered_lines, starting_up, last):
     print last_result + "\t" + line[:-1]
 
     if not starting_up and not all(results.values()):
-        for id in sorted(visible_nodes):
-            print "{}\t{}\t{}".format(visible_nodes[id].pred, id, visible_nodes[id].succ_list)
+        print_state(visible_nodes)
         die("invariant broken!")
 
     return [], starting_up, last_result
+
+def print_state(nodes):
+    for id in sorted(nodes):
+        print "{}\t{}\t{}".format(nodes[id].pred, id, nodes[id].succ_list)
 
 for i, invariant in enumerate(invariants):
     print "| " * i + invariant
