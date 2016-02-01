@@ -33,7 +33,20 @@ running Chord nodes. The ring is ideal because each Chord node is initialized
 with globally correct successor lists and predecessor pointers. The processes
 communicate using TCP over the localhost IP network. Once all those processes
 are up and running, the original process terminates two of the nodes, and the
-remaining nodes are left to restore the ring to an ideal state. 
+remaining nodes are left to restore the ring to an ideal state.
+
+Note that on OS X, 127.0.0.1 seems to be the only address set up as a
+loopback address by default (as opposed to the whole 127.0.0.0/8
+subnet as on Linux). The chord demo relies on multiple addresses in
+127.0.0.0/24, so before running it on OS X you'll need to do the
+following:
+
+```
+for ((i=2;i<256;i++))
+do
+    sudo ifconfig lo0 alias 127.0.0.$i up
+done
+```
 
 Understanding the output of the demo
 ====================================
