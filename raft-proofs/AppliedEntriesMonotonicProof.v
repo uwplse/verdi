@@ -6,6 +6,7 @@ Require Import Omega.
 Require Import Permutation.
 
 Require Import Net.
+Require Import GhostSimulations.
 Require Import Util.
 Require Import VerdiTactics.
 Require Import UpdateLemmas.
