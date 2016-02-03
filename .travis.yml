@@ -4,3 +4,4 @@ sudo: false
 notifications:
   slack:
     secure: QNV6vNowWxm2I9HkiZWSMvzuCF0IZ0DkOtrSjSeca2HhSZ5tmk7/bo6Yg21+ADJzoFeiFGqV8Zs+5BAZDDWik9DO6yS5IFPPqtQAtiHy5xeVjjfZtdBLgGnDBkCGyIcJCsM9f3x6H6atnLTs2u3LGqhsL0+AJULXteNRQ03XiU0=
+    on_start: always
