@@ -1891,7 +1891,7 @@ Proof.
     repeat find_rewrite. intuition.
 Qed.
 
-Require Import ssreflect.
+Require Import mathcomp.ssreflect.ssreflect.
 
 Lemma map_eq_inv :
   forall (A B : Type) (f : A -> B) (l : list A) xs ys,

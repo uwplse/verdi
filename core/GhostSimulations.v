@@ -16,7 +16,7 @@ Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 Require Import FunctionalExtensionality.
 Require Import Simulations.
 
-Require Import ssreflect.
+Require Import mathcomp.ssreflect.ssreflect.
 
 Set Implicit Arguments.
 
