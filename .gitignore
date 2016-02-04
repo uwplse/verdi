@@ -1,6 +1,7 @@
 *.vo
 *.glob
 *.v.d
+_CoqProject
 Makefile.coq
 *~
 .coq-native/
