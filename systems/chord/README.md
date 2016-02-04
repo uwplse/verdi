@@ -1,7 +1,9 @@
 Quick start
 -----------
-Run `python2 node.py | python2 report.py | grep -v DEBUG` and watch the `f`s
-turn into `t`s.
+Run `python2 demo.py | python2 report.py | grep -v DEBUG` and watch the `f`s
+turn into `t`s. If you're not using Linux you probably have to bring more
+localhost IPs up before this will work: see the bottom of the "Running it"
+section for how to fix that.
 
 Introduction
 ============
@@ -24,16 +26,18 @@ code's general disorganization, and when I fix that I'll be sure to get the
 demo separated from the chord implementation itself. 
 
 That said, the demo is pretty satisfying to watch. As mentioned above, running
-`python2 node.py | python2 report.py` will get it going. Grepping out all the
+`python2 demo.py | python2 report.py` will get it going. Grepping out all the
 `DEBUG` lines will make the output far less noisy but is, of course, unwise if
 you're trying to debug anything.
 
-The demo in `node.py` creates an ideal Chord ring composed of 40 subprocesses
+The demo in `demo.py` creates an ideal Chord ring composed of 40 subprocesses
 running Chord nodes. The ring is ideal because each Chord node is initialized
 with globally correct successor lists and predecessor pointers. The processes
 communicate using TCP over the localhost IP network. Once all those processes
-are up and running, the original process terminates two of the nodes, and the
-remaining nodes are left to restore the ring to an ideal state.
+are up and running, the original process terminates two of them (causing two
+node failures) and shortly afterward adds another node with the join protocol.
+The remaining nodes will restore the ring to an ideal state, so that eventually
+the demo hosts an ideal Chord ring of 39 nodes.
 
 Note that on OS X, 127.0.0.1 seems to be the only address set up as a
 loopback address by default (as opposed to the whole 127.0.0.0/8
@@ -50,7 +54,7 @@ done
 
 Understanding the output of the demo
 ====================================
-The code in `node.py` logs any changes to node state, including predecessor
+The code in `demo.py` logs any changes to node state, including predecessor
 pointers and successor pointers. The checker in `report.py` parses out these
 changes from the logs.
 
