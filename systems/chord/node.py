@@ -7,8 +7,8 @@ from data import *
 from net import IOThread, DeadNode
 
 # these should be higher in real life, probably
-DEFAULT_STABILIZE_INTERVAL = 4
-QUERY_TIMEOUT = 1
+DEFAULT_STABILIZE_INTERVAL = 10
+QUERY_TIMEOUT = 5
 
 def between(a, x, b):
     if a < b:
@@ -216,6 +216,12 @@ class Node(object):
     # state -> msg -> [ptr * msg] * state
     # side effects: sets self.query to None (or to the next query returned by the current one)
     def end_query(self, state, msg):
+        duration = time.time() - self.query_sent
+        dst = self.query.dst
+        if msg is not None:
+            self.logger.debug("query to {} completed in {} seconds".format(dst, duration))
+        else:
+            self.logger.debug("query to {} failed after {} seconds".format(dst, duration))
         output, state = self.query.cb(state, msg)
         self.query = None
         if output is None:
