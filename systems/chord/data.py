@@ -21,6 +21,27 @@ State = namedtuple("State", [
     "joined",
     "rectify_with"])
 
+def between(a, x, b):
+    if a < b:
+        return a < x < b
+    else:
+        return a < x or x < b
+
+def make_succs(head, rest):
+    succs = [head] + rest
+    if len(succs) > SUCC_LIST_LEN:
+        return succs[:SUCC_LIST_LEN]
+    else:
+        return succs
+
+# this is like closest_preceding_finger in the chord paper
+# but I have no finger tables (yet)
+def best_predecessor(state, id):
+    for node in reversed(state.succ_list):
+        if between(state.ptr.id, node.id, id):
+            return node
+    return state.ptr
+
 @total_ordering
 class Pointer(object):
     def __init__(self, ip, id=None):
