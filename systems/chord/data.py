@@ -17,6 +17,7 @@ State = namedtuple("State", [
     "ptr",
     "pred",
     "succ_list",
+    "known",
     "joined",
     "rectify_with"])
 

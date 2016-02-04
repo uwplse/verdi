@@ -34,17 +34,6 @@ def trim_succs(succs):
     else:
         return succs
 
-def remove_all_refs(state, ptr):
-    if state.pred == ptr:
-        state = state._replace(pred=None)
-    if state.rectify_with == ptr:
-        state = state._replace(rectify_with=None)
-    if ptr in state.succ_list:
-        new_list = state.succ_list[:]
-        new_list.remove(ptr)
-        state = state._replace(succ_list=new_list)
-    return state
-
 # pointer -> (msg -> query or [msg], state) -> query
 def ping(node, cb):
     return Query(node, Message("ping"), "pong", cb)
@@ -55,6 +44,11 @@ def get_pred_and_succs(node, cb):
 def get_best_predecessor(node, id, cb):
     return Query(node, Message("get_best_predecessor", [id]),
             "got_best_predecessor", cb)
+def notify(node):
+    if node is None:
+        raise TypeError(node)
+    return [(node, Message("notify"))]
+
 
 # state -> pointer -> query
 def rectify_query(pred, notifier):
@@ -65,14 +59,10 @@ def rectify_query(pred, notifier):
             return None, state
     return ping(pred, cb)
 
-def notify(node):
-    if node is None:
-        raise TypeError(node)
-    return [(node, Message("notify"))]
-
 # state -> query or single notify message
 def stabilize_query(succ):
     def cb(state, msg):
+        assert succ == state.succ_list[0]
         if msg is not None:
             pred_and_succ_list = msg.data
             pred, succs = pred_and_succ_list[0], pred_and_succ_list[1:]
@@ -84,7 +74,8 @@ def stabilize_query(succ):
             else:
                 return notify(succ), new_state
         else:
-            return None, state
+            rest = state.succ_list[1:]
+            return stabilize_query(rest[0]), state._replace(succ_list=rest)
     return get_pred_and_succs(succ, cb)
 
 def stabilize2(new_succ):
@@ -97,14 +88,14 @@ def stabilize2(new_succ):
     return get_succ_list(new_succ, cb)
 
 # state -> pointer -> query
-def join_query(known):
+def join_query(known, me):
     def cb(state, msg):
         if msg is not None:
             new_succ = msg.data[0]
             return join2(new_succ), state
         else:
             return None, state
-    return lookup_succ(known, state.ptr.id, cb)
+    return lookup_succ(known, me, cb)
 
 # pointer -> id -> (msg -> query * state) -> query
 def lookup_succ(node, id, cb):
@@ -174,7 +165,7 @@ class Node(object):
         self.logger = logging.getLogger(__name__ + "({})".format(ptr.id))
         self.stabilize_interval = stabilize_interval
         state = State(ptr=ptr, pred=pred, succ_list=[], joined=False,
-                rectify_with=None)
+                rectify_with=None, known=None)
         self.query = None
 
 
@@ -197,51 +188,49 @@ class Node(object):
         self.lookup_clients = defaultdict(list)
 
     def timeout_handler(self, state):
-        if self.query is None and state.joined:
-            self.last_stabilize = time.time()
-            return self.start_query(stabilize_query(state.succ_list[0])), state
+        msgs = []
+        if self.query is None:
+            if state.joined:
+                self.last_stabilize = time.time()
+                msgs = self.start_query(stabilize_query(state.succ_list[0]))
+            if not state.joined:
+                msgs = self.start_query(join_query(state.known, state.ptr.id))
         elif time.time() - self.query_sent > QUERY_TIMEOUT:
-            msgs, state = self.mark_node_dead(state, self.query.dst)
-            return msgs, state
+            msgs, state = self.end_query(state, None)
         else:
-            return [], state
+            msgs = []
+        return msgs, state
 
     # can only be run once we've joined and stabilized
     def main_loop(self):
         while True:
             if time.time() - self.last_stabilize > self.stabilize_interval:
                 outs, self.state = self.timeout_handler(self.state)
-                for dst, msg in outs:
-                    self.io.send(dst, msg)
+                self.send_all(outs)
             res = self.io.recv()
             if res is not None:
                 src, msg = res
                 sends, self.state = self.recv_handler(self.state, src, msg)
                 self.send_all(sends)
 
-    # state -> ptr -> [ptr * msg] * state
-    def mark_node_dead(self, state, ptr):
-        self.logger.debug("{}".format([p.id for p in state.succ_list]))
-        self.logger.debug("marking node {} dead".format(ptr.id))
-        state = remove_all_refs(state, ptr)
-        if self.query is not None and self.query.dst == ptr:
-            self.logger.debug("query {} failed".format(self.query))
-            output, state = self.query.cb(state, None) 
-            self.logger.debug("{}".format([p.id for p in state.succ_list]))
-            return self.handle_cb_result(state, output)
-        else:
-            return [], state
-
-    # state -> return value of a callback -> [ptr * msg] * state
-    def handle_cb_result(self, state, output):
+    # state -> msg -> [ptr * msg] * state
+    # side effects: sets self.query to None (or to the next query returned by the current one)
+    def end_query(self, state, msg):
+        output, state = self.query.cb(state, msg)
         self.query = None
         if output is None:
-            return self.try_rectify(state)
+            if state.joined:
+                return self.try_rectify(state)
+            else:
+                return [], state
         elif isinstance(output, Query):
             return self.start_query(output), state
         elif isinstance(output, list):
-            rectify_sends, state = self.try_rectify(state)
-            return output + rectify_sends, state
+            if state.joined:
+                rectify_sends, state = self.try_rectify(state)
+                return output + rectify_sends, state
+            else:
+                return output, state
         else:
             raise BadQueryCallbackResult(output)
 
@@ -275,14 +264,8 @@ class Node(object):
                 outs, state = self.try_rectify(state)
         elif kind == "ping":
             outs = [(src, Message("pong"))]
-        elif self.query is not None:
-            if kind == self.query.res_kind and src == self.query.dst:
-                res = self.query.cb(state, msg)
-                output, state = res
-                outs, state = self.handle_cb_result(state, output)
-            elif time.time() - self.query_sent > QUERY_TIMEOUT:
-                dead_msgs, state = self.mark_node_dead(state, self.query.dst)
-                outs, state = dead_msgs + self.recv_handler(state, src, msg)
+        elif self.query is not None and kind == self.query.res_kind and src == self.query.dst:
+            outs, state = self.end_query(state, msg)
         else:
             raise UnexpectedMessage(msg)
         return outs, state
@@ -317,6 +300,7 @@ class Node(object):
     # query -> [ptr * msg]
     # side effects: setting self.query_sent and self.query
     def start_query(self, query):
+        self.logger.debug(repr(query))
         if self.query is not None:
             raise InterruptedQuery(self.query)
         self.query = query
@@ -331,8 +315,9 @@ class Node(object):
         if len(state.succ_list) == 0:
             if known is None:
                 raise ValueError("can't join without a known node!")
+            state = state._replace(known=known)
             self.last_stabilize = time.time() - self.stabilize_interval
-            return self.start_query(join_query(known)), state
+            return self.start_query(join_query(state.known, state.ptr.id)), state
         else:
             # fake it
             self.last_stabilize = time.time()
@@ -363,12 +348,12 @@ def launch_ring_of(n):
 
 def join_demo():
     logging.debug("running join_demo()")
-    nodes, procs = launch_ring_of(10)
-    print "initial ring:", [node.ptr for node in nodes]
-    known = nodes[6].ptr
+    nodes, procs = launch_ring_of(4)
+    print "initial ring:", [node.state.ptr for node in nodes]
+    known = nodes[0].state.ptr
     new_node = Node("127.0.0.100")
     time.sleep(0.5)
-    print "adding new node:", new_node.ptr
+    print "adding new node:", new_node.state.ptr
     new_node.start(known)
 
 def kill_demo():
@@ -380,6 +365,13 @@ def kill_demo():
     for kill_idx in [3,5]:
         logging.warn("killing node {}".format(nodes[kill_idx].state.ptr.id))
         procs[kill_idx].terminate()
+
+    known = nodes[0].state.ptr
+    new_node = Node("127.0.0.100")
+    time.sleep(0.5)
+    print "adding new node:", new_node.state.ptr
+    new_node.start(known)
+
     procs[0].join()
 
 if __name__ == "__main__":
