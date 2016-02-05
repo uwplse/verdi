@@ -9,7 +9,7 @@ default: Makefile.coq
 	$(MAKE) -f Makefile.coq
 
 Makefile.coq: hacks _CoqProject
-	test -s _CoqProject || { echo "Run coqproject.sh before running make"; exit 1; }
+	test -s _CoqProject || { echo "Run ./configure before running make"; exit 1; }
 	coq_makefile -f _CoqProject -o Makefile.coq
 
 hacks: raft/RaftState.v
