@@ -7,7 +7,7 @@ from net import IOThread
 
 # Constants
 DEFAULT_STABILIZE_INTERVAL = 10
-QUERY_TIMEOUT = 5
+QUERY_TIMEOUT = 10
 
 ## Exceptions
 class QueryFailed(IOError):
@@ -21,7 +21,6 @@ class InterruptedQuery(RuntimeError):
 
 class BadQueryCallbackResult(TypeError):
     pass
-
 
 # pointer -> (msg -> query or [msg], state) -> query
 def ping(node, cb):
@@ -38,7 +37,6 @@ def get_best_predecessor(node, id, cb):
 
 def notify(node):
     return [(node, Message("notify"))]
-
 
 # pointer -> pointer -> query
 def rectify_query(pred, notifier):
@@ -141,6 +139,8 @@ class Node(object):
             if not hasattr(self, "_state") or self._state[i] != new_val:
                 name = new_state._fields[i]
                 val = new_state[i]
+                if "query" in name:
+                    continue
                 if isinstance(val, list) and len(val) > 0:
                     if isinstance(val[0], Pointer):
                         val = "[{}]".format(", ".join(str(p.id) for p in val))
@@ -155,9 +155,7 @@ class Node(object):
         self.logger = logging.getLogger(__name__ + "({})".format(ptr.id))
         self.stabilize_interval = stabilize_interval
         state = State(ptr=ptr, pred=pred, succ_list=[], joined=False,
-                rectify_with=None, known=None)
-        self.query = None
-
+                rectify_with=None, known=None, query=None, query_sent=None)
 
         if succ_list is None:
             if pred is not None:
@@ -203,24 +201,23 @@ class Node(object):
             self.io.send(dst, msg)
 
     # state -> msg -> [pointer * message] * state
-    # side effects: changes self.query
     def end_query(self, state, msg):
         # log timing data for calibrating timeouts
-        duration = time.time() - self.query_sent
-        dst = self.query.dst
+        duration = time.time() - state.query_sent
+        dst = state.query.dst
         if msg is not None:
             self.logger.debug("query to {} completed in {} seconds".format(dst, duration))
         else:
             self.logger.debug("query to {} failed after {} seconds".format(dst, duration))
 
-        output, state = self.query.cb(state, msg)
-        self.query = None
+        output, state = state.query.cb(state, msg)
+        state = state._replace(query=None)
         outs = []
         if output is None:
             if state.joined:
                 outs, state = self.try_rectify(state)
         elif isinstance(output, Query):
-            outs = self.start_query(output)
+            outs, state = self.start_query(state, output)
         elif isinstance(output, list):
             if state.joined:
                 rectify_sends, state = self.try_rectify(state)
@@ -232,32 +229,28 @@ class Node(object):
         return outs, state
 
     # state -> [pointer * message] * state
-    # side effects: changes self.query
     def try_rectify(self, state):
         if state.rectify_with is None:
             return [], state
-        if self.query is not None:
-            raise InterruptedQuery(self.query)
+        if state.query is not None:
+            raise InterruptedQuery(state.query)
         if state.pred is None:
             state = state._replace(pred=state.rectify_with)
             return [], state
         else:
             new_succ = state.rectify_with
             state = state._replace(rectify_with=None)
-            return self.start_query(rectify_query(state.pred, new_succ)), state
+            return self.start_query(state, rectify_query(state.pred, new_succ))
 
-    # query -> [ptr * msg]
-    # side effects: setting self.query_sent and self.query
-    def start_query(self, query):
+    # state, query -> [ptr * msg] * state
+    def start_query(self, state, query):
         self.logger.debug(repr(query))
-        if self.query is not None:
-            raise InterruptedQuery(self.query)
-        self.query = query
-        self.query_sent = time.time()
-        return [(query.dst, query.msg)]
+        if state.query is not None:
+            raise InterruptedQuery(state.query)
+        state = state._replace(query=query, query_sent=time.time())
+        return [(query.dst, query.msg)], state
 
     # state -> pointer -> message -> [pointer * message] * state
-    # side effects: changing self.query
     def recv_handler(self, state, src, msg):
         kind = msg.kind
         outs = []
@@ -273,11 +266,11 @@ class Node(object):
             outs = [(src, msg)]
         elif kind == "notify":
             state = state._replace(rectify_with=src)
-            if self.query is None:
+            if state.query is None:
                 outs, state = self.try_rectify(state)
         elif kind == "ping":
             outs = [(src, Message("pong"))]
-        elif self.query is not None and kind == self.query.res_kind and src == self.query.dst:
+        elif state.query is not None and kind == state.query.res_kind and src == state.query.dst:
             outs, state = self.end_query(state, msg)
         else:
             # if this comes up it's likely because queries are slow and we got a spurious timeout
@@ -285,16 +278,15 @@ class Node(object):
         return outs, state
 
     # state -> [pointer * message] * state
-    # side effects: changing self.query
     def timeout_handler(self, state):
         msgs = []
-        if self.query is None:
+        if state.query is None:
             if state.joined:
                 self.last_stabilize = time.time()
-                msgs = self.start_query(stabilize_query(state.succ_list[0]))
+                msgs, state = self.start_query(state, stabilize_query(state.succ_list[0]))
             if not state.joined:
-                msgs = self.start_query(join_query(state.known, state.ptr.id))
-        elif time.time() - self.query_sent > QUERY_TIMEOUT:
+                msgs, state = self.start_query(state, join_query(state.known, state.ptr.id))
+        elif time.time() - state.query_sent > QUERY_TIMEOUT:
             msgs, state = self.end_query(state, None)
         else:
             msgs = []
@@ -309,7 +301,7 @@ class Node(object):
                 raise ValueError("can't join without a known node!")
             state = state._replace(known=known)
             self.last_stabilize = time.time() - self.stabilize_interval
-            return self.start_query(join_query(state.known, state.ptr.id)), state
+            return self.start_query(state, join_query(state.known, state.ptr.id))
         else:
             # fake it
             self.last_stabilize = time.time()

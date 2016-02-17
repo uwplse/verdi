@@ -19,7 +19,9 @@ State = namedtuple("State", [
     "succ_list",
     "known",
     "joined",
-    "rectify_with"])
+    "rectify_with",
+    "query",
+    "query_sent"])
 
 def between(a, x, b):
     if a < b:

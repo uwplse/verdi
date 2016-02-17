@@ -31,7 +31,7 @@ def kill_demo():
     logging.debug("running kill_demo()")
     nodes, procs = launch_ring_of(40)
     time.sleep(2)
-    for kill_idx in [3,5]:
+    for kill_idx in [3, 5, 12]:
         logging.warn("killing node {}".format(nodes[kill_idx].state.ptr.id))
         procs[kill_idx].terminate()
 
