@@ -2,141 +2,134 @@ Require Import Arith.
 Require Import List.
 Import ListNotations.
 
-Section Chord.
-    Definition addr := nat.
-    Definition key := addr.
+Definition addr := nat.
+Definition id := nat.
+Definition addr_dec := Nat.eq_dec.
+Definition pointer := (id * addr)%type.
+Definition id_of (p : pointer) : id := fst p.
+Definition addr_of (p : pointer) : addr := snd p.
+Definition SUCC_LIST_LEN := 5.
 
-    (* true iff n in (a, b) on some sufficiently large "circle" *)
-    Definition between (a : nat) (b : nat) (n : nat) : bool :=
-      match nat_compare a b with
-      | Eq => false (* this really shouldn't happen. thanks for reading *)
-      (* this seems.. unnecessary? *)
-      | Lt => if (gt_dec a n) then if (lt_dec n b) then true else false else false
-      | Gt => if (gt_dec n a) then true else if (lt_dec n b) then true else false
-      end.
+Inductive payload :=
+| GetBestPredecessor : addr -> payload
+| GotBestPredecessor : pointer -> payload
+| GetSuccList : payload
+| GotSuccList : list pointer -> payload
+| GetPredAndSuccs : payload
+| GotPredAndSuccs : option pointer -> list pointer -> payload
+| Notify : payload
+| Ping : payload
+| Pong : payload.
 
-    Inductive liveness :=
-      | Unknown : liveness
-      | Pinged : liveness
-      | Live : liveness
-      | Dead : liveness.
+Inductive query_kind :=
+(* needs a pointer to the notifier *)
+| Rectify : pointer -> query_kind
+| Stabilize : query_kind
+(* needs a new successor *)
+| Stabilize2 : pointer -> query_kind
+(* needs a known node *)
+| Join : pointer -> query_kind
+(* needs a node (pointer) to ask for the successor of an id *)
+| LookupSucc : pointer -> id -> query_kind
+(* ditto *)
+| LookupPredecessor : pointer -> id -> query_kind
+(* needs a node to get the successor of*)
+| GetSucc : pointer -> query_kind
+(* needs to know new successor *)
+| Join2 : pointer -> query_kind.
 
-    Definition node_pointer := option (addr * liveness).
+Record query := Query { query_dst : pointer ;
+                        msg : payload ;
+                        kind : query_kind }.
 
-    (* data for a given node *)
-    Record data := mkData { succ : node_pointer;
-                           succ2 : node_pointer;
-                           pred : node_pointer }.
+Record data := Data { ptr : pointer ;
+                      pred : option pointer ;
+                      succ_list : list pointer ;
+                      known : option pointer ;
+                      joined : bool ;
+                      rectify_with : option pointer ;
+                      cur_query : option query ;
+                      query_sent : bool }.
 
-    Inductive payload :=
-    (* join event *)
-    | FindSucc : addr -> payload
-    | FoundSucc : addr -> payload
-    (* stabilize event *)
-    | LookupYourPred : payload
-    | FoundMyPred : addr -> payload
-    (* notify event *)
-    | NotifySucc : payload
-    (* reconcile event *)
-    | LookupYourSucc : payload
-    | FoundMySucc : addr -> payload
-    (* update and reconcile events *)
-    | Ping : payload
-    | Pong : payload.
+Definition update_pred (st : data) (p : pointer) := Data (ptr st) (Some p) (succ_list st) (known st) (joined st) (rectify_with st) (cur_query st) (query_sent st).
 
-    Definition find_succ_handler (src : addr) (dst : addr) (st : data) (asker : addr) : list (addr * payload) :=
-      match succ st with
-      | Some (addr, _)  => if between dst (addr + 1) asker
-                          then [(asker, FoundSucc addr)]
-                          else match pred st with
-                               | Some (addr, _) => [(addr, FindSucc asker)]
-                               | None => []
-                               end
-      | None => []
-      end.
+Definition make_request (h : addr) (st : data) (k : query_kind) : option (pointer * payload) :=
+    match k with
+    | Rectify notifier => match pred st with
+                          | Some p => Some (p, Ping)
+                          | None => None
+                          end
+    | Stabilize => match head (succ_list st) with
+                   | Some succ => Some (succ, GetPredAndSuccs)
+                   | None => None
+                   end
+    | Stabilize2 new_succ => Some (new_succ, GetSuccList)
+    | Join known => Some (known, GetBestPredecessor h)
+    | LookupSucc host id => Some (host, GetBestPredecessor id)
+    | LookupPredecessor host id => Some (host, GetBestPredecessor id)
+    | GetSucc ptr => Some (ptr, GetSuccList)
+    | Join2 new_succ => Some (new_succ, GetSuccList)
+    end.
 
-    Definition stabilize_handler (src : addr) (dst : addr) (st : data) (p : addr) : list (addr * payload) * data :=
-      match succ st with
-      | Some (addr, l) => if between dst addr p
-                    then ([(p, NotifySucc)], (mkData (Some (p, l)) (succ st) (pred st)))
-                    else ([(addr, NotifySucc)], st)
-      | None => ([], st)
-      end.
+Definition make_query (h : addr) (st : data) (k : query_kind) : option query :=
+    match make_request h st k with
+    | Some (d, m) => Some (Query d m k)
+    | None => None
+    end.
 
-    Definition pong_handler (p : node_pointer) (src : addr) :=
-      match p with
-      | Some (addr, Pinged) => if beq_nat addr src then Some (addr, Live) else p
-      | _ => p
-      end.
+(* true iff n in (a, b) on some sufficiently large "circle" *)
+Definition between_bool (a : nat) (x : nat) (b : nat) : bool :=
+  if lt_dec a b
+    then if (lt_dec a x)
+      then if (lt_dec x b)
+        then true
+        else false
+      else false
+    else
+      if (lt_dec a x)
+        then true
+        else if (lt_dec x b)
+          then true
+          else false.
 
-    Definition recv_handler (src : addr) (dst : addr) (st : data) (msg : payload) : list (addr * payload) * data :=
-      match msg with
-      | FindSucc addr => ((find_succ_handler src dst st addr), st)
-      (* how can I change just one field of a record? *)
-      | FoundSucc s => ([(s, LookupYourPred)], (mkData (Some (s, Unknown)) (succ2 st) (pred st)))
-      | LookupYourPred => match pred st with
-                         | Some (p, Live) => ([(src, FoundMyPred p)], st)
-                         | _ => ([], st)
-                         end
-      | FoundMyPred p => stabilize_handler src dst st p
-      | NotifySucc => match pred st with
-                     | Some (p, Live) => ([], if between p dst src then mkData (succ st) (succ2 st) (Some (src, Unknown)) else st)
-                     | _ => ([], st)
-                     end
-      | LookupYourSucc => match succ st with
-                         | Some (s, Live) => ([(src, FoundMySucc s)], st)
-                         | _ => ([], st)
-                         end
-      | FoundMySucc s => ([], mkData (succ st) (Some (s, Unknown)) (pred st))
-      | Ping => ([(src, Pong)], st)
-      | Pong => ([], mkData (pong_handler (succ st) src)
-                           (pong_handler (succ2 st) src)
-                           (pong_handler (pred st) src))
-      end.
+Definition make_succs (head : pointer) (rest : list pointer) : list pointer :=
+  firstn SUCC_LIST_LEN (head :: rest).
 
-    Definition do_ping (p : node_pointer) : list (addr * payload) :=
-      match p with
-      | Some (a, Unknown) => [(a, Ping)]
-      | Some (a, Live) => [(a, Ping)]
-      | _ => nil
-      end.
+Definition best_predecessor (h : addr) (st : data) (id : addr) : pointer :=
+  let splits (s : pointer) : bool := between_bool h (addr_of s) id
+  in match head (filter splits (rev (succ_list st))) with
+     | Some succ => succ
+     | None => ptr st
+     end.
 
-    Definition do_ping_st (p : node_pointer) : node_pointer :=
-      match p with
-      | Some (addr, Pinged) => Some (addr, Dead)
-      | Some (addr, Unknown) => Some (addr, Pinged)
-      | Some (addr, Live) =>   Some (addr, Pinged)
-      | _ => p
-      end.
+Definition handle_rectify (h : addr) (st : data) (my_pred : pointer) (q : query) (notifier : pointer) : list (addr * payload) * data :=
+  if between_bool (id_of my_pred) (id_of notifier) (id_of (ptr st))
+  then ([], update_pred st notifier)
+  else ([], st).
 
-    Definition do_pings (st : data) : list (addr * payload) :=
-      do_ping (succ st) ++ do_ping (succ2 st) ++ do_ping (pred st).
+Definition handle_query (h : addr) (st : data) (q : query) (msg : payload) : list (addr * payload) * data :=
+  match kind q with
+  | Rectify notifier => match msg with
+                        | Pong => match (pred st) with
+                                  | Some p => handle_rectify h st p q notifier
+                                  | None => ([], st)
+                                  end
+                        | _ => ([], st)
+                        end
+  | _ => ([], st)
+  end.
 
-    Definition do_ping_states (st : data) : data :=
-      mkData (do_ping_st (succ st))
-             (do_ping_st (succ2 st))
-             (do_ping_st (pred st)).
+Definition recv_handler (src : addr) (dst : addr) (st : data) (msg : payload) : list (addr * payload) * data :=
+  match msg with
+  | Ping => ([(src, Pong)], st)
+  | GetSuccList => ([(src, GotSuccList (succ_list st))], st)
+  | GetPredAndSuccs => ([(src, GotPredAndSuccs (pred st) (succ_list st))], st)
+  | GetBestPredecessor id => ([(src, GotBestPredecessor (best_predecessor dst st id))], st)
+  | _ => match cur_query st with
+         | Some q => if addr_dec (addr_of (query_dst q)) src then handle_query dst st q msg else ([], st)
+         | None => ([], st)
+         end
+  end.
 
-    Definition start_reconcile (st : data) : list (addr * payload) :=
-      match succ st with
-      | Some (a, Dead) => nil
-      | Some (a, _) => [(a, LookupYourSucc)]
-      | None => nil
-      end.
 
-    Definition do_update (st : data) : data :=
-      match succ st with
-      | Some (a, Dead) => mkData (succ2 st) None (pred st)
-      | _ => st
-      end.
-
-    Definition do_flush (st : data) : data :=
-      match pred st with
-      | Some (a, Dead) => mkData (succ st) (succ2 st) None
-      | _ => st
-      end.
-
-    Definition timeout_handler (node : addr) (st : data) : list (addr * payload) * data :=
-      (start_reconcile st ++ do_pings st,
-       (do_flush (do_update (do_ping_states st)))).
-End Chord.
+Definition timeout_handler (node : addr) (st : data) : list (addr * payload) * data := ([], st).
