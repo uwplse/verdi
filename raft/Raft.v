@@ -71,18 +71,20 @@ Section Raft.
   | Leader.
 
   Definition serverType_eq_dec : forall x y : serverType, {x = y} + {x <> y}.
-  Proof.
-    repeat decide equality.
-  Defined.
-  
+  Proof. decide equality. Defined.
+
+  Definition term_eq_dec : forall x y : term, {x = y} + {x <> y}.
+  Proof. apply eq_nat_dec. Qed.
+
+  Definition entry_eq_dec : forall x y : entry, {x = y} + {x <> y}.
+  Proof. decide equality; eauto using input_eq_dec, name_eq_dec, term_eq_dec. Qed.
+
+
   Definition msg_eq_dec : forall x y: msg, {x = y} + {x <> y}.
   Proof.
-    repeat decide equality; eauto using name_eq_dec, input_eq_dec.
-  Qed.
-  
-  Definition entry_eq_dec : forall x y : entry, {x = y} + {x <> y}.
-  Proof.
-    repeat decide equality; eauto using input_eq_dec, name_eq_dec.
+    decide equality;
+      eauto using name_eq_dec, input_eq_dec, term_eq_dec, Bool.bool_dec,
+                  list_eq_dec, entry_eq_dec.
   Qed.
 
   Definition raft_data :=
