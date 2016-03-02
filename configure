@@ -9,7 +9,7 @@
 DEPS=()
 
 # Directories containing coq files
-DIRS=(core lib systems raft raft-proofs extraction/vard/coq)
+DIRS=(core lib systems raft raft-proofs)
 
 # Namespaces corresponding to directories. By default, everything is in "".
 # To put "theories" in the "FermatsTheorem" namespace:
