@@ -11,7 +11,7 @@ default: Makefile.coq
 Makefile.coq: hacks _CoqProject
 	test -s _CoqProject || { echo "Run ./configure before running make"; exit 1; }
 	coq_makefile -f _CoqProject -o Makefile.coq
-	sed -i 's:^TIMECMD=$$:TIMECMD=$(PWD)/script/build-timer.sh:' Makefile.coq
+	sed -i 's:^TIMECMD=$$:TIMECMD=$(PWD)/proofalytics/build-timer.sh:' Makefile.coq
 
 hacks: raft/RaftState.v
 
@@ -21,8 +21,9 @@ raft/RaftState.v:
 clean:
 	if [ -f Makefile.coq ]; then \
 	  $(MAKE) -f Makefile.coq clean; fi
-	rm -f Makefile.coq build-times.csv proof-sizes.csv
+	rm -f Makefile.coq
 	find . -name '*.buildtime' -delete
+	$(MAKE) -C proofalytics clean
 
 vard: Makefile.coq
 	$(MAKE) -f Makefile.coq systems/VarD.vo
@@ -34,6 +35,6 @@ lint:
 	find . -name '*.v' -exec grep -Hn 'H[0-9][0-9]*' {} \;
 
 proofalytics:
-	$(PWD)/script/proofalytics.sh
+	$(MAKE) -C proofalytics
 
 .PHONY: default clean vard lint hacks proofalytics
