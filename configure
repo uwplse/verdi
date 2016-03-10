@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ### coqproject.sh
 ### Creates a _CoqProject file, including external dependencies.
@@ -6,7 +6,7 @@
 ## Configuration options
 
 # External dependencies
-DEPS=()
+DEPS=(mathcomp)
 
 # Directories containing coq files
 DIRS=(core lib systems raft raft-proofs)
@@ -63,6 +63,5 @@ for extra in ${EXTRA[@]}; do
         echo $extra >> $COQPROJECT_TMP
     fi
 done
-
 
 mv $COQPROJECT_TMP _CoqProject

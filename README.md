@@ -10,11 +10,18 @@ The Verdi Framework
 
 Requirements:
 
- - `coq 8.5`
+ - [`Coq 8.5`](https://coq.inria.fr/download)
+ - [`Mathematical Components 1.6`](http://math-comp.github.io/math-comp/)
 
-Running `make` in the root directory will compile the specifications
-and proofs of the core Verdi framework, as well as some simple
-examples. The files in the root directory include:
+Building:
+
+First run `./configure` in the Verdi root directory.  This will check for
+the appropriate version of Coq and ensure all necessary dependencies can be
+located.
+
+Then run `make` in the Verdi root directory.  This will compile the
+specifications and proofs of the core Verdi framework, as well as some
+simple examples. The files in the root directory include:
 
 - Core Verdi files:
     - `Net.v`: core network semantics, including ghost variables
