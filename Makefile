@@ -21,7 +21,7 @@ raft/RaftState.v:
 clean:
 	if [ -f Makefile.coq ]; then \
 	  $(MAKE) -f Makefile.coq clean; fi
-	rm -f Makefile.coq build-times.csv
+	rm -f Makefile.coq build-times.csv proof-sizes.csv
 	find . -name '*.buildtime' -delete
 
 vard: Makefile.coq
