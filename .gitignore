@@ -2,7 +2,6 @@
 *.glob
 *.v.d
 *.buildtime
-build-times.csv
 _CoqProject
 Makefile.coq
 Makefile.coq.bak
@@ -12,3 +11,5 @@ Makefile.coq.bak
 *.vio
 *.pyc
 .vagrant
+build-times.csv
+proof-sizes.csv

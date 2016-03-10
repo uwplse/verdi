@@ -7,7 +7,6 @@ endif
 
 default: Makefile.coq
 	$(MAKE) -f Makefile.coq
-	$(PWD)/script/proofalytics.sh
 
 Makefile.coq: hacks _CoqProject
 	test -s _CoqProject || { echo "Run ./configure before running make"; exit 1; }
@@ -34,4 +33,7 @@ lint:
 	echo "Possible use of hypothesis names:"
 	find . -name '*.v' -exec grep -Hn 'H[0-9][0-9]*' {} \;
 
-.PHONY: default clean vard lint hacks
+proofalytics:
+	$(PWD)/script/proofalytics.sh
+
+.PHONY: default clean vard lint hacks proofalytics
