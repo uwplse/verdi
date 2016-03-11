@@ -7,6 +7,8 @@ BUILD_TIMES="${PADIR}/build-times.csv"
 PROOF_SIZES="${PADIR}/proof-sizes.csv"
 INDEX="${PADIR}/index.html"
 
+COMMIT="$(git rev-parse HEAD)"
+
 function main {
   build-times
   proof-sizes
@@ -88,7 +90,8 @@ function mkindex {
 EOF
 
   cat ${PROOF_SIZES} \
-    | awk -f ${PADIR}/proof-sizes-links.awk \
+    | awk -v commit="$COMMIT" \
+          -f ${PADIR}/proof-sizes-links.awk \
     | awk -f ${PADIR}/csv-table.awk
 
   cat <<EOF
@@ -98,7 +101,8 @@ EOF
 EOF
 
   cat ${BUILD_TIMES} \
-    | awk -f ${PADIR}/build-times-links.awk \
+    | awk -v commit="$COMMIT" \
+          -f ${PADIR}/build-times-links.awk \
     | awk -f ${PADIR}/csv-table.awk
 
   cat <<EOF

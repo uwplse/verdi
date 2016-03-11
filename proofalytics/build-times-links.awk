@@ -2,7 +2,10 @@
 
 BEGIN {
   FS = ","
-  gh = "https://github.com/uwplse/verdi/blob/master"
+  if(commit == "") {
+    commit = "master"
+  }
+  gh = "https://github.com/uwplse/verdi/blob/" commit
 }
 
 {
