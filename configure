@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ### coqproject.sh
 ### Creates a _CoqProject file, including external dependencies.
@@ -63,6 +63,5 @@ for extra in ${EXTRA[@]}; do
         echo $extra >> $COQPROJECT_TMP
     fi
 done
-
 
 mv $COQPROJECT_TMP _CoqProject

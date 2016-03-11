@@ -1,8 +1,10 @@
 *.vo
 *.glob
 *.v.d
+*.buildtime
 _CoqProject
 Makefile.coq
+Makefile.coq.bak
 *~
 .coq-native/
 *.aux
