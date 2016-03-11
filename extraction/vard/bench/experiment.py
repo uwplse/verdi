@@ -93,7 +93,7 @@ def run_command(host, command, logfile):
         print "Too many retries, exiting"
         raise Timeout()
 
-def main(run_expt):
+def main(run_expt, run_cleanup):
     print 'Starting experiment'
     experiment_label = sys.argv[2] + datetime.now().strftime('-%Y-%m-%d-%H%M%S')
     os.mkdir(experiment_label)
@@ -148,11 +148,10 @@ def main(run_expt):
             while True:
                 pass
     finally:
-        for instance_name in experiment['instances']:
-            terminate(experiment['instances'][instance_name]['instance_id'])
-            pass
+        if run_cleanup:
+            for instance_name in experiment['instances']:
+                terminate(experiment['instances'][instance_name]['instance_id'])
 if __name__ == '__main__':
-    run_expt = True
-    if '--no-expt' in sys.argv:
-        run_expt = False
-    main(run_expt)
+    run_expt = "--no-expt" not in sys.argv
+    run_cleanup = "--no-cleanup" not in sys.argv
+    main(run_expt, run_cleanup)

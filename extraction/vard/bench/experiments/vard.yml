@@ -1,12 +1,11 @@
 provision: |
-  sudo su
-  cd /
-  echo "yes" | add-apt-repository ppa:avsm/ocaml41+opam12
-  apt-get update -qq
-  apt-get install -qq git make ocaml ocaml-native-compilers camlp4-extra
+  echo "yes" | sudo add-apt-repository ppa:avsm/ocaml41+opam12
+  sudo apt-get update -qq
+  sudo apt-get install -qq git make ocaml ocaml-native-compilers camlp4-extra
   wget 'http://homes.cs.washington.edu/~jrw12/coq-8.5-build-local.tgz'
   tar xf coq-8.5-build-local.tgz
-  export PATH=/coq-8.5/bin:$$PATH
+  echo "PATH=\"$$PWD/coq-8.5/bin:\$$PATH\"" >> ~/.profile
+  source ~/.profile
   # vard
   git clone https://github.com/uwplse/verdi.git
   pushd verdi
@@ -27,15 +26,15 @@ provision: |
   EOF
   ./configure && make vard
   popd
-  ln -s verdi/extraction/vard vard
+  sudo ln -s "$$PWD/verdi/extraction/vard" /vard
   # etcd
   curl -L https://github.com/coreos/etcd/releases/download/v2.0.9/etcd-v2.0.9-linux-amd64.tar.gz -o etcd-v2.0.9-linux-amd64.tar.gz
   tar xzf etcd-v2.0.9-linux-amd64.tar.gz
-  ln -s etcd-v2.0.9-linux-amd64 etcd
+  sudo ln -s "$$PWD/etcd-v2.0.9-linux-amd64" /etcd
 vars:
-  keys: 50
+  keys: 500
   threads: 8
-  requests: 100
+  requests: 10000
 instances:
   client:
   db1:
