@@ -1,8 +1,13 @@
 PYTHON=python2.7
 COQVERSION := $(shell coqc --version|grep "version 8.5")
+SSRCANARY := $(shell echo "From mathcomp.ssreflect Require Import ssreflect." | coqtop 2>&1 | grep -i error)
 
 ifeq "$(COQVERSION)" ""
 $(error "Verdi is only compatible with Coq version 8.5")
+endif
+
+ifneq "$(SSRCANARY)" ""
+$(error "Verdi requires mathcomp to be installed")
 endif
 
 default: Makefile.coq
