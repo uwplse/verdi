@@ -1,17 +1,16 @@
 provision: |
+  sudo su
   cd /
-  echo "yes" | sudo add-apt-repository ppa:avsm/ocaml41+opam12
-  sudo apt-get update -qq
-  sudo apt-get install -qq git make ocaml ocaml-native-compilers camlp4-extra
-  sudo wget http://homes.cs.washington.edu/~jrw12/coq-8.5beta2-build.tgz
-  sudo tar xf coq-8.5beta2-build.tgz
-  pushd coq-8.5beta2
-  sudo make install > /dev/null 2>&1
-  popd
+  echo "yes" | add-apt-repository ppa:avsm/ocaml41+opam12
+  apt-get update -qq
+  apt-get install -qq git make ocaml ocaml-native-compilers camlp4-extra
+  wget 'http://homes.cs.washington.edu/~jrw12/coq-8.5-build-local.tgz'
+  tar xf coq-8.5-build-local.tgz
+  export PATH=/coq-8.5/bin:$$PATH
   # vard
-  sudo git clone https://github.com/uwplse/verdi.git
+  git clone https://github.com/uwplse/verdi.git
   pushd verdi
-  sudo patch extraction/vard/ml/vard.ml <<EOF
+  patch extraction/vard/ml/vard.ml <<EOF
   --- verdi/extraction/vard/ml/vard.ml	2015-09-23 17:13:42.000000000 -0700
   +++ verdi_vard_patch/extraction/vard/ml/vard.ml	2015-09-23 16:54:15.000000000 -0700
   @@ -1,9 +1,9 @@
@@ -26,13 +25,13 @@ provision: |
   +            ; (3, ("$db3", 9001))
                ]
   EOF
-  sudo make vard
+  ./configure && make vard
   popd
-  sudo ln -s verdi/extraction/vard vard
+  ln -s verdi/extraction/vard vard
   # etcd
-  sudo curl -L https://github.com/coreos/etcd/releases/download/v2.0.9/etcd-v2.0.9-linux-amd64.tar.gz -o etcd-v2.0.9-linux-amd64.tar.gz
-  sudo tar xzf etcd-v2.0.9-linux-amd64.tar.gz
-  sudo ln -s etcd-v2.0.9-linux-amd64 etcd
+  curl -L https://github.com/coreos/etcd/releases/download/v2.0.9/etcd-v2.0.9-linux-amd64.tar.gz -o etcd-v2.0.9-linux-amd64.tar.gz
+  tar xzf etcd-v2.0.9-linux-amd64.tar.gz
+  ln -s etcd-v2.0.9-linux-amd64 etcd
 vars:
   keys: 50
   threads: 8
