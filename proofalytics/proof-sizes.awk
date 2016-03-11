@@ -1,7 +1,8 @@
 #!/usr/bin/env awk -f
 
-/Lemma|Theorem/ {
+/Lemma|Theorem|Definition/ {
   name  = $2
+  start = FNR
   proof = ""
   lines = 0
   words = 0
@@ -13,7 +14,10 @@
   words = words + NF
 }
 
-/Qed/ {
-  sub(/:$/, "", name)
-  printf("%s,%s,%d,%d,%d\n", FILENAME, name, lines, words, length(proof))
+/Qed\./ {
+  if(name != "") {
+    sub(/:$/, "", name)
+    printf("%s,%d,%d,%s,%d\n", name, lines, words, FILENAME, start)
+  }
+  name = ""
 }
