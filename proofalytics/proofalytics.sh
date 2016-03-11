@@ -69,6 +69,7 @@ function mkindex {
       height: 400px;
       border: 1px solid #4b2e83;
       overflow: auto;
+      margin-bottom: 40px;
     }
     table {
       border-spacing: 10px;
@@ -85,13 +86,21 @@ function mkindex {
   <h2>Proof Sizes</h2>
   <div class='scroller'>
 EOF
-  ${PADIR}/csv-table.awk proof-sizes.csv
+
+  cat ${PROOF_SIZES} \
+    | awk -f ${PADIR}/proof-sizes-links.awk \
+    | awk -f ${PADIR}/csv-table.awk
+
   cat <<EOF
   </div>
-  <h2>Compile Times</h2>
+  <h2>Build Times</h2>
   <div class='scroller'>
 EOF
-  ${PADIR}/csv-table.awk build-times.csv
+
+  cat ${BUILD_TIMES} \
+    | awk -f ${PADIR}/build-times-links.awk \
+    | awk -f ${PADIR}/csv-table.awk
+
   cat <<EOF
   </div>
 </body>

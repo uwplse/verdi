@@ -20,4 +20,3 @@ BEGIN {
 END {
   printf("</table>\n")
 }
-
