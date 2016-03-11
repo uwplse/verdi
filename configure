@@ -6,7 +6,7 @@
 ## Configuration options
 
 # External dependencies
-DEPS=(mathcomp)
+DEPS=()
 
 # Directories containing coq files
 DIRS=(core lib systems raft raft-proofs)
