@@ -7,7 +7,7 @@ Section Dynamic.
   Variable addr_eq_dec : forall x y : addr, {x = y} + {x <> y}.
   Variable payload : Type. (* must be serializable *)
   Variable data : Type.
-  Variable start_handler : addr -> addr -> list (addr * payload) * data.
+  Variable start_handler : addr -> list addr -> list (addr * payload) * data.
   Variable recv_handler : addr -> addr -> data -> payload -> list (addr * payload) * data.
   Variable timeout_handler : addr -> data -> list (addr * payload) * data.
   
@@ -47,10 +47,11 @@ Section Dynamic.
   (* no failures for now but easy to add *)
   Inductive step_dynamic : global_state -> global_state -> Prop :=
   | Start :
-      forall h gst ms st new_msgs known,
+      forall h gst ms st new_msgs known k,
         can_be_node h ->
         ~ In h (nodes gst) ->
-        In known (nodes gst) ->
+        (In k known -> In k (nodes gst)) ->
+        (known = [] -> (nodes gst) = []) ->
         start_handler h known = (ms, st) ->
         new_msgs = map (send h) ms ->
         step_dynamic gst {| nodes := h :: nodes gst;
