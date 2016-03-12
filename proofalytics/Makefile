@@ -1,8 +1,11 @@
 WEB_MACH=uwplse.org
 WEB_PATH=/var/www/verdi/dash
 
-proofalytics:
+proofalytics: timestamp-lines
 	./proofalytics.sh
+
+timestamp-lines: timestamp-lines.c
+	gcc $< -o $@
 
 publish:
 	rsync \

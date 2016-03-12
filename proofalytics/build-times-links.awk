@@ -1,5 +1,3 @@
-#!/usr/bin/env awk -f
-
 BEGIN {
   FS = ","
   if(commit == "") {

@@ -3,36 +3,37 @@
 set -e
 
 PADIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILD_TIMES="${PADIR}/build-times.csv"
 PROOF_SIZES="${PADIR}/proof-sizes.csv"
+PROOF_TIMES="${PADIR}/proof-times.csv"
+BUILD_TIMES="${PADIR}/build-times.csv"
 INDEX="${PADIR}/index.html"
 
 COMMIT="$(git rev-parse HEAD)"
 
 function main {
-  build-times
   proof-sizes
+  build-times
   mkindex > "$INDEX"
 }
 
 # making this a function doesn't work w/ xargs :\
 csvsort="sort --field-separator=, --numeric-sort --reverse"
 
+function proof-sizes {
+  echo "proof,lines,words,file,lineno" \
+    > "$PROOF_SIZES"
+  find ${PADIR}/.. -name '*.v' \
+    | xargs awk -f "${PADIR}/proof-sizes.awk" \
+    | sed "s:${PADIR}/../::g" \
+    | ${csvsort} --key=2 \
+    >> "$PROOF_SIZES"
+}
+
 function build-times {
   echo "file,time" > "$BUILD_TIMES"
   find ${PADIR}/.. -name '*.buildtime' \
     | xargs ${csvsort} --key=2 \
     >> "$BUILD_TIMES"
-}
-
-function proof-sizes {
-  echo "proof,lines,words,file,lineno" \
-    > "$PROOF_SIZES"
-  find ${PADIR}/.. -name '*.v' \
-    | xargs ${PADIR}/proof-sizes.awk \
-    | sed "s:${PADIR}/../::g" \
-    | ${csvsort} --key=2 \
-    >> "$PROOF_SIZES"
 }
 
 function mkindex {
@@ -88,23 +89,28 @@ function mkindex {
   <h2>Proof Sizes</h2>
   <div class='scroller'>
 EOF
-
-  cat ${PROOF_SIZES} \
+  cat "${PROOF_SIZES}" \
     | awk -v commit="$COMMIT" \
-          -f ${PADIR}/proof-sizes-links.awk \
-    | awk -f ${PADIR}/csv-table.awk
-
+          -f "${PADIR}/proof-sizes-links.awk" \
+    | awk -f "${PADIR}/csv-table.awk"
   cat <<EOF
   </div>
   <h2>Build Times</h2>
   <div class='scroller'>
 EOF
-
-  cat ${BUILD_TIMES} \
+  cat "${BUILD_TIMES}" \
     | awk -v commit="$COMMIT" \
-          -f ${PADIR}/build-times-links.awk \
-    | awk -f ${PADIR}/csv-table.awk
-
+          -f "${PADIR}/build-times-links.awk" \
+    | awk -f "${PADIR}/csv-table.awk"
+  cat <<EOF
+  </div>
+  <h2>Proof Times</h2>
+  <div class='scroller'>
+EOF
+  cat "${PROOF_TIMES}" \
+    | awk -v commit="$COMMIT" \
+          -f "${PADIR}/proof-times-links.awk" \
+    | awk -f "${PADIR}/csv-table.awk"
   cat <<EOF
   </div>
 </body>

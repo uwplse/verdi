@@ -1,6 +1,4 @@
-#!/usr/bin/env awk -f
-
-/Lemma|Theorem|Definition/ {
+/Lemma|Theorem|Corollary|Remark|Definition/ {
   name  = $2
   start = FNR
   proof = ""
@@ -14,7 +12,7 @@
   words = words + NF
 }
 
-/Qed\./ {
+/Qed\.|Defined\./ {
   if(name != "") {
     sub(/:$/, "", name)
     printf("%s,%d,%d,%s,%d\n", name, lines, words, FILENAME, start)
