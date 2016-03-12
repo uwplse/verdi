@@ -12,7 +12,7 @@ Makefile.coq: hacks _CoqProject
 	test -s _CoqProject || { echo "Run ./configure before running make"; exit 1; }
 	coq_makefile -f _CoqProject -o Makefile.coq
 	sed 's:^TIMECMD=$$:TIMECMD=$(PWD)/proofalytics/build-timer.sh:' Makefile.coq > Makefile.coq_timed
-	mv Makefile.coq_timed Makefil.coq
+	mv Makefile.coq_timed Makefile.coq
 
 hacks: raft/RaftState.v
 
