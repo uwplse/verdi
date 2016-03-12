@@ -56,6 +56,9 @@ Require Import CroniesTermProof.
 Require Import CroniesCorrectInterface.
 Require Import CroniesCorrectProof.
 
+Require Import VotesLeCurrentTermInterface.
+Require Import VotesLeCurrentTermProof.
+
 Require Import VotesCorrectInterface.
 Require Import VotesCorrectProof.
 

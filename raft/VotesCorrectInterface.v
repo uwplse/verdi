@@ -29,15 +29,9 @@ Section VotesCorrectInterface.
        votedFor (snd (nwState net h)) = Some n) ->
       In (t, n) (votes (fst (nwState net h))).
 
-
-  Definition votes_le_currentTerm net :=
-    forall h t n,
-      In (t, n) (votes (fst (nwState net h))) ->
-      t <= currentTerm (snd (nwState net h)).
-
   Definition votes_correct net :=
     one_vote_per_term net /\ votes_currentTerm_votedFor_correct net /\
-    currentTerm_votedFor_votes_correct net /\ votes_le_currentTerm net.
+    currentTerm_votedFor_votes_correct net.
 
   Class votes_correct_interface : Prop :=
     {

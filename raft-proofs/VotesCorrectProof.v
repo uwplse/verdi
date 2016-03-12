@@ -16,6 +16,7 @@ Require Import CommonTheorems.
 Require Import StructTact.StructTactics.
 
 Require Import VotesCorrectInterface.
+Require Import VotesLeCurrentTermInterface.
 
 Section VotesCorrect.
   Context {orig_base_params : BaseParams}.
@@ -23,12 +24,13 @@ Section VotesCorrect.
   Context {raft_params : RaftParams orig_base_params}.
 
   Context {rri : raft_refinement_interface}.
+  Context {vlcti : votes_le_current_term_interface}.
 
   Ltac split_votes_correct :=
+    intros; try pose proof votes_le_current_term_invariant _ ltac:(eauto);
     intuition; [ unfold one_vote_per_term in *
                | unfold votes_currentTerm_votedFor_correct in *
-               | unfold currentTerm_votedFor_votes_correct in *
-               | unfold votes_le_currentTerm in *].
+               | unfold currentTerm_votedFor_votes_correct in * ].
 
   Ltac start_proof :=
     simpl in *; intros; repeat find_higher_order_rewrite;
@@ -68,12 +70,6 @@ Section VotesCorrect.
       simpl in *; omega.
     - repeat break_match; repeat find_inversion; simpl in *; intuition eauto;
       repeat find_inversion; intuition; discriminate.
-    - unfold votes_le_currentTerm in *. simpl in *.
-      intros. repeat find_higher_order_rewrite.
-      repeat break_if; subst; simpl in *; eauto;
-      unfold update_elections_data_timeout, handleTimeout, tryToBecomeLeader in *;
-      repeat break_match; repeat find_inversion; simpl in *; intuition eauto;
-      find_inversion; eauto.
   Qed.
 
   Lemma votes_correct_append_entries :
@@ -107,8 +103,6 @@ Section VotesCorrect.
             do_bool; eauto using le_antisym].
     - repeat break_match; find_inversion; simpl in *; intuition eauto;
       try discriminate.
-    - repeat break_match; find_inversion; simpl in *; eauto;
-      try solve [do_bool; find_apply_hyp_hyp; omega].
   Qed.
 
   Lemma advanceCurrentTerm_monotonic :
@@ -229,16 +223,6 @@ Section VotesCorrect.
       repeat break_match; subst; repeat find_higher_order_rewrite;
       simpl in *; break_if; simpl in *; eauto;
       intuition; repeat find_rewrite; eauto; discriminate.
-    - unfold votes_le_currentTerm , update_elections_data_requestVoteReply in *.
-      find_apply_lem_hyp handleRequestVoteReply_spec.
-      intros.
-      repeat break_match; subst; repeat find_higher_order_rewrite;
-      simpl in *; break_if; simpl in *; eauto;
-      intuition; repeat find_rewrite; eauto;
-      match goal with
-        | [H : ?a < ?c |- ?b <= ?c] =>
-           assert (b <= a) by eauto; omega
-      end.
   Qed.
 
   Lemma votes_correct_do_leader :
