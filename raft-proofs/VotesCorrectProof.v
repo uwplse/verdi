@@ -12,11 +12,14 @@ Require Import RaftState.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 Require Import CommonTheorems.
+Require Import SpecLemmas.
 
 Require Import StructTact.StructTactics.
 
 Require Import VotesCorrectInterface.
 Require Import VotesLeCurrentTermInterface.
+
+Set Bullet Behavior "Strict Subproofs".
 
 Section VotesCorrect.
   Context {orig_base_params : BaseParams}.
@@ -105,21 +108,6 @@ Section VotesCorrect.
       try discriminate.
   Qed.
 
-  Lemma advanceCurrentTerm_monotonic :
-    forall st t,
-      currentTerm st <= currentTerm (advanceCurrentTerm st t).
-  Proof.
-    intros. unfold advanceCurrentTerm. break_if; simpl in *; do_bool; omega.
-  Qed.
-
-  Lemma advanceCurrentTerm_le :
-    forall st t t',
-      t' = currentTerm (advanceCurrentTerm st t) ->
-      t <= t'.
-  Proof.
-    intros. unfold advanceCurrentTerm in *. break_if; simpl in *; do_bool; omega.
-  Qed.
-
   Lemma handleRequestVote_currentTerm_monotonic :
     forall pDst t cid lli llt d d' m,
       handleRequestVote pDst d t cid lli llt = (d', m) ->
@@ -128,7 +116,7 @@ Section VotesCorrect.
     intros.
     unfold handleRequestVote in *.
     repeat break_match; find_inversion; subst; auto;
-    simpl in *; apply advanceCurrentTerm_monotonic.
+    simpl in *; apply advanceCurrentTerm_currentTerm.
   Qed.
 
   Lemma handleRequestVote_votedFor :
