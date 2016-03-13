@@ -20,6 +20,56 @@ Section SpecLemmas.
 
   Context {rri : raft_refinement_interface}.
 
+  Lemma votes_update_elections_data_request_vote_reply :
+    forall h st src t r st' t' h',
+      handleRequestVoteReply h (snd st) src t r = st' ->
+      In (t', h') (votes (update_elections_data_requestVoteReply h src t r st)) ->
+      In (t', h') (votes (fst st)).
+  Proof.
+    unfold update_elections_data_requestVoteReply.
+    intros. repeat break_match; repeat tuple_inversion; intuition.
+  Qed.
+
+  Lemma votes_update_elections_data_request_vote :
+    forall h st t src lli llt st' m t' h',
+      handleRequestVote h (snd st) t src lli llt = (st', m) ->
+      In (t', h') (votes (update_elections_data_requestVote h src t src lli llt st)) ->
+      In (t', h') (votes (fst st)) \/ t' = currentTerm st'.
+  Proof.
+    unfold update_elections_data_requestVote.
+    intros.
+    repeat break_match; repeat tuple_inversion; intuition;
+    simpl in *; intuition;
+    tuple_inversion; intuition.
+  Qed.
+
+  Lemma votes_same_append_entries :
+    forall h st t n pli plt es ci,
+      votes (update_elections_data_appendEntries h st t n pli plt es ci) =
+      votes (fst st).
+  Proof.
+    intros. unfold update_elections_data_appendEntries.
+    repeat break_match; auto.
+  Qed.
+
+  Lemma votes_update_elections_data_timeout :
+    forall h st out st' ps t' h',
+      handleTimeout h (snd st) = (out, st', ps) ->
+      In (t', h') (votes (update_elections_data_timeout h st)) ->
+      In (t', h') (votes (fst st)) \/ t' = currentTerm st'.
+  Proof.
+    unfold update_elections_data_timeout.
+    intros. repeat break_match; simpl in *; intuition; repeat tuple_inversion; intuition.
+  Qed.
+
+  Lemma votes_update_elections_data_client_request :
+    forall h st client id c,
+      votes (update_elections_data_client_request h st client id c) = votes (fst st).
+  Proof.
+    intros. unfold update_elections_data_client_request.
+    repeat break_match; auto.
+  Qed.
+
   Lemma votesWithLog_same_client_request :
     forall h st client id c,
       votesWithLog (update_elections_data_client_request h st client id c) =

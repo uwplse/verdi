@@ -16,6 +16,68 @@ Section SpecLemmas.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
 
+  Lemma doGenericServer_currentTerm :
+    forall h st os st' ms,
+      doGenericServer h st = (os, st', ms) ->
+      currentTerm st' = currentTerm st.
+  Proof.
+    unfold doGenericServer.
+    intros.
+    repeat break_match; repeat find_inversion;
+    use_applyEntries_spec; subst; simpl in *;
+    auto.
+  Qed.
+
+  Lemma doLeader_currentTerm :
+        forall st h os st' ms,
+      doLeader st h = (os, st', ms) ->
+      currentTerm st' = currentTerm st.
+  Proof.
+    intros. unfold doLeader in *.
+    repeat break_match; find_inversion; auto.
+  Qed.
+
+  Lemma handleAppendEntriesReply_currentTerm :
+    forall h st h' t es r st' ms,
+      handleAppendEntriesReply h st h' t es r = (st', ms) ->
+      currentTerm st <= currentTerm st'.
+  Proof.
+    intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat break_match; tuple_inversion; do_bool; auto.
+  Qed.
+
+  Lemma handleAppendEntries_currentTerm :
+    forall h st t n pli plt es ci st' ps,
+      handleAppendEntries h st t n pli plt es ci = (st', ps) ->
+      currentTerm st <= currentTerm st'.
+  Proof.
+    intros. unfold handleAppendEntries, advanceCurrentTerm in *.
+    repeat break_match; find_inversion; do_bool; auto.
+  Qed.
+
+  Lemma tryToBecomeLeader_currentTerm :
+    forall h st out st' l,
+      tryToBecomeLeader h st = (out, st', l) ->
+      currentTerm st <= currentTerm st'.
+  Proof.
+    unfold tryToBecomeLeader.
+    intros.
+    find_inversion. simpl.
+    auto with arith.
+  Qed.
+
+  Lemma handleTimeout_currentTerm :
+    forall h st out st' l,
+      handleTimeout h st = (out, st', l) ->
+      currentTerm st <= currentTerm st'.
+  Proof.
+    unfold handleTimeout.
+    intros.
+    break_match; eauto using tryToBecomeLeader_currentTerm.
+    find_inversion. simpl.
+    auto with arith.
+  Qed.
+
   Lemma haveNewEntries_not_empty :
     forall st es,
       haveNewEntries st es = true ->
@@ -183,6 +245,28 @@ Section SpecLemmas.
   Proof.
     intros. unfold advanceCurrentTerm in *.
     break_if; simpl in *; do_bool; omega.
+  Qed.
+
+
+  Lemma handleRequestVoteReply_currentTerm' :
+    forall h st h' t r st',
+      handleRequestVoteReply h st h' t r = st' ->
+      currentTerm st <= currentTerm st'.
+  Proof.
+    intros. unfold handleRequestVoteReply in *.
+    repeat break_match; subst; do_bool; intuition.
+    apply advanceCurrentTerm_currentTerm.
+  Qed.
+
+
+  Lemma handleRequestVote_currentTerm :
+    forall st h h' t lli llt st' m,
+      handleRequestVote h st t h' lli llt = (st', m) ->
+      currentTerm st <= currentTerm st'.
+  Proof.
+    intros. unfold handleRequestVote in *.
+    repeat break_match; tuple_inversion; do_bool;
+      simpl; auto using advanceCurrentTerm_currentTerm.
   Qed.
 
   Theorem handleAppendEntries_currentTerm_leaderId :
@@ -414,6 +498,16 @@ Section SpecLemmas.
   Proof.
     intros. unfold handleClientRequest in *.
     repeat break_match; find_inversion; auto.
+  Qed.
+
+  Lemma handleClientRequest_currentTerm :
+    forall h st client id c out st' l,
+      handleClientRequest h st client id c = (out, st', l) ->
+      currentTerm st' = currentTerm st.
+  Proof.
+    intros.
+    find_apply_lem_hyp handleClientRequest_type.
+    intuition.
   Qed.
 
   Lemma handleTimeout_type :
