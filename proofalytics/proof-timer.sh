@@ -3,6 +3,8 @@
 set -e
 
 PADIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+STDBUF="$([ -x "$(which gstdbuf)" ] && echo "gstdbuf" || echo "stdbuf")"
+SEP="__PROOFALYTICS__"
 PROOF_TT="${PADIR}/proof-times.ticktock"
 PROOF_TIMES="${PADIR}/proof-times.csv"
 SANDBOX="$(mktemp -d "/tmp/proofalytics-tmp-XXXXX")"
@@ -21,20 +23,18 @@ pushd "$SANDBOX" > /dev/null
   # build
   make clean
   ./configure
-  make \
-    | grep '__PROOFALYTICS__' \
-    | "${PADIR}/timestamp-lines" \
+  make unbuffered-coqc
+  "$STDBUF" -i0 -o0 make \
+    | "$STDBUF" -i0 -o0 "${PADIR}/timestamp-lines" \
     > "$PROOF_TT"
 popd > /dev/null
 
 # make csv
-echo "proof,ltac,qed,file,lineno" > "$PROOF_TIMES"
-awk -f "${PADIR}/proof-times-csv.awk" "$PROOF_TT" \
-  | sort --field-separator=, \
-         --numeric-sort \
-         --reverse \
-         --key=2 \
-  >> "$PROOF_TIMES"
+grep "$SEP" "$PROOF_TT" \
+  | sed "s/ /$SEP/" \
+  | awk -f "${PADIR}/proof-times-csv.awk" \
+  | awk -v key=2 -f "${PADIR}/csv-sort.awk" \
+  > "$PROOF_TIMES"
 
 # clean up
 rm -rf "$SANDBOX"

@@ -16,24 +16,19 @@ function main {
   mkindex > "$INDEX"
 }
 
-# making this a function doesn't work w/ xargs :\
-csvsort="sort --field-separator=, --numeric-sort --reverse"
-
 function proof-sizes {
-  echo "proof,lines,words,file,lineno" \
-    > "$PROOF_SIZES"
   find ${PADIR}/.. -name '*.v' \
     | xargs awk -f "${PADIR}/proof-sizes.awk" \
     | sed "s:${PADIR}/../::g" \
-    | ${csvsort} --key=2 \
-    >> "$PROOF_SIZES"
+    | awk -v key=2 -f "${PADIR}/csv-sort.awk" \
+    > "$PROOF_SIZES"
 }
 
 function build-times {
-  echo "file,time" > "$BUILD_TIMES"
-  find ${PADIR}/.. -name '*.buildtime' \
-    | xargs ${csvsort} --key=2 \
-    >> "$BUILD_TIMES"
+  echo "file,time" \
+    | awk -v key=2 -f "${PADIR}/csv-sort.awk" \
+      - $(find ${PADIR}/.. -name '*.buildtime') \
+    > "$BUILD_TIMES"
 }
 
 function mkindex {
@@ -68,7 +63,7 @@ function mkindex {
       font-weight: bold;
     }
     .scroller {
-      width: 100%;
+      width: 98%;
       height: 400px;
       border: 1px solid #4b2e83;
       overflow: auto;
@@ -79,40 +74,64 @@ function mkindex {
     }
     th {
       text-align: left;
+      color: #4b2e83;
       border-bottom: 1px solid #4b2e83;
+    }
+    #cfg {
+      margin-bottom: 40px;
+    }
+    .cfg-fld {
+      color: #4b2e83;
+      font-weight: bold;
+      padding-right: 10px;
     }
   </style>
 </head>
 <body>
   <h1>Verdi Proofalytics</h1>
-
-  <h2>Proof Sizes</h2>
-  <div class='scroller'>
+  <h2>Configuration</h2>
+  <table id='cfg'><tr>
+    <td class='cfg-fld'>Date</td>
+    <td>$(date)</td>
+  </tr><tr>
+    <td class='cfg-fld'>Host</td>
+    <td>$(whoami)@$(hostname -s)</td>
+  </tr><tr>
+    <td class='cfg-fld'>Commit</td>
+    <td>
+      <a href='https://github.com/uwplse/verdi/commit/$COMMIT'>
+      $COMMIT</a>
+    </td>
+  </tr></table>
 EOF
-  cat "${PROOF_SIZES}" \
-    | awk -v commit="$COMMIT" \
-          -f "${PADIR}/proof-sizes-links.awk" \
-    | awk -f "${PADIR}/csv-table.awk"
+  if [ -f "$PROOF_SIZES" ]; then
+    echo "<h2>Proof Sizes</h2>"
+    echo "<div class='scroller'>"
+    cat "$PROOF_SIZES" \
+      | awk -v commit="$COMMIT" \
+            -f "${PADIR}/proof-sizes-links.awk" \
+      | awk -f "${PADIR}/csv-table.awk"
+    echo "</div>"
+  fi
+  if [ -f "$BUILD_TIMES" ]; then
+    echo "<h2>Build Times</h2>"
+    echo "<div class='scroller'>"
+    cat "$BUILD_TIMES" \
+      | awk -v commit="$COMMIT" \
+            -f "${PADIR}/build-times-links.awk" \
+      | awk -f "${PADIR}/csv-table.awk"
+    echo "</div>"
+  fi
+  if [ -f "$PROOF_TIMES" ]; then
+    echo "<h2>Proof Times</h2>"
+    echo "<div class='scroller'>"
+    cat "$PROOF_TIMES" \
+      | awk -v commit="$COMMIT" \
+            -f "${PADIR}/proof-times-links.awk" \
+      | awk -f "${PADIR}/csv-table.awk"
+    echo "</div>"
+  fi
   cat <<EOF
-  </div>
-  <h2>Build Times</h2>
-  <div class='scroller'>
-EOF
-  cat "${BUILD_TIMES}" \
-    | awk -v commit="$COMMIT" \
-          -f "${PADIR}/build-times-links.awk" \
-    | awk -f "${PADIR}/csv-table.awk"
-  cat <<EOF
-  </div>
-  <h2>Proof Times</h2>
-  <div class='scroller'>
-EOF
-  cat "${PROOF_TIMES}" \
-    | awk -v commit="$COMMIT" \
-          -f "${PADIR}/proof-times-links.awk" \
-    | awk -f "${PADIR}/csv-table.awk"
-  cat <<EOF
-  </div>
 </body>
 </html>
 EOF

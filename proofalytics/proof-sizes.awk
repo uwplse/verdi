@@ -4,6 +4,8 @@
   proof = ""
   lines = 0
   words = 0
+
+  print "proof,lines,words,file,lineno"
 }
 
 {

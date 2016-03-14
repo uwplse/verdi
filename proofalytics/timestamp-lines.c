@@ -27,7 +27,7 @@ main() {
 #else
     clock_gettime(CLOCK_REALTIME, &ts);
 #endif
-    printf("%010ld.%010ld__PROOFALYTICS__", ts.tv_sec, ts.tv_nsec);
+    printf("%20f ", ts.tv_sec * 1.0e9 + ts.tv_nsec);
     fwrite(line, len, 1, stdout);
   }
 #ifdef __MACH__

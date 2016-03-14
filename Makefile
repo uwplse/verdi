@@ -11,8 +11,13 @@ default: Makefile.coq
 Makefile.coq: hacks _CoqProject
 	test -s _CoqProject || { echo "Run ./configure before running make"; exit 1; }
 	coq_makefile -f _CoqProject -o Makefile.coq
-	sed 's:^TIMECMD=$$:TIMECMD=$(PWD)/proofalytics/build-timer.sh:' Makefile.coq > Makefile.coq_timed
-	mv Makefile.coq_timed Makefile.coq
+	sed 's:^TIMECMD=$$:TIMECMD=$(PWD)/proofalytics/build-timer.sh:' Makefile.coq > Makefile.coq_tmp
+	mv Makefile.coq_tmp Makefile.coq
+
+STDBUF=$(shell [ -x "$(which gstdbuf)" ] && echo "gstdbuf" || echo "stdbuf")
+unbuffered-coqc: Makefile.coq
+	sed 's:^TIMECMD=$$:TIMECMD=$(STDBUF) -i0 -o0:' Makefile.coq > Makefile.coq_tmp
+	mv Makefile.coq_tmp Makefile.coq
 
 hacks: raft/RaftState.v
 
@@ -41,4 +46,4 @@ proofalytics:
 distclean: clean
 	rm -f _CoqProject
 
-.PHONY: default clean vard lint hacks proofalytics distclean
+.PHONY: default clean vard lint hacks proofalytics distclean unbuffered-coqc
