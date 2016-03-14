@@ -89,7 +89,6 @@ function mkindex {
 </head>
 <body>
   <h1>Verdi Proofalytics</h1>
-  <h2>Configuration</h2>
   <table id='cfg'><tr>
     <td class='cfg-fld'>Date</td>
     <td>$(date)</td>
@@ -102,7 +101,23 @@ function mkindex {
       <a href='https://github.com/uwplse/verdi/commit/$COMMIT'>
       $COMMIT</a>
     </td>
-  </tr></table>
+  </tr><tr>
+    <td class='cfg-fld'>Coqwc</td>
+    <td>
+      $(find "${PADIR}/.." -name '*.v' \
+          | xargs coqwc \
+          | awk 'END { printf("spec = %'"'"'d &nbsp; &nbsp; proof = %'"'"'d\n", $1, $2) }')
+    </td>
+  </tr><tr>
+    <td class='cfg-fld'>Compile</td>
+    <td>
+      $([ -f "$BUILD_TIMES" ] &&  \
+          awk 'BEGIN { FS = ","; tot = 0 }  \
+               { tot += $2 }      \
+               END { print tot " sec"}' \
+              "$BUILD_TIMES")
+    </td>
+   </tr></table>
 EOF
   if [ -f "$PROOF_SIZES" ]; then
     echo "<h2>Proof Sizes</h2>"
