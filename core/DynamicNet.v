@@ -49,7 +49,6 @@ Section Dynamic.
   | Start :
       forall h gst ms st new_msgs known k,
         can_be_node h ->
-        ~ In h (failed_nodes gst) ->
         ~ In h (nodes gst) ->
         (In k known -> In k (nodes gst)) ->
         (known = [] -> (nodes gst) = []) ->
@@ -88,7 +87,6 @@ Section Dynamic.
         msgs gst = xs ++ m :: ys ->
         h = fst (snd m) ->
         ~ In h (nodes gst) ->
-        ~ In h (failed_nodes gst) ->
         step_dynamic gst {| nodes := nodes gst;
                             failed_nodes := failed_nodes gst;
                             sigma := sigma gst;
@@ -114,7 +112,6 @@ Section Dynamic.
         can_be_client h ->
         client_payload i ->
         ~ In h (nodes gst) ->
-        ~ In h (failed_nodes gst) ->
         m = send h (to, i) ->
         step_dynamic gst {| nodes := nodes gst;
                             failed_nodes := failed_nodes gst;
