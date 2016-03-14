@@ -17,7 +17,9 @@
 /Qed\.|Defined\./ {
   if(name != "") {
     sub(/:$/, "", name)
-    printf("%s,%d,%d,%s,%d\n", name, lines, words, FILENAME, start)
+    fn = FILENAME
+    sub(/^../, "", fn)
+    printf("%s,%d,%d,%s,%d\n", name, lines, words, fn, start)
   }
   name = ""
 }

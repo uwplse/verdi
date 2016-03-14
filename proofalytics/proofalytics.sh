@@ -4,32 +4,11 @@ set -e
 
 PADIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROOF_SIZES="${PADIR}/proof-sizes.csv"
-PROOF_TIMES="${PADIR}/proof-times.csv"
 BUILD_TIMES="${PADIR}/build-times.csv"
+PROOF_TIMES="${PADIR}/proof-times.csv"
+
 INDEX="${PADIR}/index.html"
-
 COMMIT="$(git rev-parse HEAD)"
-
-function main {
-  proof-sizes
-  build-times
-  mkindex > "$INDEX"
-}
-
-function proof-sizes {
-  find ${PADIR}/.. -name '*.v' \
-    | xargs awk -f "${PADIR}/proof-sizes.awk" \
-    | sed "s:${PADIR}/../::g" \
-    | awk -v key=2 -f "${PADIR}/csv-sort.awk" \
-    > "$PROOF_SIZES"
-}
-
-function build-times {
-  echo "file,time" \
-    | awk -v key=2 -f "${PADIR}/csv-sort.awk" \
-      - $(find ${PADIR}/.. -name '*.buildtime') \
-    > "$BUILD_TIMES"
-}
 
 function mkindex {
   cat <<EOF
@@ -152,4 +131,4 @@ EOF
 EOF
 }
 
-main
+mkindex > "$INDEX"

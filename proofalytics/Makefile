@@ -9,6 +9,7 @@ ifeq ($(UNAME_S),Linux)
 endif
 
 proofalytics: timestamp-lines
+	./proof-timer.sh
 	./proofalytics.sh
 
 timestamp-lines: timestamp-lines.c
