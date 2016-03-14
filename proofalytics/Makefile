@@ -1,11 +1,18 @@
 WEB_MACH=uwplse.org
 WEB_PATH=/var/www/verdi/dash
 
+LIBS=
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	LIBS+= -lrt
+endif
+
 proofalytics: timestamp-lines
 	./proofalytics.sh
 
 timestamp-lines: timestamp-lines.c
-	gcc $< -o $@
+	gcc $< -o $@ $(LIBS)
 
 publish:
 	rsync \
