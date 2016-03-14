@@ -7,6 +7,7 @@ sudo: false
 before_install:
   - openssl aes-256-cbc -K $encrypted_130bc391cda8_key -iv $encrypted_130bc391cda8_iv -in .travis/travis_rsa.enc -out .travis/travis_rsa -d
   - cp .travis/travis_rsa ~/.ssh
+  - chmod 600 ~/.ssh/travis_rsa
   - cp .travis/ssh_config ~/.ssh/config
 notifications:
   slack:
