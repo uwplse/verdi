@@ -1,0 +1,3 @@
+Host uwplse.org
+    User uwplse
+    IdentityFile ~/.ssh/travis_rsa

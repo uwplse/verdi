@@ -1,6 +1,13 @@
 language: c
+env:
+  - MODE=build
+  - MODE=analytics
 script: bash -ex .travis-ci.sh
 sudo: false
+before_install:
+  - openssl aes-256-cbc -K $encrypted_130bc391cda8_key -iv $encrypted_130bc391cda8_iv -in .travis/travis_rsa.enc -out .travis/travis_rsa -d
+  - cp .travis/travis_rsa ~/.ssh
+  - cp .travis/ssh_config ~/.ssh/config
 notifications:
   slack:
     on_start: always
