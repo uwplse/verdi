@@ -26,11 +26,7 @@ pushd "$SANDBOX" > /dev/null
   # build w/ timing and no buffers
   make clean
   ./configure
-  make Makefile.coq
-  sed "s:^TIMECMD=\$:TIMECMD=${PADIR}/build-timer.sh $(STDBUF) -i0 -o0:" \
-    Makefile.coq > Makefile.coq_tmp
-  mv Makefile.coq_tmp Makefile.coq
-  "$STDBUF" -i0 -o0 make \
+  "$STDBUF" -i0 -o0 make proofalytics-aux \
     | "$STDBUF" -i0 -o0 "${PADIR}/timestamp-lines" \
     > "$PROOF_TICKS"
 
@@ -55,4 +51,4 @@ pushd "$SANDBOX" > /dev/null
 popd > /dev/null
 
 # clean up
-#rm -rf "$SANDBOX"
+rm -rf "$SANDBOX"
