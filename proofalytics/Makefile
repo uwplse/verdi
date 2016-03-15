@@ -19,6 +19,7 @@ publish:
 clean:
 	rm -f build-times.csv proof-sizes.csv
 	rm -f proof-times.csv proof-times.ticks
+	rm -f index.html
 	rm -f timestamp-lines
 
 .PHONY: proofalytics publish clean

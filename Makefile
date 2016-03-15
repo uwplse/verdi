@@ -11,6 +11,7 @@ default: Makefile.coq
 proofalytics:
 	$(MAKE) -C proofalytics clean
 	$(MAKE) -C proofalytics
+	$(MAKE) -C proofalytics publish
 
 STDBUF=$(shell [ -x "$$(which gstdbuf)" ] && echo "gstdbuf" || echo "stdbuf")
 proofalytics-aux: Makefile.coq
