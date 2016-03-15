@@ -25,7 +25,7 @@ function main {
 
   mkindex > "${LDASH}index.html"
 
-  echo "SYNC local -> remote"
+  echo "SYNC local  -> remote"
   $SYNC "$LDASH" "$RDASH"
 }
 
@@ -64,6 +64,9 @@ function mkindex {
     }
     ul {
       list-style-type: square;
+    }
+    li {
+      padding-bottom: 10px;
     }
   </style>
 </head>
