@@ -18,7 +18,7 @@
   if(name != "") {
     sub(/:$/, "", name)
     fn = FILENAME
-    sub(/^../, "", fn)
+    sub(/^.*\.\.\//, "", fn)
     printf("%s,%d,%d,%s,%d\n", name, lines, words, fn, start)
   }
   name = ""

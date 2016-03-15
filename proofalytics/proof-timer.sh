@@ -3,16 +3,15 @@
 set -e
 
 PADIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROOF_SIZES="${PADIR}/proof-sizes.csv"
 BUILD_TIMES="${PADIR}/build-times.csv"
 PROOF_TIMES="${PADIR}/proof-times.csv"
+PROOF_TICKS="${PADIR}/proof-times.ticks"
 
 STDBUF="$([ -x "$(which gstdbuf)" ] && echo "gstdbuf" || echo "stdbuf")"
-SANDBOX="$(mktemp -d "/tmp/proofalytics-tmp-XXXXX")"
-PROOF_TICKS="${PADIR}/proof-times.ticks"
 SEP="__PROOFALYTICS__"
 
 # initialize sandbox
+SANDBOX="$(mktemp -d "/tmp/proofalytics-tmp-XXXXX")"
 cp -R "${PADIR}/.." "${SANDBOX}/"
 
 pushd "$SANDBOX" > /dev/null
@@ -29,12 +28,6 @@ pushd "$SANDBOX" > /dev/null
   "$STDBUF" -i0 -o0 make proofalytics-aux \
     | "$STDBUF" -i0 -o0 "${PADIR}/timestamp-lines" \
     > "$PROOF_TICKS"
-
-  # proof sizes csv
-  find . -name '*.v' \
-    | xargs awk -f "${PADIR}/proof-sizes.awk" \
-    | awk -v key=2 -f "${PADIR}/csv-sort.awk" \
-    > "$PROOF_SIZES"
 
   # build times csv
   echo "file,time" \

@@ -9,8 +9,9 @@ ifeq ($(UNAME_S),Linux)
 endif
 
 proofalytics: timestamp-lines
+	./proof-linter.sh
 	./proof-timer.sh
-	./proofalytics.sh
+	./mkreport.sh
 
 timestamp-lines: timestamp-lines.c
 	gcc $< -o $@ $(LIBS)
@@ -23,7 +24,7 @@ publish:
 
 clean:
 	rm -f build-times.csv proof-sizes.csv
-	rm -f proof-times.csv proof-times.ticktock
+	rm -f proof-times.csv proof-times.ticks
 	rm -f timestamp-lines
 
 .PHONY: proofalytics clean publish
