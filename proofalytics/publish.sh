@@ -67,6 +67,7 @@ function mkindex {
     }
     li {
       padding-bottom: 10px;
+      line-height: 150%;
     }
   </style>
 </head>
@@ -74,8 +75,35 @@ function mkindex {
   <h1>Verdi Proofalytics</h1>
   <ul>
 EOF
-  for d in PA-*; do
-    printf "<li><a href='%s'>%s</a></li>" "$d" "$d"
+  for rep in $(ls -r | grep 'PA-*'); do
+    echo "<li>"
+
+    printf "<a href='%s'>%s</a>\n" "$rep" "$rep"
+
+    echo "<br> &nbsp;"
+    echo "<span class='it'>max ltac:</span> &nbsp;"
+    cat "${rep}/proof-times.csv" \
+      | awk -v key=2 -f "${PADIR}/csv-sort.awk" \
+      | awk -F "," 'NR == 2 {print $1 " (" $2 " ms)"}'
+
+    echo "<br> &nbsp;"
+    echo "<span class='it'>max qed:</span> &nbsp;"
+    cat "${rep}/proof-times.csv" \
+      | awk -v key=3 -f "${PADIR}/csv-sort.awk" \
+      | awk -F "," 'NR == 2 {print $1 " (" $2 " ms)"}'
+
+    echo "<br> &nbsp;"
+    echo "<span class='it'>build time:</span> &nbsp;"
+    awk 'BEGIN { FS = ","; tot = 0 }  \
+         { tot += $2 }      \
+         END { print tot " s"}' \
+        "${rep}/build-times.csv"
+
+    # TODO
+    # echo "<br> &nbsp;"
+    # echo "<span class='it'>admits:</span> &nbsp;"
+
+    echo "</li>"
   done
   cat <<EOF
   </ul>
