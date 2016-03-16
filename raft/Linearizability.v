@@ -1,8 +1,8 @@
 Require Import List.
 Import ListNotations.
 
-Require Import Util.
-Require Import VerdiTactics.
+Require Import StructTact.Util.
+Require Import StructTact.StructTactics.
 
 Section Linearizability.
   Variable K : Type.

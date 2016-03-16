@@ -4,10 +4,10 @@ Import ListNotations.
 Require Import Arith.
 Require Import Omega.
 
-Require Import VerdiTactics.
+Require Import StructTact.StructTactics.
 Require Import HandlerMonad.
 Require Import Net.
-Require Import Util.
+Require Import StructTact.Util.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.

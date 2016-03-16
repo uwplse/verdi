@@ -1,7 +1,7 @@
 Require Import List.
 Require Import Omega.
 
-Require Import VerdiTactics.
+Require Import StructTact.StructTactics.
 Require Import Net.
 Require Import Raft.
 Require Import CommonDefinitions.

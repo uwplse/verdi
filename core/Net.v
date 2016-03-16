@@ -6,8 +6,8 @@ Require Import Sorting.Permutation.
 Require Import FunctionalExtensionality.
 Require Import Relations.Relation_Operators.
 Require Import Relations.Operators_Properties.
-Require Import Util.
-Require Import VerdiTactics.
+Require Import StructTact.Util.
+Require Import StructTact.StructTactics.
 
 Set Implicit Arguments.
 

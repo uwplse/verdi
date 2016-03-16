@@ -3,11 +3,11 @@ Import ListNotations.
 Require Import Arith.
 
 Require Import Net.
-Require Import Util.
+Require Import StructTact.Util.
 
 Require Import Raft.
 Require Import CommonDefinitions.
-Require Import TraceUtil.
+Require Import TraceStructTact.Util.
 
 Section CausalOrderPreserved.
   Context {orig_base_params : BaseParams}.

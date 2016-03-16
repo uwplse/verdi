@@ -5,8 +5,8 @@ Require Import Nat.
 Require Import Omega.
 
 Require Import Net.
-Require Import Util.
-Require Import VerdiTactics.
+Require Import StructTact.Util.
+Require Import StructTact.StructTactics.
 Require Import TraceRelations.
 
 Require Import Raft.
@@ -15,7 +15,7 @@ Require Import LogMatchingInterface.
 Require Import StateMachineSafetyInterface.
 Require Import AppliedEntriesMonotonicInterface.
 Require Import MaxIndexSanityInterface.
-Require Import TraceUtil.
+Require Import TraceStructTact.Util.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.

@@ -5,14 +5,14 @@ Require Import Coq.Numbers.Natural.Abstract.NDiv.
 Import ListNotations.
 Require Import Sorting.Permutation.
 
-Require Import Util.
+Require Import StructTact.Util.
 Require Import Net.
 Require Import GhostSimulations.
 Require Import RaftState.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 Require Import CandidatesVoteForSelvesInterface.
-Require Import VerdiTactics.
+Require Import StructTact.StructTactics.
 Require Import CommonTheorems.
 Require Import VotesCorrectInterface.
 

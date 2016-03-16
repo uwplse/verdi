@@ -2,12 +2,12 @@ Require Import List.
 Require Import Arith.
 
 Require Import Net.
-Require Import Util.
-Require Import VerdiTactics.
+Require Import StructTact.Util.
+Require Import StructTact.StructTactics.
 
 Require Import Raft.
 Require Import CommonDefinitions.
-Require Import TraceUtil.
+Require Import TraceStructTact.Util.
 
 Section OutputImpliesApplied.
   Context {orig_base_params : BaseParams}.

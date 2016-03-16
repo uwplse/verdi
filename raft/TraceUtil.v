@@ -3,11 +3,11 @@ Import ListNotations.
 Require Import Arith.
 
 Require Import Net.
-Require Import VerdiTactics.
-Require Import Util.
+Require Import StructTact.StructTactics.
+Require Import StructTact.Util.
 Require Import Raft.
 
-Section TraceUtil.
+Section TraceStructTact.Util.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
@@ -127,4 +127,4 @@ Section TraceUtil.
       | (_, inl (ClientRequest c i _)) => andb (beq_nat client c) (beq_nat id i)
       | _ => false
     end.
-End TraceUtil.
+End TraceStructTact.Util.

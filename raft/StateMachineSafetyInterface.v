@@ -2,8 +2,8 @@ Require Import List.
 Import ListNotations.
 
 Require Import Net.
-Require Import Util.
-Require Import VerdiTactics.
+Require Import StructTact.Util.
+Require Import StructTact.StructTactics.
 Require Import CommonDefinitions.
 
 Require Import Raft.

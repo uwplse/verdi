@@ -5,13 +5,13 @@ Require Import Nat.
 Require Import Omega.
 
 Require Import Net.
-Require Import Util.
-Require Import VerdiTactics.
+Require Import StructTact.Util.
+Require Import StructTact.StructTactics.
 Require Import InverseTraceRelations.
 
 Require Import Raft.
 Require Import CommonTheorems.
-Require Import TraceUtil.
+Require Import TraceStructTact.Util.
 Require Import OutputImpliesAppliedInterface.
 
 Require Import UpdateLemmas.
