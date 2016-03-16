@@ -15,7 +15,7 @@ proofalytics:
 
 STDBUF=$(shell [ -x "$$(which gstdbuf)" ] && echo "gstdbuf" || echo "stdbuf")
 proofalytics-aux: Makefile.coq
-	sed "s:^TIMECMD=$$:TIMECMD=$(PWD)/proofalytics/build-timer.sh $(STDBUF) -i0 -o0:" \
+	sed "s|^TIMECMD=$$|TIMECMD=$(PWD)/proofalytics/build-timer.sh $(STDBUF) -i0 -o0|" \
 	  Makefile.coq > Makefile.coq_tmp
 	mv Makefile.coq_tmp Makefile.coq
 	$(MAKE) -f Makefile.coq

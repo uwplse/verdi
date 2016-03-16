@@ -33,13 +33,24 @@ function mkindex {
       color: #4b2e83;
     }
     p {
-      font-size: 14pt;
+      font-size: 12pt;
+    }
+    #nav {
+      padding: 0 0 10px 10px;
+      margin: 0;
+    }
+    #nav li {
+      display: inline;
+      padding-right: 15px;
     }
     .it {
       font-style: italic;
     }
     .bf {
       font-weight: bold;
+    }
+    .red {
+      color: red;
     }
     .scroller {
       width: 98%;
@@ -56,6 +67,9 @@ function mkindex {
       color: #4b2e83;
       border-bottom: 1px solid #4b2e83;
     }
+    pre {
+      line-height: 150%;
+    }
     #cfg {
       margin-bottom: 40px;
     }
@@ -68,6 +82,15 @@ function mkindex {
 </head>
 <body>
   <h1>Verdi Proofalytics</h1>
+  <ul id='nav'><li>
+    <a href='#proof-times'>Proof Times</a>
+  </li><li>
+    <a href='#build-times'>Build Times</a>
+  </li><li>
+    <a href='#admits'>Admits</a>
+  </li><li>
+    <a href='#proof-sizes'>Proof Sizes</a>
+  </li></ul>
   <table id='cfg'><tr>
     <td class='cfg-fld'>Date</td>
     <td>$(date)</td>
@@ -96,27 +119,18 @@ function mkindex {
                END { print tot " sec"}' \
               "$BUILD_TIMES")
     </td>
-   </tr></table>
+  </tr><tr>
+    <td class='cfg-fld'>Admits</td>
+    <td>
+      $(find "${PADIR}/.." -name '*.v' \
+          | xargs grep --ignore-case 'admit' \
+          | wc -l)
+    </td>
+  </tr></table>
 EOF
-  if [ -f "$PROOF_SIZES" ]; then
-    echo "<h2>Proof Sizes</h2>"
-    echo "<div class='scroller'>"
-    cat "$PROOF_SIZES" \
-      | awk -v commit="$COMMIT" \
-            -f "${PADIR}/proof-sizes-links.awk" \
-      | awk -f "${PADIR}/csv-table.awk"
-    echo "</div>"
-  fi
-  if [ -f "$BUILD_TIMES" ]; then
-    echo "<h2>Build Times</h2>"
-    echo "<div class='scroller'>"
-    cat "$BUILD_TIMES" \
-      | awk -v commit="$COMMIT" \
-            -f "${PADIR}/build-times-links.awk" \
-      | awk -f "${PADIR}/csv-table.awk"
-    echo "</div>"
-  fi
+
   if [ -f "$PROOF_TIMES" ]; then
+    echo "<a id='proof-times'></a>"
     echo "<h2>Proof Times</h2>"
     echo "<div class='scroller'>"
     cat "$PROOF_TIMES" \
@@ -125,6 +139,44 @@ EOF
       | awk -f "${PADIR}/csv-table.awk"
     echo "</div>"
   fi
+
+  if [ -f "$BUILD_TIMES" ]; then
+    echo "<a id='build-times'></a>"
+    echo "<h2>Build Times</h2>"
+    echo "<div class='scroller'>"
+    cat "$BUILD_TIMES" \
+      | awk -v commit="$COMMIT" \
+            -f "${PADIR}/build-times-links.awk" \
+      | awk -f "${PADIR}/csv-table.awk"
+    echo "</div>"
+  fi
+
+  echo "<a id='admits'></a>"
+  echo "<h2>Admits</h2>"
+  echo -n "<div class='scroller'><pre><code>"
+  find "${PADIR}/.." -name '*.v' \
+    | xargs grep --context=4 \
+                 --line-number \
+                 --ignore-case 'admit' \
+    | sed -e "s|^${PADIR}/\.\./||" \
+          -e 's|^--$||' \
+          -e 's|admit|<span class="bf red">admit</span>|g' \
+          -e 's|Admitted|<span class="bf red">Admitted</span>|g' \
+    | awk -v commit="$COMMIT" \
+          -f "${PADIR}/admits-links.awk"
+  echo "</code></pre></div>"
+
+  if [ -f "$PROOF_SIZES" ]; then
+    echo "<a id='proof-sizes'></a>"
+    echo "<h2>Proof Sizes</h2>"
+    echo "<div class='scroller'>"
+    cat "$PROOF_SIZES" \
+      | awk -v commit="$COMMIT" \
+            -f "${PADIR}/proof-sizes-links.awk" \
+      | awk -f "${PADIR}/csv-table.awk"
+    echo "</div>"
+  fi
+
   cat <<EOF
 </body>
 </html>
