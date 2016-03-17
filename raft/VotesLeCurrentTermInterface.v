@@ -1,6 +1,5 @@
 Require Import List.
 
-Require Import VerdiTactics.
 Require Import Net.
 Require Import Raft.
 Require Import RaftRefinementInterface.
