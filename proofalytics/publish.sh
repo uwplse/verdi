@@ -9,11 +9,14 @@ WEB_MACH="uwplse.org"
 WEB_PATH="/var/www/verdi/dash/"
 RDASH="${WEB_MACH}:${WEB_PATH}"
 LDASH="${PADIR}/dash/"
+BRANCH="$([ "$TRAVIS_BRANCH" != "" ] && \
+            echo "$TRAVIS_BRANCH" || \
+            git rev-parse --abbrev-ref HEAD)"
 NONCE=$(printf "PA-%s-%s-%s-%s" \
                $(date "+%y%m%d") \
                $(date "+%H%M%S") \
                $(hostname -s) \
-               $(git rev-parse --abbrev-ref HEAD))
+               "$BRANCH")
 REPDIR="${LDASH}${NONCE}"
 
 function main {
@@ -21,7 +24,9 @@ function main {
   $SYNC "$RDASH" "$LDASH"
 
   mkdir "$REPDIR"
-  cp index.html *.csv "$REPDIR"
+  cp index.html admit-count.txt *.csv "$REPDIR"
+  # publish ticks for debugging travis ci
+  cp *.ticks "$REPDIR"
 
   mkindex > "${LDASH}index.html"
 
@@ -99,9 +104,11 @@ EOF
          END { print tot " s"}' \
         "${rep}/build-times.csv"
 
-    # TODO
-    # echo "<br> &nbsp;"
-    # echo "<span class='it'>admits:</span> &nbsp;"
+    if [ -f "${rep}/admit-count.txt" ]; then
+      echo "<br> &nbsp;"
+      echo "<span class='it'>admits:</span> &nbsp;"
+      cat "${rep}/admit-count.txt"
+    fi
 
     echo "</li>"
   done

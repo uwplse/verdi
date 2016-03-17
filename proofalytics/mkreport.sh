@@ -10,6 +10,13 @@ PROOF_TIMES="${PADIR}/proof-times.csv"
 INDEX="${PADIR}/index.html"
 COMMIT="$(git rev-parse HEAD)"
 
+
+# save admit count for toplevel index
+NADMIT=$(find "${PADIR}/.." -name '*.v' \
+           | xargs grep --ignore-case 'admit' \
+           | wc -l)
+echo "$NADMIT" > "${PADIR}/admit-count.txt"
+
 function mkindex {
   cat <<EOF
 <!DOCTYPE html>
@@ -121,11 +128,7 @@ function mkindex {
     </td>
   </tr><tr>
     <td class='cfg-fld'>Admits</td>
-    <td>
-      $(find "${PADIR}/.." -name '*.v' \
-          | xargs grep --ignore-case 'admit' \
-          | wc -l)
-    </td>
+    <td>$NADMIT</td>
   </tr></table>
 EOF
 
