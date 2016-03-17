@@ -1,10 +1,10 @@
-/Lemma|Theorem|Corollary|Remark|Definition/ {
+/^[[:space:]]*(Lemma|Theorem|Corollary|Remark|Definition)/ {
   fn = FILENAME
   sub(/^../, "", fn)
   tok = fn "__PROOFALYTICS__" $2 "__PROOFALYTICS__" FNR
 }
 
-/Qed\.|Defined\./ {
+/^[[:space:]]*(Qed|Defined)\./ {
   printf("Eval compute in ltac:(idtac \"%s\").\n", tok)
 }
 
@@ -12,10 +12,10 @@
   print $0
 }
 
-/^Proof\.|\sProof\./ {
+/^[[:space:]]*Proof\./ {
   printf("Eval compute in ltac:(idtac \"%s\").\n", tok)
 }
 
-/Qed\.|Defined\./ {
+/^[[:space:]]*(Qed|Defined)\./ {
   printf("Eval compute in ltac:(idtac \"%s\").\n", tok)
 }
