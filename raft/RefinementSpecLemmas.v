@@ -651,25 +651,21 @@ Section SpecLemmas.
       handleRequestVote h (snd st) t h' lli llt = (st', m) ->
       votedFor st' = Some cid ->
       (votedFor (snd st) = Some cid /\
-       currentTerm st' = currentTerm (snd st) /\
-       votes (update_elections_data_requestVote
-                h h' t h' lli llt st) =votes (fst st)) \/
-      (currentTerm st' = t /\
-        votes (update_elections_data_requestVote
+       currentTerm st' = currentTerm (snd st)) \/
+      (cid = h' /\
+       currentTerm st' = t /\
+        votesWithLog (update_elections_data_requestVote
                        h h' t h' lli llt st) =
-       (currentTerm st', cid) :: votes (fst st)).
+       (currentTerm st', cid, (log st')) :: votesWithLog (fst st) /\
+       moreUpToDate llt lli (maxTerm (log st')) (maxIndex (log st')) = true).
   Proof.
     intros.
-    find_copy_apply_lem_hyp handleRequestVote_cases.
-    repeat break_or_hyp; repeat break_and; subst;
-      unfold advanceCurrentTerm in *; try break_if;
-        unfold update_elections_data_requestVote;
-    repeat find_rewrite;
-    try rewrite PeanoNat.Nat.eqb_refl, Bool.andb_true_l, if_decider_true by auto;
-    intuition;
-    repeat find_rewrite; try break_match;
-      try rewrite (proj2 (PeanoNat.Nat.eqb_neq _ _)) by (simpl; do_bool; omega);
-      auto; do_bool; omega.
+    unfold update_elections_data_requestVote.
+    repeat find_rewrite.
+    unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; repeat find_inversion; simpl in *; auto; try congruence;
+    find_inversion; auto; do_bool; intuition; try congruence.
+    do_bool. subst. intuition.
   Qed.
 
 End SpecLemmas.
