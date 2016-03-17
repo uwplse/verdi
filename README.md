@@ -12,7 +12,7 @@ Requirements:
 
  - [`Coq 8.5`](https://coq.inria.fr/download)
  - [`Mathematical Components 1.6`](http://math-comp.github.io/math-comp/)
- - [StructTact](https://github.com/uwplse/StructTact)
+ - [`StructTact`](https://github.com/uwplse/StructTact)
 
 Building:
 
