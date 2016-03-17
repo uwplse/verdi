@@ -2,11 +2,11 @@ Require Import Arith.
 Require Import List.
 Import ListNotations.
 
-Require Import Util.
+Require Import StructTact.Util.
 Require Import Net.
 Require Import RaftState.
 Require Import Raft.
-Require Import VerdiTactics.
+Require Import StructTact.StructTactics.
 
 Require Import RaftMsgRefinementInterface.
 

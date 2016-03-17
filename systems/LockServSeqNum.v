@@ -1,4 +1,4 @@
-Require Import VerdiTactics.
+Require Import StructTact.StructTactics.
 Require Import Net.
 
 Require Import LockServ.

@@ -6,10 +6,10 @@ Require Import Coq.Numbers.Natural.Abstract.NDiv.
 Import ListNotations.
 Require Import Sorting.Permutation.
 
-Require Import Util.
+Require Import StructTact.Util.
 Require Import Net.
 Require Import Raft.
-Require Import VerdiTactics.
+Require Import StructTact.StructTactics.
 
 Require Import SpecLemmas.
 Require Import CommonTheorems.

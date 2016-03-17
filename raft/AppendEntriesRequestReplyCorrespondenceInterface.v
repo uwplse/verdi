@@ -4,9 +4,9 @@ Require Import Omega.
 Require Import FunctionalExtensionality.
 
 
-Require Import VerdiTactics.
+Require Import StructTact.StructTactics.
 Require Import Net.
-Require Import Util.
+Require Import StructTact.Util.
 Require Import Raft.
 
 

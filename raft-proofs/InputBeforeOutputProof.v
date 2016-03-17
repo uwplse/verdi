@@ -6,14 +6,14 @@ Require Import Omega.
 
 Require Import Net.
 Require Import GhostSimulations.
-Require Import Util.
-Require Import VerdiTactics.
+Require Import StructTact.Util.
+Require Import StructTact.StructTactics.
 Require Import InverseTraceRelations.
 Require Import UpdateLemmas.
 
 Require Import Raft.
 Require Import CommonTheorems.
-Require Import TraceUtil.
+Require Import TraceStructTact.Util.
 
 Require Import SpecLemmas.
 

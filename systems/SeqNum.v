@@ -3,10 +3,10 @@ Require Import Arith.
 Require Import Omega.
 Import ListNotations.
 Require Import FunctionalExtensionality.
-Require Import VerdiTactics.
+Require Import StructTact.StructTactics.
 
 Require Import Net.
-Require Import Util.
+Require Import StructTact.Util.
 
 Set Implicit Arguments.
 

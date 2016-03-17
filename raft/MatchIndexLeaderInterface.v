@@ -1,8 +1,8 @@
 Require Import List.
 
-Require Import VerdiTactics.
+Require Import StructTact.StructTactics.
 Require Import Net.
-Require Import Util.
+Require Import StructTact.Util.
 Require Import Raft.
 
 Section MatchIndexLeader.

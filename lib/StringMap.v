@@ -5,7 +5,7 @@ Require Import PArith.
 Require Import String.
 
 Require Import Coqlib.
-Require Import VerdiTactics.
+Require Import StructTact.StructTactics.
 Require Export Maps.
 
 Module ITree(X: INDEXED_TYPE) (*<: TREE*).

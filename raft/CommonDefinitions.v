@@ -4,7 +4,7 @@ Import ListNotations.
 Require Import PeanoNat.
 Require Import Arith.
 
-Require Import Util.
+Require Import StructTact.Util.
 Require Import Net.
 Require Import Raft.
 

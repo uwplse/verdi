@@ -6,8 +6,8 @@ Require Import List.
 Import ListNotations.
 Open Scope string_scope.
 
-Require Import Util.
-Require Import VerdiTactics.
+Require Import StructTact.Util.
+Require Import StructTact.StructTactics.
 
 Instance vard_pbj_params : PrimaryBackupParams vard_base_params :=
   {

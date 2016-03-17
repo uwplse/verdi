@@ -6,7 +6,7 @@ Import Relation_Operators.
 
 Require Import Permutation.
 
-Require Import VerdiTactics.
+Require Import StructTact.StructTactics.
 Require Import Net.
 
 Section dup_drop_reorder.

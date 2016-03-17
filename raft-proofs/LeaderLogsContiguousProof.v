@@ -1,8 +1,8 @@
 Require Import List.
 Require Import Omega.
 
-Require Import Util.
-Require Import VerdiTactics.
+Require Import StructTact.Util.
+Require Import StructTact.StructTactics.
 Require Import Net.
 Require Import GhostSimulations.
 Require Import Raft.

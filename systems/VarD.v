@@ -2,8 +2,8 @@ Require Import Arith.
 Require Import List.
 Import ListNotations.
 
-Require Import VerdiTactics.
-Require Import Util.
+Require Import StructTact.StructTactics.
+Require Import StructTact.Util.
 
 Require Import Net.
 

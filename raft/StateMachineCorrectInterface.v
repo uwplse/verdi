@@ -3,8 +3,8 @@ Import ListNotations.
 Require Import Arith.
 
 Require Import Net.
-Require Import Util.
-Require Import VerdiTactics.
+Require Import StructTact.Util.
+Require Import StructTact.StructTactics.
 
 Require Import Raft.
 Require Import CommonDefinitions.

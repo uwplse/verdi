@@ -1,7 +1,7 @@
 Require Import List.
 Import ListNotations.
 
-Require Import Util.
+Require Import StructTact.Util.
 Require Import Net.
 
 Require Import CommonTheorems.
