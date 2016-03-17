@@ -25,8 +25,8 @@ Section VotesCorrectInterface.
 
   Definition currentTerm_votedFor_votes_correct net :=
     forall h t n,
-      (currentTerm (snd (nwState net h)) = t /\
-       votedFor (snd (nwState net h)) = Some n) ->
+      currentTerm (snd (nwState net h)) = t ->
+       votedFor (snd (nwState net h)) = Some n ->
       In (t, n) (votes (fst (nwState net h))).
 
   Definition votes_correct net :=

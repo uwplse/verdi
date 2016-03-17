@@ -11,6 +11,7 @@ Require Export UpdateLemmas.
 Ltac update_destruct :=
   match goal with
   | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+  | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
   end.
 
 Ltac rewrite_update' H :=

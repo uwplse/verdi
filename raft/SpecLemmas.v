@@ -7,6 +7,7 @@ Require Import StructTact.StructTactics.
 Require Import StructTact.Util.
 Require Import Net.
 
+Require Import RaftState.
 Require Import Raft.
 Require Import CommonTheorems.
 
@@ -15,6 +16,68 @@ Section SpecLemmas.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
+
+  Lemma handleRequestVote_votedFor :
+    forall pDst t cid lli llt d d' m,
+      handleRequestVote pDst d t cid lli llt = (d', m) ->
+      currentTerm d = currentTerm d' ->
+      votedFor d = None \/ votedFor d = votedFor d'.
+  Proof.
+    intros. unfold handleRequestVote, advanceCurrentTerm in *.
+    repeat break_match; tuple_inversion; simpl in *; intuition; try discriminate;
+    try solve [exfalso; do_bool; omega].
+  Qed.
+
+  Lemma handleRequestVote_cases :
+    forall h h' t lli llt st st' m,
+      handleRequestVote h st t h' lli llt = (st', m) ->
+      st' = st \/
+      st' = advanceCurrentTerm st t \/
+      (st' = {[ advanceCurrentTerm st t with votedFor := Some h']} /\
+       (votedFor st = None /\ currentTerm st = t \/ currentTerm st < t)).
+  Proof.
+    unfold handleRequestVote.
+    intros.
+    repeat break_match; repeat find_inversion; intuition.
+    - simpl in *. discriminate.
+    - unfold advanceCurrentTerm in *.
+      break_if; simpl in *; do_bool; intuition.
+  Qed.
+
+  Lemma handleRequestVoteReply_term_votedFor_cases :
+    forall me st src t v st',
+      handleRequestVoteReply me st src t v = st' ->
+      (currentTerm st' = currentTerm st /\
+       votedFor st' = votedFor st) \/
+      (currentTerm st < currentTerm st' /\
+       votedFor st' = None).
+  Proof.
+    intros.
+    unfold handleRequestVoteReply, advanceCurrentTerm in *; repeat break_match;
+    subst; do_bool; intuition.
+  Qed.
+
+  Lemma handleAppendEntries_same_term_votedFor_preserved :
+    forall h st t n pli plt es ci st' ps,
+      handleAppendEntries h st t n pli plt es ci = (st', ps) ->
+      currentTerm st' = currentTerm st ->
+      votedFor st' = votedFor st.
+  Proof.
+    unfold handleAppendEntries, advanceCurrentTerm.
+    intros.
+    repeat break_match; repeat tuple_inversion; simpl in *;
+      do_bool; auto; try omega.
+  Qed.
+
+  Lemma handleAppendEntriesReply_same_term_votedFor_preserved :
+    forall h st h' t es r st' ms,
+      handleAppendEntriesReply h st h' t es r = (st', ms) ->
+      currentTerm st' = currentTerm st ->
+      votedFor st' = votedFor st.
+  Proof.
+    intros. unfold handleAppendEntriesReply, advanceCurrentTerm in *.
+    repeat break_match; repeat tuple_inversion; auto.
+  Qed.
 
   Lemma doGenericServer_currentTerm :
     forall h st os st' ms,
@@ -247,6 +310,29 @@ Section SpecLemmas.
     break_if; simpl in *; do_bool; omega.
   Qed.
 
+  Lemma handleRequestVote_currentTerm_monotonic :
+    forall pDst t cid lli llt d d' m,
+      handleRequestVote pDst d t cid lli llt = (d', m) ->
+      currentTerm d <= currentTerm d'.
+  Proof.
+    intros.
+    unfold handleRequestVote in *.
+    repeat break_match; find_inversion; subst; auto;
+    simpl in *; apply advanceCurrentTerm_currentTerm.
+  Qed.
+
+  Lemma handleRequestVote_currentTerm_votedFor :
+    forall pDst t cid lli llt d d' m,
+      handleRequestVote pDst d t cid lli llt = (d', m) ->
+      (currentTerm d < currentTerm d' \/
+       (currentTerm d = currentTerm d' /\ votedFor d = None) \/
+       (currentTerm d = currentTerm d' /\ votedFor d = votedFor d')).
+  Proof.
+    intros.
+    find_copy_apply_lem_hyp handleRequestVote_currentTerm_monotonic.
+    find_apply_lem_hyp le_lt_or_eq. intuition.
+    right. find_apply_lem_hyp handleRequestVote_votedFor; intuition.
+  Qed.
 
   Lemma handleRequestVoteReply_currentTerm' :
     forall h st h' t r st',

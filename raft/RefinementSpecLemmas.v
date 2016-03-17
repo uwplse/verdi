@@ -20,6 +20,19 @@ Section SpecLemmas.
 
   Context {rri : raft_refinement_interface}.
 
+  Lemma votes_update_elections_data_request_vote :
+    forall h st t src lli llt st' m t' h',
+      handleRequestVote h (snd st) t src lli llt = (st', m) ->
+      In (t', h') (votes (update_elections_data_requestVote h src t src lli llt st)) ->
+      In (t', h') (votes (fst st)) \/ t' = currentTerm st' /\ votedFor st' = Some h'.
+  Proof.
+    unfold update_elections_data_requestVote.
+    intros.
+    repeat break_match; repeat tuple_inversion; intuition;
+    simpl in *; intuition;
+    tuple_inversion; intuition.
+  Qed.
+
   Lemma votes_update_elections_data_request_vote_reply :
     forall h st src t r st' t' h',
       handleRequestVoteReply h (snd st) src t r = st' ->
@@ -30,19 +43,6 @@ Section SpecLemmas.
     intros. repeat break_match; repeat tuple_inversion; intuition.
   Qed.
 
-  Lemma votes_update_elections_data_request_vote :
-    forall h st t src lli llt st' m t' h',
-      handleRequestVote h (snd st) t src lli llt = (st', m) ->
-      In (t', h') (votes (update_elections_data_requestVote h src t src lli llt st)) ->
-      In (t', h') (votes (fst st)) \/ t' = currentTerm st'.
-  Proof.
-    unfold update_elections_data_requestVote.
-    intros.
-    repeat break_match; repeat tuple_inversion; intuition;
-    simpl in *; intuition;
-    tuple_inversion; intuition.
-  Qed.
-
   Lemma votes_same_append_entries :
     forall h st t n pli plt es ci,
       votes (update_elections_data_appendEntries h st t n pli plt es ci) =
@@ -50,6 +50,83 @@ Section SpecLemmas.
   Proof.
     intros. unfold update_elections_data_appendEntries.
     repeat break_match; auto.
+  Qed.
+
+  Lemma votes_update_elections_data_timeout_votedFor :
+    forall h st out st' ps t' h',
+      handleTimeout h (snd st) = (out, st', ps) ->
+      In (t', h') (votes (update_elections_data_timeout h st)) ->
+      In (t', h') (votes (fst st)) \/
+      t' = currentTerm st' /\
+      t' = S (currentTerm (snd st)) /\
+      votedFor st' = Some h'.
+  Proof.
+    unfold update_elections_data_timeout, handleTimeout, tryToBecomeLeader.
+    intros.
+    repeat break_match; simpl in *; intuition; repeat tuple_inversion; intuition.
+  Qed.
+
+  Lemma handleTimeout_same_term_votedFor_preserved :
+    forall h st out st' ps,
+      handleTimeout h st = (out, st', ps) ->
+      currentTerm st' = currentTerm st ->
+      votedFor st' = votedFor st.
+  Proof.
+    unfold handleTimeout, tryToBecomeLeader.
+    intros. repeat break_match; repeat tuple_inversion; simpl in *; auto; omega.
+  Qed.
+
+  Lemma votes_update_elections_data_request_vote_reply_eq :
+    forall h st src t r st',
+      handleRequestVoteReply h (snd st) src t r = st' ->
+      votes (update_elections_data_requestVoteReply h src t r st) = votes (fst st).
+  Proof.
+    unfold update_elections_data_requestVoteReply.
+    intros. repeat break_match; repeat tuple_inversion; intuition.
+  Qed.
+
+  Lemma votes_update_elections_data_request_vote_intro :
+    forall h st t src lli llt st' m h',
+      handleRequestVote h (snd st) t src lli llt = (st', m) ->
+      votedFor st' = Some h' ->
+      currentTerm (snd st) < currentTerm st' \/ votedFor (snd st) = None ->
+      In (currentTerm st', h')
+         (votes (update_elections_data_requestVote h src t src lli llt st)).
+  Proof.
+    unfold update_elections_data_requestVote.
+    intros.
+    repeat break_match; repeat tuple_inversion; do_bool; intuition;
+    simpl in *; intuition; do_bool; try discriminate; intuition try congruence.
+    omega.
+  Qed.
+
+  Lemma votes_update_elections_data_request_vote_intro_old :
+    forall h st t src lli llt st' m t' h',
+      handleRequestVote h (snd st) t src lli llt = (st', m) ->
+      In (t', h') (votes (fst st)) ->
+      In (t', h')
+         (votes (update_elections_data_requestVote h src t src lli llt st)).
+  Proof.
+    unfold update_elections_data_requestVote.
+    intros.
+    repeat break_match; repeat tuple_inversion; simpl; auto.
+  Qed.
+
+  Lemma update_elections_data_timeout_votes_intro_new :
+    forall h st out st' ps t' h',
+      handleTimeout h (snd st) = (out, st', ps) ->
+      (forall t h,
+        t = currentTerm (snd st) ->
+        votedFor (snd st) = Some h ->
+        In (t, h) (votes (fst st))) ->
+      t' = currentTerm st' ->
+      votedFor st' = Some h' ->
+      In (t', h') (votes (update_elections_data_timeout h st)).
+  Proof.
+    unfold update_elections_data_timeout, handleTimeout, tryToBecomeLeader.
+    intros.
+    repeat break_match; simpl in *; intuition; repeat tuple_inversion;
+      intuition (auto; congruence).
   Qed.
 
   Lemma votes_update_elections_data_timeout :
@@ -548,28 +625,6 @@ Section SpecLemmas.
     simpl in *; repeat find_inversion; intuition; try congruence.
   Qed.
 
-  Lemma update_elections_data_request_vote_votedFor :
-    forall h h' cid t lli llt st st' m,
-      handleRequestVote h (snd st) t h' lli llt = (st', m) ->
-      votedFor st' = Some cid ->
-      (votedFor (snd st) = Some cid /\
-       currentTerm st' = currentTerm (snd st)) \/
-      (cid = h' /\
-       currentTerm st' = t /\
-        votesWithLog (update_elections_data_requestVote
-                       h h' t h' lli llt st) =
-       (currentTerm st', cid, (log st')) :: votesWithLog (fst st) /\
-       moreUpToDate llt lli (maxTerm (log st')) (maxIndex (log st')) = true).
-  Proof.
-    intros.
-    unfold update_elections_data_requestVote.
-    repeat find_rewrite.
-    unfold handleRequestVote, advanceCurrentTerm in *.
-    repeat break_match; repeat find_inversion; simpl in *; auto; try congruence;
-    find_inversion; auto; do_bool; intuition; try congruence.
-    do_bool. subst. intuition.
-  Qed.
-
   Lemma update_elections_data_timeout_votedFor :
     forall h cid st out st' m,
       handleTimeout h (snd st) = (out, st', m) ->
@@ -589,6 +644,32 @@ Section SpecLemmas.
     unfold handleTimeout, tryToBecomeLeader in *.
     repeat break_match; repeat find_inversion; simpl in *; auto; try congruence;
     find_inversion; auto.
+  Qed.
+
+  Lemma update_elections_data_request_vote_votedFor :
+    forall h h' cid t lli llt st st' m,
+      handleRequestVote h (snd st) t h' lli llt = (st', m) ->
+      votedFor st' = Some cid ->
+      (votedFor (snd st) = Some cid /\
+       currentTerm st' = currentTerm (snd st) /\
+       votes (update_elections_data_requestVote
+                h h' t h' lli llt st) =votes (fst st)) \/
+      (currentTerm st' = t /\
+        votes (update_elections_data_requestVote
+                       h h' t h' lli llt st) =
+       (currentTerm st', cid) :: votes (fst st)).
+  Proof.
+    intros.
+    find_copy_apply_lem_hyp handleRequestVote_cases.
+    repeat break_or_hyp; repeat break_and; subst;
+      unfold advanceCurrentTerm in *; try break_if;
+        unfold update_elections_data_requestVote;
+    repeat find_rewrite;
+    try rewrite PeanoNat.Nat.eqb_refl, Bool.andb_true_l, if_decider_true by auto;
+    intuition;
+    repeat find_rewrite; try break_match;
+      try rewrite (proj2 (PeanoNat.Nat.eqb_neq _ _)) by (simpl; do_bool; omega);
+      auto; do_bool; omega.
   Qed.
 
 End SpecLemmas.
