@@ -12,7 +12,7 @@ Require Import StructTact.StructTactics.
 
 Require Import Raft.
 Require Import CommonTheorems.
-Require Import TraceStructTact.Util.
+Require Import TraceUtil.
 Require Import Linearizability.
 
 Require Import RaftLinearizableProofs.
