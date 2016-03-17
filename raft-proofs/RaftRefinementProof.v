@@ -15,6 +15,8 @@ Require Import StructTact.StructTactics.
 
 Require Import RaftRefinementInterface.
 
+Set Bullet Behavior "Strict Subproofs".
+
 Section RaftRefinementProof.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
