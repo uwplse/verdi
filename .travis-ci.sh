@@ -5,7 +5,7 @@ pushd ..
 
   git clone 'http://github.com/uwplse/StructTact'
   pushd StructTact
-    make
+    ./build.sh
   popd
 popd
 
