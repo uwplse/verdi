@@ -13,7 +13,7 @@ Require Import Raft.
 Require Import CommonTheorems.
 Require Import OutputCorrectInterface.
 Require Import AppliedEntriesMonotonicInterface.
-Require Import TraceStructTact.Util.
+Require Import TraceUtil.
 
 Require Import StateMachineCorrectInterface.
 Require Import SortedInterface.

@@ -17,7 +17,7 @@ Require Import AppliedEntriesMonotonicInterface.
 Require Import MaxIndexSanityInterface.
 Require Import StateMachineCorrectInterface.
 Require Import LastAppliedCommitIndexMatchingInterface.
-Require Import TraceStructTact.Util.
+Require Import TraceUtil.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.

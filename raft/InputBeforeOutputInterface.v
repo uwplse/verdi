@@ -7,7 +7,7 @@ Require Import StructTact.Util.
 
 Require Import Raft.
 Require Import CommonDefinitions.
-Require Import TraceStructTact.Util.
+Require Import TraceUtil.
 
 Section InputBeforeOutputInterface.
   Context {orig_base_params : BaseParams}.

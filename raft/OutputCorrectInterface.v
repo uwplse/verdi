@@ -8,7 +8,7 @@ Require Import StructTact.StructTactics.
 
 Require Import Raft.
 Require Import CommonDefinitions.
-Require Import TraceStructTact.Util.
+Require Import TraceUtil.
 
 Section OutputCorrect.
   Context {orig_base_params : BaseParams}.

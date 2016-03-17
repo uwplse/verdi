@@ -15,7 +15,7 @@ Require Import LogMatchingInterface.
 Require Import StateMachineSafetyInterface.
 Require Import AppliedEntriesMonotonicInterface.
 Require Import MaxIndexSanityInterface.
-Require Import TraceStructTact.Util.
+Require Import TraceUtil.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.

@@ -11,7 +11,7 @@ Require Import InverseTraceRelations.
 
 Require Import Raft.
 Require Import CommonTheorems.
-Require Import TraceStructTact.Util.
+Require Import TraceUtil.
 Require Import OutputImpliesAppliedInterface.
 
 Require Import UpdateLemmas.

@@ -3,7 +3,7 @@ Require Import Net.
 
 Require Import Raft.
 Require Import CommonDefinitions.
-Require Import TraceStructTact.Util.
+Require Import TraceUtil.
 
 Section AppliedImpliesInputInterface.
   Context {orig_base_params : BaseParams}.

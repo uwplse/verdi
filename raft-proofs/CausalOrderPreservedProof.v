@@ -12,7 +12,7 @@ Require Import UpdateLemmas.
 
 Require Import Raft.
 Require Import CommonTheorems.
-Require Import TraceStructTact.Util.
+Require Import TraceUtil.
 
 Require Import CausalOrderPreservedInterface.
 Require Import OutputImpliesAppliedInterface.

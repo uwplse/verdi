@@ -7,7 +7,7 @@ Require Import StructTact.StructTactics.
 Require Import StructTact.Util.
 Require Import Raft.
 
-Section TraceStructTact.Util.
+Section TraceUtil.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
@@ -127,4 +127,4 @@ Section TraceStructTact.Util.
       | (_, inl (ClientRequest c i _)) => andb (beq_nat client c) (beq_nat id i)
       | _ => false
     end.
-End TraceStructTact.Util.
+End TraceUtil.
