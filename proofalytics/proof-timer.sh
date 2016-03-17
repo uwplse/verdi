@@ -10,8 +10,8 @@ PROOF_TICKS="${PADIR}/proof-times.ticks"
 STDBUF="$([ -x "$(which gstdbuf)" ] && echo "gstdbuf" || echo "stdbuf")"
 SEP="__PROOFALYTICS__"
 
-# initialize sandbox
-SANDBOX="$(mktemp -d "/tmp/proofalytics-tmp-XXXXX")"
+# initialize sandbox, must be sibling of verdi root
+SANDBOX="$(mktemp -d "${PADIR}/../../proofalytics-tmp-XXXXX")"
 cp -R "${PADIR}/.." "${SANDBOX}/"
 
 pushd "$SANDBOX" > /dev/null
