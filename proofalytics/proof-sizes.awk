@@ -1,11 +1,11 @@
-#!/usr/bin/env awk -f
-
-/Lemma|Theorem|Definition/ {
+/Lemma|Theorem|Corollary|Remark|Definition/ {
   name  = $2
   start = FNR
   proof = ""
   lines = 0
   words = 0
+
+  print "proof,lines,words,file,lineno"
 }
 
 {
@@ -14,10 +14,12 @@
   words = words + NF
 }
 
-/Qed\./ {
+/Qed\.|Defined\./ {
   if(name != "") {
     sub(/:$/, "", name)
-    printf("%s,%d,%d,%s,%d\n", name, lines, words, FILENAME, start)
+    fn = FILENAME
+    sub(/^.*\.\.\//, "", fn)
+    printf("%s,%d,%d,%s,%d\n", name, lines, words, fn, start)
   }
   name = ""
 }

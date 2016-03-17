@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ### coqproject.sh
 ### Creates a _CoqProject file, including external dependencies.

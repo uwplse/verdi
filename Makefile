@@ -8,11 +8,21 @@ endif
 default: Makefile.coq
 	$(MAKE) -f Makefile.coq
 
+proofalytics:
+	$(MAKE) -C proofalytics clean
+	$(MAKE) -C proofalytics
+	$(MAKE) -C proofalytics publish
+
+STDBUF=$(shell [ -x "$$(which gstdbuf)" ] && echo "gstdbuf" || echo "stdbuf")
+proofalytics-aux: Makefile.coq
+	sed "s|^TIMECMD=$$|TIMECMD=$(PWD)/proofalytics/build-timer.sh $(STDBUF) -i0 -o0|" \
+	  Makefile.coq > Makefile.coq_tmp
+	mv Makefile.coq_tmp Makefile.coq
+	$(MAKE) -f Makefile.coq
+
 Makefile.coq: hacks _CoqProject
 	test -s _CoqProject || { echo "Run ./configure before running make"; exit 1; }
 	coq_makefile -f _CoqProject -o Makefile.coq
-	sed 's:^TIMECMD=$$:TIMECMD=$(PWD)/proofalytics/build-timer.sh:' Makefile.coq > Makefile.coq_timed
-	mv Makefile.coq_timed Makefile.coq
 
 hacks: raft/RaftState.v
 
@@ -34,9 +44,6 @@ vard: Makefile.coq
 lint:
 	echo "Possible use of hypothesis names:"
 	find . -name '*.v' -exec grep -Hn 'H[0-9][0-9]*' {} \;
-
-proofalytics:
-	$(MAKE) -C proofalytics
 
 distclean: clean
 	rm -f _CoqProject
