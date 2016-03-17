@@ -38,4 +38,7 @@ lint:
 proofalytics:
 	$(MAKE) -C proofalytics
 
-.PHONY: default clean vard lint hacks proofalytics
+distclean: clean
+	rm -f _CoqProject
+
+.PHONY: default clean vard lint hacks proofalytics distclean
