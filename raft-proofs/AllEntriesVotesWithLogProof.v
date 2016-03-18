@@ -103,6 +103,7 @@ Section AllEntriesVotesWithLog.
   Proof.
     unfold currentTerm_votedFor_votesWithLog. intros.
     eapply votes_votesWithLog_correspond_invariant; eauto.
+    break_and.
     eapply votes_correct_invariant; eauto.
   Qed.
 

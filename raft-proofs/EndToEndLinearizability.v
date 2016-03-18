@@ -56,6 +56,9 @@ Require Import CroniesTermProof.
 Require Import CroniesCorrectInterface.
 Require Import CroniesCorrectProof.
 
+Require Import VotesLeCurrentTermInterface.
+Require Import VotesLeCurrentTermProof.
+
 Require Import VotesCorrectInterface.
 Require Import VotesCorrectProof.
 
@@ -300,6 +303,7 @@ Hint Extern 4 (@raft_refinement_interface _ _ _) => apply rri : typeclass_instan
 Hint Extern 4 (@raft_msg_refinement_interface _ _ _) => apply rmri : typeclass_instances.
 Hint Extern 4 (@cronies_term_interface _ _ _) => apply cti : typeclass_instances.
 Hint Extern 4 (@votes_correct_interface _ _ _) => apply vci : typeclass_instances.
+Hint Extern 4 (@votes_le_current_term_interface _ _ _) => apply vlcti : typeclass_instances.
 Hint Extern 4 (@cronies_correct_interface _ _ _) => apply cci : typeclass_instances.
 Hint Extern 4 (@candidates_vote_for_selves_interface _ _ _) => apply cvfsi : typeclass_instances.
 Hint Extern 4 (@candidate_entries_interface _ _ _) => apply cei : typeclass_instances.
