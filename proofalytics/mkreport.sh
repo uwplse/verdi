@@ -85,7 +85,62 @@ function mkindex {
       font-weight: bold;
       padding-right: 10px;
     }
+    .chart rect {
+      fill: steelblue;
+    }
+    .chart text {
+      fill: white;
+      font: 10px sans-serif;
+      text-anchor: end;
+    }
   </style>
+  <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script>
+    function drawChart(config) {
+      var width = 840,
+          barHeight = 20;
+
+      var x = d3.scale.linear()
+          .range([1, width/2]);
+
+      var chart = d3.select(config.chartId)
+          .attr("width", width);
+
+      d3.csv(config.csvFile, type, function(error, data) {
+          data = data.slice(0, 20);
+          x.domain([1, d3.max(data, function(d) { return d[config.value]; })]);
+
+          chart.attr("height", barHeight * data.length);
+
+          var bar = chart.selectAll("g")
+              .data(data)
+            .enter().append("g")
+              .attr("transform", function(d, i) { return "translate(0," + i * barHeight + ")"; });
+
+          bar.append("rect")
+              .attr("width", function(d) { return x(d[config.value]); })
+              .attr("height", barHeight - 1);
+
+          bar.append("text")
+              .attr("x", function(d) { return x(d[config.value]) - 3; })
+              .attr("y", barHeight / 2)
+              .attr("dy", ".35em")
+              .text(function(d) { return d[config.value]; });
+
+          bar.append("text")
+              .attr("style", "text-anchor: start; fill: black")
+              .attr("x", function(d) { return x(d[config.value]) + 5; })
+              .attr("y", barHeight / 2)
+              .attr("dy", ".35em")
+              .text(function(d) { return d[config.label]; });
+      });
+
+      function type(d) {
+        d[config.value] = +d[config.value]; // coerce to number
+        return d;
+      }
+    }
+  </script>
 </head>
 <body>
   <h1>Verdi Proofalytics</h1>
@@ -135,6 +190,17 @@ EOF
   if [ -f "$PROOF_TIMES" ]; then
     echo "<a id='proof-times'></a>"
     echo "<h2>Proof Times</h2>"
+    cat <<EOF
+<svg class="chart" id="proof-times-chart"></svg>
+<script>
+  drawChart(
+    {chartId: "#proof-times-chart",
+     value: "ltac",
+     csvFile: "proof-times.csv",
+     label: "proof"
+  });
+</script>
+EOF
     echo "<div class='scroller'>"
     cat "$PROOF_TIMES" \
       | awk -v commit="$COMMIT" \
@@ -146,6 +212,17 @@ EOF
   if [ -f "$BUILD_TIMES" ]; then
     echo "<a id='build-times'></a>"
     echo "<h2>Build Times</h2>"
+    cat <<EOF
+<svg class="chart" id="build-times-chart"></svg>
+<script>
+  drawChart(
+    {chartId: "#build-times-chart",
+     csvFile: "build-times.csv",
+     value: "time",
+     label: "file"
+  });
+</script>
+EOF
     echo "<div class='scroller'>"
     cat "$BUILD_TIMES" \
       | awk -v commit="$COMMIT" \
@@ -172,6 +249,17 @@ EOF
   if [ -f "$PROOF_SIZES" ]; then
     echo "<a id='proof-sizes'></a>"
     echo "<h2>Proof Sizes</h2>"
+    cat <<EOF
+<svg class="chart" id="proof-sizes-chart"></svg>
+<script>
+  drawChart(
+    {chartId: "#proof-sizes-chart",
+     csvFile: "proof-sizes.csv",
+     value: "lines",
+     label: "proof"
+  });
+</script>
+EOF
     echo "<div class='scroller'>"
     cat "$PROOF_SIZES" \
       | awk -v commit="$COMMIT" \
