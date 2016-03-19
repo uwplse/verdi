@@ -14,7 +14,7 @@ function find-redundant-imports {
 
     sed -nE '/^[[:space:]]*(Require)?[[:space:]]+(Export)/p' "$FILE_OF_IMPORTS" | while read line
     do
-        find-line "." "$EXCLUDE_PATH_REGEX" "$line"
+        find-line "." "$EXCLUDE_PATH_REGEX" "${line//Export/Import}"
     done
 }
 
