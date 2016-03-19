@@ -3,6 +3,7 @@ Require Import Raft.
 Require Import CommonTheorems.
 Require Import SpecLemmas.
 Require Import RaftRefinementInterface.
+Require Import RefinementCommonDefinitions.
 
 Require Import PrevLogCandidateEntriesTermInterface.
 Require Import VotesCorrectInterface.

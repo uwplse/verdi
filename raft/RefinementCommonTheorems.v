@@ -6,7 +6,7 @@ Require Import VotesCorrectInterface.
 Require Import CroniesCorrectInterface.
 
 Require Import CommonTheorems.
-Require Import RefinementCommonDefinitions.
+Require Export RefinementCommonDefinitions.
 
 Require Import SpecLemmas.
 
