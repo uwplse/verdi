@@ -316,7 +316,6 @@ Hint Extern 4 (@leaderLogs_votesWithLog_interface _ _ _) => apply llvwli : typec
 Hint Extern 4 (@allEntries_log_interface _ _ _) => apply aeli : typeclass_instances.
 Hint Extern 4 (@allEntries_votesWithLog_interface _ _ _) => apply aevwli : typeclass_instances.
 Hint Extern 4 (@votesWithLog_sorted_interface _ _ _) => apply vwlsi : typeclass_instances.
-Hint Extern 4 (@terms_and_indices_from_one_interface _ _ _) => apply taifoi : typeclass_instances.
 Hint Extern 4 (@leaderLogs_entries_match_interface _ _ _) => apply lllmi : typeclass_instances.
 Hint Extern 4 (@state_machine_safety'interface _ _ _) => apply sms'i : typeclass_instances.
 Hint Extern 4 (@append_entries_leaderLogs_interface _ _ _) => apply aerlli : typeclass_instances.
