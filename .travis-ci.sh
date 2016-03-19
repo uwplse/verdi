@@ -10,11 +10,11 @@ pushd ..
 popd
 
 case $MODE in
-  build)
-    ./build.sh
-    ;;
-
   analytics)
     ./analytics.sh
     ;;
+
+  *)
+      ./build.sh
+      ;;
 esac
