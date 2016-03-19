@@ -127,8 +127,6 @@ Section LeaderLogsVotesWithLog.
   Qed.
 
 
-  Require Import Omega.
-  
   Lemma wonElection_dedup_spec :
     forall l,
       wonElection (dedup name_eq_dec l) = true ->

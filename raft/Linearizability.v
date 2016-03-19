@@ -156,7 +156,6 @@ Section Linearizability.
     induction 1; intros; simpl in *; intuition.
   Qed.
 
-  Require Import Permutation.
   Hint Constructors Permutation.
   Lemma IR_equiv_Permutation :
     forall ir1 ir2,

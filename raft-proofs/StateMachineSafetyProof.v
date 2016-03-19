@@ -1,4 +1,5 @@
 Require Import GhostSimulations.
+Require Import FunctionalExtensionality.
 
 Require Import RaftState.
 Require Import Raft.
@@ -3121,8 +3122,6 @@ Section StateMachineSafetyProof.
       + eapply state_machine_safety'_state_same_packet_subset; eauto.
         auto using state_machine_safety'_invariant, msg_simulation_1.
   Qed.
-
-  Require Import FunctionalExtensionality.
 
   Lemma everything_reboot :
     msg_refined_raft_net_invariant_reboot' everything.

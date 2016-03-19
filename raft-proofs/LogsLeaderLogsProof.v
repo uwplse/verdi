@@ -1,3 +1,5 @@
+Require Import PeanoNat.
+Require Import Nat.
 Require Import GhostSimulations.
 
 Require Import Raft.
@@ -581,9 +583,6 @@ Section LogsLeaderLogs.
       repeat find_higher_order_rewrite;
       update_destruct; subst; rewrite_update; eauto.
   Qed.
-
-  Require Import PeanoNat.
-  Require Import Nat.
 
   Lemma doLeader_spec :
     forall st h os st' ms m t n pli plt es ci,

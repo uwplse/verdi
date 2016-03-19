@@ -1345,8 +1345,6 @@ Section PrefixWithinTerm.
     eapply lift_prop; eauto using nextIndex_safety_invariant.
   Qed.
 
-  Require Import Omega.
-  
   Lemma nextIndex_sanity :
     forall net h h',
       refined_raft_intermediate_reachable net ->

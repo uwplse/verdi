@@ -5,6 +5,7 @@ Require Import FunctionalExtensionality.
 Require Import GhostSimulations.
 Require Import RaftState.
 Require Import Raft.
+Require Import DupDropReordering.
 Require Import SpecLemmas.
 
 Require Import RaftRefinementInterface.
@@ -659,8 +660,6 @@ Section RaftMsgRefinement.
     intros.
     eauto using simulation_1.
   Qed.
-
-  Require Import DupDropReordering.
 
   Lemma step_f_star_raft_intermediate_reachable_extend :
     forall f net f' net' tr,

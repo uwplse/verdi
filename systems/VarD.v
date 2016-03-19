@@ -1,4 +1,5 @@
 Require Import Verdi.
+Require Import StateMachineHandlerMonad.
 
 Require Import String.
 Require Import StringMap.
@@ -42,8 +43,6 @@ Definition data :=
 
 Definition beq_key (k1 k2 : key) :=
   if string_dec k1 k2 then true else false.
-
-Require Import StateMachineHandlerMonad.
 
 Definition getk k : GenHandler1 data (option value) :=
   db <- get ;;

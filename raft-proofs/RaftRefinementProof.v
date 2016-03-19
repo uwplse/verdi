@@ -1,5 +1,6 @@
 Require Import NPeano.
 Require Import Sumbool.
+Require Import FunctionalExtensionality.
 
 Require Import GhostSimulations.
 Require Import RaftState.
@@ -412,8 +413,6 @@ Section RaftRefinementProof.
       eapply RRIR_doGenericServer; eauto.
   Qed.
 
-  Require Import FunctionalExtensionality.
-
   Ltac workhorse :=
     try match goal with
         | [ |- mkNetwork _ _ = mkNetwork _ _ ] => f_equal
@@ -507,8 +506,6 @@ Section RaftRefinementProof.
     intros.
     eauto using simulation_1.
   Qed.
-
-  Require Import FunctionalExtensionality.
 
   Theorem simulation_2 :
     forall net,

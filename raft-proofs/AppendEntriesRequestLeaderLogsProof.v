@@ -1,3 +1,5 @@
+Require Import PeanoNat.
+Require Import Nat.
 Require Import GhostSimulations.
 
 Require Import Raft.
@@ -317,9 +319,6 @@ Section AppendEntriesRequestLeaderLogs.
       subst; simpl in *; do_in_map; subst; simpl in *; congruence.
   Qed.
 
-  Require Import PeanoNat.
-  Require Import Nat.
-
   Lemma doLeader_spec :
     forall st h os st' ms m t n pli plt es ci,
       doLeader st h = (os, st', ms) ->
@@ -362,8 +361,6 @@ Section AppendEntriesRequestLeaderLogs.
     eapply lift_prop; eauto using nextIndex_safety_invariant.
   Qed.
 
-  Require Import Omega.
-  
   Lemma nextIndex_sanity :
     forall net h h',
       refined_raft_intermediate_reachable net ->
@@ -427,8 +424,6 @@ Section AppendEntriesRequestLeaderLogs.
     intros. induction l; simpl in *; auto.
   Qed.
 
-  Require Import Omega.
-  
   Lemma findGtIndex_app_in_1 :
     forall l1 l2 e,
       sorted (l1 ++ l2) ->

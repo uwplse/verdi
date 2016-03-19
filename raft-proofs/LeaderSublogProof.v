@@ -11,11 +11,11 @@ Require Import VotesCorrectInterface.
 Require Import CroniesCorrectInterface.
 Require Import RefinementCommonTheorems.
 
+Require Import LeaderSublogInterface.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
-
-Require Import LeaderSublogInterface.
 
 Section LeaderSublogProof.
   Context {orig_base_params : BaseParams}.
