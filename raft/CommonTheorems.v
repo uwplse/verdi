@@ -2,6 +2,7 @@ Require Import NPeano.
 Require Import PeanoNat.
 Import Nat.
 
+Require Import RaftState.
 Require Import Raft.
 
 Require Import UpdateLemmas.

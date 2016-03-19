@@ -3,6 +3,7 @@ Require Import Sumbool.
 Require Import FunctionalExtensionality.
 
 Require Import GhostSimulations.
+Require Import RaftState.
 Require Import Raft.
 Require Import SpecLemmas.
 

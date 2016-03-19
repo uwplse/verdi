@@ -1,3 +1,4 @@
+Require Import RaftState.
 Require Import Raft.
 
 Require Export UpdateLemmas.
