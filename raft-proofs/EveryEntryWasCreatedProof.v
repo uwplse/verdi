@@ -1,6 +1,5 @@
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
 Require Import RefinementCommonDefinitions.
 
 Require Import LeadersHaveLeaderLogsInterface.

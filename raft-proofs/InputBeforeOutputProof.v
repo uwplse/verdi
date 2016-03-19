@@ -1,5 +1,3 @@
-Require Import Nat.
-
 Require Import GhostSimulations.
 Require Import InverseTraceRelations.
 Require Import UpdateLemmas.

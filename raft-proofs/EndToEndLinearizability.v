@@ -1,5 +1,4 @@
 Require Import Raft.
-Require Import TraceUtil.
 Require Import Linearizability.
 
 Require Import RaftLinearizableProofs.
@@ -110,12 +109,6 @@ Require Import AllEntriesVotesWithLogProof.
 
 Require Import VotesWithLogSortedInterface.
 Require Import VotesWithLogSortedProof.
-
-Require Import TermsAndIndicesFromOneInterface.
-Require Import TermsAndIndicesFromOneProof.
-
-Require Import LeaderLogsLogMatchingInterface.
-Require Import LeaderLogsLogMatchingProof.
 
 Require Import LeaderLogsLogMatchingInterface.
 Require Import LeaderLogsLogMatchingProof.

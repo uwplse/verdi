@@ -2,7 +2,6 @@ Require Import Raft.
 Require Import RaftRefinementInterface.
 
 Require Import CommonTheorems.
-Require Import RefinementCommonTheorems.
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 

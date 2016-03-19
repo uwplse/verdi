@@ -1,5 +1,4 @@
 Require Import Raft.
-Require Import CommonDefinitions.
 Require Import CommonTheorems.
 Require Import SpecLemmas.
 

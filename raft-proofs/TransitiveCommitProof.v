@@ -1,11 +1,5 @@
-Require Import Sumbool.
-
 Require Import Raft.
-Require Import CommonDefinitions.
-Require Import CommonTheorems.
 Require Import RaftRefinementInterface.
-
-Require Import RefinementCommonDefinitions.
 
 Require Import LeaderCompletenessInterface.
 Require Import RefinedLogMatchingLemmasInterface.

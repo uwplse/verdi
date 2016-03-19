@@ -1,6 +1,5 @@
 Require Import Raft.
 
-Require Import CommonTheorems.
 Require Import SpecLemmas.
 
 Require Import UpdateLemmas.

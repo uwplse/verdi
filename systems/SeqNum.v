@@ -1,7 +1,5 @@
 Require Import Verdi.
 
-Require Import FunctionalExtensionality.
-
 Set Implicit Arguments.
 
 Section SeqNum.

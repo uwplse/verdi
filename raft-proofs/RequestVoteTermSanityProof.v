@@ -1,11 +1,9 @@
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 Require Import SpecLemmas.
-Require Import CommonTheorems.
 
 Require Import RequestVoteTermSanityInterface.
 

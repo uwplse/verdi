@@ -16,9 +16,7 @@ Require Import LeaderLogsLogMatchingInterface.
 Require Import LogsLeaderLogsInterface.
 Require Import OneLeaderLogPerTermInterface.
 Require Import RefinedLogMatchingLemmasInterface.
-Require Import SpecLemmas.
 
-Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 Section StateMachineSafety'.

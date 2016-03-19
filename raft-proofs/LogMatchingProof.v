@@ -1,5 +1,3 @@
-Require Import NPeano.
-
 Require Import Raft.
 
 Require Import SpecLemmas.

@@ -1,12 +1,9 @@
 Require Import GhostSimulations.
 
-Require Import CommonDefinitions.
-Require Import CommonTheorems.
 Require Import Raft.
 Require Import RaftMsgRefinementInterface.
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
-Require Import SpecLemmas.
 
 Require Import GhostLogsLogPropertiesInterface.
 

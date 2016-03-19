@@ -2,7 +2,6 @@ Require Import GhostSimulations.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 
-Require Import CommonDefinitions.
 Require Import CommonTheorems.
 
 Require Import SpecLemmas.

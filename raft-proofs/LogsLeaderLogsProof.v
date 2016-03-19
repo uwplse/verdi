@@ -1,10 +1,7 @@
-Require Import PeanoNat.
-Require Import Nat.
 Require Import GhostSimulations.
 
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
 Require Import CommonTheorems.
 
 Require Import SpecLemmas.

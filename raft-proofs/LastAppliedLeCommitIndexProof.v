@@ -1,5 +1,3 @@
-Require Import Nat.
-
 Require Import Raft.
 
 Require Import LastAppliedLeCommitIndexInterface.

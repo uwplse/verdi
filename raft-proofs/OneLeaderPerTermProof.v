@@ -1,5 +1,3 @@
-Require Import NPeano.
-
 Require Import GhostSimulations.
 Require Import Raft.
 

@@ -5,13 +5,10 @@ Require Import RaftRefinementInterface.
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
-Require Import CommonDefinitions.
 Require Import CommonTheorems.
 
 Require Import LeaderLogsContiguousInterface.
 Require Import LogMatchingInterface.
-
-Require Import SpecLemmas.
 
 Section LeaderLogsContiguous.
 
