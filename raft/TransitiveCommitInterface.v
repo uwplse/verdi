@@ -1,8 +1,3 @@
-Require Import List.
-
-Require Import StructTact.StructTactics.
-Require Import Net.
-Require Import StructTact.Util.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 Require Import LeaderCompletenessInterface.

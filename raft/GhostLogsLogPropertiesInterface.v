@@ -1,13 +1,6 @@
-Require Import List.
-Import ListNotations.
-
-Require Import StructTact.Util.
-Require Import Net.
-
 Require Import CommonDefinitions.
 Require Import CommonTheorems.
 Require Import Raft.
-Require Import StructTact.StructTactics.
 Require Import RaftMsgRefinementInterface.
 
 Section GhostLogsLogProperties.

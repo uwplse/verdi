@@ -1,18 +1,9 @@
-Require Import Arith.
 Require Import NPeano.
-Require Import Omega.
 Require Import PeanoNat.
 Import Nat.
-Require Import List.
-Require Import Coq.Numbers.Natural.Abstract.NDiv.
-Import ListNotations.
-Require Import Sorting.Permutation.
 
-Require Import StructTact.Util.
-Require Import Net.
 Require Import RaftState.
 Require Import Raft.
-Require Import StructTact.StructTactics.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.

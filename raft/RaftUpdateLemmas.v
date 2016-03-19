@@ -1,5 +1,3 @@
-Require Import StructTact.Util.
-Require Import Net.
 Require Import RaftState.
 Require Import Raft.
 

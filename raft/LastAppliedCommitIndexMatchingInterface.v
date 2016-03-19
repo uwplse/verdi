@@ -1,7 +1,3 @@
-Require Import List.
-
-Require Import StructTact.StructTactics.
-Require Import Net.
 Require Import Raft.
 
 Section LastAppliedCommitIndexMatching.
