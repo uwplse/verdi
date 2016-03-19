@@ -85,51 +85,123 @@ function mkindex {
       font-weight: bold;
       padding-right: 10px;
     }
-    .chart rect {
+
+    .bar {
       fill: steelblue;
     }
-    .chart text {
+
+    .bar-label {
+      text-anchor: start;
+      font: 10px sans-serif;
+      fill: black;
+    }
+
+    .bar-value {
       fill: white;
       font: 10px sans-serif;
       text-anchor: end;
+    }
+
+    .second-bar {
+      fill: seagreen;
+    }
+
+    .axis text {
+      font: 10px sans-serif;
+    }
+
+    text.axis-label {
+      font: 18px sans-serif;
+      text-anchor: middle;
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
     }
   </style>
   <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
   <script>
     function drawChart(config) {
       var width = 840,
-          barHeight = 20;
+          barHeight = 20,
+          axisHeight = 45,
+          topMargin = 5;
+
 
       var x = d3.scale.linear()
           .range([1, width/2]);
 
+      var xAxis = d3.svg.axis()
+          .scale(x)
+          .orient("top");
+
       var chart = d3.select(config.chartId)
           .attr("width", width);
 
+      var body = chart.append("g")
+          .attr("transform", "translate(0," + (axisHeight + topMargin)  + ")");
+
+      function totalValue(d) {
+        if (config.stacked) {
+            return d[config.value] + d[config.secondValue];;
+        } else {
+            return d[config.value];
+        }
+      }
+
       d3.csv(config.csvFile, type, function(error, data) {
+          console.log(data.slice(0,20));
+          if (config.stacked) {
+              data.sort(function(a,b) { return totalValue(b) - totalValue(a); });
+              console.log(data.slice(0,20));
+          }
+
           data = data.slice(0, 20);
-          x.domain([1, d3.max(data, function(d) { return d[config.value]; })]);
 
-          chart.attr("height", barHeight * data.length);
+          x.domain([1, d3.max(data, function(d) { return totalValue(d); })]);
 
-          var bar = chart.selectAll("g")
+          chart.attr("height", barHeight * data.length + axisHeight + topMargin);
+
+          chart.append("g")
+              .attr("class", "x axis")
+              .attr("transform", "translate(0," + axisHeight + ")")
+              .call(xAxis)
+              .append("text")
+                .attr("x", width / 4)
+                .attr("y", -axisHeight / 1.5)
+                .attr("class", "axis-label")
+                .text(config.valueName);
+
+
+          var bar = body.selectAll(".bargroup")
               .data(data)
             .enter().append("g")
+              .attr("class", "bargroup")
               .attr("transform", function(d, i) { return "translate(0," + i * barHeight + ")"; });
 
           bar.append("rect")
+              .attr("class", "bar")
               .attr("width", function(d) { return x(d[config.value]); })
               .attr("height", barHeight - 1);
 
-          bar.append("text")
-              .attr("x", function(d) { return x(d[config.value]) - 3; })
-              .attr("y", barHeight / 2)
-              .attr("dy", ".35em")
-              .text(function(d) { return d[config.value]; });
+          var barEnd = function(d) { return x(d[config.value]); }
+
+          if (config.stacked) {
+              bar.append("rect")
+                  .attr("class", "second-bar")
+                  .attr("x", function(d) { return x(d[config.value]); })
+                  .attr("width", function(d) { return x(d[config.secondValue]); })
+                  .attr("height", barHeight - 1);
+
+              barEnd = function(d) { return x(d[config.value]) + x(d[config.secondValue]); }
+          }
 
           bar.append("text")
-              .attr("style", "text-anchor: start; fill: black")
-              .attr("x", function(d) { return x(d[config.value]) + 5; })
+              .attr("class", "bar-label")
+              .attr("x", function(d) { return barEnd(d) + 5; })
               .attr("y", barHeight / 2)
               .attr("dy", ".35em")
               .text(function(d) { return d[config.label]; });
@@ -137,6 +209,9 @@ function mkindex {
 
       function type(d) {
         d[config.value] = +d[config.value]; // coerce to number
+        if (config.stacked) {
+            d[config.secondValue] = +d[config.secondValue]; // coerce to number
+        }
         return d;
       }
     }
@@ -196,8 +271,11 @@ EOF
   drawChart(
     {chartId: "#proof-times-chart",
      value: "ltac",
+     stacked: true,
+     secondValue: "qed",
      csvFile: "proof-times.csv",
-     label: "proof"
+     label: "proof",
+     valueName: "Total milliseconds to prove (ltac + qed)"
   });
 </script>
 EOF
@@ -219,7 +297,8 @@ EOF
     {chartId: "#build-times-chart",
      csvFile: "build-times.csv",
      value: "time",
-     label: "file"
+     label: "file",
+     valueName: "Total seconds to build file"
   });
 </script>
 EOF
@@ -256,7 +335,8 @@ EOF
     {chartId: "#proof-sizes-chart",
      csvFile: "proof-sizes.csv",
      value: "lines",
-     label: "proof"
+     label: "proof",
+     valueName: "Total lines of proof"
   });
 </script>
 EOF
