@@ -1,5 +1,4 @@
 Require Import Raft.
-Require Import CommonDefinitions.
 
 Section NextIndexSafety.
   Context {orig_base_params : BaseParams}.

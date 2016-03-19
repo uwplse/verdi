@@ -1,5 +1,3 @@
-Require Import PeanoNat.
-
 Require Import Raft.
 
 Section CommonDefinitions.

@@ -2,11 +2,8 @@ Require Import FunctionalExtensionality.
 
 Require Import Raft.
 
-Require Import CommonTheorems.
 Require Import SpecLemmas.
 
-Require Import UpdateLemmas.
-Require Import DecompositionWithPostState.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 Require Import AppendEntriesRequestReplyCorrespondenceInterface.
 

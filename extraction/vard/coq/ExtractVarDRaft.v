@@ -1,9 +1,6 @@
-Require Import Net.
-Require Import Arith.
+Require Import Verdi.
 Require Import NPeano.
 Require Import PeanoNat.
-Require Import List.
-Require Import StructTact.Util.
 Require Import VarD.
 Require Import VarDRaft.
 

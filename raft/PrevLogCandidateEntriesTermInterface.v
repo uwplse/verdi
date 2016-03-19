@@ -1,6 +1,5 @@
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Export CommonDefinitions.
 Require Export RefinementCommonDefinitions.
 
 Section PrevLogCandidateEntriesTermInterface.

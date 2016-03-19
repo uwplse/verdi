@@ -1,14 +1,5 @@
-Require Import CommonDefinitions.
-Require Import CommonTheorems.
 Require Import Raft.
 Require Import RaftRefinementInterface.
-
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
-
-Require Import SpecLemmas.
-Require Import RefinementSpecLemmas.
-Require Import RefinedLogMatchingLemmasInterface.
 
 Section LeaderLogsLogProperties.
   Context {orig_base_params : BaseParams}.

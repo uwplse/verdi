@@ -1,6 +1,5 @@
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
 
 Section RequestVoteMaxIndexMaxTerm.
   Context {orig_base_params : BaseParams}.

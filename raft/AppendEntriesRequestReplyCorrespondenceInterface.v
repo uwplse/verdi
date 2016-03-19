@@ -1,5 +1,3 @@
-Require Import FunctionalExtensionality.
-
 Require Import Raft.
 
 

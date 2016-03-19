@@ -1,4 +1,3 @@
-Require Import NPeano.
 Require Import PeanoNat.
 Import Nat.
 

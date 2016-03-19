@@ -1,5 +1,3 @@
-Require Import CommonDefinitions.
-
 Require Import Raft.
 
 Section LastAppliedLeCommitIndexInterface.

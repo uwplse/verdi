@@ -1,5 +1,4 @@
 Require Import Raft.
-Require Import CommonDefinitions.
 
 Section NoAppendEntriesRepliesToSelfInterface.
   Context {orig_base_params : BaseParams}.

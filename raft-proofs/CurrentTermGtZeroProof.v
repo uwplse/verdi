@@ -1,6 +1,4 @@
 Require Import Raft.
-Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
 Require Import SpecLemmas.
 
 Require Import UpdateLemmas.

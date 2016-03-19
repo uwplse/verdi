@@ -1,7 +1,4 @@
-Require Import Nat.
-
 Require Import TraceRelations.
-Require Import UpdateLemmas.
 
 Require Import Raft.
 Require Import CommonTheorems.

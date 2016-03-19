@@ -1,6 +1,5 @@
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
 
 Section AllEntriesIndicesGt0.
   Context {orig_base_params : BaseParams}.

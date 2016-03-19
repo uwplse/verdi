@@ -1,7 +1,5 @@
 Require Import Raft.
 
-Require Import CommonDefinitions.
-
 Section CurrentTermGtZeroInterface.
   Context {orig_base_params : BaseParams}.
   Context {one_node_params : OneNodeParams orig_base_params}.

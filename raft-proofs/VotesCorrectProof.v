@@ -10,8 +10,6 @@ Require Import RefinementSpecLemmas.
 Require Import RaftUpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
-Require Import StructTact.StructTactics.
-
 Require Import VotesCorrectInterface.
 Require Import VotesLeCurrentTermInterface.
 

@@ -1,5 +1,3 @@
-Require Import Min.
-
 Require Import Raft.
 Require Import CommonTheorems.
 Require Import RaftRefinementInterface.

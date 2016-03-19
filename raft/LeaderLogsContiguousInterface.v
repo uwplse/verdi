@@ -1,7 +1,6 @@
 Require Import Raft.
 Require Import RaftRefinementInterface.
 
-Require Import CommonDefinitions.
 Require Import CommonTheorems.
 
 Section LeaderLogsContiguous.

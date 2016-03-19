@@ -1,5 +1,3 @@
-Require Import CommonDefinitions.
-Require Import CommonTheorems.
 Require Import Raft.
 Require Import RaftMsgRefinementInterface.
 

@@ -1,6 +1,5 @@
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
 
 Section VotesReceivedMoreUpToDate.
   Context {orig_base_params : BaseParams}.

@@ -1,10 +1,5 @@
 Require Import Raft.
 
-Require Import CommonTheorems.
-Require Import RefinementCommonTheorems.
-Require Import SpecLemmas.
-
-Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 Require Import AppendEntriesReplySublogInterface.

@@ -2,7 +2,6 @@ Require Import List.
 Import ListNotations.
 
 Require Import Relations.
-Import Relation_Operators.
 
 Require Import Permutation.
 

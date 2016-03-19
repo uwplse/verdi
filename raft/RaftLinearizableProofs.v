@@ -1,4 +1,3 @@
-Require Import Nat.
 Require Import Sumbool.
 
 Require Import Raft.
@@ -6,7 +5,6 @@ Require Import CommonTheorems.
 Require Import TraceUtil.
 Require Import Linearizability.
 Require Import OutputImpliesAppliedInterface.
-Require Import UniqueIndicesInterface.
 Require Import AppliedImpliesInputInterface.
 Require Import CausalOrderPreservedInterface.
 Require Import OutputCorrectInterface.

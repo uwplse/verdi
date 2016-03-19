@@ -1,7 +1,4 @@
-Require Import Nat.
-
 Require Import Raft.
-Require Import CommonTheorems.
 Require Import TraceUtil.
 Require Import Linearizability.
 

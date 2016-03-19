@@ -1,6 +1,5 @@
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
 
 Section AllEntriesTermSanity.
   Context {orig_base_params : BaseParams}.

@@ -1,6 +1,5 @@
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
 
 Section LogsLeaderLogs.
   Context {orig_base_params : BaseParams}.

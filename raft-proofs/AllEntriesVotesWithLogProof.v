@@ -5,7 +5,6 @@ Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 Require Import RaftRefinementInterface.
-Require Import CommonTheorems.
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 
