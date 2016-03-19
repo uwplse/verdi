@@ -2,7 +2,6 @@ Require Import NPeano.
 Require Import Sumbool.
 
 Require Import GhostSimulations.
-Require Import RaftState.
 Require Import Raft.
 
 Section RaftRefinementInterface.

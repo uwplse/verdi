@@ -1,6 +1,5 @@
 Require Import GhostSimulations.
 
-Require Import RaftState.
 Require Import Raft.
 Require Import CommonTheorems.
 Require Import CommitRecordedCommittedInterface.
