@@ -1,13 +1,6 @@
-Require Import List.
-Import ListNotations.
-Require Import Arith.
 Require Import Nat.
-Require Import Omega.
 
-Require Import Net.
 Require Import GhostSimulations.
-Require Import StructTact.Util.
-Require Import StructTact.StructTactics.
 Require Import InverseTraceRelations.
 Require Import UpdateLemmas.
 
