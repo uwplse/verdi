@@ -1,4 +1,3 @@
-Require Import Nat.
 Require Import GhostSimulations.
 
 Require Import Raft.

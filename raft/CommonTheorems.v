@@ -1,5 +1,4 @@
 Require Import PeanoNat.
-Import Nat.
 
 Require Import RaftState.
 Require Import Raft.
@@ -1956,7 +1955,7 @@ Section CommonTheorems.
     intros. unfold contiguous_range_exact_lo in *. intuition.
     - invc H4.
       + eexists; intuition.
-      + find_rewrite. find_apply_lem_hyp succ_inj. subst.
+      + find_rewrite. find_apply_lem_hyp Nat.succ_inj. subst.
         assert (i < i0 <= maxIndex (y :: l)). simpl. omega.
         find_apply_hyp_hyp. break_exists. simpl in *.
         intuition; subst; eexists; intuition.
