@@ -4,6 +4,8 @@ Import ListNotations.
 Require Import StructTact.Util.
 Require Import StructTact.StructTactics.
 
+Require Import VerdiHints.
+
 Section Linearizability.
   Variable K : Type.
   Variable K_eq_dec : forall x y : K, {x = y} + {x <> y}.

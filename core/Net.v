@@ -9,6 +9,8 @@ Require Import Relations.Operators_Properties.
 Require Import StructTact.Util.
 Require Import StructTact.StructTactics.
 
+Require Export VerdiHints.
+
 Set Implicit Arguments.
 
 Class BaseParams :=
