@@ -230,7 +230,7 @@ function mkindex {
   </li></ul>
   <table id='cfg'><tr>
     <td class='cfg-fld'>Date</td>
-    <td>$(date)</td>
+    <td>$(TZ="America/Los_Angeles" date)</td>
   </tr><tr>
     <td class='cfg-fld'>Host</td>
     <td>$(whoami)@$(hostname -s)</td>
