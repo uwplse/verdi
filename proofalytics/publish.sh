@@ -98,7 +98,7 @@ EOF
         | sed 's|^..........\([0-9][0-9]\)\([0-9][0-9]\)\([0-9][0-9]\).*$|\1:\2:\3|')
     h=$(echo $rep \
         | awk -W lint=fatal -F "-" \
-            '{print $4; \
+            '{printf("%s", $4); \
               for(i=5; i<NF-1; i++) { \
                 printf("-%s", $i)}}')
     b=$(echo $rep \
