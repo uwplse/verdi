@@ -88,18 +88,19 @@ EOF
     echo "<br> &nbsp;"
     echo "<span class='it'>max ltac:</span> &nbsp;"
     cat "${rep}/proof-times.csv" \
-      | awk -v key=2 -f "${PADIR}/csv-sort.awk" \
-      | awk -F "," 'NR == 2 {print $1 " (" $2 " ms)"}'
+      | awk -Lfatal -v key=2 -f "${PADIR}/csv-sort.awk" \
+      | awk -Lfatal -F "," 'NR == 2 {print $1 " (" $2 " ms)"}'
 
     echo "<br> &nbsp;"
     echo "<span class='it'>max qed:</span> &nbsp;"
     cat "${rep}/proof-times.csv" \
-      | awk -v key=3 -f "${PADIR}/csv-sort.awk" \
-      | awk -F "," 'NR == 2 {print $1 " (" $2 " ms)"}'
+      | awk -Lfatal -v key=3 -f "${PADIR}/csv-sort.awk" \
+      | awk -Lfatal -F "," 'NR == 2 {print $1 " (" $2 " ms)"}'
 
     echo "<br> &nbsp;"
     echo "<span class='it'>build time:</span> &nbsp;"
-    awk 'BEGIN { FS = ","; tot = 0 }  \
+    awk -Lfatal \
+        'BEGIN { FS = ","; tot = 0 }  \
          { tot += $2 }      \
          END { print tot " s"}' \
         "${rep}/build-times.csv"

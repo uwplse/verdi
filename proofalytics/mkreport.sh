@@ -245,13 +245,15 @@ function mkindex {
     <td>
       $(find "${PADIR}/.." -name '*.v' \
           | xargs coqwc \
-          | awk 'END { printf("spec = %'"'"'d &nbsp; &nbsp; proof = %'"'"'d\n", $1, $2) }')
+          | awk -Lfatal \
+              'END { printf("spec = %'"'"'d &nbsp; &nbsp; proof = %'"'"'d\n", $1, $2) }')
     </td>
   </tr><tr>
     <td class='cfg-fld'>Compile</td>
     <td>
       $([ -f "$BUILD_TIMES" ] &&  \
-          awk 'BEGIN { FS = ","; tot = 0 }  \
+          awk -Lfatal \
+              'BEGIN { FS = ","; tot = 0 }  \
                { tot += $2 }      \
                END { print tot " sec"}' \
               "$BUILD_TIMES")
@@ -281,9 +283,9 @@ EOF
 EOF
     echo "<div class='scroller'>"
     cat "$PROOF_TIMES" \
-      | awk -v commit="$COMMIT" \
+      | awk -Lfatal -v commit="$COMMIT" \
             -f "${PADIR}/proof-times-links.awk" \
-      | awk -f "${PADIR}/csv-table.awk"
+      | awk -Lfatal -f "${PADIR}/csv-table.awk"
     echo "</div>"
   fi
 
@@ -304,9 +306,9 @@ EOF
 EOF
     echo "<div class='scroller'>"
     cat "$BUILD_TIMES" \
-      | awk -v commit="$COMMIT" \
+      | awk -Lfatal -v commit="$COMMIT" \
             -f "${PADIR}/build-times-links.awk" \
-      | awk -f "${PADIR}/csv-table.awk"
+      | awk -Lfatal -f "${PADIR}/csv-table.awk"
     echo "</div>"
   fi
 
@@ -321,7 +323,7 @@ EOF
           -e 's|^--$||' \
           -e 's|admit|<span class="bf red">admit</span>|g' \
           -e 's|Admitted|<span class="bf red">Admitted</span>|g' \
-    | awk -v commit="$COMMIT" \
+    | awk -Lfatal -v commit="$COMMIT" \
           -f "${PADIR}/admits-links.awk"
   echo "</code></pre></div>"
 
@@ -342,9 +344,9 @@ EOF
 EOF
     echo "<div class='scroller'>"
     cat "$PROOF_SIZES" \
-      | awk -v commit="$COMMIT" \
+      | awk -Lfatal -v commit="$COMMIT" \
             -f "${PADIR}/proof-sizes-links.awk" \
-      | awk -f "${PADIR}/csv-table.awk"
+      | awk -Lfatal -f "${PADIR}/csv-table.awk"
     echo "</div>"
   fi
 

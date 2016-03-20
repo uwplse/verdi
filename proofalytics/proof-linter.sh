@@ -7,6 +7,6 @@ PROOF_SIZES="${PADIR}/proof-sizes.csv"
 
 # proof sizes csv
 find "${PADIR}/.." -name '*.v' \
-  | xargs awk -f "${PADIR}/proof-sizes.awk" \
-  | awk -v key=2 -f "${PADIR}/csv-sort.awk" \
+  | xargs awk -Lfatal -f "${PADIR}/proof-sizes.awk" \
+  | awk -Lfatal -v key=2 -f "${PADIR}/csv-sort.awk" \
   > "$PROOF_SIZES"

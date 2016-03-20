@@ -1,11 +1,22 @@
-/Lemma|Theorem|Corollary|Remark|Definition/ {
-  name  = $2
-  start = FNR
+# TODO support Program Definition
+
+function reset() {
+  name  = ""
+  start = 0
   proof = ""
   lines = 0
   words = 0
+}
 
+BEGIN {
   print "proof,lines,words,file,lineno"
+  reset()
+}
+
+/Lemma|Theorem|Example|Corollary|Remark|Definition|Fixpoint|Instance/ {
+  reset()
+  name  = $2
+  start = FNR
 }
 
 {
@@ -21,5 +32,5 @@
     sub(/^.*\.\.\//, "", fn)
     printf("%s,%d,%d,%s,%d\n", name, lines, words, fn, start)
   }
-  name = ""
+  reset()
 }

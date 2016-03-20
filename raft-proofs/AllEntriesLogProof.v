@@ -216,7 +216,7 @@ Ltac all f ls :=
         eapply sorted_app_in_in in H
     end; eauto. omega.
   Qed.
-  
+
   Lemma sorted_app_in2_in2 :
     forall l1 l2 e e',
       sorted (l1 ++ l2) ->
@@ -232,8 +232,8 @@ Ltac all f ls :=
     end; eauto.  omega.
   Qed.
 
-  
-(*  Lemma sorted_app_in3_in4_prefix :
+(*
+  Lemma sorted_app_in3_in4_prefix :
     forall l1 l2 l3 l4 e e',
       sorted (l1 ++ l3) ->
       sorted (l2 ++ l4) ->
@@ -249,7 +249,7 @@ Ltac all f ls :=
         eapply sorted_app_in_in in H
     end; eauto.  omega.
   Qed.
-  *)
+*)
   Lemma sorted_term_index_le :
     forall l e e',
       sorted l ->
