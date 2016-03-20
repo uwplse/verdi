@@ -9,13 +9,16 @@ WEB_MACH="uwplse.org"
 WEB_PATH="/var/www/verdi/dash/"
 RDASH="${WEB_MACH}:${WEB_PATH}"
 LDASH="${PADIR}/dash/"
+HOST="$([ "$TRAVIS_BRANCH" != "" ] && \
+          echo "travis" || \
+          hostname -s)"
 BRANCH="$([ "$TRAVIS_BRANCH" != "" ] && \
             echo "$TRAVIS_BRANCH" || \
             git rev-parse --abbrev-ref HEAD)"
 NONCE=$(printf "PA-%s-%s-%s-%s" \
                $(date "+%y%m%d") \
                $(date "+%H%M%S") \
-               $(hostname -s) \
+               "$HOST" \
                "$BRANCH")
 REPDIR="${LDASH}${NONCE}"
 
