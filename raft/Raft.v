@@ -1,5 +1,6 @@
 Require Export Verdi.
 Require Import RaftState.
+Require Export StructTact.Fin.
 
 Open Scope bool.
 

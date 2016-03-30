@@ -1,5 +1,6 @@
 Require Import Verdi.
 Require Import HandlerMonad.
+Require Import StructTact.Fin.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
