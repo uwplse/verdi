@@ -1,18 +1,4 @@
-Require Import List.
-Import ListNotations.
-Require Import Arith.
-Require Import Nat.
-Require Import Omega.
-Require Import Sorting.Permutation.
-
-
-Require Import Net.
-Require Import StructTact.Util.
-Require Import StructTact.StructTactics.
-
 Require Import Raft.
-Require Import CommonTheorems.
-Require Import TraceUtil.
 Require Import Linearizability.
 
 Require Import RaftLinearizableProofs.
@@ -123,12 +109,6 @@ Require Import AllEntriesVotesWithLogProof.
 
 Require Import VotesWithLogSortedInterface.
 Require Import VotesWithLogSortedProof.
-
-Require Import TermsAndIndicesFromOneInterface.
-Require Import TermsAndIndicesFromOneProof.
-
-Require Import LeaderLogsLogMatchingInterface.
-Require Import LeaderLogsLogMatchingProof.
 
 Require Import LeaderLogsLogMatchingInterface.
 Require Import LeaderLogsLogMatchingProof.
@@ -336,7 +316,6 @@ Hint Extern 4 (@leaderLogs_votesWithLog_interface _ _ _) => apply llvwli : typec
 Hint Extern 4 (@allEntries_log_interface _ _ _) => apply aeli : typeclass_instances.
 Hint Extern 4 (@allEntries_votesWithLog_interface _ _ _) => apply aevwli : typeclass_instances.
 Hint Extern 4 (@votesWithLog_sorted_interface _ _ _) => apply vwlsi : typeclass_instances.
-Hint Extern 4 (@terms_and_indices_from_one_interface _ _ _) => apply taifoi : typeclass_instances.
 Hint Extern 4 (@leaderLogs_entries_match_interface _ _ _) => apply lllmi : typeclass_instances.
 Hint Extern 4 (@state_machine_safety'interface _ _ _) => apply sms'i : typeclass_instances.
 Hint Extern 4 (@append_entries_leaderLogs_interface _ _ _) => apply aerlli : typeclass_instances.

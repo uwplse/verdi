@@ -1,14 +1,6 @@
 Require Import List.
-Require Import Arith.
-Require Import Omega.
 Import ListNotations.
-Require Import Sorting.Permutation.
-Require Import FunctionalExtensionality.
-Require Import Relations.Relation_Operators.
-Require Import Relations.Operators_Properties.
-Require Import StructTact.Util.
 Require Import StructTact.StructTactics.
-
 Require Export VerdiHints.
 
 Set Implicit Arguments.

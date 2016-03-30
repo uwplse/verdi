@@ -1,15 +1,4 @@
-Require Import Arith.
-Require Import NPeano.
-Require Import Omega.
-Require Import List.
-Require Import Coq.Numbers.Natural.Abstract.NDiv.
-Import ListNotations.
-Require Import Sorting.Permutation.
-
-Require Import StructTact.Util.
-Require Import Net.
 Require Import Raft.
-Require Import StructTact.StructTactics.
 
 Require Import SpecLemmas.
 Require Import CommonTheorems.
@@ -17,11 +6,11 @@ Require Import SortedInterface.
 Require Import UniqueIndicesInterface.
 Require Import LeaderSublogInterface.
 
+Require Import LogMatchingInterface.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
-
-Require Import LogMatchingInterface.
 
 Section LogMatchingProof.
   Context {orig_base_params : BaseParams}.

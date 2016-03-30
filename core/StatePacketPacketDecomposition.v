@@ -1,9 +1,5 @@
-Require Export StructTact.Util.
-Require Export Net.
-Require Export List.
-Export ListNotations.
+Require Import Verdi.
 
-Require Import StructTact.StructTactics.
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 

@@ -1,8 +1,6 @@
 Require Import List.
-Import ListNotations.
 
 Require Import Net.
-Require Import StructTact.Util.
 Require Import StructTact.StructTactics.
 
 Class InverseTraceRelation `{State : Type} `{Event : Type} (step : step_relation State Event) :=

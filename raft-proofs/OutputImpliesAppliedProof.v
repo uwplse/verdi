@@ -1,12 +1,3 @@
-Require Import List.
-Import ListNotations.
-Require Import Arith.
-Require Import Nat.
-Require Import Omega.
-
-Require Import Net.
-Require Import StructTact.Util.
-Require Import StructTact.StructTactics.
 Require Import TraceRelations.
 
 Require Import Raft.

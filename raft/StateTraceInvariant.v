@@ -1,10 +1,6 @@
-Require Import List.
-Import ListNotations.
-
 Require Import FunctionalExtensionality.
 
-Require Import StructTact.StructTactics.
-Require Import Net.
+Require Import Verdi.
 
 Section ST.
   Context {B : BaseParams}.

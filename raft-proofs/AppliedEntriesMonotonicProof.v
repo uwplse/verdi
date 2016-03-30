@@ -1,19 +1,10 @@
-Require Import List.
-Import ListNotations.
-Require Import Arith.
-Require Import Nat.
-Require Import Omega.
-Require Import Permutation.
-
-Require Import Net.
 Require Import GhostSimulations.
-Require Import StructTact.Util.
-Require Import StructTact.StructTactics.
+
+Require Import Raft.
+
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
-
-Require Import Raft.
 Require Import CommonTheorems.
 Require Import StateMachineSafetyInterface.
 Require Import SortedInterface.

@@ -1,4 +1,3 @@
-Require Import Net.
 Require Import Raft.
 
 Section CandidatesVoteForSelvesInterface.

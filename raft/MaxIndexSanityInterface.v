@@ -1,11 +1,3 @@
-Require Import List.
-Import ListNotations.
-
-Require Import Net.
-Require Import StructTact.Util.
-Require Import StructTact.StructTactics.
-Require Import CommonDefinitions.
-
 Require Import Raft.
 
 Section MaxIndexSanity.

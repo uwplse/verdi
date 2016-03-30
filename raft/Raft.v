@@ -1,15 +1,4 @@
-Require Import Arith.
-Require Import NPeano.
-Require Import PeanoNat.
-Import Nat.
-Require Import List.
-Require Import Coq.Numbers.Natural.Abstract.NDiv.
-Import ListNotations.
-Require Import Sorting.Permutation.
-
-Require Import StructTact.Util.
-Require Import Net.
-Require Import StructTact.StructTactics.
+Require Export Verdi.
 Require Import RaftState.
 
 Open Scope bool.
@@ -35,10 +24,10 @@ Section Raft.
   Definition name_eq_dec : forall x y : name, {x = y} + {x <> y} := fin_eq_dec _.
 
   
-  Notation "a >? b" := (b <? a) (at level 42).
-  Notation "a >=? b" := (b <=? a) (at level 42).
-  Notation "a == b" := (beq_nat a b) (at level 42).
-  Notation "a != b" := (negb (beq_nat a b)) (at level 42).
+  Notation "a >? b" := (b <? a) (at level 70).
+  Notation "a >=? b" := (b <=? a) (at level 70).
+  Notation "a == b" := (beq_nat a b) (at level 70).
+  Notation "a != b" := (negb (beq_nat a b)) (at level 70).
 
   Notation "a === b" := (if fin_eq_dec _ a b then true else false) (at level 42).
   
@@ -370,7 +359,7 @@ Section Raft.
     (list raft_output * raft_data * list (name * msg)) :=
     let (out, state) :=
         applyEntries h state
-                     (rev (filter (fun x => andb (ltb (lastApplied state) (eIndex x))
+                     (rev (filter (fun x => andb (Nat.ltb (lastApplied state) (eIndex x))
                                                 (leb (eIndex x) (commitIndex state)))
                                   (findGtIndex (log state) (lastApplied state)))) in
     (out, {[ state with lastApplied := if commitIndex state >? lastApplied state then
@@ -391,7 +380,7 @@ Section Raft.
              (currentTerm state) me prevIndex prevTerm newEntries (commitIndex state)).
 
   Definition haveQuorum (state : raft_data) (me : name) (N : logIndex) : bool :=
-    ltb (div2 (length nodes)) (length (filter (fun h => leb N (assoc_default name_eq_dec (matchIndex state) h 0)) nodes)).
+    Nat.ltb (div2 (length nodes)) (length (filter (fun h => leb N (assoc_default name_eq_dec (matchIndex state) h 0)) nodes)).
   
   Definition advanceCommitIndex (state : raft_data) (me : name) : raft_data :=
     let entriesToCommit :=

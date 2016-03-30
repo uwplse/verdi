@@ -1,10 +1,4 @@
-Require Import List.
-Import ListNotations.
-
-Require Import StructTact.Util.
-Require Import StructTact.StructTactics.
-
-Require Import VerdiHints.
+Require Import Verdi.
 
 Section Linearizability.
   Variable K : Type.
@@ -162,7 +156,6 @@ Section Linearizability.
     induction 1; intros; simpl in *; intuition.
   Qed.
 
-  Require Import Permutation.
   Hint Constructors Permutation.
   Lemma IR_equiv_Permutation :
     forall ir1 ir2,

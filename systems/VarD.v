@@ -1,14 +1,9 @@
-Require Import Arith.
-Require Import List.
-Import ListNotations.
-
-Require Import StructTact.StructTactics.
-Require Import StructTact.Util.
-
-Require Import Net.
+Require Import Verdi.
 
 Require Import String.
 Require Import StringMap.
+
+Require Import StateMachineHandlerMonad.
 
 Definition key := string.
 Definition value := string.
@@ -49,8 +44,6 @@ Definition data :=
 
 Definition beq_key (k1 k2 : key) :=
   if string_dec k1 k2 then true else false.
-
-Require Import StateMachineHandlerMonad.
 
 Definition getk k : GenHandler1 data (option value) :=
   db <- get ;;

@@ -1,15 +1,5 @@
-Require Import List.
-Import ListNotations.
-
-Require Import StructTact.StructTactics.
-Require Import StructTact.Util.
-Require Import Net.
-
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
-Require Import SpecLemmas.
-Require Import RefinementSpecLemmas.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.

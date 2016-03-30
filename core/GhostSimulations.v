@@ -1,17 +1,8 @@
 Require Import List.
-Import ListNotations.
-
-Require Import Arith.
-Require Import ZArith.
-Require Import Omega.
 
 Require Import StructTact.StructTactics.
-Require Import HandlerMonad.
 Require Import Net.
 Require Import StructTact.Util.
-
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 Require Import FunctionalExtensionality.
 Require Import Simulations.

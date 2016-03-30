@@ -1,9 +1,5 @@
-Require Import List.
 Require Import FunctionalExtensionality.
 
-Require Import StructTact.Util.
-Require Import StructTact.StructTactics.
-Require Import Net.
 Require Import Raft.
 
 Section DecompositionWithPostState.

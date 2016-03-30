@@ -1,19 +1,9 @@
-Require Import List.
-Import ListNotations.
-Require Import Omega.
 Require Import FunctionalExtensionality.
 
-
-Require Import StructTact.StructTactics.
-Require Import Net.
-Require Import StructTact.Util.
 Require Import Raft.
 
-Require Import CommonTheorems.
 Require Import SpecLemmas.
 
-Require Import UpdateLemmas.
-Require Import DecompositionWithPostState.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 Require Import AppendEntriesRequestReplyCorrespondenceInterface.
 
