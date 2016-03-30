@@ -2,10 +2,7 @@ OCAMLBUILD = ocamlbuild -lib str -lib unix -I lib -I ml -I coq
 
 default: vard.native
 
-coq:
-	make -C coq
-
-vard.native : coq ml/*.ml lib/*.ml
+vard.native : ml/*.ml lib/*.ml
 	$(OCAMLBUILD) vard.native
 
 clean:
