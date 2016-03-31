@@ -6,6 +6,11 @@ provision: |
   tar xf coq-8.5-build-local.tgz
   echo "PATH=\"$$PWD/coq-8.5/bin:\$$PATH\"" >> ~/.profile
   source ~/.profile
+  # StructTact dependency
+  git clone https://github.com/uwplse/StructTact.git
+  pushd StructTact
+  ./configure && make
+  popd
   # vard
   git clone https://github.com/uwplse/verdi.git
   pushd verdi
@@ -24,7 +29,7 @@ provision: |
   +            ; (3, ("$db3", 9001))
                ]
   EOF
-  ./configure && make vard
+  ./configure && make vard-quick
   popd
   sudo ln -s "$$PWD/verdi/extraction/vard" /vard
   # etcd
