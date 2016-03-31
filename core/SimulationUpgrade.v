@@ -5,6 +5,9 @@ Require Import Omega.
 Require Import List.
 Require Import FunctionalExtensionality.
 Require Import ExtensionalUpdate.
+Require Import UpdateLemmas.
+Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+
 Import ListNotations.
 
 Set Bullet Behavior "Strict Subproofs".
@@ -16,46 +19,24 @@ Section SimulationUpdate.
   Variable first_update : handlerUpdate P.
   Variable first_update_first : Nth updates 0 first_update.
 
-  Variable simulations :
-    list (data -> data -> Prop).
-
-  Variable simulations_valid :
-    forall n update,
-      Nth updates (S n) update ->
-      exists simulation,
-        Nth simulations n simulation.
-
   Variable update_establishes_simulation :
-    forall n update up failed net h out d ms simulation,
+    forall n update up failed net h out d ms,
       su_reachable_state (up, failed, net) ->
       up h = n ->
       Nth updates (S n) update ->
       huUpdate update h (nwState net h) = (out, d, ms) ->
-      Nth simulations n simulation ->      
       out = nil /\
-      ms = nil /\
-      simulation (nwState net h) d.
+      ms = nil.
 
   Variable input_handlers_preserve_simulations :
-    forall n update1 update2 st st' h inp out d ms out' d' ms' simulation,
+    forall n update1 update2 st h inp out d ms,
       su_reachable_state st ->
-      su_reachable_state st' ->
       Nth updates n update1 ->
       Nth updates (S n) update2 ->
-      Nth simulations n simulation ->
-      simulation (nwState (snd st) h) (nwState (snd st') h) ->
       huInput update1 h inp (nwState (snd st) h) = (out, d, ms) ->
-      huInput update2 h inp (nwState (snd st') h) = (out', d', ms') ->
-      simulation d d' /\ out = out' /\ ms = ms'.
-
-  Inductive path : nat -> data -> data -> Prop :=
-  | pathO : forall st, path 0 st st
-  | pathS :
-      forall n simulation st st' st'',
-        path n st st' ->
-        Nth simulations n simulation ->
-        simulation st' st'' ->
-        path (S n) st st''.
+      huInput update2 h inp (snd (fst (huUpdate update2 h (nwState (snd st) h)))) =
+      (out, snd (fst (huUpdate update2 h d)), ms).
+      
 
   Lemma Nth_S_Nth :
     forall A (l : list A) n x,
@@ -73,20 +54,115 @@ Section SimulationUpdate.
       + find_apply_hyp_hyp.
         break_exists_exists. constructor. auto.
   Qed.
-      
-  Lemma input_handlers_preserve_paths :
-    forall n update2 st st' h inp out d ms out' d' ms',
-      path n (nwState (snd st) h) (nwState (snd st') h) ->
+
+  Inductive path : name -> nat -> data -> data -> Prop :=
+  | pathO : forall h st, path h 0 st st
+  | pathS :
+      forall h n update st st',
+        path h n st st' ->
+        Nth updates (S n) update ->
+        path h (S n) st (snd (fst (huUpdate update h st'))).
+
+  Lemma path_unique :
+    forall h n st sta stb,
+      path h n st sta ->
+      path h n st stb ->
+      sta = stb.
+  Proof.
+    induction n; intros; simpl in *.
+    - repeat match goal with
+             | H : path _ _ _ _ |- _ =>
+               invcs H
+             end; auto.
+    - repeat match goal with
+             | H : path _ (S _) _ _ |- _ =>
+               invcs H
+             end; auto.
+      repeat find_apply_lem_hyp Nth_nth_error.
+      repeat find_rewrite.
+      find_inversion.
+      repeat f_equal. eauto.
+  Qed.
+
+  Lemma path_exists :
+    forall h n update st,
+      Nth updates n update ->
+      exists st',
+        path h n st st'.
+  Proof.
+    induction n; intros; simpl in *.
+    - repeat econstructor.
+    - find_copy_apply_lem_hyp Nth_S_Nth.
+      break_exists.
+      find_eapply_lem_hyp IHn.
+      break_exists.
+      repeat econstructor; eauto.
+  Qed.
+
+  Lemma su_reachable_state_extend :
+    forall sigma sigma' tr,
+      su_reachable_state sigma ->
+      step_u sigma sigma' tr ->
+      su_reachable_state sigma'.
+  Proof.
+    clear update_establishes_simulation.
+    clear input_handlers_preserve_simulations.
+    intros.
+    unfold su_reachable_state in *.
+    break_exists.
+    eexists.
+    find_apply_lem_hyp refl_trans_1n_n1_trace.
+    apply refl_trans_n1_1n_trace.
+    econstructor; eauto.
+  Qed.
+
+  
+  Lemma reachable_path_exists :
+    forall h n up sigma,
+      Nth updates n up ->
+      su_reachable_state sigma ->
+      exists sigma',
+        path h n (nwState (snd sigma) h) (nwState (snd sigma') h) /\
+        su_reachable_state sigma'.
+  Proof.
+    induction n; intros; simpl in *.
+    - exists sigma. intuition.
+      constructor.
+    - find_copy_apply_lem_hyp Nth_S_Nth.
+      break_exists_name up'.
+      find_eapply_lem_hyp IHn; eauto.
+      break_exists_name sigma'.
+      intuition.
+      (* build the state *)
+      remember (
+          update (nwState (snd sigma')) h
+                 (snd (fst (huUpdate up h (nwState (snd sigma') h))))
+        ) as new_state.
+      exists
+        (update (fst (fst sigma')) h (S (fst (fst sigma') h)),
+         snd (fst sigma'), {| nwPackets := nwPackets (snd sigma');
+                              nwState := new_state|}).
+      intuition.
+      + subst; simpl. rewrite update_eq by auto.
+        constructor; auto.
+      + eapply su_reachable_state_extend; eauto.
+        subst. destruct sigma'. destruct p.
+        simpl. econstructor; eauto.
+        
+        
+  Qed.
+  
+       (snd st') h) ->
       su_reachable_state st ->
       su_reachable_state st' ->
       Nth updates n update2 ->
       huInput first_update h inp (nwState (snd st) h) = (out, d, ms) ->
       huInput update2 h inp (nwState (snd st') h) = (out', d', ms') ->
-      path n d d' /\ out = out' /\ ms = ms'.
+      path h n d d' /\ out = out' /\ ms = ms'.
   Proof.
     induction n (* path *); intros; simpl in *.
     - match goal with
-      | H : path _ _ _ |- _ =>
+      | H : path _ _ _ _ |- _ =>
         invcs H
       end.
       repeat find_apply_lem_hyp Nth_nth_error.
@@ -97,11 +173,12 @@ Section SimulationUpdate.
       intuition.
       constructor.
     - match goal with
-      | H : path _ _ ?x |- _ =>
-        remember x
+      | H : path _ _ _ _ |- _ =>
+        invcs H
       end.
       find_copy_apply_lem_hyp Nth_S_Nth.
       break_exists_name update1.
+      remember (nwState (snd st)).
       destruct (huInput update1 h inp (nwState (snd st'0) h)) eqn:?.
       find_eapply_lem_hyp input_handlers_preserve_simulations; eauto.
       
