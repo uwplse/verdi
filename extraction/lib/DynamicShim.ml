@@ -81,7 +81,8 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     let (fds, _, _) = my_select [env.usock] [] [] (A.setTimeout nm s) in
     let s' =
       match List.mem env.usock fds with
-      | true -> recv_step env nm s
+      | true -> (try (recv_step env nm s) with
+                 | _ -> s)
       | _ -> timeout_step env nm s in
     eloop env nm s'
 
