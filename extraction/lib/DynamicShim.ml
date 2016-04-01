@@ -2,9 +2,6 @@ open Printf
 open Unix
 
 module M = Marshal
-
-let _LOG = "/tmp/verdi-log"
-let _SNAP = "/tmp/verdi-snapshot"
                
 module type DYNAMIC_ARRANGEMENT = sig
   type name
