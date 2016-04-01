@@ -90,7 +90,7 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     | None -> v
     | Some v' -> v'
 
-  let main nm nodes =
+  let main nm =
     print_endline "running setup";
     let env = setup nm in
     print_endline "starting";
