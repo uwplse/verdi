@@ -10,7 +10,7 @@ module type DYNAMIC_ARRANGEMENT = sig
   type res = state * (name * msg) list
   val addr_of_name : name -> (string * int)
   val name_of_addr : (string * int) -> name
-  val init : name -> state
+  val init : name -> res
   val handleNet : name -> name -> msg -> state -> res
   val handleTimeout : name -> state -> res
   val setTimeout : name -> state -> float
@@ -94,5 +94,5 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     print_endline "running setup";
     let env = setup nm in
     print_endline "starting";
-    eloop env nm (A.init nm)
+    eloop env nm (respond env (A.init nm))
 end
