@@ -20,7 +20,7 @@ module type DYNAMIC_ARRANGEMENT = sig
   val debugTimeout : state -> unit
 end
 
-Module Shim (A: DYNAMIC_ARRANGEMENT) = struct
+module Shim (A: DYNAMIC_ARRANGEMENT) = struct
   type env =
     {
       usock : file_descr
