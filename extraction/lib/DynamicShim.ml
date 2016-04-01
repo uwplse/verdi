@@ -21,6 +21,7 @@ module type DYNAMIC_ARRANGEMENT = sig
 end
 
 module Shim (A: DYNAMIC_ARRANGEMENT) = struct
+
   type env =
     {
       usock : file_descr
@@ -36,7 +37,6 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     setsockopt env.usock SO_REUSEADDR true;
     bind env.usock (ADDR_INET (inet_addr_any, port));
     env
-
     
   let sendto sock buf addr =
     ignore (Unix.sendto sock buf 0 (String.length buf) [] addr)
