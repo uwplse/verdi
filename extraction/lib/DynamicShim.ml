@@ -61,7 +61,7 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     let (_, from) = recvfrom env.usock buf 0 len [] in
     let src =
     (match from with
-     | ADDR_UNIX _ -> failwith "TODO"
+     | ADDR_UNIX _ -> failwith "UNEXPECTED MESSAGE FROM UNIX ADDR"
      | ADDR_INET (addr,port) -> A.name_of_addr (string_of_inet_addr addr, port)) in
     let m = unpack_msg buf in
     let s' = respond env (A.handleNet nm src m s) in
