@@ -50,7 +50,7 @@ Inductive query :=
 Record data := Data { ptr : pointer ;
                       pred : option pointer ;
                       succ_list : list pointer ;
-                      known : option pointer ;
+                      known : pointer ;
                       joined : bool ;
                       rectify_with : option pointer ;
                       cur_request : option (pointer * query) ;
@@ -64,6 +64,13 @@ Definition update_query (st : data) (dst : pointer) (q : query) := Data (ptr st)
 
 Definition update_for_join (st : data) (succs : list pointer) := Data (ptr st) None succs (known st) true (rectify_with st) (cur_request st) (query_sent st).
 
+
+Definition set_rectify_with (st : data) (rw : pointer) :=
+  Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (Some rw) (cur_request st) (query_sent st).
+
+Definition clear_rectify_with (st : data) :=
+  Data (ptr st) (pred st) (succ_list st) (known st) (joined st) None (cur_request st) (query_sent st).
+
 Definition make_request (h : addr) (st : data) (k : query) : option (pointer * payload) :=
     match k with
     | Rectify notifier => match pred st with
@@ -72,21 +79,56 @@ Definition make_request (h : addr) (st : data) (k : query) : option (pointer * p
                           end
     | Stabilize => match head (succ_list st) with
                    | Some succ => Some (succ, GetPredAndSuccs)
-                   | None => None
+                   | None => None (* should not happen in a good network *)
                    end
     | Stabilize2 new_succ => Some (new_succ, GetSuccList)
     | Join known => Some (known, GetBestPredecessor h)
     | Join2 new_succ => Some (new_succ, GetSuccList)
     end.
 
-Definition ptrs_to_addrs : list (pointer * payload) -> list (addr * payload) :=
-  map (fun p => (addr_of (fst p), (snd p))).
-  
 Definition start_query (h : addr) (st : data) (k : query) : list (addr * payload) * data :=
   match make_request h st k with
   | Some (dst, msg) => ([(addr_of dst, msg)], update_query st dst k)
   | None => ([], st) (* should not happen *)
   end.
+
+(* something to prove: try_rectify is not invoked unless cur_request st is None *)
+Definition try_rectify (h : addr) (outs : list (addr * payload)) (st : data) : list (addr * payload) * data :=
+  if joined st
+  then match rectify_with st with
+         | Some new => match pred st with
+                         | Some _ => let st' := clear_rectify_with st in
+                                     start_query h st' (Rectify new)
+                         | None => let st' := clear_rectify_with (update_pred st new) in
+                                   (outs, st')
+                       end
+         | None => (outs, st)
+       end
+  else (outs, st).
+
+Definition is_request (msg : payload) :=
+  match msg with
+    | GetBestPredecessor _ => true
+    | GetSuccList => true
+    | GetPredAndSuccs => true
+    | Ping => true
+    | _ => false
+  end.
+
+Definition request_in (msgs : list (addr * payload)) :=
+  existsb is_request (map snd msgs).
+
+Definition end_query (h : addr) (outs : list (addr * payload)) (st : data) : list (addr * payload) * data :=
+  let st' := Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) None false in
+  match outs with
+    | [] => try_rectify h outs st
+    | head :: rest => if request_in (head :: rest)
+                      then (outs, st)
+                      else try_rectify h outs st
+  end.
+
+Definition ptrs_to_addrs : list (pointer * payload) -> list (addr * payload) :=
+  map (fun p => (addr_of (fst p), (snd p))).
 
 (* true iff n in (a, b) on some sufficiently large "circle" *)
 Definition between_bool (a : nat) (x : nat) (b : nat) : bool :=
@@ -176,10 +218,56 @@ Definition recv_handler (src : addr) (dst : addr) (st : data) (msg : payload) : 
   | GetSuccList => ([(src, GotSuccList (succ_list st))], st)
   | GetPredAndSuccs => ([(src, GotPredAndSuccs (pred st) (succ_list st))], st)
   | GetBestPredecessor id => ([(src, GotBestPredecessor (best_predecessor dst st id))], st)
+  | Notify => ([], set_rectify_with st (make_pointer src))
   | _ => match cur_request st with
          | Some (query_dst, q) => if addr_eq_dec (addr_of query_dst) src
-                     then handle_query src dst st query_dst q msg
+                     then let (outs, st') := handle_query src dst st query_dst q msg in
+                          end_query dst outs st'
                      else ([], st)
          | None => ([], st)
          end
   end.
+
+Definition start_handler (h : addr) (knowns : list addr) : list (addr * payload) * data :=
+  match knowns with
+    | k :: _ =>
+      let known := make_pointer k in
+      let st := Data (make_pointer h) None [] known false None None false in
+      start_query h st (Join known)
+    (* garbage data, shouldn't happen *)
+    | [] => ([], Data (make_pointer h) None [] (make_pointer h) false None None false )
+  end.
+
+Definition tick_handler (h : addr) (st : data) : list (addr * payload) * data :=
+  match cur_request st with
+    | Some _ => ([], st)
+    | None => if joined st
+              then start_query h st Stabilize
+              else start_query h st (Join (known st))
+  end.
+
+Definition handle_query_timeout (h : addr) (st : data) (dead : pointer) (q : query) : list (addr * payload) * data :=
+  match q with
+    | Rectify notifier => ([], update_pred st notifier)
+    | Stabilize =>
+      match succ_list st with
+        | _ :: rest => start_query h (update_succ_list st rest) Stabilize
+        | [] => ([], st) (* should not happen in a good network *)
+      end
+    | Stabilize2 new_succ =>
+      match succ_list st with
+        | next :: _ => ([(addr_of next, Notify)], st)
+        | [] => ([], st) (* again, this shouldn't happen *)
+      end
+    | Join known => ([], st) (* should step to next in the knowns list somehow *)
+    | Join2 new_succ => ([], st) (* ditto as for join *)
+  end.
+
+Definition timeout_handler (src : addr) (dst : addr) (st : data) : list (addr * payload) * data :=
+  match cur_request st with
+    | Some (ptr, q) => if pointer_eq_dec ptr (make_pointer dst)
+                       then let (outs, st') := handle_query_timeout src st ptr q in
+                            end_query src outs st'
+                       else ([], st) (* shouldn't happen *)
+    | None => ([], st) (* shouldn't happen *)
+ end.
