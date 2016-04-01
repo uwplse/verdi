@@ -1,6 +1,6 @@
-Require Import VerdiTactics.
+Require Import StructTact.StructTactics.
+Require Import StructTact.Util.
 Require Import Net.
-Require Import Util.
 Require Import Omega.
 Require Import List.
 Require Import FunctionalExtensionality.

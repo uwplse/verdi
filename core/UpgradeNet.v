@@ -2,7 +2,9 @@ Require Import List.
 Require Import Arith.
 Require Import Omega.
 Import ListNotations.
-Require Import VerdiTactics.
+Require Import StructTact.StructTactics.
+Require Import StructTact.Util.
+
 
 Section StepRelations.
   Variable A : Type.
