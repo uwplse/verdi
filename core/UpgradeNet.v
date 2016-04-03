@@ -6,7 +6,7 @@ Require Import StructTact.StructTactics.
 Require Import StructTact.Util.
 Require Import Net.
 
-Class VerySimpleUpdateParams :=
+Class VerySimpleUpgradeParams :=
   {
     name : Type ;
     msg : Type ;
@@ -35,8 +35,8 @@ Class VerySimpleUpdateParams :=
   }.
 
 
-Section StepVerySimpleUpdate.
-  Context `{params : VerySimpleUpdateParams}.
+Section StepVerySimpleUpgrade.
+  Context `{params : VerySimpleUpgradeParams}.
 
   Inductive version :=
   | One
@@ -182,5 +182,5 @@ Section StepVerySimpleUpdate.
       []
       (fun n =>
          existT _ One (init_handlers n)).
-End StepVerySimpleUpdate.
+End StepVerySimpleUpgrade.
 
