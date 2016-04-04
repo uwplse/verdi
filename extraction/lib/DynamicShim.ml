@@ -92,9 +92,6 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     | None -> v
     | Some v' -> v'
   
-  let parse_known arg =
-      A.name_of_addr ("127.0.0.1", int_of_string arg)
-
   let main nm knowns =
     print_endline "running setup";
     let env = setup nm in

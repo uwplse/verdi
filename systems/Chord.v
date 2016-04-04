@@ -230,10 +230,15 @@ Definition recv_handler (src : addr) (dst : addr) (msg : payload) (st : data) : 
 
 Definition start_handler (h : addr) (knowns : list addr) : data * list (addr * payload) :=
   match knowns with
-    | k :: _ =>
+    | k :: [] =>
       let known := make_pointer k in
       let st := Data (make_pointer h) None [] known false None None false in
       start_query h st (Join known)
+    | k :: nowns =>
+      let p := make_pointer k in
+      let succs := map make_pointer nowns in
+      let st := Data (make_pointer h) (Some p) succs p true None None false in
+      start_query h st Stabilize
     (* garbage data, shouldn't happen *)
     | [] => (Data (make_pointer h) None [] (make_pointer h) false None None false, [])
   end.
