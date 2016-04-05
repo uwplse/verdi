@@ -183,7 +183,7 @@ module Shim (A: ARRANGEMENT) = struct
        raise (Disconnect_client (S_error, "received invalid input"))
 
   let recv_step env nm s =
-    let len = 4096 in
+    let len = 65536 in
     let buf = String.make len '\x00' in
     let (_, from) = recvfrom env.usock buf 0 len [] in
     let (src, m) = (undenote env from, unpack_msg buf) in
