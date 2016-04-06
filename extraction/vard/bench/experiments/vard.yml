@@ -32,10 +32,24 @@ provision: |
   ./configure && make vard-quick
   popd
   sudo ln -s "$$PWD/verdi/extraction/vard" /vard
+  sudo cp /vard/vard.conf /etc/init
+  sed -i 's/$$NODE_ID/$id/' /etc/init/vard.conf
   # etcd
   curl -L https://github.com/coreos/etcd/releases/download/v2.0.9/etcd-v2.0.9-linux-amd64.tar.gz -o etcd-v2.0.9-linux-amd64.tar.gz
   tar xzf etcd-v2.0.9-linux-amd64.tar.gz
   sudo ln -s "$$PWD/etcd-v2.0.9-linux-amd64" /etcd
+  # ergonomics
+  sudo apt-get install htop
+  cat >vard.sh <<EOF
+  export me=$name
+  export db1=$db1
+  export db2=$db2
+  export db3=$db3
+  export cluster="$$db1:8001,$$db2:8001,$$db3:8001"
+  export client=$client
+  EOF
+  sudo mv vard.sh /etc/profile.d
+  echo "PS1='\[\e[0;32m\]\u\e[0;35m@$name\[\e[m\] \[\e[1;34m\]\w\[\e[m\] \[\e[1;32m\]$$\[\e[m\] \[\e[1;37m\]'" >> ~/.bashrc
 vars:
   keys: 500
   threads: 8
@@ -43,15 +57,21 @@ vars:
 instances:
   client:
   db1:
+    id: 1
   db2:
+    id: 2
   db3:
+    id: 3
+  client:
+    id: 0
 setup:
   db1: |
-    /vard/vard.native 1
+    sudo start vard
   db2: |
-    /vard/vard.native 2
+    sudo start vard
   db3: |
-    /vard/vard.native 3
+    sudo start vard
+  client: |
 experiment:
   client: |
     cd /vard

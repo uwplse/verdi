@@ -125,7 +125,10 @@ def main(run_expt, run_cleanup):
             procs = []
             for instance_name in experiment['instances']:
                 logfile = open(os.path.join(experiment_label, 'provision-%s.log' % instance_name), 'w')
-                command = string.Template(config['provision']).substitute(experiment['vars'])
+                subs = dict(experiment['vars'])
+                subs.update({'name': instance_name})
+                subs.update(config['instances'][instance_name] or {})
+                command = string.Template(config['provision']).substitute(subs)
                 procs.append(run_command(experiment['instances'][instance_name]['public'], command, logfile))
             for proc in procs:
                 proc.wait()
@@ -146,7 +149,8 @@ def main(run_expt, run_cleanup):
                 proc.wait()
         else:
             while True:
-                pass
+                # wait for kill
+                time.sleep(1)
     finally:
         if run_cleanup:
             for instance_name in experiment['instances']:
