@@ -17,7 +17,7 @@ Definition N := 256.
 Definition make_pointer (a : addr) : pointer := (a mod N, a).
 
 Inductive payload :=
-| GetBestPredecessor : addr -> payload
+| GetBestPredecessor : pointer -> payload
 | GotBestPredecessor : pointer -> payload
 | GetSuccList : payload
 | GotSuccList : list pointer -> payload
@@ -27,11 +27,11 @@ Inductive payload :=
 | Ping : payload
 | Pong : payload.
 
-Definition client_payload p := exists (a: addr), p = GetBestPredecessor a.
-Definition request_payload p := (exists (a : addr), p = GetBestPredecessor a)
-                                                 \/ p = GetSuccList
-                                                 \/ p = GetPredAndSuccs
-                                                 \/ p = Ping.
+Definition client_payload msg := exists (p : pointer), msg = GetBestPredecessor p.
+Definition request_payload msg := (exists (p : pointer), msg = GetBestPredecessor p)
+                                                      \/ msg = GetSuccList
+                                                      \/ msg = GetPredAndSuccs
+                                                      \/ msg = Ping.
 
 Definition is_request (p : payload) :=
   match p with
@@ -91,7 +91,7 @@ Definition make_request (h : addr) (st : data) (k : query) : option (pointer * p
                    | None => None (* should not happen in a good network *)
                    end
     | Stabilize2 new_succ => Some (new_succ, GetSuccList)
-    | Join known => Some (known, GetBestPredecessor h)
+    | Join known => Some (known, GetBestPredecessor (make_pointer h))
     | Join2 new_succ => Some (new_succ, GetSuccList)
     end.
 
@@ -196,7 +196,7 @@ Definition handle_query (src : addr) (h : addr) (st : data) (qdst : pointer) (q 
         | GotBestPredecessor p => let a := addr_of p in
                                   if pointer_eq_dec p qdst
                                   then (st, [(a, GetSuccList)])
-                                  else (st, [(a, GetBestPredecessor h)])
+                                  else (st, [(a, GetBestPredecessor (make_pointer h))])
         | GotSuccList l =>
           match l with
             | [] => (st, []) (* this is bad *)
@@ -217,7 +217,7 @@ Definition recv_handler (src : addr) (dst : addr) (msg : payload) (st : data) : 
   | Ping => (st, [(src, Pong)])
   | GetSuccList => (st, [(src, GotSuccList (succ_list st))])
   | GetPredAndSuccs => (st, [(src, GotPredAndSuccs (pred st) (succ_list st))])
-  | GetBestPredecessor id => (st, [(src, GotBestPredecessor (best_predecessor dst st id))])
+  | GetBestPredecessor p => (st, [(src, GotBestPredecessor (best_predecessor dst st (id_of p)))])
   | Notify => (set_rectify_with st (make_pointer src), [])
   | _ => match cur_request st with
          | Some (query_dst, q) => if addr_eq_dec (addr_of query_dst) src

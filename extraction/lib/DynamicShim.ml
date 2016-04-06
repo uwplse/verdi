@@ -11,14 +11,16 @@ module type DYNAMIC_ARRANGEMENT = sig
   type res = state * (name * msg) list
   val addr_of_name : name -> (string * int)
   val name_of_addr : (string * int) -> name
+  val is_request : msg -> bool
   val init : name -> name list -> res
   val handleNet : name -> name -> msg -> state -> res
-  val handleTimeout : name -> state -> res
-  val setTimeout : name -> state -> float
+  val handleTick : name -> state -> res
+  val handleTimeout : name -> name -> state -> res
+  val setTick : name -> state -> float
   val debug : bool
   val debugRecv : state -> (name * msg) -> unit
   val debugSend : state -> (name * msg) -> unit
-  val debugTimeout : state -> unit
+  val debugTick : state -> unit
 end
 
 module Shim (A: DYNAMIC_ARRANGEMENT) = struct
@@ -68,9 +70,9 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     let s' = respond env (A.handleNet nm src m s) in
     (if A.debug then A.debugRecv s' (src, m)); s'
 
-  let timeout_step env nm s =
-    (if A.debug then A.debugTimeout s);
-    let x = A.handleTimeout nm s in
+  let tick_step env nm s =
+    (if A.debug then A.debugTick s);
+    let x = A.handleTick nm s in
     respond env x
 
   let rec my_select rs ws es t =
@@ -79,12 +81,12 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
       my_select rs ws es t
 
   let rec eloop env nm s =
-    let (fds, _, _) = my_select [env.usock] [] [] (A.setTimeout nm s) in
+    let (fds, _, _) = my_select [env.usock] [] [] (A.setTick nm s) in
     let s' =
       match List.mem env.usock fds with
       | true -> (try (recv_step env nm s) with
                  | _ -> s)
-      | _ -> timeout_step env nm s in
+      | _ -> tick_step env nm s in
     eloop env nm s'
 
   let default v o =
