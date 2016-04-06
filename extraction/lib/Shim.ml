@@ -111,13 +111,21 @@ module Shim (A: ARRANGEMENT) = struct
 
     
   let sendto sock buf addr =
-    ignore (Unix.sendto sock buf 0 (String.length buf) [] addr)
+    try
+      ignore (Unix.sendto sock buf 0 (String.length buf) [] addr)
+    with Unix_error (err, fn, arg) ->
+      print_endline ("Error from sendto: " ^ (error_message err) ^ ", closing socket");
+      close sock
 
   let send env ((nm : A.name), (msg : A.msg)) =
     sendto env.usock (M.to_string msg []) (denote env nm)
 
   let respond_to_client sock r =
-    ignore (Unix.send sock (r ^ "\n") 0 (String.length r) [])
+    try
+      ignore (Unix.send sock (r ^ "\n") 0 (String.length r) [])
+    with Unix_error (err, fn, arg) ->
+      print_endline ("Error from send: " ^ (error_message err) ^ ", closing socket");
+      close sock
 
   let output env o =
     let (id, s) = A.serialize o in
