@@ -183,4 +183,3 @@ Section StepVerySimpleUpgrade.
       (fun n =>
          existT _ One (init_handlers n)).
 End StepVerySimpleUpgrade.
-
