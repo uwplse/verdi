@@ -21,13 +21,13 @@ provision: |
    module VarDDebug = Shim.Shim(VarDArrangement.VarDArrangement(VarDArrangement.DebugParams))
    module VarDBench = Shim.Shim(VarDArrangement.VarDArrangement(VarDArrangement.BenchParams))
 
-  -let nodes = [ (1, ("127.0.0.1", 9001))
-  -            ; (2, ("127.0.0.1", 9002))
-  -            ; (3, ("127.0.0.1", 9003))
-  +let nodes = [ (1, ("$db1", 9001))
-  +            ; (2, ("$db2", 9001))
-  +            ; (3, ("$db3", 9001))
-               ]
+  -let default_nodes = [ (1, ("127.0.0.1", 9001))
+  -                    ; (2, ("127.0.0.1", 9002))
+  -                    ; (3, ("127.0.0.1", 9003))
+  +let default_nodes = [ (1, ("$db1", 9001))
+  +                    ; (2, ("$db2", 9001))
+  +                    ; (3, ("$db3", 9001))
+                       ]
   EOF
   ./configure && make vard-quick
   popd
