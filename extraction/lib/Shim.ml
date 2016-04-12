@@ -46,7 +46,7 @@ module Shim (A: ARRANGEMENT) = struct
   | LogNet of A.name * A.msg
   | LogTimeout
 
-  let denote env nm : sockaddr =
+  let denote (env : env) (nm : A.name) : sockaddr =
     List.assoc nm env.nodes
 
   let undenote env addr : A.name =
@@ -86,8 +86,9 @@ module Shim (A: ARRANGEMENT) = struct
     let port = snd (List.assoc nm nodes) in
     let clog = (_LOG ^ "-" ^ string_of_int port) in
     let snapfile = (_SNAP ^ "-" ^ string_of_int port) in
-    let addressify (name, (ip, port)) =
-      (name, ADDR_INET (inet_addr_of_string ip, port))
+    let addressify (name, (host, port)) =
+      let entry = gethostbyname host in
+      (name, ADDR_INET (Array.get entry.h_addr_list 0, port))
     in
     let restored_state = restore snapfile clog nm in
     let env =
@@ -112,13 +113,13 @@ module Shim (A: ARRANGEMENT) = struct
   let disconnect env client_sock =
     close client_sock;
     env.csocks <- List.filter (fun c -> c <> client_sock) env.csocks
-    
+
   let sendto sock buf addr =
     try
       ignore (Unix.sendto sock buf 0 (String.length buf) [] addr)
     with Unix_error (err, fn, arg) ->
       print_endline ("Error from sendto: " ^ (error_message err) ^ ", closing socket");
-      disconnect sock
+      close sock
 
   let send env ((nm : A.name), (msg : A.msg)) =
     sendto env.usock (M.to_string msg []) (denote env nm)
@@ -128,7 +129,7 @@ module Shim (A: ARRANGEMENT) = struct
       ignore (Unix.send sock (r ^ "\n") 0 (String.length r) [])
     with Unix_error (err, fn, arg) ->
       print_endline ("Error from send: " ^ (error_message err) ^ ", closing socket");
-      disconnect sock
+      close sock
 
   let output env o =
     let (id, s) = A.serialize o in
