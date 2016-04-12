@@ -109,13 +109,16 @@ module Shim (A: ARRANGEMENT) = struct
     listen env.isock 8;
     env
 
+  let disconnect env client_sock =
+    close client_sock;
+    env.csocks <- List.filter (fun c -> c <> client_sock) env.csocks
     
   let sendto sock buf addr =
     try
       ignore (Unix.sendto sock buf 0 (String.length buf) [] addr)
     with Unix_error (err, fn, arg) ->
       print_endline ("Error from sendto: " ^ (error_message err) ^ ", closing socket");
-      close sock
+      disconnect sock
 
   let send env ((nm : A.name), (msg : A.msg)) =
     sendto env.usock (M.to_string msg []) (denote env nm)
@@ -125,7 +128,7 @@ module Shim (A: ARRANGEMENT) = struct
       ignore (Unix.send sock (r ^ "\n") 0 (String.length r) [])
     with Unix_error (err, fn, arg) ->
       print_endline ("Error from send: " ^ (error_message err) ^ ", closing socket");
-      close sock
+      disconnect sock
 
   let output env o =
     let (id, s) = A.serialize o in
@@ -155,10 +158,6 @@ module Shim (A: ARRANGEMENT) = struct
   let new_conn env =
     let (client_sock, _) = accept env.isock in
     env.csocks <- client_sock :: env.csocks
-
-  let disconnect env client_sock =
-    close client_sock;
-    env.csocks <- List.filter (fun c -> c <> client_sock) env.csocks
 
   type severity =
     | S_info
