@@ -12,6 +12,7 @@ module type DYNAMIC_ARRANGEMENT = sig
   val addr_of_name : name -> (string * int)
   val name_of_addr : (string * int) -> name
   val is_request : msg -> bool
+  val closes_request : msg -> msg -> bool
   val init : name -> name list -> res
   val handleNet : name -> name -> msg -> state -> res
   val handleTick : name -> state -> res
@@ -89,6 +90,10 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
   let respond env (s, ps) =
     List.iter (respond_one env s) ps; s
 
+  let close_requests env src res =
+    let closed (_, nm, req) = A.closes_request req res in
+    List.filter closed env.open_requests
+
   let recv_step env nm s =
     let len = 4096 in
     let buf = String.make len '\x00' in
@@ -100,8 +105,7 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     let m = unpack_msg buf in
     let s' = respond env (A.handleNet src nm m s) in
     (if A.debug then A.debugRecv s' (src, m));
-    env.open_requests <- remove_requests env.open_requests src;
-    print_int (List.length env.open_requests);
+    env.open_requests <- close_requests env src m;
     s'
 
   let tick_step env nm s =
@@ -113,21 +117,18 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
   let do_timeout env nm (s, sends) (dst, msg) =
     let (s', sends') = A.handleTimeout nm dst s in
     env.open_requests <- remove_requests env.open_requests dst;
-    print_int (List.length env.open_requests);
     A.debugTimeout s (dst, msg);
     (s', sends @ sends')
 
   let timeout_step env nm s =
     let timeouts = timed_out_requests A.query_timeout env.open_requests in
     let res = List.fold_left (do_timeout env nm) (s, []) timeouts in
-    print_int (List.length env.open_requests);
     respond env res
 
   let maybe_tick env nm s =
-    print_float ((Unix.gettimeofday ()) -. env.last_tick);
     if (Unix.gettimeofday ()) -. env.last_tick > A.setTick nm s
     then tick_step env nm s
-    else (print_string "not long enough yet\n"; s)
+    else s
 
   let rec my_select rs ws es t =
     try select rs ws es t

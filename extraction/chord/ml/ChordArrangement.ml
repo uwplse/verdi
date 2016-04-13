@@ -48,11 +48,14 @@ let show_query = function
 
 let show_st_ptr st =
   show_pointer (ExtractedChord.ptr st)
+
 let show_request (ptr, q) =
   "query(" ^ show_pointer ptr ^ ", " ^ show_query q ^")"
+
 let show_st_cur_request st =
   map_default show_request "None" (ExtractedChord.cur_request st)
-let show_st st = 
+
+let log_st st =
   let prefix = "node(" ^ show_st_ptr st ^ "):" in
   let log msg = info (prefix ^ msg) in
   log ("succ_list := " ^ show_pointer_list (ExtractedChord.succ_list st));
@@ -69,6 +72,11 @@ let log_recv src msg =
 let log_send dst msg =
   dbg ("send to " ^ show_addr dst ^ ":" ^ show_msg msg)
 
+let log_timeout st (dead, msg) =
+  dbg ("request " ^ show_msg msg
+     ^ " from " ^ show_pointer (ptr st)
+     ^ " to " ^ show_addr dead ^ " timed out")
+
 module ChordDebugArrangement = struct
   type name = ExtractedChord.addr
   type state = ExtractedChord.data
@@ -83,16 +91,14 @@ module ChordDebugArrangement = struct
   let handleNet = ExtractedChord.recv_handler
   let handleTick = ExtractedChord.tick_handler
   let handleTimeout = ExtractedChord.timeout_handler
+  let closes_request = ExtractedChord.closes_request
   let setTick n s = 5.0
   let query_timeout = 10.0
   let debug = true
   let debugInit n knowns = dbg "running init"
-  let debugRecv st (src, msg) = show_st st; log_recv src msg
-  let debugSend st (dst, msg) = show_st st; log_send dst msg
-  let debugTick st = show_st st
-  let debugTimeout st (dead, msg) =
-    dbg ("request " ^ show_msg msg
-         ^ " from " ^ show_pointer (ptr st)
-         ^ " to " ^ show_addr dead ^ " timed out")
+  let debugRecv st (src, msg) = log_st st; log_recv src msg
+  let debugSend st (dst, msg) = log_st st; log_send dst msg
+  let debugTick st = log_st st; dbg "ticking"
+  let debugTimeout st t= log_timeout st t
   let init = ExtractedChord.start_handler
 end

@@ -8,7 +8,7 @@ Definition id := nat.
 Definition pointer := (id * addr)%type.
 Definition id_of (p : pointer) : id := fst p.
 Definition addr_of (p : pointer) : addr := snd p.
-Definition SUCC_LIST_LEN := 5.
+Definition SUCC_LIST_LEN := 2.
 Definition pointer_eq_dec : forall x y : pointer, {x = y} + {x <> y}.
 Proof.
   decide equality; auto using Nat.eq_dec.
@@ -34,12 +34,33 @@ Inductive request_payload : payload -> Prop :=
 | req_GetPredAndSuccs : request_payload GetPredAndSuccs
 | req_Ping : request_payload Ping.
 
-Definition is_request (p : payload) :=
+Definition is_request (p : payload) : bool :=
   match p with
     | GetBestPredecessor _ => true
     | GetSuccList => true
     | GetPredAndSuccs => true
     | Ping => true
+    | _ => false
+  end.
+
+Definition closes_request (req res : payload) : bool :=
+  match req with
+    | GetBestPredecessor _ => match res with
+                                | GotBestPredecessor _ => true
+                                | _ => false
+                              end
+    | GetSuccList => match res with
+                       | GotSuccList _ => true
+                       | _ => false
+                     end
+    | GetPredAndSuccs => match res with
+                           | GotPredAndSuccs _ _ => true
+                           | _ => false
+                         end
+    | Ping => match res with
+                | Pong => true
+                | _ => false
+              end
     | _ => false
   end.
 
@@ -122,10 +143,10 @@ Definition request_in (msgs : list (addr * payload)) :=
 Definition end_query (h : addr) (outs : list (addr * payload)) (st : data) : data * list (addr * payload) :=
   let st' := Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) None false in
   match outs with
-    | [] => try_rectify h outs st
+    | [] => try_rectify h outs st'
     | head :: rest => if request_in (head :: rest)
-                      then (st, outs)
-                      else try_rectify h outs st
+                      then (st', outs)
+                      else try_rectify h outs st'
   end.
 
 Definition ptrs_to_addrs : list (pointer * payload) -> list (addr * payload) :=
@@ -222,9 +243,9 @@ Definition recv_handler (src : addr) (dst : addr) (msg : payload) (st : data) : 
   | Notify => (set_rectify_with st (make_pointer src), [])
   | _ => match cur_request st with
          | Some (query_dst, q) => if addr_eq_dec (addr_of query_dst) src
-                     then let (st', outs) := handle_query src dst st query_dst q msg in
-                          end_query dst outs st'
-                     else (st, [])
+                                  then let (st', outs) := handle_query src dst st query_dst q msg in
+                                       end_query dst outs st'
+                                  else (st, [])
          | None => (st, [])
          end
   end.
@@ -271,7 +292,7 @@ Definition handle_query_timeout (h : addr) (st : data) (dead : pointer) (q : que
 
 Definition timeout_handler (src : addr) (dst : addr) (st : data) : data * list (addr * payload) :=
   match cur_request st with
-    | Some (ptr, q) => if pointer_eq_dec ptr (make_pointer dst)
+    | Some (ptr, q) => if addr_eq_dec (addr_of ptr) dst
                        then let (st', outs) := handle_query_timeout src st ptr q in
                             end_query src outs st'
                        else (st, []) (* shouldn't happen *)
@@ -311,7 +332,7 @@ Proof.
   * inversion H0.
     exists (GotSuccList (succ_list st)).
     intuition.
-  * inversion H. 
+  * inversion H.
     inversion H1.
   * inversion H0.
     exists (GotPredAndSuccs (pred st) (succ_list st)).
@@ -326,3 +347,5 @@ Proof.
   * inversion H.
     inversion H1.
 Qed.
+
+(* theorem: prove that the closes_request thing implies that cur_request changes *)
