@@ -29,7 +29,6 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
   (* assoc list of start times mapping to (name, msg) pairs *)
 
   type requests = (float * A.name * A.msg) list
-
   let empty_requests = []
 
   let rec timed_out_requests timeout ts : (A.name * A.msg) list =
@@ -47,7 +46,11 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     else rs
 
   let remove_requests rs dst : requests =
-    List.filter (fun (_, d, _) -> d == dst) rs
+    List.filter (fun (_, d, _) -> d != dst) rs
+
+  let close_requests rs src res : requests =
+    let not_closed (_, nm, req) = not (A.closes_request req res) in
+    List.filter not_closed rs
 
   type env =
     {
@@ -90,10 +93,6 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
   let respond env (s, ps) =
     List.iter (respond_one env s) ps; s
 
-  let close_requests env src res =
-    let closed (_, nm, req) = A.closes_request req res in
-    List.filter closed env.open_requests
-
   let recv_step env nm s =
     let len = 4096 in
     let buf = String.make len '\x00' in
@@ -105,7 +104,7 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     let m = unpack_msg buf in
     let s' = respond env (A.handleNet src nm m s) in
     (if A.debug then A.debugRecv s' (src, m));
-    env.open_requests <- close_requests env src m;
+    env.open_requests <- close_requests env.open_requests src m;
     s'
 
   let tick_step env nm s =

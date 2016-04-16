@@ -99,6 +99,6 @@ module ChordDebugArrangement = struct
   let debugRecv st (src, msg) = log_st st; log_recv src msg
   let debugSend st (dst, msg) = log_st st; log_send dst msg
   let debugTick st = log_st st; dbg "ticking"
-  let debugTimeout st t= log_timeout st t
+  let debugTimeout st t = log_timeout st t
   let init = ExtractedChord.start_handler
 end
