@@ -96,7 +96,6 @@ Section VerySimpleSimulationUpgrade.
       rewrite H0.
       eexists; intuition eauto.
       econstructor 1.
-      
-  
+  Admitted.
   
 End VerySimpleSimulationUpgrade.
