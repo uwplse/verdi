@@ -6,6 +6,10 @@ if ! [ -f _CoqProject ]; then
     exit 0
 fi
 
+if [ "${TRAVIS}x" != "x" ]; then
+    exit 0
+fi
+
 
 grep '\.v' _CoqProject | sort > build.files
 find . -name '*.v' | sed 's!^\./!!' | sort > files
