@@ -5,6 +5,13 @@ ifeq "$(COQVERSION)" ""
 $(error "Verdi is only compatible with Coq version 8.5")
 endif
 
+CHECKPATH := $(shell ./script/checkpaths.sh)
+
+ifneq ("$(CHECKPATH)","")
+$(info $(CHECKPATH))
+$(error checkpath reported an error)
+endif
+
 default: Makefile.coq
 	$(MAKE) -f Makefile.coq
 
