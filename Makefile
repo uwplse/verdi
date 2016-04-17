@@ -9,7 +9,7 @@ CHECKPATH := $(shell ./script/checkpaths.sh)
 
 ifneq ("$(CHECKPATH)","")
 $(info $(CHECKPATH))
-$(error checkpath reported an error)
+$(warning checkpath reported an error)
 endif
 
 default: Makefile.coq
