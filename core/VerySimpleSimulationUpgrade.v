@@ -44,25 +44,42 @@ Section VerySimpleSimulationUpgrade.
       step_f step_f_init net tr ->
       trace_prop tr.
 
+  Variable simulation :
+    data1 -> data2 -> Prop.
+
+  Variable upgrade_establishes_simulation :
+    forall sigma,
+      simulation sigma (upgrade sigma).
+
   Variable input_preserves_upgrade :
-    forall h inp sigma sigma' os ms,
-      input_handlers1 h inp sigma = (os, sigma', ms) ->
-      input_handlers2 h inp (upgrade sigma) = (os, upgrade sigma', ms).
+    forall h inp sigma1 sigma2 sigma1' os ms,
+      simulation sigma1 sigma2 ->
+      input_handlers1 h inp sigma1 = (os, sigma1', ms) ->
+      exists sigma2',
+        simulation sigma1' sigma2' /\
+        input_handlers2 h inp sigma2 = (os, sigma2', ms).
 
   Variable net_preserves_upgrade :
-    forall h h' p sigma sigma' os ms,
-      net_handlers1 h h' p sigma = (os, sigma', ms) ->
-      net_handlers2 h h' p (upgrade sigma) = (os, upgrade sigma', ms).
+    forall h h' p sigma1 sigma1' sigma2 os ms,
+      simulation sigma1 sigma2 ->
+      net_handlers1 h h' p sigma1 = (os, sigma1', ms) ->
+      exists sigma2',
+        simulation sigma1' sigma2' /\
+        net_handlers2 h h' p sigma2 = (os, sigma2', ms).
 
   Variable reboot_preserves_upgrade :
-    forall sigma sigma',
-      reboot1 sigma = sigma' ->
-      reboot2 (upgrade sigma) = (upgrade sigma').
+    forall sigma1 sigma1' sigma2,
+      reboot1 sigma1 = sigma1' ->
+      exists sigma2',
+        simulation sigma1' sigma2' /\
+        reboot2 sigma2 = sigma2'.
 
   Definition lifted_state (sigma : name -> data1) (sigma' : name -> sigT data) : Prop :=
     forall h,
       sigma' h = existT _ One (sigma h) \/
-      sigma' h = existT _ Two (upgrade (sigma h)).
+      exists sigma2,
+        simulation (sigma h) sigma2 /\
+        sigma' h = existT _ Two sigma2.
 
   Definition lift_packet (p : Net.packet) : packet :=
     {| pSrc := Net.pSrc p ;
@@ -78,7 +95,41 @@ Section VerySimpleSimulationUpgrade.
     nwFailed net' = failed /\
     nwPackets net' = map lift_packet (Net.nwPackets net) /\
     lifted_state (Net.nwState net) (nwState net').
-                     
+
+  Lemma lift_packet_lower_packet_inverses_1 :
+    forall p,
+      lift_packet (lower_packet p) = p.
+  Proof.
+    intros.
+    unfold lift_packet, lower_packet.
+    destruct p. reflexivity.
+  Qed.
+
+  Lemma lift_packet_lower_packet_inverses_2 :
+    forall p,
+      lower_packet (lift_packet p) = p.
+  Proof.
+    intros.
+    unfold lift_packet, lower_packet.
+    destruct p. reflexivity.
+  Qed.
+
+  Lemma map_lift_lower :
+    forall l,
+      l = map lift_packet (map lower_packet l).
+  Proof.
+    intros.
+    rewrite map_map.
+    rewrite map_ext with (g := id);
+      eauto using map_id, lift_packet_lower_packet_inverses_1.
+  Qed.
+
+  Lemma version_eq_dec :
+    forall x y : version,
+      {x = y} + {x <> y}.
+  Proof.
+    decide equality.
+  Qed.
 
   Theorem trace_prop_invariant_upgrade_one :
     forall net_u net_u' failed net_f tr,
@@ -94,8 +145,41 @@ Section VerySimpleSimulationUpgrade.
       assert (pDst p = Net.pDst p') by
           (subst; simpl; auto).
       rewrite H0.
-      eexists; intuition eauto.
-      econstructor 1.
+      match goal with
+      | |- context [{| nwFailed := _; nwState := _;
+                      nwPackets := ?pkts |}] =>
+        remember (map lower_packet pkts) as lowered_packets
+      end.
+      unfold net_handlers in *.
+      repeat break_match.
+      + {
+          - remember (Net.update (Net.nwState net_f) (Net.pDst p') d1) as lowered_state.
+            exists {| Net.nwPackets := lowered_packets; Net.nwState := lowered_state |}.
+            subst.
+            intuition.
+            + assert (Net.nwState net_f (pDst p) = d0).
+              {
+                unfold lifted_net, lifted_state in *. intuition.
+                find_insterU; intuition; erewrite Heqs in *; find_inversion.
+                find_apply_lem_hyp Eqdep_dec.inj_pair2_eq_dec; eauto using version_eq_dec.
+                break_exists. intuition. congruence.
+              }
+              subst. find_inversion.
+              eapply SF_deliver with (xs0 := map lower_packet xs) (ys0 := map lower_packet ys);
+                simpl in *; eauto.
+              * unfold lifted_net in *. intuition. repeat find_rewrite.
+                admit.
+              * unfold lifted_net in *. intuition congruence.
+              * f_equal. unfold send_packets.
+                map_crush. unfold lower_packet. simpl in *. auto.
+            + unfold lifted_net in *; intuition; simpl in *;
+                eauto using map_lift_lower.
+              find_inversion.
+              unfold update.
+              unfold lifted_state.
+              intros. break_if; auto.
+        }
+      + admit.
   Admitted.
   
 End VerySimpleSimulationUpgrade.
