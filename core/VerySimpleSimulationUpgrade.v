@@ -124,6 +124,16 @@ Section VerySimpleSimulationUpgrade.
       eauto using map_id, lift_packet_lower_packet_inverses_1.
   Qed.
 
+  Lemma map_lower_lift :
+    forall l,
+      l = map lower_packet (map lift_packet l).
+  Proof.
+    intros.
+    rewrite map_map.
+    rewrite map_ext with (g := id);
+      eauto using map_id, lift_packet_lower_packet_inverses_2.
+  Qed.
+
   Lemma version_eq_dec :
     forall x y : version,
       {x = y} + {x <> y}.
@@ -145,15 +155,15 @@ Section VerySimpleSimulationUpgrade.
       assert (pDst p = Net.pDst p') by
           (subst; simpl; auto).
       rewrite H0.
-      match goal with
-      | |- context [{| nwFailed := _; nwState := _;
-                      nwPackets := ?pkts |}] =>
-        remember (map lower_packet pkts) as lowered_packets
-      end.
       unfold net_handlers in *.
       repeat break_match.
       + {
           - remember (Net.update (Net.nwState net_f) (Net.pDst p') d1) as lowered_state.
+            match goal with
+            | |- context [{| nwFailed := _; nwState := _;
+                            nwPackets := ?pkts |}] =>
+              remember (map lower_packet pkts) as lowered_packets
+            end.
             exists {| Net.nwPackets := lowered_packets; Net.nwState := lowered_state |}.
             subst.
             intuition.
@@ -168,7 +178,10 @@ Section VerySimpleSimulationUpgrade.
               eapply SF_deliver with (xs0 := map lower_packet xs) (ys0 := map lower_packet ys);
                 simpl in *; eauto.
               * unfold lifted_net in *. intuition. repeat find_rewrite.
-                admit.
+                change (lower_packet p :: map lower_packet ys) with
+                (map lower_packet (p :: ys)).
+                rewrite <- map_app.
+                find_rewrite. apply map_lower_lift.
               * unfold lifted_net in *. intuition congruence.
               * f_equal. unfold send_packets.
                 map_crush. unfold lower_packet. simpl in *. auto.
@@ -179,7 +192,52 @@ Section VerySimpleSimulationUpgrade.
               unfold lifted_state.
               intros. break_if; auto.
         }
-      + admit.
+      + {
+          - find_inversion.
+            unfold lifted_net in *. intuition.
+            pose proof H5 (pDst p).
+            intuition; try congruence.
+            break_exists_name sigma2; intuition; repeat find_rewrite.
+            find_apply_lem_hyp Eqdep_dec.inj_pair2_eq_dec; eauto using version_eq_dec; subst d0.
+            match goal with
+            | _ : net_handlers2 ?dst ?src ?body ?s2 = _,
+                  _ : simulation ?s1 ?s2
+              |- _ =>
+              destruct (net_handlers1 dst src body s1) eqn:?
+            end.
+            match goal with
+            | H : net_handlers1 _ _ _ ?s1 = (?x, _),
+                  _ : simulation ?s1 ?s2
+              |- _ =>
+              destruct x; copy_eapply net_preserves_upgrade H; eauto
+            end.
+            break_exists_name sigma2'. intuition; repeat find_rewrite.
+            find_inversion. simpl.
+            remember (Net.update (Net.nwState net_f) (Net.pDst (lower_packet p)) d) as lowered_state.
+            match goal with
+            | |- context [?pkts = map lift_packet _] =>
+              remember (map lower_packet pkts) as lowered_packets
+            end.
+            exists {| Net.nwPackets := lowered_packets; Net.nwState := lowered_state |}.
+            subst.
+            intuition.
+            + repeat find_rewrite.
+              eapply SF_deliver with (xs0 := map lower_packet xs) (ys0 := map lower_packet ys);
+                simpl in *; eauto.
+              * change (lower_packet p :: map lower_packet ys) with
+                (map lower_packet (p :: ys)).
+                rewrite <- map_app.
+                find_rewrite. apply map_lower_lift.
+              * f_equal. unfold send_packets.
+                map_crush. reflexivity.
+            + unfold lifted_net in *; intuition; simpl in *;
+                eauto using map_lift_lower.
+            + simpl.
+              unfold update.
+              unfold lifted_state. intros.
+              break_if; auto.
+              right. eexists; intuition eauto.
+        }
   Admitted.
   
 End VerySimpleSimulationUpgrade.
