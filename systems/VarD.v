@@ -5,6 +5,8 @@ Require Import StringMap.
 
 Require Import StateMachineHandlerMonad.
 
+Module VarDFunctor (Map : TREE with Definition elt := string).
+
 Definition key := string.
 Definition value := string.
 
@@ -40,18 +42,18 @@ Proof.
 Defined.
 
 Definition data :=
-  StringTree.t string.
+  Map.t string.
 
 Definition beq_key (k1 k2 : key) :=
   if string_dec k1 k2 then true else false.
 
 Definition getk k : GenHandler1 data (option value) :=
   db <- get ;;
-  ret (StringTree.get k db).
+  ret (Map.get k db).
 
-Definition setk k v : GenHandler1 data unit := modify (fun db => StringTree.set k v db).
+Definition setk k v : GenHandler1 data unit := modify (fun db => Map.set k v db).
 
-Definition delk k : GenHandler1 data unit := modify (fun db => StringTree.remove k db).
+Definition delk k : GenHandler1 data unit := modify (fun db => Map.remove k db).
 
 Definition resp k v old : GenHandler1 data output :=
   write_output (Response k v old).
@@ -90,7 +92,7 @@ Instance vard_base_params : BaseParams :=
 
 Instance vard_one_node_params : OneNodeParams _ :=
   {
-    init := StringTree.empty string ;
+    init := Map.empty string ;
     handler := VarDHandler
   }.
 
@@ -140,7 +142,7 @@ Inductive trace_correct' : data -> list (input * output) -> Prop :=
 | TC'App : forall st t i v o, trace_correct' st t ->
                          interpret (input_key i)
                                    (i :: (rev (inputs_with_key t (input_key i))))
-                                   (StringTree.get (input_key i) st) = (v, o) ->
+                                   (Map.get (input_key i) st) = (v, o) ->
                          trace_correct' st (t ++ [(i, Response (input_key i) v o)]).
 
 Lemma trace_correct'_trace_correct :
@@ -152,12 +154,12 @@ Proof.
   remember init as x. induction H.
   - constructor.
   - subst. constructor; auto.
-    find_rewrite_lem StringTree.gempty. auto.
+    find_rewrite_lem Map.gempty. auto.
 Qed.
 
 Definition trace_state_correct (trace : list (input * output)) (st : data) (st' : data) :=
   forall k,
-    fst (interpret k (rev (inputs_with_key trace k)) (StringTree.get k st)) = StringTree.get k st'.
+    fst (interpret k (rev (inputs_with_key trace k)) (Map.get k st)) = Map.get k st'.
 
 Ltac vard_unfold :=
   unfold runHandler,
@@ -225,9 +227,9 @@ Proof.
       destruct (key_eq_dec k0 k).
       * rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
-        subst. symmetry; apply StringTree.gss.
+        subst. symmetry; apply Map.gss.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
-        rewrite StringTree.gso; auto.
+        rewrite Map.gso; auto.
     + simpl in *.
       destruct (key_eq_dec k0 k).
       * rewrite inputs_with_key_plus_key; simpl in *; auto.
@@ -239,22 +241,22 @@ Proof.
       * rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
         subst. eauto.
-        symmetry; apply StringTree.grs.
+        symmetry; apply Map.grs.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
-        rewrite StringTree.gro; eauto.
+        rewrite Map.gro; eauto.
     + simpl in *.
       destruct (key_eq_dec k0 k).
       * subst. rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
-        break_if; eauto using StringTree.gss.
+        break_if; eauto using Map.gss.
         exfalso. intuition.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
-        rewrite StringTree.gso; eauto.
+        rewrite Map.gso; eauto.
     + simpl in *.
       destruct (key_eq_dec k0 k).
       * rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
-        subst. break_if; eauto using StringTree.grs.
+        subst. break_if; eauto using Map.grs.
         subst.
         exfalso. intuition.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
@@ -263,7 +265,7 @@ Proof.
       * { subst. rewrite inputs_with_key_plus_key; simpl in *; auto.
           rewrite rev_unit. simpl in *.
           break_if; simpl in *.
-          - symmetry. apply StringTree.grs.
+          - symmetry. apply Map.grs.
           - exfalso. intuition.
             match goal with
               | H : _ -> False |- _ => apply H
@@ -271,7 +273,7 @@ Proof.
             find_higher_order_rewrite. auto.
         }
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
-        rewrite StringTree.gro; eauto.
+        rewrite Map.gro; eauto.
     + simpl in *.
       destruct (key_eq_dec k0 k).
       * subst. rewrite inputs_with_key_plus_key; simpl in *; auto.
@@ -336,3 +338,11 @@ Proof.
   - constructor.
   - simpl. auto.
 Qed.
+End VarDFunctor.
+
+Module LogTimeVarD := VarDFunctor(LogTimeStringMap).
+Module LinearTimeVarD := VarDFunctor(LinearTimeStringMap).
+
+Module VarD := LogTimeVarD.
+
+Export VarD.

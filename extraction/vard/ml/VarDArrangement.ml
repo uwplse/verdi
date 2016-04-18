@@ -1,6 +1,7 @@
 open Str
 open Printf
 open VarDRaft
+open VarD
 
 module type VardParams = sig
     val debug : bool

@@ -46,7 +46,7 @@ module Shim (A: ARRANGEMENT) = struct
   | LogNet of A.name * A.msg
   | LogTimeout
 
-  let denote env nm : sockaddr =
+  let denote (env : env) (nm : A.name) : sockaddr =
     List.assoc nm env.nodes
 
   let undenote env addr : A.name =
@@ -86,8 +86,9 @@ module Shim (A: ARRANGEMENT) = struct
     let port = snd (List.assoc nm nodes) in
     let clog = (_LOG ^ "-" ^ string_of_int port) in
     let snapfile = (_SNAP ^ "-" ^ string_of_int port) in
-    let addressify (name, (ip, port)) =
-      (name, ADDR_INET (inet_addr_of_string ip, port))
+    let addressify (name, (host, port)) =
+      let entry = gethostbyname host in
+      (name, ADDR_INET (Array.get entry.h_addr_list 0, port))
     in
     let restored_state = restore snapfile clog nm in
     let env =
@@ -109,15 +110,26 @@ module Shim (A: ARRANGEMENT) = struct
     listen env.isock 8;
     env
 
-    
+  let disconnect env client_sock =
+    close client_sock;
+    env.csocks <- List.filter (fun c -> c <> client_sock) env.csocks
+
   let sendto sock buf addr =
-    ignore (Unix.sendto sock buf 0 (String.length buf) [] addr)
+    try
+      ignore (Unix.sendto sock buf 0 (String.length buf) [] addr)
+    with Unix_error (err, fn, arg) ->
+      print_endline ("Error from sendto: " ^ (error_message err) ^ ", closing socket");
+      close sock
 
   let send env ((nm : A.name), (msg : A.msg)) =
     sendto env.usock (M.to_string msg []) (denote env nm)
 
   let respond_to_client sock r =
-    ignore (Unix.send sock (r ^ "\n") 0 (String.length r) [])
+    try
+      ignore (Unix.send sock (r ^ "\n") 0 (String.length r) [])
+    with Unix_error (err, fn, arg) ->
+      print_endline ("Error from send: " ^ (error_message err) ^ ", closing socket");
+      close sock
 
   let output env o =
     let (id, s) = A.serialize o in
@@ -147,10 +159,6 @@ module Shim (A: ARRANGEMENT) = struct
   let new_conn env =
     let (client_sock, _) = accept env.isock in
     env.csocks <- client_sock :: env.csocks
-
-  let disconnect env client_sock =
-    close client_sock;
-    env.csocks <- List.filter (fun c -> c <> client_sock) env.csocks
 
   type severity =
     | S_info
@@ -183,7 +191,7 @@ module Shim (A: ARRANGEMENT) = struct
        raise (Disconnect_client (S_error, "received invalid input"))
 
   let recv_step env nm s =
-    let len = 4096 in
+    let len = 65536 in
     let buf = String.make len '\x00' in
     let (_, from) = recvfrom env.usock buf 0 len [] in
     let (src, m) = (undenote env from, unpack_msg buf) in
