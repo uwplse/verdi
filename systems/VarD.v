@@ -5,8 +5,6 @@ Require Import StringMap.
 
 Require Import StateMachineHandlerMonad.
 
-Module VarDFunctor (Map : TREE with Definition elt := string).
-
 Definition key := string.
 Definition value := string.
 
@@ -20,6 +18,8 @@ Inductive input : Set :=
 Inductive output : Set :=
 | Response : key -> option value -> option value -> output (* uniform response *)
 .
+
+Module VarDFunctor (Map : TREE with Definition elt := string).
 
 Definition key_eq_dec := string_dec.
 Definition value_eq_dec := string_dec.
@@ -83,6 +83,8 @@ Definition runHandler (h : input -> GenHandler1 data output)
 
 Definition VarDHandler := runHandler VarDHandler'.
 
+Definition init := Map.empty string.
+
 Instance vard_base_params : BaseParams :=
   {
     data := data ;
@@ -92,7 +94,7 @@ Instance vard_base_params : BaseParams :=
 
 Instance vard_one_node_params : OneNodeParams _ :=
   {
-    init := Map.empty string ;
+    init := init ;
     handler := VarDHandler
   }.
 
