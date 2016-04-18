@@ -128,7 +128,8 @@ Definition try_rectify (h : addr) (outs : list (addr * payload)) (st : data) : d
   then match rectify_with st with
          | Some new => match pred st with
                          | Some _ => let st' := clear_rectify_with st in
-                                     start_query h st' (Rectify new)
+                                     let (st'', outs') := start_query h st' (Rectify new) in
+                                     (st'', outs ++ outs')
                          | None => let st' := clear_rectify_with (update_pred st new) in
                                    (st', outs)
                        end
@@ -142,12 +143,9 @@ Definition request_in (msgs : list (addr * payload)) :=
 Definition end_query (h : addr) (res : data * list (addr * payload)) : data * list (addr * payload) :=
   let (st, outs) := res in
   let st' := Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) None false in
-  match outs with
-    | [] => try_rectify h outs st'
-    | head :: rest => if request_in (head :: rest)
-                      then (st', outs)
-                      else try_rectify h outs st'
-  end.
+  if request_in outs
+  then (st', outs)
+  else try_rectify h outs st'.
 
 Definition ptrs_to_addrs : list (pointer * payload) -> list (addr * payload) :=
   map (fun p => (addr_of (fst p), (snd p))).
@@ -194,7 +192,7 @@ Definition handle_query (src : addr) (h : addr) (st : data) (qdst : pointer) (q 
       match msg with
         | Pong => match (pred st) with
                     | Some p => end_query h (handle_rectify h st p q notifier)
-                    | None => end_query h (st, [])
+                    | None => end_query h (update_pred st notifier, [])
                   end
         | _ => (st, [])
       end
@@ -203,15 +201,15 @@ Definition handle_query (src : addr) (h : addr) (st : data) (qdst : pointer) (q 
         | GotPredAndSuccs new_succ succs =>
           match new_succ with
             | Some ns => (handle_stabilize h (make_pointer src) st q ns succs)
-            (* this should never happen *)
-            | None => (st, [])
+            | None => end_query h (st, [])
           end
         | _ => (st, [])
       end
     | Stabilize2 new_succ =>
       match msg with
-        | GotSuccList succs => end_query h (update_succ_list st (make_succs new_succ succs), [])
-        | _ => end_query h (st, [])
+        | GotSuccList succs => end_query h (update_succ_list st (make_succs new_succ succs),
+                                            [(addr_of new_succ, Notify)])
+        | _ => (st, [])
       end
     | Join known =>
       match msg with
