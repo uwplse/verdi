@@ -4,11 +4,8 @@ Require Import Net.
 
 Class StateMachineUpgradeParams :=
   {
-   name : Type;
    input : Type;
    output : Type;
-
-   name_eq_dec : forall x y : name, {x = y} + {x <> y};
 
    data1 : Type;
    init : data1;
