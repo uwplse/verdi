@@ -29,14 +29,19 @@ module type ARRANGEMENT = sig
 end
 
 module Shim (A: ARRANGEMENT) = struct
+  type client =
+      { sock : file_descr
+      ; addr : sockaddr
+      }
+
   type env =
       { restored_state : A.state
       ; snapfile : string
       ; clog : out_channel
       ; usock : file_descr
       ; isock : file_descr
-      ; mutable csocks : file_descr list
-      ; outstanding : (A.request_id, file_descr) Hashtbl.t
+      ; mutable clients : client list
+      ; outstanding : (A.request_id, client) Hashtbl.t
       ; mutable saves : int
       ; nodes : (A.name * sockaddr) list
       }
@@ -97,7 +102,7 @@ module Shim (A: ARRANGEMENT) = struct
       ; clog = out_channel_of_descr (openfile clog [O_WRONLY ; O_APPEND ; O_CREAT ; O_DSYNC] 0o640)
       ; usock = socket PF_INET SOCK_DGRAM 0
       ; isock = socket PF_INET SOCK_STREAM 0
-      ; csocks = []
+      ; clients = []
       ; outstanding = Hashtbl.create 64
       ; saves = 0
       ; nodes = List.map addressify nodes
@@ -110,33 +115,39 @@ module Shim (A: ARRANGEMENT) = struct
     listen env.isock 8;
     env
 
-  let disconnect env client_sock =
-    close client_sock;
-    env.csocks <- List.filter (fun c -> c <> client_sock) env.csocks
+  let string_of_sockaddr saddr =
+    match saddr with
+    | ADDR_UNIX path -> "unix://" ^ path
+    | ADDR_INET (addr, port) -> (sprintf "%s:%d" (string_of_inet_addr addr) port)
+
+  let disconnect env client reason =
+    close client.sock;
+    env.clients <- List.filter (fun c -> c <> client) env.clients;
+    printf "Client %s disconnected (%s)" (string_of_sockaddr client.addr) reason;
+    print_newline ()
 
   let sendto sock buf addr =
     try
       ignore (Unix.sendto sock buf 0 (String.length buf) [] addr)
     with Unix_error (err, fn, arg) ->
-      print_endline ("Error from sendto: " ^ (error_message err) ^ ", closing socket");
-      close sock
+      printf "Error from sendto: %s, dropping message" (error_message err);
+      print_newline ()
 
   let send env ((nm : A.name), (msg : A.msg)) =
     sendto env.usock (M.to_string msg []) (denote env nm)
 
-  let respond_to_client sock r =
+  let respond_to_client env client msg =
     try
-      ignore (Unix.send sock (r ^ "\n") 0 (String.length r) [])
+      ignore (Unix.send client.sock (msg ^ "\n") 0 (String.length msg) [])
     with Unix_error (err, fn, arg) ->
-      print_endline ("Error from send: " ^ (error_message err) ^ ", closing socket");
-      close sock
+      disconnect env client ("Error from send: " ^ (error_message err))
 
   let output env o =
-    let (id, s) = A.serialize o in
-    let socks = Hashtbl.find_all env.outstanding id in
-    match socks with
-    | sock :: _ ->
-       respond_to_client sock s;
+    let (id, msg) = A.serialize o in
+    let clients = Hashtbl.find_all env.outstanding id in
+    match clients with
+    | client :: _ ->
+       respond_to_client env client msg;
        Hashtbl.remove env.outstanding id
     | [] -> ()
                    
@@ -157,8 +168,14 @@ module Shim (A: ARRANGEMENT) = struct
     s
 
   let new_conn env =
-    let (client_sock, _) = accept env.isock in
-    env.csocks <- client_sock :: env.csocks
+    let (client_sock, client_addr) = accept env.isock in
+    let client =
+      { sock = client_sock
+      ; addr = client_addr
+      } in
+    env.clients <- client :: env.clients;
+    printf "Client connected on %s" (string_of_sockaddr client_addr);
+    print_newline ()
 
   type severity =
     | S_info
@@ -178,14 +195,14 @@ module Shim (A: ARRANGEMENT) = struct
     with
       Not_found -> raise (Disconnect_client (S_error, "client became invalid"))
 
-  let input_step client_sock env nm s =
+  let input_step client env nm s =
     let len = 1024 in
-    let buf = read_from_socket client_sock len in
+    let buf = read_from_socket client.sock len in
     let d = A.deserialize buf in
     match d with
     | Some (id, inp) ->
        save env (LogInput inp) s;
-       Hashtbl.replace env.outstanding id client_sock;
+       Hashtbl.replace env.outstanding id client;
        respond env (A.handleIO nm inp s)
     | None ->
        raise (Disconnect_client (S_error, "received invalid input"))
@@ -211,35 +228,23 @@ module Shim (A: ARRANGEMENT) = struct
       my_select rs ws es t
 
   let rec eloop env nm s =
-    let (fds, _, _) = my_select (List.append [env.usock; env.isock] env.csocks) [] [] (A.setTimeout nm s) in
+    let csocks = List.map (fun c -> c.sock) env.clients in
+    let (fds, _, _) = my_select (List.append [env.usock; env.isock] csocks) [] [] (A.setTimeout nm s) in
     let s' =
-      match (List.mem env.isock fds, List.mem env.usock fds, List.filter (fun c -> List.mem c fds) env.csocks) with
+      match (List.mem env.isock fds, List.mem env.usock fds, List.filter (fun c -> List.mem c.sock fds) env.clients) with
       | (true, _, _) -> new_conn env ; s
       | (_, _, c :: cs) ->
          (try input_step c env nm s
          with
            Unix_error (err, fn, arg) ->
-             prerr_string fn;
-             prerr_string " failed: ";
-             prerr_endline (error_message err);
-             disconnect env c;
+             disconnect env c (sprintf "%s failed: %s" fn (error_message err));
              s
          | Disconnect_client (sev, msg) ->
-             (match sev with
-             | S_info -> ()
-             | S_error ->
-                print_string "client disconnected: ";
-                print_endline msg);
-             disconnect env c;
+             disconnect env c msg;
              s)
       | (_, true, _) -> recv_step env nm s
       | _ -> timeout_step env nm s in
     eloop env nm s'
-
-  let default v o =
-    match o with
-    | None -> v
-    | Some v' -> v'
 
   let main nm nodes =
     print_endline "running setup";
