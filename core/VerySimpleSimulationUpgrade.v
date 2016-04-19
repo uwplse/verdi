@@ -42,7 +42,7 @@ Section VerySimpleSimulationUpgrade.
   Variable trace_prop : list (name * (input + list output)) -> Prop.
   Variable trace_prop_invariant :
     forall net tr,
-      step_f step_f_init net tr ->
+      step_f_star step_f_init net tr ->
       trace_prop tr.
 
   Variable simulation :
@@ -143,7 +143,7 @@ Section VerySimpleSimulationUpgrade.
     decide equality.
   Qed.
 
-  Theorem trace_prop_invariant_upgrade_one :
+  Lemma lifted_stutter_step :
     forall net_u net_u' failed net_f tr,
       lifted_net failed net_f net_u ->
       step_u net_u net_u' tr ->
@@ -456,5 +456,60 @@ Section VerySimpleSimulationUpgrade.
         unfold update.
         break_if; subst; auto.
   Qed.
-  
+
+  Theorem lifted_step_star :
+    forall net_u net_u' failed net_f tr,
+      lifted_net failed net_f net_u ->
+      step_u_star net_u net_u' tr ->
+      exists failed' net_f',
+        step_f_star (failed, net_f) (failed', net_f') tr /\
+        lifted_net failed' net_f' net_u'.
+  Proof.
+    intros.
+    find_apply_lem_hyp refl_trans_1n_n1_trace.
+    match goal with
+    | H : context [step_u] |- _ => induction H
+    end.
+    - exists failed, net_f. intuition.
+      constructor.
+    - intuition.
+      break_exists. intuition.
+      find_eapply_lem_hyp lifted_stutter_step; eauto.
+      break_exists_exists. intuition; subst; try rewrite app_nil_r; eauto.
+      find_apply_lem_hyp refl_trans_1n_n1_trace.
+      apply refl_trans_n1_1n_trace.
+      now econstructor; eauto.
+  Qed.
+
+  Lemma lifted_step_f_init :
+    lifted_net (fst step_f_init) (snd step_f_init) step_u_init.
+  Proof.
+    unfold lifted_net. intuition; simpl in *; auto.
+    unfold lifted_state. intuition.
+  Qed.
+
+  Theorem step_u_step_f :
+    forall net_u' tr,
+      step_u_star step_u_init net_u' tr ->
+      exists failed' net_f',
+        step_f_star step_f_init (failed', net_f') tr.
+  Proof.
+    intros.
+    pose proof lifted_step_f_init.
+    unfold step_f_init in *. simpl in *.
+    find_eapply_lem_hyp lifted_step_star; eauto.
+    break_exists_exists; intuition.
+  Qed.
+
+  Theorem trace_prop_step_u :
+    forall net_u' tr,
+      step_u_star step_u_init net_u' tr ->
+      trace_prop tr.
+  Proof.
+    intros.
+    find_apply_lem_hyp step_u_step_f.
+    break_exists.
+    eauto using trace_prop_invariant.
+  Qed.
+      
 End VerySimpleSimulationUpgrade.
