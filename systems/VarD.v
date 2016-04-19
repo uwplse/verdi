@@ -19,7 +19,9 @@ Inductive output : Set :=
 | Response : key -> option value -> option value -> output (* uniform response *)
 .
 
-Module VarDFunctor (Map : TREE with Definition elt := string).
+Module VarDFunctor (M : TREE with Definition elt := string).
+
+Module Map := M.
 
 Definition key_eq_dec := string_dec.
 Definition value_eq_dec := string_dec.
