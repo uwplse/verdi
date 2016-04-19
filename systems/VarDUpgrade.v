@@ -87,45 +87,15 @@ Theorem handlers_preserve_simulation :
       LogTimeVarD.VarDHandler i d2 = (o, d2').
 Proof.
   destruct i eqn:?; simpl; intros;
-    unfold StateMachineHandlerMonad.bind in *; repeat break_let; repeat find_inversion.
-  - unfold LinearTimeVarD.resp, LogTimeVarD.resp in *.
-    unfold LinearTimeVarD.setk, LogTimeVarD.setk in *.
-    unfold LinearTimeVarD.getk, LogTimeVarD.getk in *.
-    StateMachineHandlerMonad.monad_unfold.
-    repeat find_inversion.
-    eexists. intuition eauto using f_equal2.
-    auto using set_preserves_simulation.
-  - unfold LinearTimeVarD.resp, LogTimeVarD.resp in *.
-    unfold LinearTimeVarD.setk, LogTimeVarD.setk in *.
-    unfold LinearTimeVarD.getk, LogTimeVarD.getk in *.
-    StateMachineHandlerMonad.monad_unfold.
-    repeat find_inversion.
-    eauto using f_equal2.
-  - unfold LinearTimeVarD.resp, LogTimeVarD.resp in *.
-    unfold LinearTimeVarD.delk, LogTimeVarD.delk in *.
-    unfold LinearTimeVarD.getk, LogTimeVarD.getk in *.
-    StateMachineHandlerMonad.monad_unfold.
-    repeat find_inversion.
-    eexists. intuition eauto using f_equal2.
-    auto using remove_preserves_simulation.
-  - unfold LinearTimeVarD.resp, LogTimeVarD.resp in *.
-    unfold LinearTimeVarD.setk, LogTimeVarD.setk in *.
-    unfold LinearTimeVarD.getk, LogTimeVarD.getk in *.
-    StateMachineHandlerMonad.monad_unfold.
-    repeat find_inversion.
-    erewrite simulation_get in * by eauto.
+    unfold LinearTimeVarD.resp, LogTimeVarD.resp,
+           LinearTimeVarD.setk, LogTimeVarD.setk,
+           LinearTimeVarD.delk, LogTimeVarD.delk,
+           LinearTimeVarD.getk, LogTimeVarD.getk in *;
+    StateMachineHandlerMonad.monad_unfold;
+    repeat break_let; repeat find_inversion;
+    try erewrite simulation_get in * by eauto;
     repeat break_if; try congruence; repeat find_inversion;
-    eexists; intuition eauto using f_equal2;
-    eauto using set_preserves_simulation.
-  - unfold LinearTimeVarD.resp, LogTimeVarD.resp in *.
-    unfold LinearTimeVarD.delk, LogTimeVarD.delk in *.
-    unfold LinearTimeVarD.getk, LogTimeVarD.getk in *.
-    StateMachineHandlerMonad.monad_unfold.
-    repeat find_inversion.
-    erewrite simulation_get in * by eauto.
-    repeat break_if; try congruence; repeat find_inversion;
-    eexists; intuition eauto using f_equal2;
-    eauto using remove_preserves_simulation.
+    eauto 6 using f_equal2, set_preserves_simulation, remove_preserves_simulation.
 Qed.
 
 Instance vard_upgrade_params : StateMachineUpgradeParams :=
