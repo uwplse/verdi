@@ -70,6 +70,7 @@ Section VerySimpleSimulationUpgrade.
 
   Variable reboot_preserves_upgrade :
     forall sigma1 sigma1' sigma2,
+      simulation sigma1 sigma2 ->
       reboot1 sigma1 = sigma1' ->
       exists sigma2',
         simulation sigma1' sigma2' /\
@@ -321,10 +322,108 @@ Section VerySimpleSimulationUpgrade.
               break_if; auto.
               right. eexists; intuition eauto.
         }
-    - admit.
-    - admit.
-    - admit.
-    - admit.
+    - unfold lifted_net in *. simpl. intuition.
+      exists failed.
+      match goal with
+      | |- context [?pkts = map lift_packet _] =>
+        remember (map lower_packet pkts) as lowered_packets
+      end.
+      remember (Net.nwState net_f) as lowered_state.
+      exists {| Net.nwPackets := lowered_packets; Net.nwState := lowered_state |}.
+      intuition.
+      + right. subst.
+        map_crush.
+        repeat find_rewrite.
+        apply SF_drop with (xs0 := map lower_packet xs)
+                             (p0 := lower_packet p)
+                             (ys0 := map lower_packet ys); auto.
+        change (lower_packet p :: map lower_packet ys) with
+               (map lower_packet (p :: ys)).
+        rewrite <- map_app.
+        find_rewrite. apply map_lower_lift.
+      + subst. simpl.
+        apply map_lift_lower.
+    - unfold lifted_net in *. simpl. intuition.
+      exists failed.
+      match goal with
+      | |- context [?pkts = map lift_packet _] =>
+        remember (map lower_packet pkts) as lowered_packets
+      end.
+      remember (Net.nwState net_f) as lowered_state.
+      exists {| Net.nwPackets := lowered_packets; Net.nwState := lowered_state |}.
+      intuition.
+      + right. subst.
+        map_crush.
+        repeat find_rewrite.
+        apply SF_dup with (xs0 := map lower_packet xs)
+                             (p0 := lower_packet p)
+                             (ys0 := map lower_packet ys).
+        * change (lower_packet p :: map lower_packet ys) with
+                 (map lower_packet (p :: ys)).
+          rewrite <- map_app.
+          find_rewrite. apply map_lower_lift.
+        * f_equal.
+          f_equal.
+          change (lower_packet p :: map lower_packet ys) with
+                 (map lower_packet (p :: ys)).
+          rewrite <- map_app.
+          find_rewrite. auto.
+      + subst. simpl.
+        apply map_lift_lower.
+    - exists (h :: failed). exists net_f.
+      intuition; eauto using SF_fail.
+      unfold lifted_net in *.
+      simpl. intuition congruence.
+    - {
+        exists (remove name_eq_dec h failed).
+        unfold reboot. repeat break_match.
+        - unfold lifted_net in *.
+          intuition.
+          exists {| Net.nwPackets := Net.nwPackets net_f;
+               Net.nwState := update (Net.nwState net_f) h (reboot1 d) |}.
+          simpl. intuition; repeat find_rewrite; auto.
+          + repeat find_rewrite. subst.
+            right. apply SF_reboot with (h0 := h); auto.
+            f_equal.
+            unfold update.
+            apply functional_extensionality.
+            intros.
+            repeat break_if; subst; try congruence.
+            simpl.
+            f_equal.
+            unfold lifted_state in *.
+            intuition.
+            find_insterU; intuition; rewrite Heqs in *;
+              [find_apply_lem_hyp Eqdep_dec.inj_pair2_eq_dec; eauto using version_eq_dec|].
+            break_exists; intuition; congruence.
+          + unfold lifted_state.
+            intros. unfold update.
+            break_if; auto.
+        - subst.
+          unfold lifted_net in *. intuition. simpl in *.
+          match goal with
+          | H : context [lifted_state] |- _ =>
+            pose proof H;
+            specialize (H h)
+          end.
+          intuition; repeat find_rewrite; try congruence.
+          break_exists. intuition.
+          find_apply_lem_hyp Eqdep_dec.inj_pair2_eq_dec; eauto using version_eq_dec.
+          subst.
+          exists {| Net.nwPackets := Net.nwPackets net_f;
+               Net.nwState := update (Net.nwState net_f) h (reboot1 (Net.nwState net_f h)) |}.
+          simpl. intuition.
+          + right.
+            eapply SF_reboot with (h0 := h); auto.
+            f_equal.
+            unfold update. apply functional_extensionality.
+            intros. repeat break_if; subst; auto; congruence.
+          + unfold lifted_state.
+            intros. unfold update. break_if; subst; auto.
+            right.
+            find_eapply_lem_hyp reboot_preserves_upgrade; eauto.
+            break_exists_exists. intuition. subst. auto.
+      }
     - exists failed, net_f. intuition.
       unfold upgrade_state.
       repeat break_match.
@@ -356,6 +455,6 @@ Section VerySimpleSimulationUpgrade.
         intros.
         unfold update.
         break_if; subst; auto.
-  Admitted.
+  Qed.
   
 End VerySimpleSimulationUpgrade.
