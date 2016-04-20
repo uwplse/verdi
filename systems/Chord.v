@@ -9,7 +9,8 @@ Definition pointer := (id * addr)%type.
 Definition id_of (p : pointer) : id := fst p.
 Definition addr_of (p : pointer) : addr := snd p.
 Definition SUCC_LIST_LEN := 2.
-Definition pointer_eq_dec : forall x y : pointer, {x = y} + {x <> y}.
+Definition pointer_eq_dec : forall x y : pointer,
+    {x = y} + {x <> y}.
 Proof.
   decide equality; auto using Nat.eq_dec.
 Defined.
@@ -102,24 +103,24 @@ Definition clear_rectify_with (st : data) :=
   Data (ptr st) (pred st) (succ_list st) (known st) (joined st) None (cur_request st) (query_sent st).
 
 Definition make_request (h : addr) (st : data) (k : query) : option (pointer * payload) :=
-    match k with
+  match k with
     | Rectify notifier => match pred st with
-                          | Some p => Some (p, Ping)
-                          | None => None
+                            | Some p => Some (p, Ping)
+                            | None => None
                           end
     | Stabilize => match head (succ_list st) with
-                   | Some succ => Some (succ, GetPredAndSuccs)
-                   | None => None (* should not happen in a good network *)
+                     | Some succ => Some (succ, GetPredAndSuccs)
+                     | None => None (* should not happen in a good network *)
                    end
     | Stabilize2 new_succ => Some (new_succ, GetSuccList)
     | Join known => Some (known, GetBestPredecessor (make_pointer h))
     | Join2 new_succ => Some (new_succ, GetSuccList)
-    end.
+  end.
 
 Definition start_query (h : addr) (st : data) (k : query) : data * list (addr * payload) :=
   match make_request h st k with
-  | Some (dst, msg) => (update_query st dst k, [(addr_of dst, msg)])
-  | None => (st, []) (* should not happen *)
+    | Some (dst, msg) => (update_query st dst k, [(addr_of dst, msg)])
+    | None => (st, []) (* should not happen *)
   end.
 
 (* something to prove: try_rectify is not invoked unless cur_request st is None *)
@@ -153,17 +154,17 @@ Definition ptrs_to_addrs : list (pointer * payload) -> list (addr * payload) :=
 (* true iff n in (a, b) on some sufficiently large "circle" *)
 Definition between_bool (a : nat) (x : nat) (b : nat) : bool :=
   if lt_dec a b
-    then if (lt_dec a x)
-      then if (lt_dec x b)
-        then true
-        else false
-      else false
-    else
-      if (lt_dec a x)
-        then true
-        else if (lt_dec x b)
-          then true
-          else false.
+  then if (lt_dec a x)
+       then if (lt_dec x b)
+            then true
+            else false
+       else false
+  else
+    if (lt_dec a x)
+    then true
+    else if (lt_dec x b)
+         then true
+         else false.
 
 Definition make_succs (head : pointer) (rest : list pointer) : list pointer :=
   firstn SUCC_LIST_LEN (head :: rest).
@@ -171,8 +172,8 @@ Definition make_succs (head : pointer) (rest : list pointer) : list pointer :=
 Definition best_predecessor (h : pointer) (succs : list pointer) (id : id) : pointer :=
   let splits (s : pointer) : bool := between_bool (id_of h) (id_of s) id
   in match head (filter splits (rev succs)) with
-     | Some succ => succ
-     | None => h
+       | Some succ => succ
+       | None => h
      end.
 
 Definition handle_rectify (h : addr) (st : data) (my_pred : pointer) (q : query) (notifier : pointer) : data * list (addr * payload) :=
@@ -182,9 +183,9 @@ Definition handle_rectify (h : addr) (st : data) (my_pred : pointer) (q : query)
 
 Definition handle_stabilize (h : addr) (src : pointer) (st : data) (q : query) (new_succ : pointer) (succs : list pointer) : data * list (addr * payload) :=
   let new_st := update_succ_list st (make_succs src succs) in
-    if between_bool (id_of (ptr st)) (id_of new_succ) (id_of src)
-    then start_query h new_st (Stabilize2 new_succ)
-    else end_query h (new_st, [(addr_of src, Notify)]).
+  if between_bool (id_of (ptr st)) (id_of new_succ) (id_of src)
+  then start_query h new_st (Stabilize2 new_succ)
+  else end_query h (new_st, [(addr_of src, Notify)]).
 
 Definition handle_query (src : addr) (h : addr) (st : data) (qdst : pointer) (q : query) (msg : payload) : data * list (addr * payload) :=
   match q with
@@ -234,15 +235,15 @@ Definition handle_query (src : addr) (h : addr) (st : data) (qdst : pointer) (q 
 
 Definition recv_handler (src : addr) (dst : addr) (msg : payload) (st : data) : data * list (addr * payload) :=
   match msg with
-  | Ping => (st, [(src, Pong)])
-  | GetSuccList => (st, [(src, GotSuccList (succ_list st))])
-  | GetPredAndSuccs => (st, [(src, GotPredAndSuccs (pred st) (succ_list st))])
-  | GetBestPredecessor p => (st, [(src, GotBestPredecessor (best_predecessor (ptr st) (succ_list st) (id_of p)))])
-  | Notify => (set_rectify_with st (make_pointer src), [])
-  | _ => match cur_request st with
-         | Some (query_dst, q) => handle_query src dst st query_dst q msg
-         | None => (st, [])
-         end
+    | Ping => (st, [(src, Pong)])
+    | GetSuccList => (st, [(src, GotSuccList (succ_list st))])
+    | GetPredAndSuccs => (st, [(src, GotPredAndSuccs (pred st) (succ_list st))])
+    | GetBestPredecessor p => (st, [(src, GotBestPredecessor (best_predecessor (ptr st) (succ_list st) (id_of p)))])
+    | Notify => (set_rectify_with st (make_pointer src), [])
+    | _ => match cur_request st with
+             | Some (query_dst, q) => handle_query src dst st query_dst q msg
+             | None => (st, [])
+           end
   end.
 
 Definition start_handler (h : addr) (knowns : list addr) : data * list (addr * payload) :=
@@ -291,7 +292,7 @@ Definition timeout_handler (src : addr) (dst : addr) (st : data) : data * list (
                        then handle_query_timeout src st ptr q
                        else (st, []) (* shouldn't happen *)
     | None => (st, []) (* shouldn't happen *)
- end.
+  end.
 
 Lemma is_request_same_as_request_payload : forall msg : payload,
     is_request msg = true <-> request_payload msg.
