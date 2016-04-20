@@ -91,9 +91,9 @@ module ChordDebugArrangement = struct
   let name_of_addr (s, p) =
       p
   let is_request = ExtractedChord.is_request
-  let handleNet = ExtractedChord.recv_handler
-  let handleTick = ExtractedChord.tick_handler
-  let handleTimeout = ExtractedChord.timeout_handler
+  let handleNet = ExtractedChord.handleNet
+  let handleTick = ExtractedChord.handleTick
+  let handleTimeout = ExtractedChord.handleTimeout
   let closes_request = ExtractedChord.closes_request
   let setTick n s = 5.0
   let query_timeout = 10.0
@@ -103,5 +103,5 @@ module ChordDebugArrangement = struct
   let debugSend st (dst, msg) = log_st st; log_send dst msg
   let debugTick st = log_st st; dbg "ticking"
   let debugTimeout st t = log_timeout st t
-  let init = ExtractedChord.start_handler
+  let init = ExtractedChord.init
 end
