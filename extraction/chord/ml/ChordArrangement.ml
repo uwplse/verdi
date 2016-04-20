@@ -14,8 +14,11 @@ let info = log "INFO"
 let show_addr a =
   string_of_int a
 
+let caps_bool b =
+  if b then "True" else "False"
+
 let show_pointer p =
-  "(" ^ string_of_int (ExtractedChord.id_of p) ^ ", " ^ show_addr (ExtractedChord.addr_of p) ^ ")"
+  string_of_int (id_of p)
 
 let show_pointer_list ps =
   let strs = map show_pointer ps in
@@ -61,10 +64,10 @@ let log_st st =
   log ("succ_list := " ^ show_pointer_list (ExtractedChord.succ_list st));
   log ("pred := " ^ show_opt_pointer (ExtractedChord.pred st));
   log ("known := " ^ show_pointer (ExtractedChord.known st));
-  log ("joined := " ^ string_of_bool (ExtractedChord.joined st));
+  log ("joined := " ^ caps_bool (ExtractedChord.joined st));
   log ("rectify_with := " ^ show_opt_pointer (ExtractedChord.rectify_with st));
   log ("cur_request := " ^ show_st_cur_request st);
-  log ("query_sent := " ^ string_of_bool (ExtractedChord.query_sent st))
+  log ("query_sent := " ^ caps_bool (ExtractedChord.query_sent st))
 
 let log_recv src msg =
   dbg ("recv from " ^ show_addr src ^ ": " ^ show_msg msg)

@@ -1,7 +1,8 @@
+import argparse
 import sys
 from collections import defaultdict, namedtuple
 
-from data import SUCC_LIST_LEN
+import data
 from node import between
 
 class Node(object):
@@ -10,6 +11,9 @@ class Node(object):
         if succ_list is None:
             self.succ_list = []
         self.joined = joined
+    def __repr__(self):
+        return "Node(pred={pred}, succ_list={succ_list}, joined={joined})".format(**self.__dict__)
+
 
 invariants = ["at_least_one_ring", "at_most_one_ring", "ordered_ring",
               "connected_appendages", "ordered_successor_lists",
@@ -27,7 +31,7 @@ def best_succ(nodes, id):
             return succ
     raise NodeLostSuccessors(id)
 
-def report(nodes):
+def report(nodes, succ_list_len):
     results = {}
     aux_results = {}
     ring_members = set()
@@ -83,7 +87,7 @@ def report(nodes):
     ok = True
     node_count = len(ordered_nodes)
     for i, id in enumerate(ordered_nodes):
-        if len(nodes[id].succ_list) < SUCC_LIST_LEN:
+        if len(nodes[id].succ_list) < succ_list_len:
             ok = False
             break
         if nodes[id].pred != ordered_nodes[i - 1]:
@@ -169,7 +173,7 @@ def update_nodes_from(nodes, line):
     elif prop == "joined":
         nodes[node_id].joined = val == "True"
 
-def print_report_for(nodes, line, buffered_lines, starting_up, last):
+def print_report_for(nodes, line, buffered_lines, starting_up, last, succ_list_len):
     if (len(nodes) == 0 or dangling_pointers(nodes)) and starting_up:
         buffered_lines.append(line)
         return buffered_lines, starting_up, last
@@ -177,9 +181,9 @@ def print_report_for(nodes, line, buffered_lines, starting_up, last):
     # a node isn't *really* a node until its join operation has completed.
     visible_nodes = {id: node for id, node in nodes.items() if node.joined}
     try:
-        results, aux_results = report(dict(visible_nodes))
+        results, aux_results = report(dict(visible_nodes), succ_list_len)
     except NodeLostSuccessors:
-        print indent + "\t" + line
+        print line
         print_state(visible_nodes)
         raise
     if starting_up and all(results.values()):
@@ -207,6 +211,15 @@ def print_state(nodes):
     for id in sorted(nodes):
         print "{}\t{}\t{}".format(nodes[id].pred, id, nodes[id].succ_list)
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--succ-list-len", "-l",
+                    metavar="N",
+                    type=int,
+                    default=data.SUCC_LIST_LEN)
+args = parser.parse_args()
+
+print "Running with SUCC_LIST_LEN := {}".format(data.SUCC_LIST_LEN)
+
 for i, invariant in enumerate(invariants):
     print "| " * i + invariant
 indent = "| "*(len(invariants)-1) + "|"
@@ -219,7 +232,9 @@ for line in sys.stdin:
     if "killing node" in line or line.startswith("INFO:") and " := " in line:
         # log line mutates state
         update_nodes_from(nodes, line)
-        new_vals = print_report_for(nodes, line, buffered_lines, starting_up, last_result)
+        new_vals = print_report_for(nodes, line, buffered_lines, starting_up, last_result,
+                args.succ_list_len)
+        print nodes
         buffered_lines, starting_up, last_result = new_vals
     else:
         # log line is just debug information
