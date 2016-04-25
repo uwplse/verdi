@@ -7,16 +7,15 @@ Section Dynamic.
   Variable addr_eq_dec : forall x y : addr, {x = y} + {x <> y}.
   Variable payload : Type. (* must be serializable *)
   Variable data : Type.
-  Variable start_handler : addr -> list addr -> data * list (addr * payload).
-  Variable recv_handler : addr -> addr -> data -> payload -> data * list (addr * payload).
-  Variable tick_handler : addr -> data -> data * list (addr * payload).
-  Variable timeout_handler : addr -> addr -> data -> data * list (addr * payload).
+  Variable timeout : Type.
+
+  Definition res := (data * list (addr * payload) * list timeout * list timeout)%type.
+  Variable start_handler : addr -> list addr -> res.
+  Variable recv_handler : addr -> addr -> data -> payload -> res.
+  Variable timeout_handler : addr -> data -> timeout -> res.
   
   (* can clients send this payload? disallows forgery *)
   Variable client_payload : payload -> Prop.
-  (* is a response always expected from the destination this message is sent to? *)
-  (* i.e., can we use this payload as a ping? *)
-  Variable request_payload : payload -> Prop.
 
   Variable can_be_client : addr -> Prop.
   Variable can_be_node : addr -> Prop.
@@ -30,38 +29,46 @@ Section Dynamic.
   Inductive event :=
   | e_send : msg -> event
   | e_recv : msg -> event
-  | e_tick : addr -> event
-  | e_timeout : addr -> addr -> event
+  | e_timeout : addr -> timeout -> event
   | e_fail : addr -> event.
   
   Record global_state :=
     { nodes : list addr;
       failed_nodes : list addr;
+      timeouts : addr -> list timeout;
       sigma : addr -> option data;
       msgs : list msg;
       trace : list event
     }.
 
   Definition nil_state : addr -> option data := fun _ => None.
+  Definition nil_timeouts : addr -> list timeout := fun _ => [].
   Definition init :=
-    {| nodes := []; failed_nodes := []; sigma := nil_state; msgs := []; trace := [] |}.
+    {| nodes := []; failed_nodes := []; timeouts := nil_timeouts; sigma := nil_state; msgs := []; trace := [] |}.
   
   Definition update (f : addr -> option data) (a : addr) (d : data) (a' : addr) :=
     if addr_eq_dec a a' then Some d else f a'.
+  Definition updatets (f : addr -> list timeout) (a : addr) (t : list timeout) (a' : addr) :=
+    if addr_eq_dec a a' then t else f a'.
   Notation "f [ a '=>' d ]" := (update f a d) (at level 0).
+  Notation "f [ a '==>' d ]" := (updatets f a d) (at level 0).
 
   Inductive step_dynamic : global_state -> global_state -> Prop :=
   | Start :
-      forall h gst ms st new_msgs known k,
+      forall h gst ms st new_msgs known k t ts ts' newts clearedts,
         can_be_node h ->
         ~ In h (nodes gst) ->
         (In k known -> In k (nodes gst)) ->
         (In k known -> ~ In k (failed_nodes gst)) ->
         (known = [] -> (nodes gst) = []) ->
-        start_handler h known = (st, ms) ->
+        ts = timeouts gst h ->
+        (In t clearedts -> In t ts) ->
+        (In t ts' -> ~ In t clearedts /\ (In t ts \/ In t newts)) ->
+        start_handler h known = (st, ms, newts, clearedts) ->
         new_msgs = map (send h) ms ->
         step_dynamic gst {| nodes := h :: nodes gst;
                             failed_nodes := failed_nodes gst;
+                            timeouts := (timeouts gst)[h ==> ts'];
                             sigma := (sigma gst)[h => st];
                             msgs := new_msgs ++ msgs gst;
                             trace := trace gst ++ (map e_send new_msgs)
@@ -72,57 +79,54 @@ Section Dynamic.
         ~ In h (failed_nodes gst) ->
         step_dynamic gst {| nodes := nodes gst;
                             failed_nodes := h :: (failed_nodes gst);
+                            timeouts := timeouts gst;
                             sigma := sigma gst;
                             msgs := msgs gst;
                             trace := trace gst ++ [e_fail h]
                          |}
-  | Tick :
-      forall h gst d ms st,
+  | Timeout :
+      forall gst h st ts xts t t' yts ts' st' ms newts clearedts,
         In h (nodes gst) ->
         ~ In h (failed_nodes gst) ->
-        sigma gst h = Some d ->
-        tick_handler h d = (st, ms) ->
+        sigma gst h = Some st ->
+        xts ++ t :: yts = (timeouts gst h) ->
+        ts = xts ++ yts ->
+        (In t' clearedts -> In t' ts) ->
+        (In t' ts' -> ~ In t' clearedts /\ (In t' ts \/ In t' newts)) ->
+        timeout_handler h st t = (st', ms, newts, clearedts) ->
         step_dynamic gst {| nodes := nodes gst;
                             failed_nodes := failed_nodes gst;
-                            sigma := (sigma gst)[h => st];
+                            timeouts := (timeouts gst)[h ==> ts'];
+                            sigma := (sigma gst)[h => st'];
                             msgs := map (send h) ms ++ msgs gst;
-                            trace := trace gst ++ [e_tick h]
-                         |}
-  | Timeout :
-      forall gst src dst msg ms d st,
-        In src (nodes gst) ->
-        ~ In src (failed_nodes gst) ->
-        sigma gst src = Some d ->
-        In dst (failed_nodes gst) -> 
-        request_payload msg ->
-        timeout_handler src dst d = (st, ms) ->
-        step_dynamic gst {| nodes := nodes gst;
-                            failed_nodes := failed_nodes gst;
-                            sigma := (sigma gst)[src => st];
-                            msgs := map (send src) ms ++ msgs gst;
-                            trace := trace gst ++ [e_timeout src dst]
+                            trace := trace gst ++ [e_timeout h t]
                          |}
   | Deliver_client :
       forall gst m h xs ys,
+        can_be_client h ->
         msgs gst = xs ++ m :: ys ->
         h = fst (snd m) ->
         ~ In h (nodes gst) ->
         step_dynamic gst {| nodes := nodes gst;
                             failed_nodes := failed_nodes gst;
+                            timeouts := timeouts gst;
                             sigma := sigma gst;
                             msgs := xs ++ ys;
                             trace := trace gst ++ [e_recv m]
                          |}
   | Deliver_node :
-      forall gst m h d xs ys ms st,
+      forall gst m h d xs ys ms st ts ts' t newts clearedts,
         msgs gst = xs ++ m :: ys ->
         h = fst (snd m) ->
         In h (nodes gst) ->
         ~ In h (failed_nodes gst) ->
         sigma gst h = Some d ->
-        recv_handler h (fst m) d (snd (snd m)) = (st, ms) ->
+        (In t clearedts -> In t ts) ->
+        (In t ts' -> ~ In t clearedts /\ (In t ts \/ In t newts)) ->
+        recv_handler h (fst m) d (snd (snd m)) = (st, ms, newts, clearedts) ->
         step_dynamic gst {| nodes := nodes gst;
                             failed_nodes := failed_nodes gst;
+                            timeouts := (timeouts gst)[h ==> ts'];
                             sigma := (sigma gst)[h => st];
                             msgs := map (send h) ms ++ xs ++ ys;
                             trace := trace gst ++ [e_recv m]
@@ -135,6 +139,7 @@ Section Dynamic.
         m = send h (to, i) ->
         step_dynamic gst {| nodes := nodes gst;
                             failed_nodes := failed_nodes gst;
+                            timeouts := timeouts gst;
                             sigma := sigma gst;
                             msgs := m :: (msgs gst);
                             trace := trace gst ++ [e_send m]

@@ -52,8 +52,8 @@ let show_query = function
 let show_st_ptr st =
   show_pointer (ExtractedChord.ptr st)
 
-let show_request (ptr, q) =
-  "query(" ^ show_pointer ptr ^ ", " ^ show_query q ^")"
+let show_request ((ptr, q), _) =
+  "query(" ^ show_pointer ptr ^ ", " ^ show_query q ^ ")"
 
 let show_st_cur_request st =
   map_default show_request "None" (ExtractedChord.cur_request st)
@@ -80,28 +80,30 @@ let log_timeout st (dead, msg) =
      ^ " from " ^ show_pointer (ptr st)
      ^ " to " ^ show_addr dead ^ " timed out")
 
+let set_timeout = function
+  | Tick -> 5.0
+  | Request (a, b) -> 10.0
+
+let rebracket (((a, b), c), d) = (a, b, c, d)
+
 module ChordDebugArrangement = struct
   type name = ExtractedChord.addr
   type state = ExtractedChord.data
   type msg = ExtractedChord.payload
-  type res = state * (name * msg) list
+  type timeout = ExtractedChord.timeout
+  type res = ((state * (name * msg) list) * (timeout list)) * (timeout list)
   (* should put these two in coq so i can prove (name_of_addr (addr_of_name n)) = n *)
   let addr_of_name n =
       ("127.0.0.1", n)
   let name_of_addr (s, p) =
       p
-  let is_request = ExtractedChord.is_request
-  let handleNet = ExtractedChord.handleNet
-  let handleTick = ExtractedChord.handleTick
-  let handleTimeout = ExtractedChord.handleTimeout
-  let closes_request = ExtractedChord.closes_request
-  let setTick n s = 5.0
-  let query_timeout = 10.0
+  let init n ks = rebracket (init n ks)
+  let handleNet s d m s = rebracket (ExtractedChord.handleNet s d m s)
+  let handleTimeout n s t = rebracket (handleTimeout n s t)
+  let setTimeout = set_timeout
+  let default_timeout = 5.0
   let debug = true
-  let debugInit n knowns = dbg "running init"
   let debugRecv st (src, msg) = log_st st; log_recv src msg
   let debugSend st (dst, msg) = log_st st; log_send dst msg
-  let debugTick st = log_st st; dbg "ticking"
   let debugTimeout st t = log_timeout st t
-  let init = ExtractedChord.init
 end
