@@ -240,9 +240,12 @@ Section Chord.
       | Join known =>
         match msg with
           | GotBestPredecessor p => let a := addr_of p in
+                                    let self := make_pointer h in
+                                    let gbp := GetBestPredecessor self in
+                                    let oldt := Request src gbp in
                                     if addr_eq_dec a src
-                                    then (st, [(src, GetSuccList)], [], [])
-                                    else (st, [(a, GetBestPredecessor (make_pointer h))], [], [])
+                                    then (st, [(src, GetSuccList)], [Request src GetSuccList], [oldt])
+                                    else (st, [(a, gbp)], [Request a gbp], [oldt])
           | GotSuccList l =>
             match l with
               | [] => end_query h (st, [], [], []) (* this is bad *)
