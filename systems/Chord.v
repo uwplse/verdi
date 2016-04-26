@@ -56,8 +56,7 @@ Section Chord.
                         known : pointer ;
                         joined : bool ;
                         rectify_with : option pointer ;
-                        cur_request : option (pointer * query * payload) ;
-                        query_sent : bool }.
+                        cur_request : option (pointer * query * payload) }.
 
   Definition res := (data * list (addr * payload) * list timeout * list timeout)%type.
 
@@ -102,19 +101,19 @@ Section Chord.
   Definition can_be_client (a : addr) := True.
   Definition can_be_node (a : addr) := True.
 
-  Definition update_pred (st : data) (p : pointer) := Data (ptr st) (Some p) (succ_list st) (known st) (joined st) (rectify_with st) (cur_request st) (query_sent st).
+  Definition update_pred (st : data) (p : pointer) := Data (ptr st) (Some p) (succ_list st) (known st) (joined st) (rectify_with st) (cur_request st).
 
-  Definition update_succ_list (st : data) (succs : list pointer) := Data (ptr st) (pred st) succs (known st) (joined st) (rectify_with st) (cur_request st) (query_sent st).
+  Definition update_succ_list (st : data) (succs : list pointer) := Data (ptr st) (pred st) succs (known st) (joined st) (rectify_with st) (cur_request st).
 
-  Definition update_query (st : data) (dst : pointer) (q : query) (m : payload) := Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) (Some (dst, q, m)) (query_sent st).
+  Definition update_query (st : data) (dst : pointer) (q : query) (m : payload) := Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) (Some (dst, q, m)).
 
-  Definition update_for_join (st : data) (succs : list pointer) := Data (ptr st) None succs (known st) true (rectify_with st) (cur_request st) (query_sent st).
+  Definition update_for_join (st : data) (succs : list pointer) := Data (ptr st) None succs (known st) true (rectify_with st) (cur_request st).
 
   Definition set_rectify_with (st : data) (rw : pointer) :=
-    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (Some rw) (cur_request st) (query_sent st).
+    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (Some rw) (cur_request st).
 
   Definition clear_rectify_with (st : data) :=
-    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) None (cur_request st) (query_sent st).
+    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) None (cur_request st).
 
   Definition make_request (h : addr) (st : data) (k : query) : option (pointer * payload) :=
     match k with
@@ -164,7 +163,7 @@ Section Chord.
 
   Definition end_query (h : addr) (r : res) : res :=
     let '(st, outs, nts, cts) := r in
-    let st' := Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) None false in
+    let st' := Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) None in
     let clearreq := timeouts_in st in
     if request_in outs
     then (st', outs, nts, cts ++ clearreq)
@@ -278,15 +277,15 @@ Section Chord.
     match knowns with
       | k :: [] =>
         let known := make_pointer k in
-        let st := Data (make_pointer h) None [] known false None None false in
+        let st := Data (make_pointer h) None [] known false None None in
         start_query h st (Join known)
       | k :: nowns =>
         let p := make_pointer k in
         let succs := chop_succs (map make_pointer nowns) in
-        let st := Data (make_pointer h) (Some p) succs p true None None false in
-        (st, [], [], [])
+        let st := Data (make_pointer h) (Some p) succs p true None None in
+        (st, [], [Tick], [])
       (* garbage data, shouldn't happen *)
-      | [] => (Data (make_pointer h) None [] (make_pointer h) false None None false, [], [], [])
+      | [] => (Data (make_pointer h) None [] (make_pointer h) false None None, [], [], [])
     end.
 
   Definition tick_handler (h : addr) (st : data) : res :=
@@ -303,23 +302,27 @@ Section Chord.
       | Stabilize =>
         match succ_list st with
           | _ :: rest => start_query h (update_succ_list st rest) Stabilize
-          | [] => end_query h (st, [], [], []) (* should not happen in a good network *)
+          | [] => end_query h (st, [], [], []) (* should not happen in a good network (TODO add axiom?) *)
         end
       | Stabilize2 new_succ =>
         match succ_list st with
           | next :: _ => end_query h (st, [(addr_of next, Notify)], [], [])
-          | [] => end_query h (st, [], [], []) (* again, this shouldn't happen *)
+          | [] => end_query h (st, [], [], []) (* again, this shouldn't happen (TODO prove this) *)
         end
       | Join known => end_query h (st, [], [], [])
       | Join2 new_succ => end_query h (st, [], [], [])
     end.
 
-  Definition timeout_handler (src : addr) (dst : addr) (st : data) : res :=
-    match cur_request st with
-      | Some (ptr, q, _) => if addr_eq_dec (addr_of ptr) dst
-                         then handle_query_timeout src st ptr q
-                         else (st, [], [], []) (* shouldn't happen *)
-      | None => (st, [], [], []) (* shouldn't happen *)
+  Definition timeout_handler (h : addr) (st : data) (t : timeout) : res :=
+    match t with
+      | Request dst msg =>
+        match cur_request st with
+          | Some (ptr, q, _) => if addr_eq_dec (addr_of ptr) dst
+                                then handle_query_timeout h st ptr q
+                                else (st, [], [], []) (* shouldn't happen *)
+          | None => (st, [], [], []) (* shouldn't happen (TODO prove this) *)
+        end
+      | Tick => tick_handler h st
     end.
 
   Lemma is_request_same_as_request_payload : forall msg : payload,

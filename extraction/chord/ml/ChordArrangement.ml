@@ -75,10 +75,12 @@ let log_recv src msg =
 let log_send dst msg =
   dbg ("send to " ^ show_addr dst ^ ":" ^ show_msg msg)
 
-let log_timeout st (dead, msg) =
-  dbg ("request " ^ show_msg msg
-     ^ " from " ^ show_pointer (ptr st)
-     ^ " to " ^ show_addr dead ^ " timed out")
+let log_timeout st = function
+  | Tick -> dbg ("ticked")
+  | Request (dead, msg) ->
+    dbg ("request " ^ show_msg msg
+        ^ " from " ^ show_pointer (ptr st)
+        ^ " to " ^ show_addr dead ^ " timed out")
 
 let set_timeout = function
   | Tick -> 5.0
@@ -91,15 +93,18 @@ module ChordDebugArrangement = struct
   type state = ExtractedChord.data
   type msg = ExtractedChord.payload
   type timeout = ExtractedChord.timeout
-  type res = ((state * (name * msg) list) * (timeout list)) * (timeout list)
+  type res = state * (name * msg) list * (timeout list) * (timeout list)
   (* should put these two in coq so i can prove (name_of_addr (addr_of_name n)) = n *)
   let addr_of_name n =
       ("127.0.0.1", n)
   let name_of_addr (s, p) =
       p
-  let init n ks = rebracket (init n ks)
-  let handleNet s d m s = rebracket (ExtractedChord.handleNet s d m s)
-  let handleTimeout n s t = rebracket (handleTimeout n s t)
+  let init n ks =
+    rebracket (init n ks)
+  let handleNet s d m st =
+    rebracket (ExtractedChord.handleNet s d m st)
+  let handleTimeout n s t =
+    rebracket (handleTimeout n s t)
   let setTimeout = set_timeout
   let default_timeout = 5.0
   let debug = true

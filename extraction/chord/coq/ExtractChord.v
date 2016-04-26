@@ -19,11 +19,7 @@ Definition init : addr -> list addr -> res :=
 Definition handleTick : addr -> data -> res :=
   tick_handler hash.
 
-Definition handleTimeout : addr -> addr -> data -> res :=
+Definition handleTimeout : addr -> data -> timeout -> res :=
   timeout_handler hash.
 
-Definition test (a b c : nat) : nat * nat * nat :=
-  (a, b, c).
-
-Extraction "Test.ml" test.
 Extraction "ExtractedChord.ml" init handleNet handleTick handleTimeout is_request closes_request.

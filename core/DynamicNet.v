@@ -12,13 +12,11 @@ Section Dynamic.
   Variable timeout_eq_dec : forall x y : timeout, {x = y} + {x <> y}.
 
   Definition res := (data * list (addr * payload) * list timeout * list timeout)%type.
-  (* list of outputs , modified state and added, and cleared timeouts
-fn hostname -> result -> network state -> new network state *)
-                                                  
+
   Variable start_handler : addr -> list addr -> res.
   Variable recv_handler : addr -> addr -> data -> payload -> res.
   Variable timeout_handler : addr -> data -> timeout -> res.
-  
+
   (* can clients send this payload? disallows forgery *)
   Variable client_payload : payload -> Prop.
 
@@ -36,7 +34,7 @@ fn hostname -> result -> network state -> new network state *)
   | e_recv : msg -> event
   | e_timeout : addr -> timeout -> event
   | e_fail : addr -> event.
-  
+ 
   Record global_state :=
     { nodes : list addr;
       failed_nodes : list addr;
@@ -56,7 +54,7 @@ fn hostname -> result -> network state -> new network state *)
 
   Definition clear_timeouts (ts : list timeout) (cts : list timeout) : list timeout :=
     list_minus timeout_eq_dec ts cts.
-    
+
   Definition update (f : addr -> option data) (a : addr) (d : data) (a' : addr) :=
     if addr_eq_dec a a' then Some d else f a'.
   Definition updatets (f : addr -> list timeout) (a : addr) (t : list timeout) (a' : addr) :=

@@ -234,7 +234,7 @@ for line in sys.stdin:
         update_nodes_from(nodes, line)
         new_vals = print_report_for(nodes, line, buffered_lines, starting_up, last_result,
                 args.succ_list_len)
-        print nodes
+        #print nodes
         buffered_lines, starting_up, last_result = new_vals
     else:
         # log line is just debug information
