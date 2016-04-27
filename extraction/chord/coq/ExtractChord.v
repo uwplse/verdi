@@ -5,7 +5,7 @@ Require Import ExtrOcamlString.
 
 Require Import Chord.
 
-Definition SUCC_LIST_LEN := 5.
+Definition SUCC_LIST_LEN := 2.
 
 Definition hash (a : addr) : id :=
   a mod 256.

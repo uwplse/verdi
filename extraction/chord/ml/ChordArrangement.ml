@@ -66,8 +66,7 @@ let log_st st =
   log ("known := " ^ show_pointer (ExtractedChord.known st));
   log ("joined := " ^ caps_bool (ExtractedChord.joined st));
   log ("rectify_with := " ^ show_opt_pointer (ExtractedChord.rectify_with st));
-  log ("cur_request := " ^ show_st_cur_request st);
-  log ("query_sent := " ^ caps_bool (ExtractedChord.query_sent st))
+  log ("cur_request := " ^ show_st_cur_request st)
 
 let log_recv src msg =
   dbg ("recv from " ^ show_addr src ^ ": " ^ show_msg msg)
