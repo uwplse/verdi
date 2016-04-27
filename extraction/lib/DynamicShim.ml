@@ -12,8 +12,8 @@ module type DYNAMIC_ARRANGEMENT = sig
   type res = state * (name * msg) list * timeout list * timeout list
   val addr_of_name : name -> (string * int)
   val name_of_addr : (string * int) -> name
-  val init : name -> name list -> res
-  val handleNet : name -> name -> msg -> state -> res
+  val init : name -> name list -> state * (name * msg) list * timeout list
+  val handleNet : name -> name -> state -> msg -> res
   val handleTimeout : name -> state -> timeout -> res
   val setTimeout : timeout -> float
   val default_timeout : float
@@ -78,7 +78,7 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
      | ADDR_UNIX _ -> failwith "UNEXPECTED MESSAGE FROM UNIX ADDR"
      | ADDR_INET (addr,port) -> A.name_of_addr (string_of_inet_addr addr, port)) in
     let m = unpack_msg buf in
-    let (s', ts') = respond env ts (A.handleNet src nm m s) in
+    let (s', ts') = respond env ts (A.handleNet src nm s m) in
     (if A.debug then A.debugRecv s' (src, m));
     s', ts'
 
@@ -127,9 +127,13 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     | None -> v
     | Some v' -> v'
 
+  let init nm knowns =
+    let (st, sends, nts) = A.init nm knowns in
+    (st, sends, nts, [])
+
   let main nm knowns =
     print_endline "running setup";
     let env = setup nm in
     print_endline "starting";
-    eloop env nm (respond env [] (A.init nm knowns));
+    eloop env nm (respond env [] (init nm knowns));
 end

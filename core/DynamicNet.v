@@ -11,9 +11,10 @@ Section Dynamic.
   Variable timeout : Type.
   Variable timeout_eq_dec : forall x y : timeout, {x = y} + {x <> y}.
 
+  Variable start_handler : addr -> list addr -> data * list (addr * payload) * list timeout.
+
   Definition res := (data * list (addr * payload) * list timeout * list timeout)%type.
 
-  Variable start_handler : addr -> list addr -> res.
   Variable recv_handler : addr -> addr -> data -> payload -> res.
   Variable timeout_handler : addr -> data -> timeout -> res.
 
@@ -85,7 +86,7 @@ Section Dynamic.
 
   Inductive step_dynamic : global_state -> global_state -> Prop :=
   | Start :
-      forall h gst ms st new_msgs known k newts clearedts,
+      forall h gst ms st new_msgs known k newts,
         can_be_node h ->
         ~ In h (nodes gst) ->
         (* hypotheses on the list of known nodes *)
@@ -93,7 +94,7 @@ Section Dynamic.
         (In k known -> ~ In k (failed_nodes gst)) ->
         (known = [] -> (nodes gst) = []) ->
         (* note that clearedts might as well be [] *)
-        start_handler h known = (st, ms, newts, clearedts) ->
+        start_handler h known = (st, ms, newts) ->
         new_msgs = map (send h) ms ->
         step_dynamic gst {| nodes := h :: nodes gst;
                             failed_nodes := failed_nodes gst;
@@ -168,4 +169,3 @@ Section Dynamic.
                             trace := trace gst ++ [e_send m]
                          |}.
 End Dynamic.
-

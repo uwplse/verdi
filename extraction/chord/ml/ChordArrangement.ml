@@ -50,22 +50,22 @@ let show_query = function
   | Join2 p -> "Join2 " ^ show_pointer p
 
 let show_st_ptr st =
-  show_pointer (ExtractedChord.ptr st)
+  show_pointer (ptr st)
 
 let show_request ((ptr, q), _) =
   "query(" ^ show_pointer ptr ^ ", " ^ show_query q ^ ")"
 
 let show_st_cur_request st =
-  map_default show_request "None" (ExtractedChord.cur_request st)
+  map_default show_request "None" (cur_request st)
 
 let log_st st =
   let prefix = "node(" ^ show_st_ptr st ^ "):" in
   let log msg = info (prefix ^ msg) in
-  log ("succ_list := " ^ show_pointer_list (ExtractedChord.succ_list st));
-  log ("pred := " ^ show_opt_pointer (ExtractedChord.pred st));
-  log ("known := " ^ show_pointer (ExtractedChord.known st));
-  log ("joined := " ^ caps_bool (ExtractedChord.joined st));
-  log ("rectify_with := " ^ show_opt_pointer (ExtractedChord.rectify_with st));
+  log ("succ_list := " ^ show_pointer_list (succ_list st));
+  log ("pred := " ^ show_opt_pointer (pred st));
+  log ("known := " ^ show_pointer (known st));
+  log ("joined := " ^ caps_bool (joined st));
+  log ("rectify_with := " ^ show_opt_pointer (rectify_with st));
   log ("cur_request := " ^ show_st_cur_request st)
 
 let log_recv src msg =
@@ -85,12 +85,13 @@ let set_timeout = function
   | Tick -> 5.0
   | Request (a, b) -> 10.0
 
-let rebracket (((a, b), c), d) = (a, b, c, d)
+let rebracket4 (((a, b), c), d) = (a, b, c, d)
+let rebracket3 ((a, b), c) = (a, b, c)
 
 module ChordDebugArrangement = struct
-  type name = ExtractedChord.addr
-  type state = ExtractedChord.data
-  type msg = ExtractedChord.payload
+  type name = addr
+  type state = data
+  type msg = payload
   type timeout = ExtractedChord.timeout
   type res = state * (name * msg) list * (timeout list) * (timeout list)
   (* should put these two in coq so i can prove (name_of_addr (addr_of_name n)) = n *)
@@ -99,11 +100,11 @@ module ChordDebugArrangement = struct
   let name_of_addr (s, p) =
       p
   let init n ks =
-    rebracket (init n ks)
+    rebracket3 (init n ks)
   let handleNet s d m st =
-    rebracket (ExtractedChord.handleNet s d m st)
+    rebracket4 (handleNet s d m st)
   let handleTimeout n s t =
-    rebracket (handleTimeout n s t)
+    rebracket4 (handleTimeout n s t)
   let setTimeout = set_timeout
   let default_timeout = 5.0
   let debug = true

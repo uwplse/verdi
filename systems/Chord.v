@@ -34,10 +34,27 @@ Section Chord.
   | Notify : payload
   | Ping : payload
   | Pong : payload.
+  Lemma option_eq_dec : forall A : Type,
+    (forall x y : A, {x = y} + {x <> y}) ->
+    forall a b : option A, {a = b} + {a <> b}.
+  Proof.
+    decide equality.
+  Qed.
+  Definition payload_eq_dec : forall x y : payload,
+      {x = y} + {x <> y}.
+  Proof.
+    decide equality; auto using pointer_eq_dec, list_eq_dec, option_eq_dec.
+  Defined.
 
   Inductive timeout :=
   | Tick : timeout
   | Request : addr -> payload -> timeout.
+  Definition timeout_eq_dec : forall x y : timeout,
+      {x = y} + {x <> y}.
+  Proof.
+    decide equality; auto using addr_eq_dec, payload_eq_dec.
+  Defined.
+  
 
   Inductive query :=
   (* needs a pointer to the notifier *)
@@ -260,7 +277,7 @@ Section Chord.
         end
     end.
 
-  Definition recv_handler (src : addr) (dst : addr) (msg : payload) (st : data) : res :=
+  Definition recv_handler (src : addr) (dst : addr) (st : data) (msg : payload) : res :=
     match msg with
       | Ping => (st, [(src, Pong)], [], [])
       | GetSuccList => (st, [(src, GotSuccList (succ_list st))], [], [])
@@ -273,28 +290,35 @@ Section Chord.
              end
     end.
 
-  Definition start_handler (h : addr) (knowns : list addr) : res :=
+  Definition pi {A B C D : Type} (t : A * B * C * D) : A * B * C :=
+    let '(a, b, c, d) := t in (a, b, c).
+
+  Definition start_handler (h : addr) (knowns : list addr) : data * list (addr * payload) * list timeout :=
     match knowns with
       | k :: [] =>
         let known := make_pointer k in
         let st := Data (make_pointer h) None [] known false None None in
-        start_query h st (Join known)
+        pi (start_query h st (Join known))
       | k :: nowns =>
         let p := make_pointer k in
         let succs := chop_succs (map make_pointer nowns) in
         let st := Data (make_pointer h) (Some p) succs p true None None in
-        (st, [], [Tick], [])
+        (st, [], [Tick])
       (* garbage data, shouldn't happen *)
-      | [] => (Data (make_pointer h) None [] (make_pointer h) false None None, [], [], [])
+      | [] => (Data (make_pointer h) None [] (make_pointer h) false None None, [], [])
     end.
 
+  Definition add_tick (r : res) : res :=
+    let '(st, sends, newts, cts) := r in 
+    (st, sends, Tick :: newts, cts).
+
   Definition tick_handler (h : addr) (st : data) : res :=
-    match cur_request st with
+    add_tick (match cur_request st with
       | Some _ => (st, [], [], [])
       | None => if joined st
                 then start_query h st Stabilize
                 else (st, [], [], []) (*start_query h st (Join (known st))*)
-    end.
+    end).
 
   Definition handle_query_timeout (h : addr) (st : data) (dead : pointer) (q : query) : res :=
     match q with
@@ -344,7 +368,7 @@ Section Chord.
 
   Lemma requests_are_always_responded_to : forall src dst msg st sends nts cts,
       request_payload msg ->
-      (st, sends, nts, cts) = recv_handler src dst msg st ->
+      (st, sends, nts, cts) = recv_handler src dst st msg ->
       exists res, In (src, res) sends.
   Proof.
     intuition.
