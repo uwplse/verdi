@@ -3,8 +3,8 @@ open Unix
 
 module M = Marshal
 
-let _LOG = "/tmp/verdi-log"
-let _SNAP = "/tmp/verdi-snapshot"
+let _CLOG = "clog.bin"
+let _SNAP = "snapshot.bin"
                
 module type ARRANGEMENT = sig
   type name
@@ -34,90 +34,113 @@ module Shim (A: ARRANGEMENT) = struct
       ; addr : sockaddr
       }
 
+  type cfg =
+      { cluster : (A.name * (string * int)) list
+      ; me : A.name
+      ; port : int
+      ; dbpath : string
+      }
+
   type env =
-      { restored_state : A.state
-      ; snapfile : string
-      ; clog : out_channel
+      { cfg : cfg
+      ; command_log : out_channel
       ; usock : file_descr
       ; isock : file_descr
+      ; nodes : (A.name * sockaddr) list
       ; mutable clients : client list
       ; outstanding : (A.request_id, client) Hashtbl.t
       ; mutable saves : int
-      ; nodes : (A.name * sockaddr) list
       }
+
+  let command_log_path (cfg : cfg) : string =
+    cfg.dbpath ^ "/" ^ _CLOG
+
+  let snapshot_path (cfg : cfg) : string =
+    cfg.dbpath ^ "/" ^ _SNAP
 
   type log_step =
   | LogInput of A.input
   | LogNet of A.name * A.msg
   | LogTimeout
 
-  let denote (env : env) (nm : A.name) : sockaddr =
-    List.assoc nm env.nodes
+  (* Translate node name to UDP socket address. *)
+  let denote (env : env) (name : A.name) : sockaddr =
+    List.assoc name env.nodes
 
-  let undenote env addr : A.name =
+  (* Translate UDP socket ddress to node name. *)
+  let undenote (env : env) (addr : sockaddr) : A.name =
     let flip = function (x, y) -> (y, x) in
     List.assoc addr (List.map flip env.nodes)
-               
-  let update_state_from_log_entry log nm s =
+
+  (* Return state with a single entry from the log applied to the given state. *)
+  let update_state_from_log_entry (log : in_channel) (name : A.name) (state : A.state) : A.state =
     let op = ((M.from_channel log) : log_step) in
     (snd (fst (match op with
-               | LogInput inp -> A.handleIO nm inp s
-               | LogNet (src, m) -> A.handleNet nm src m s
-               | LogTimeout -> A.handleTimeout nm s)))
+               | LogInput inp -> A.handleIO name inp state
+               | LogNet (src, msg) -> A.handleNet name src msg state
+               | LogTimeout -> A.handleTimeout name state)))
 
-  let rec restore_from_log log nm s =
+  (* Return state with as many entries from the log applied as possible. *)
+  let rec restore_from_log (log : in_channel) (name : A.name) (state : A.state) : A.state =
     try
-      let s' = update_state_from_log_entry log nm s in
-      restore_from_log log nm s'
-    with End_of_file -> (close_in log); s
+      let state' = update_state_from_log_entry log name state in
+      restore_from_log log name state'
+    with End_of_file -> (close_in log); state
 
-  let get_initial_state snapfile nm =
+  (* Gets state from the most recent snapshot, or the initial state from the arrangement. *)
+  let get_initial_state (cfg : cfg) : A.state =
     try
-      let csnap = open_in snapfile in
-      let (restored_state : A.state) = M.from_channel csnap in
-      close_in csnap; restored_state
+      let snapshot = open_in (snapshot_path cfg) in
+      let (restored_state : A.state) = M.from_channel snapshot in
+      close_in snapshot;
+      restored_state
     with
-      Sys_error _ -> A.init nm
+      Sys_error _ -> A.init (cfg.me)
 
-  let restore snapfile log_file nm =
-    let initial_state = get_initial_state snapfile nm in
+  let restore (cfg : cfg) : A.state =
+    let initial_state = get_initial_state cfg in
     try
-      let log = open_in_bin log_file in
-      restore_from_log log nm initial_state
+      let log = open_in_bin (command_log_path cfg) in
+      restore_from_log log cfg.me initial_state
     with Sys_error _ -> initial_state
 
-  let setup nm nodes =
+  (* Load state from disk, initialize environment, and start server. *)
+  let setup (cfg : cfg) : (env * A.state) =
     Random.self_init ();
-    let port = snd (List.assoc nm nodes) in
-    let clog = (_LOG ^ "-" ^ string_of_int port) in
-    let snapfile = (_SNAP ^ "-" ^ string_of_int port) in
+    let port = snd (List.assoc cfg.me cfg.cluster) in
     let addressify (name, (host, port)) =
       let entry = gethostbyname host in
       (name, ADDR_INET (Array.get entry.h_addr_list 0, port))
     in
-    let restored_state = restore snapfile clog nm in
+    begin
+      try
+        mkdir cfg.dbpath 0o700
+      with Unix_error (err, fn, param) ->
+        if err != EEXIST then
+          raise (Unix_error (err, fn, param))
+    end;
+    let initial_state = A.reboot (restore cfg) in
     let env =
-      { restored_state = A.reboot restored_state
-      ; snapfile = snapfile
-      ; clog = out_channel_of_descr (openfile clog [O_WRONLY ; O_APPEND ; O_CREAT ; O_DSYNC] 0o640)
+      { cfg = cfg
+      ; command_log = out_channel_of_descr (openfile (command_log_path cfg) [O_WRONLY ; O_APPEND ; O_CREAT ; O_DSYNC] 0o640)
       ; usock = socket PF_INET SOCK_DGRAM 0
       ; isock = socket PF_INET SOCK_STREAM 0
+      ; nodes = List.map addressify cfg.cluster
       ; clients = []
       ; outstanding = Hashtbl.create 64
       ; saves = 0
-      ; nodes = List.map addressify nodes
       }
     in
     setsockopt env.isock SO_REUSEADDR true;
     setsockopt env.usock SO_REUSEADDR true;
     bind env.usock (ADDR_INET (inet_addr_any, port));
-    bind env.isock (ADDR_INET (inet_addr_any, port-1000));
+    bind env.isock (ADDR_INET (inet_addr_any, cfg.port));
     listen env.isock 8;
-    env
+    (env, initial_state)
 
-  let string_of_sockaddr saddr =
+  let string_of_sockaddr (saddr : sockaddr) : string =
     match saddr with
-    | ADDR_UNIX path -> "unix://" ^ path
+    | ADDR_UNIX path -> (sprintf "unix://%s" path)
     | ADDR_INET (addr, port) -> (sprintf "%s:%d" (string_of_inet_addr addr) port)
 
   let disconnect env client reason =
@@ -155,12 +178,15 @@ module Shim (A: ARRANGEMENT) = struct
     M.from_string buf 0
 
   let save env (step : log_step) (st : A.state)  =
-    (if (env.saves > 0 && env.saves mod 1000 = 0) then
-       (print_endline "snapshotting";
-        let csnap = out_channel_of_descr (openfile env.snapfile [O_WRONLY ; O_TRUNC ; O_CREAT ; O_DSYNC] 0o640) in
-        M.to_channel csnap st []; flush csnap; close_out csnap;
-        ftruncate (descr_of_out_channel env.clog) 0));
-    M.to_channel env.clog step []; flush env.clog; env.saves <- env.saves + 1
+    if (env.saves > 0 && env.saves mod 1000 = 0) then begin
+      print_endline "snapshotting";
+      let csnap = out_channel_of_descr (openfile (snapshot_path env.cfg) [O_WRONLY ; O_TRUNC ; O_CREAT ; O_DSYNC] 0o640) in
+      M.to_channel csnap st []; flush csnap; close_out csnap;
+      ftruncate (descr_of_out_channel env.command_log) 0
+    end;
+    M.to_channel env.command_log step [];
+    flush env.command_log;
+    env.saves <- env.saves + 1
 
   let respond env ((os, s), ps) =
     List.iter (output env) os;
@@ -187,7 +213,9 @@ module Shim (A: ARRANGEMENT) = struct
     let buf = String.make len '\x00' in
     try
       let bytes_read = recv sock buf 0 len [MSG_PEEK] in
-      (if bytes_read == 0 then raise (Disconnect_client (S_info, "client closed socket")));
+      if bytes_read == 0 then begin
+        raise (Disconnect_client (S_info, "client closed socket"))
+      end;
       let msg_len = (String.index buf '\n') + 1 in
       let buf2 = String.make msg_len '\x00' in
       let _ = recv sock buf2 0 msg_len [] in
@@ -195,31 +223,36 @@ module Shim (A: ARRANGEMENT) = struct
     with
       Not_found -> raise (Disconnect_client (S_error, "client became invalid"))
 
-  let input_step client env nm s =
+  let input_step (client : client) (env : env) (name : A.name) (state : A.state) =
     let len = 1024 in
     let buf = read_from_socket client.sock len in
     let d = A.deserialize buf in
     match d with
     | Some (id, inp) ->
-       save env (LogInput inp) s;
+       save env (LogInput inp) state;
        Hashtbl.replace env.outstanding id client;
-       respond env (A.handleIO nm inp s)
+       respond env (A.handleIO name inp state)
     | None ->
        raise (Disconnect_client (S_error, "received invalid input"))
 
-  let recv_step env nm s =
+  let recv_step (env : env) (state : A.state) : A.state =
     let len = 65536 in
     let buf = String.make len '\x00' in
     let (_, from) = recvfrom env.usock buf 0 len [] in
-    let (src, m) = (undenote env from, unpack_msg buf) in
-    save env (LogNet (src, m)) s;
-    let s' = respond env (A.handleNet nm src m s) in
-    (if A.debug then A.debugRecv s' (src, m)); s'
+    let (src, msg) = (undenote env from, unpack_msg buf) in
+    save env (LogNet (src, msg)) state;
+    let state' = respond env (A.handleNet env.cfg.me src msg state) in
+    if A.debug then begin
+      A.debugRecv state' (src, msg)
+    end;
+    state'
 
-  let timeout_step env nm s =
-    save env LogTimeout s;
-    (if A.debug then A.debugTimeout s);
-    let x = A.handleTimeout nm s in
+  let timeout_step (env : env) (state : A.state) : A.state =
+    save env LogTimeout state;
+    if A.debug then begin
+      A.debugTimeout state
+    end;
+    let x = A.handleTimeout env.cfg.me state in
     respond env x
 
   let rec my_select rs ws es t =
@@ -227,29 +260,30 @@ module Shim (A: ARRANGEMENT) = struct
     with Unix_error (err, fn, arg) ->
       my_select rs ws es t
 
-  let rec eloop env nm s =
-    let csocks = List.map (fun c -> c.sock) env.clients in
-    let (fds, _, _) = my_select (List.append [env.usock; env.isock] csocks) [] [] (A.setTimeout nm s) in
-    let s' =
+  let rec eloop (env : env) (state : A.state) : unit =
+    let client_sockets = List.map (fun c -> c.sock) env.clients in
+    let sockets = List.append [env.usock; env.isock] client_sockets in
+    let (fds, _, _) = my_select sockets [] [] (A.setTimeout env.cfg.me state) in
+    let state' =
       match (List.mem env.isock fds, List.mem env.usock fds, List.filter (fun c -> List.mem c.sock fds) env.clients) with
-      | (true, _, _) -> new_conn env ; s
-      | (_, _, c :: cs) ->
-         (try input_step c env nm s
-         with
-           Unix_error (err, fn, arg) ->
-             disconnect env c (sprintf "%s failed: %s" fn (error_message err));
-             s
-         | Disconnect_client (sev, msg) ->
-             disconnect env c msg;
-             s)
-      | (_, true, _) -> recv_step env nm s
-      | _ -> timeout_step env nm s in
-    eloop env nm s'
+      | (true, _, _) -> new_conn env ; state
+      | (_, _, client_socket :: _) -> begin
+          try input_step client_socket env env.cfg.me state
+          with
+            Unix_error (err, fn, arg) ->
+              disconnect env client_socket (sprintf "%s failed: %s" fn (error_message err));
+              state
+          | Disconnect_client (sev, msg) ->
+              disconnect env client_socket msg;
+              state
+      end
+      | (_, true, _) -> recv_step env state
+      | _ -> timeout_step env state in
+    eloop env state'
 
-  let main nm nodes =
-    print_endline "running setup";
-    let env = setup nm nodes in
-    print_endline "starting";
-    let s = env.restored_state in
-    eloop env nm s
+  let main (cfg : cfg) : unit =
+    print_endline "VarD running setup";
+    let (env, initial_state) = setup cfg in
+    print_endline "VarD ready for action";
+    eloop env initial_state
 end
