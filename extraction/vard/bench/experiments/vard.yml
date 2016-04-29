@@ -14,26 +14,14 @@ provision: |
   # vard
   git clone https://github.com/uwplse/verdi.git
   pushd verdi
-  patch extraction/vard/ml/vard.ml <<EOF
-  --- verdi/extraction/vard/ml/vard.ml	2015-09-23 17:13:42.000000000 -0700
-  +++ verdi_vard_patch/extraction/vard/ml/vard.ml	2015-09-23 16:54:15.000000000 -0700
-  @@ -1,9 +1,9 @@
-   module VarDDebug = Shim.Shim(VarDArrangement.VarDArrangement(VarDArrangement.DebugParams))
-   module VarDBench = Shim.Shim(VarDArrangement.VarDArrangement(VarDArrangement.BenchParams))
-
-  -let default_nodes = [ (1, ("127.0.0.1", 9001))
-  -                    ; (2, ("127.0.0.1", 9002))
-  -                    ; (3, ("127.0.0.1", 9003))
-  +let default_nodes = [ (1, ("$db1", 9001))
-  +                    ; (2, ("$db2", 9001))
-  +                    ; (3, ("$db3", 9001))
-                       ]
-  EOF
   ./configure && make vard-quick
   popd
   sudo ln -s "$$PWD/verdi/extraction/vard" /vard
   sudo cp /vard/vard.conf /etc/init
-  sed -i 's/$$NODE_ID/$id/' /etc/init/vard.conf
+  sudo sed -i 's/$$id/$id/' /etc/init/vard.conf
+  sudo sed -i 's/$$db1/$db1/' /etc/init/vard.conf
+  sudo sed -i 's/$$db2/$db2/' /etc/init/vard.conf
+  sudo sed -i 's/$$db3/$db3/' /etc/init/vard.conf
   # etcd
   curl -L https://github.com/coreos/etcd/releases/download/v2.0.9/etcd-v2.0.9-linux-amd64.tar.gz -o etcd-v2.0.9-linux-amd64.tar.gz
   tar xzf etcd-v2.0.9-linux-amd64.tar.gz
