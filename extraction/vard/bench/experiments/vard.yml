@@ -33,7 +33,7 @@ provision: |
   export db1=$db1
   export db2=$db2
   export db3=$db3
-  export cluster="$db1:8001,$db2:8001,$db3:8001"
+  export cluster="$db1:8351,$db2:8351,$db3:8351"
   export client=$client
   EOF
   sudo mv vard.sh /etc/profile.d
