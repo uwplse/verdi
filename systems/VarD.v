@@ -83,7 +83,7 @@ Definition runHandler (h : input -> GenHandler1 data output)
 
 Definition VarDHandler := runHandler VarDHandler'.
 
-Definition init := Map.empty string.
+Definition init_map := Map.empty string.
 
 Instance vard_base_params : BaseParams :=
   {
@@ -94,7 +94,7 @@ Instance vard_base_params : BaseParams :=
 
 Instance vard_one_node_params : OneNodeParams _ :=
   {
-    init := init ;
+    init := init_map ;
     handler := VarDHandler
   }.
 
