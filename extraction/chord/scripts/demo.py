@@ -83,7 +83,7 @@ def ideal_ring(start, n):
 
 def random_action(nodes):
     r = random.random()
-    if r < 0.5:
+    if r < 0.4:
         known = random.choice(nodes)
         port = max([n.addr.port for n in nodes]) + 1
         addr = Addr("127.0.0.1", port)
@@ -112,14 +112,8 @@ def main():
         for (ts, line) in lines:
             print line
         if time.time() > tick:
-            known = random.choice(nodes)
-            port = max([n.addr.port for n in nodes]) + 1
-            addr = Addr("127.0.0.1", port)
-            joiner = Node(addr, [known.addr])
-            print "adding node {} at {}".format(addr.chordhash(), addr)
-            joiner.spawn()
-            nodes.append(joiner)
-            tick = time.time() + 200000.0
+            random_action(nodes)
+            tick = time.time() + 20.0
 
 if __name__ == "__main__":
     main()
