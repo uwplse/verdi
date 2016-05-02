@@ -54,7 +54,6 @@ Section Chord.
   Proof.
     decide equality; auto using addr_eq_dec, payload_eq_dec.
   Defined.
-  
 
   Inductive query :=
   (* needs a pointer to the notifier *)
@@ -94,7 +93,7 @@ Section Chord.
       | _ => false
     end.
 
-  Definition closes_request (req res : payload) : bool := 
+  Definition closes_request (req res : payload) : bool :=
     match req with
       | GetBestPredecessor _ => match res with
                                   | GotBestPredecessor _ => true
@@ -114,6 +113,10 @@ Section Chord.
                 end
       | _ => false
     end.
+
+  Definition add_tick (r : res) : res :=
+    let '(st, sends, newts, cts) := r in
+    (st, sends, Tick :: newts, cts).
 
   Definition can_be_client (a : addr) := True.
   Definition can_be_node (a : addr) := True.
@@ -151,7 +154,7 @@ Section Chord.
     match cur_request st with
       | Some (dst, q, m) => [Request (addr_of dst) m]
       | None => []
-    end. 
+    end.
 
   Definition start_query (h : addr) (st : data) (k : query) : res :=
     let cst := timeouts_in st in
@@ -161,19 +164,20 @@ Section Chord.
     end.
 
   (* something to prove: try_rectify is not invoked unless cur_request st is None *)
-  Definition try_rectify (h : addr) (outs : list (addr * payload)) (st : data) : res :=
+  Definition try_rectify (h : addr) (r : res) : res :=
+    let '(st, outs, nts, cts) := r in
     if joined st
     then match rectify_with st with
            | Some new => match pred st with
                            | Some _ => let st' := clear_rectify_with st in
-                                       let '(st'', outs', nts, cts) := start_query h st' (Rectify new) in
-                                       (st'', outs ++ outs', nts, cts)
+                                       let '(st'', outs', nts', cts') := start_query h st' (Rectify new) in
+                                       (st'', outs ++ outs', nts ++ nts', cts ++ cts')
                            | None => let st' := clear_rectify_with (update_pred st new) in
-                                     (st', outs, [], [])
+                                     (st', outs, nts, cts)
                          end
-           | None => (st, outs, [], [])
+           | None => r
          end
-    else (st, outs, [], []).
+    else r.
 
   Definition request_in (msgs : list (addr * payload)) :=
     existsb is_request (map snd msgs).
@@ -184,7 +188,7 @@ Section Chord.
     let clearreq := timeouts_in st in
     if request_in outs
     then (st', outs, nts, cts ++ clearreq)
-    else try_rectify h outs st'.
+    else try_rectify h (st', outs, nts, cts).
 
   Definition ptrs_to_addrs : list (pointer * payload) -> list (addr * payload) :=
     map (fun p => (addr_of (fst p), (snd p))).
@@ -272,7 +276,7 @@ Section Chord.
       | Join2 new_succ =>
         match msg with
           | GotSuccList l => let succs := make_succs new_succ l in
-                             end_query h (update_for_join st succs, [], [], [])
+                             add_tick (end_query h (update_for_join st succs, [], [], []))
           | _ => (st, [], [], [])
         end
     end.
@@ -307,10 +311,6 @@ Section Chord.
       (* garbage data, shouldn't happen *)
       | [] => (Data (make_pointer h) None [] (make_pointer h) false None None, [], [])
     end.
-
-  Definition add_tick (r : res) : res :=
-    let '(st, sends, newts, cts) := r in 
-    (st, sends, Tick :: newts, cts).
 
   Definition tick_handler (h : addr) (st : data) : res :=
     add_tick (match cur_request st with

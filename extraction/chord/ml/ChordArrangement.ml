@@ -2,10 +2,12 @@ open ExtractedChord
 open Printf
 
 let log level s =
+  let now = Unix.gettimeofday () in
+  print_float now;
+  print_string " - ";
   print_string level;
   print_string ":";
-  print_string s;
-  print_newline ()
+  print_endline s
 
 let dbg = log "DEBUG"
 
@@ -111,4 +113,8 @@ module ChordDebugArrangement = struct
   let debugRecv st (src, msg) = log_st st; log_recv src msg
   let debugSend st (dst, msg) = log_st st; log_send dst msg
   let debugTimeout st t = log_timeout st t
+  let showTimeout = function
+      | Tick -> "Tick"
+      | Request (dead, msg) ->
+        "Request(" ^ show_addr dead ^ ", " ^ show_msg msg ^ ")"
 end

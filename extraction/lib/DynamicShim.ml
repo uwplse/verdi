@@ -61,7 +61,8 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     send env p
 
   let add_time t =
-    (A.setTimeout t, t)
+    let now = Unix.gettimeofday () in
+    (now +. A.setTimeout t, t)
 
   let respond env ts (s, ps, newts, clearedts) =
     let ts' = (List.filter (fun (_, t) -> not (List.mem t clearedts)) ts)
@@ -97,6 +98,7 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
   let do_timeout env nm (s, sends, newts, clearedts) (deadline, t) =
     if not (List.mem t clearedts)
     then let (s', sends', newts', clearedts') = (A.handleTimeout nm s t) in
+         (if A.debug then A.debugTimeout s' t);
          (s', sends @ sends', newts @ newts', uniqappend clearedts clearedts')
     else (s, sends, newts, clearedts)
     
@@ -119,7 +121,7 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
              then (try (recv_step env nm s ts) with
                    | _ -> (s, ts))
              else (s, ts) in
-    let (s'', ts'') = timeout_step env nm s' ts in
+    let (s'', ts'') = timeout_step env nm s' ts' in
     eloop env nm (s'', ts'')
 
   let default v o =

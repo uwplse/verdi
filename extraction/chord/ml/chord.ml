@@ -1,7 +1,10 @@
+open Str
 module ChordDebug = DynamicShim.Shim(ChordArrangement.ChordDebugArrangement)
 
 let parse_addr s =
-    ChordArrangement.ChordDebugArrangement.name_of_addr ("127.0.0.1", int_of_string s)
+    match split (regexp ":") s with
+    | addr::port::[] -> ChordArrangement.ChordDebugArrangement.name_of_addr (addr, int_of_string port)
+    | _ -> invalid_arg s
 
 let _ =
     let len = Array.length Sys.argv in
