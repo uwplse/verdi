@@ -32,8 +32,9 @@ Section ChordProof.
       (* then it corresponds to an earlier node failure. *)
       In (e_fail dead) xs.
 
-  Definition live_node (gst : global_state) (h : addr) : Prop := exists st,
-    sigma gst h = Some st /\
+  (* tip: treat this as opaque and use lemmas: it never gets stopped except by failure *)
+  Definition live_node (gst : global_state) (h : addr) : Prop := forall st,
+    sigma gst h = Some st ->
     joined st = true /\
     In h (nodes gst) /\
     ~ In h (failed_nodes gst).
@@ -58,14 +59,16 @@ Section ChordProof.
       live_node gst s.
 
   (* transitive closure of best_succ *)
+  (* treat as opaque *)
   Inductive reachable (gst : global_state) : addr -> addr -> Prop :=
     | ReachableSucc : forall from to,
         best_succ gst from to ->
         reachable gst from to
-    | ReachableTrans : forall from x to,
-        reachable gst from x ->
+    | ReachableTransL : forall from x to,
+        best_succ gst from x ->
         reachable gst x to ->
         reachable gst from to.
+  (* prove the other direction is available *)
 
   Definition best_succ_of (gst : global_state) (h : addr) : option addr :=
     match (sigma gst) h with
@@ -73,6 +76,7 @@ Section ChordProof.
       | None => None
     end.
 
+  (* treat as opaque *)
   Definition ring_member (gst : global_state) (h : addr) : Prop :=
     reachable gst h h.
 
@@ -88,26 +92,17 @@ Section ChordProof.
   Definition between (x y z : id) :=
     x < y < z \/ y < z < x \/ z < x < y.
 
-  Lemma between_is_between_bool : forall x y z,
-      between x y z <-> between_bool x y z = true.
-  Admitted.
-
-  Definition ordered_by_id (gst : global_state) (l : list addr) :=
-    forall x y z xs ys,
-      l ++ l = xs ++ x :: y :: z :: ys ->
-      between x y z.
-
   Definition ordered_ring (gst : global_state) : Prop :=
     forall h s x,
       ring_member gst h ->
       best_succ gst h s ->
       ring_member gst x ->
-      between h s x \/ s = x.
+      ~ between h x s. (* TODO fix between semantics *)
+      (* or between h x s -> s = x *)
 
   Definition connected_appendages (gst : global_state) : Prop :=
     forall a, exists r,
       live_node gst a ->
-      ~ ring_member gst a ->
       ring_member gst r /\ reachable gst a r.
 
   Definition base_not_skipped (gst : global_state) : Prop :=
