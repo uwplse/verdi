@@ -92,6 +92,7 @@ module VarDArrangement (M : VardParams) = struct
        | (c, i, "GET", k, _, _) -> Some (int_of_string c, int_of_string i, Get (char_list_of_string k))
        | (c, i, "DEL", k, _, _) -> Some (int_of_string c, int_of_string i, Del (char_list_of_string k))
        | (c, i, "PUT", k, v, _) -> Some (int_of_string c, int_of_string i, Put ((char_list_of_string k), (char_list_of_string v)))
+       | (c, i, "PRE", k, v, _) -> Some (int_of_string c, int_of_string i, Pre ((char_list_of_string k), (char_list_of_string v)))
        | (c, i, "CAD", k, o, _) -> Some (int_of_string c, int_of_string i, CAD (char_list_of_string k, char_list_of_string o))
        | (c, i, "CAS", k, "-", v) -> Some (int_of_string c, int_of_string i, CAS ((char_list_of_string k), None, (char_list_of_string v)))
        | (c, i, "CAS", k, o, v) -> Some (int_of_string c, int_of_string i, CAS ((char_list_of_string k), Some (char_list_of_string o), (char_list_of_string v)))

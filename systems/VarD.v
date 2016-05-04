@@ -13,7 +13,8 @@ Inductive input : Set :=
 | Get : key -> input
 | Del : key -> input
 | CAS : key -> option value -> value -> input
-| CAD : key -> value -> input.
+| CAD : key -> value -> input
+| Pre : key -> value -> input.
 
 Inductive output : Set :=
 | Response : key -> option value -> option value -> output (* uniform response *)
@@ -75,6 +76,14 @@ Definition VarDHandler' (inp : input) : GenHandler1 data output :=
             (delk k ;; resp k None old)
           else
             resp k old old
+    | Pre k v =>
+      old <- getk k ;;
+          match old with
+          | None =>
+            setk k v ;; resp k (Some v) old
+          | Some v' =>
+            setk k (append v v') ;; resp k (Some (append v v')) old
+          end
   end.
 
 Definition runHandler (h : input -> GenHandler1 data output)
@@ -105,6 +114,7 @@ Definition input_key (i : input) : key :=
     | Del k => k
     | CAS k _ _ => k
     | CAD k _ => k
+    | Pre k _ => k
   end.
 
 Definition operate (op : input) (curr : option value) :=
@@ -114,6 +124,10 @@ Definition operate (op : input) (curr : option value) :=
     | Del _ => (None, curr)
     | CAS _ v v' => if val_eq_dec curr v then (Some v', curr) else (curr, curr)
     | CAD _ v => if val_eq_dec curr (Some v) then (None, curr) else (curr, curr)
+    | Pre _ v => match curr with
+                | None => (Some v, curr)
+                | Some v' => (Some (append v v'), curr)
+                end
   end.
 
 Fixpoint interpret (k : key) (ops : list input) (init : option value) :=
@@ -287,6 +301,28 @@ Proof.
         end.
         find_higher_order_rewrite. auto.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
+    + simpl in *.
+      destruct (key_eq_dec k0 k).
+      * { subst. rewrite inputs_with_key_plus_key; simpl in *; auto.
+          rewrite rev_unit. simpl in *.
+          break_match; simpl in *; intuition.
+          - find_higher_order_rewrite.
+            repeat find_rewrite. find_inversion.
+            eauto using Map.gss.
+          - find_higher_order_rewrite.
+            repeat find_rewrite. congruence.
+        }
+      * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
+        rewrite Map.gso; auto.
+    + simpl in *.
+      destruct (key_eq_dec k0 k).
+      * subst. rewrite inputs_with_key_plus_key; simpl in *; auto.
+        rewrite rev_unit. simpl in *.
+        break_match; simpl in *; intuition;
+          find_higher_order_rewrite; try congruence.
+        eauto using Map.gss.
+      * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
+        rewrite Map.gso; auto.
 Qed.
 
 Lemma trace_state_correct_trace_correct :
@@ -302,9 +338,10 @@ Proof.
   vard_unfold.
   repeat break_match; simpl in *; repeat find_inversion; constructor; auto;
   simpl in *; f_equal; eauto;
-  break_if; simpl in *;  f_equal; eauto; unfold trace_state_correct in *;
-  exfalso; subst; repeat find_higher_order_rewrite;
-  intuition.
+  break_match; simpl in *;  f_equal; eauto; unfold trace_state_correct in *;
+    try solve [exfalso; subst; repeat find_higher_order_rewrite;
+               intuition];
+    try solve [find_higher_order_rewrite; congruence].
 Qed.
 
 Theorem step_1_star_trace_correct' :
