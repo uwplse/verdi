@@ -105,6 +105,46 @@ class Client(object):
         self.process_response()[3]
         self.send_command_bad('PRE', k, v)
         self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
         self.send_command('PRE', k, v)
         return self.process_response()[3]
 
