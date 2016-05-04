@@ -53,6 +53,9 @@ class Client(object):
         self.sock.send(str(self.client_id) + ' ' + str(self.request_id) + ' ' + cmd + ' ' + ' '.join(map(self.serialize, (arg1, arg2, arg3))) + '\n')
         self.request_id += 1
 
+    def send_command_bad(self, cmd, arg1=None, arg2=None, arg3=None):
+        self.sock.send(str(self.client_id) + ' ' + str(self.request_id) + ' ' + cmd + ' ' + ' '.join(map(self.serialize, (arg1, arg2, arg3))) + '\n')
+
     def parse_response(self, data):
         if data.startswith('NotLeader'):
             raise LeaderChanged
@@ -89,6 +92,20 @@ class Client(object):
 
     def put(self, k, v):
         self.send_command('PUT', k, v)
+        return self.process_response()[3]
+
+    def pre(self, k, v):
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command_bad('PRE', k, v)
+        self.process_response()[3]
+        self.send_command('PRE', k, v)
         return self.process_response()[3]
 
     def delete(self, k):
