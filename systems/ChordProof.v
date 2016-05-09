@@ -2,6 +2,7 @@ Require Import DynamicNet.
 Require Import Chord.
 Require Import List.
 Require Import Arith.
+Require Import StructTact.StructTactics.
 
 Section ChordProof.
   Variable SUCC_LIST_LEN : nat.
@@ -133,10 +134,8 @@ Section ChordProof.
   Proof.
     intuition.
     unfold live_node.
-    rewrite H.
-    rewrite H0.
-    rewrite H1.
-    reflexivity.
+    repeat find_rewrite.
+    auto.
   Qed.
 
   Lemma live_node_joined : forall gst h st,
@@ -146,9 +145,12 @@ Section ChordProof.
   Proof.
     intuition.
     unfold live_node in H.
-    apply H.
-    symmetry.
-    apply H0.
+    match goal with
+    | H : _ _ = _ _ _ |- _ =>
+      symmetry in H
+    end.
+    eapply_prop_hyp Some Some;
+      intuition.
   Qed.
 
   Lemma live_node_in_nodes : forall gst st h,
@@ -158,9 +160,12 @@ Section ChordProof.
   Proof.
     unfold live_node.
     intuition.
-    apply H with (st := st).
-    symmetry.
-    apply H0.
+    match goal with
+    | H : _ _ = _ _ _ |- _ =>
+      symmetry in H
+    end.
+    eapply_prop_hyp Some Some;
+      intuition.
   Qed.
 
   Lemma live_node_not_in_failed_nodes : forall gst st h,
@@ -170,10 +175,12 @@ Section ChordProof.
   Proof.
     unfold live_node.
     intuition.
-    apply H with (st := st).
-    symmetry.
-    apply H0.
-    apply H1.
+    match goal with
+    | H : _ _ = _ _ _ |- _ =>
+      symmetry in H
+    end.
+    eapply_prop_hyp Some Some;
+      intuition.
   Qed.
 
   Lemma live_node_characterization : forall gst gst' h st st',
@@ -188,22 +195,18 @@ Section ChordProof.
     intuition.
     unfold live_node.
     intuition.
-    - rewrite <- H3 in H5.
-      inversion H5.
-      rewrite <- H7.
-      apply live_node_joined with (st := st) in H.
-      * rewrite <- H4.
-        apply H.
-      * apply H2.
-    - apply live_node_in_nodes with (st := st) in H.
-      * rewrite <- H0.
-        apply H.
-      * apply H2.
-    - apply live_node_not_in_failed_nodes with (st := st) in H.
-      * apply H.
-        rewrite H1.
-        apply H6.
-      * apply H2.
+    - repeat find_rewrite.
+      find_injection.
+      find_reverse_rewrite.
+      eauto using live_node_joined.
+    - repeat find_rewrite.
+      find_injection.
+      find_reverse_rewrite.
+      eauto using live_node_in_nodes.
+    - repeat find_rewrite.
+      find_injection.
+      find_reverse_rewrite.
+      eapply live_node_not_in_failed_nodes; eauto.
   Qed.
 
   Lemma apply_handler_result_preserves_nodes : forall gst gst' h res e,
