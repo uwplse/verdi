@@ -16,12 +16,18 @@ Section ChordProof.
   Notation recv_handler := (recv_handler SUCC_LIST_LEN hash).
   Notation timeout_handler := (timeout_handler hash).
 
+  Notation handle_query := (handle_query SUCC_LIST_LEN hash).
+
   Notation global_state := (global_state addr payload data timeout).
   Notation nodes := (nodes addr payload data timeout).
   Notation failed_nodes := (failed_nodes addr payload data timeout).
   Notation sigma := (sigma addr payload data timeout).
 
   Notation apply_handler_result := (apply_handler_result addr addr_eq_dec payload data timeout timeout_eq_dec).
+  Notation end_query := (end_query hash).
+  Notation start_query := (start_query hash).
+  Notation handle_stabilize := (handle_stabilize SUCC_LIST_LEN hash).
+  Notation try_rectify := (try_rectify hash).
 
   Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler client_payload can_be_client can_be_node).
 
@@ -37,12 +43,28 @@ Section ChordProof.
       In (e_fail dead) xs.
 
   (* tip: treat this as opaque and use lemmas: it never gets stopped except by failure *)
-  Definition live_node (gst : global_state) (h : addr) : Prop := forall st,
-    sigma gst h = Some st ->
-    joined st = true /\
-    In h (nodes gst) /\
-    ~ In h (failed_nodes gst).
+  Definition live_node (gst : global_state) (h : addr) : Prop :=
+    exists st,
+      sigma gst h = Some st /\
+      joined st = true /\
+      In h (nodes gst) /\
+      ~ In h (failed_nodes gst).
 
+  Theorem live_node_characterization : forall gst h st,
+      sigma gst h = Some st ->
+      joined st = true ->
+      In h (nodes gst) ->
+      ~ In h (failed_nodes gst) ->
+      live_node gst h.
+  Proof.
+    unfold live_node.
+    intuition.
+    match goal with
+      | x : data |- exists _ : data, _ => exists x
+    end.
+    intuition.
+  Qed.
+   
   Definition live_node_dec (gst : global_state) (h : addr) :=
     match sigma gst h with
       | Some st => if joined st
@@ -54,6 +76,24 @@ Section ChordProof.
                    else false
       | None => false
     end.
+
+  Ltac break_live_node :=
+    match goal with
+      | H : live_node _ _ |- _ =>
+        unfold live_node in H; break_exists; repeat break_and
+    end.
+
+  Theorem live_node_dec_equiv_live_node : forall gst h,
+      live_node gst h <-> live_node_dec gst h = true.
+  Proof.
+    unfold live_node_dec.
+    intuition.
+    - repeat break_match;
+        break_live_node;
+        congruence || auto.
+    - repeat break_match;
+        congruence || eauto using live_node_characterization.
+  Qed.
 
   Definition best_succ (gst : global_state) (h s : addr) : Prop :=
     forall st o, exists xs ys,
@@ -72,7 +112,22 @@ Section ChordProof.
         best_succ gst from x ->
         reachable gst x to ->
         reachable gst from to.
-  (* prove the other direction is available *)
+
+  Lemma ReachableTransR : forall gst from x to,
+      reachable gst from x ->
+      best_succ gst x to ->
+      reachable gst from to.
+  Proof.
+    intuition.
+    match goal with
+      | H : reachable _ _ _ |- _ => induction H
+    end.
+    - eapply ReachableTransL.
+      eauto.
+      eapply ReachableSucc.
+      eauto.
+    - eauto using ReachableTransL.
+  Qed.
 
   Definition best_succ_of (gst : global_state) (h : addr) : option addr :=
     match (sigma gst) h with
@@ -138,52 +193,42 @@ Section ChordProof.
     auto.
   Qed.
 
-  Lemma live_node_joined : forall gst h st,
+  Lemma live_node_joined : forall gst h,
       live_node gst h ->
-      Some st = sigma gst h ->
-      joined st = true.
+      exists st,
+        sigma gst h = Some st /\
+        joined st = true.
   Proof.
+    unfold live_node.
     intuition.
-    unfold live_node in H.
-    match goal with
-    | H : _ _ = _ _ _ |- _ =>
-      symmetry in H
-    end.
-    eapply_prop_hyp Some Some;
-      intuition.
+    break_exists_exists.
+    repeat break_and.
+    repeat split; auto.
   Qed.
 
-  Lemma live_node_in_nodes : forall gst st h,
+  Lemma live_node_in_nodes : forall gst h,
       live_node gst h ->
-      Some st = sigma gst h ->
       In h (nodes gst).
   Proof.
     unfold live_node.
     intuition.
-    match goal with
-    | H : _ _ = _ _ _ |- _ =>
-      symmetry in H
-    end.
-    eapply_prop_hyp Some Some;
-      intuition.
+    break_exists.
+    break_and.
+    auto.
   Qed.
 
-  Lemma live_node_not_in_failed_nodes : forall gst st h,
+  Lemma live_node_not_in_failed_nodes : forall gst h,
       live_node gst h ->
-      Some st = sigma gst h ->
       ~ In h (failed_nodes gst).
   Proof.
     unfold live_node.
     intuition.
-    match goal with
-    | H : _ _ = _ _ _ |- _ =>
-      symmetry in H
-    end.
-    eapply_prop_hyp Some Some;
-      intuition.
+    break_exists.
+    break_and.
+    auto.
   Qed.
 
-  Lemma live_node_characterization : forall gst gst' h st st',
+  Lemma live_node_equivalence : forall gst gst' h st st',
       live_node gst h ->
       nodes gst = nodes gst' ->
       failed_nodes gst = failed_nodes gst' ->
@@ -193,55 +238,193 @@ Section ChordProof.
       live_node gst' h.
   Proof.
     intuition.
-    unfold live_node.
-    intuition.
-    - repeat find_rewrite.
+    break_live_node.
+    eapply live_node_characterization.
+    * eauto.
+    * repeat find_rewrite.
       find_injection.
-      find_reverse_rewrite.
-      eauto using live_node_joined.
-    - repeat find_rewrite.
-      find_injection.
-      find_reverse_rewrite.
-      eauto using live_node_in_nodes.
-    - repeat find_rewrite.
-      find_injection.
-      find_reverse_rewrite.
-      eapply live_node_not_in_failed_nodes; eauto.
+      eauto.
+    * repeat find_rewrite; auto.
+    * repeat find_rewrite; auto.
   Qed.
 
   Lemma apply_handler_result_preserves_nodes : forall gst gst' h res e,
       gst' = apply_handler_result h res e gst ->
-      nodes gst' = nodes gst.
+      nodes gst = nodes gst'.
   Proof.
+    unfold apply_handler_result.
     intuition.
-    
+    repeat break_let.
+    find_rewrite; auto.
+  Qed.
 
-  Lemma apply_handler_result_preserves_live_node_when_failed_node_preserved :
+  Lemma apply_handler_result_preserves_failed_nodes : forall gst gst' h res e,
+      gst' = apply_handler_result h res e gst ->
+      failed_nodes gst = failed_nodes gst'.
+  Proof.
+    unfold apply_handler_result.
+    intuition.
+    repeat break_let.
+    find_rewrite; auto.
+  Qed.
+
+  Lemma when_apply_handler_result_preserves_live_node :
     forall h h0 st st' gst gst' e ms cts nts,
       live_node gst h ->
       sigma gst h = Some st ->
       sigma gst' h = Some st' ->
-      joined st = joined st' ->
+      joined st' = true ->
       gst' = apply_handler_result h0 (st', ms, cts, nts) e gst ->
       live_node gst' h.
   Proof.
     intuition.
-    apply live_node_characterization with (gst := gst) (st := st) (st' := st').
-    - auto.
-    - apply apply_handler_result_preserves_nodes
-    unfold apply_handler_result in H3.
-    apply 
-    unfold live_node.
+    eapply live_node_characterization.
+    - eauto.
+    - break_live_node.
+      repeat find_rewrite.
+      find_inversion; eauto.
+    - find_apply_lem_hyp apply_handler_result_preserves_nodes.
+      find_inversion.
+      break_live_node; auto.
+    - find_apply_lem_hyp apply_handler_result_preserves_failed_nodes.
+      find_inversion.
+      break_live_node; auto.
+  Qed.
 
-    
-  Lemma live_node_preserved_by_recv_handler : forall gst h src st res msg gst' e,
+  Lemma joined_preserved_by_start_query : forall h st k st' ms nts cts,
+      start_query h st k = (st', ms, nts, cts) ->
+      joined st = joined st'.
+  Proof.
+    unfold start_query.
+    intuition.
+    break_match.
+    - break_let.
+      tuple_inversion.
+      unfold update_query; auto.
+    - tuple_inversion; auto.
+  Qed.
+
+  Lemma joined_preserved_by_try_rectify : forall h st st' ms ms' cts cts' nts nts',
+      try_rectify h (st, ms, cts, nts) = (st', ms', cts', nts') ->
+      joined st = joined st'.
+  Proof.
+    unfold try_rectify, clear_rectify_with.
+    simpl.
+    intuition.
+    repeat break_match.
+    - find_inversion.
+      find_apply_lem_hyp joined_preserved_by_start_query; auto.
+    - find_inversion; auto.
+    - find_inversion; auto.
+    - find_inversion; auto.
+  Qed.
+
+  Lemma joined_preserved_by_end_query : forall h st st' ms ms' cts cts' nts nts',
+      end_query h (st, ms, cts, nts)  = (st', ms', cts', nts') ->
+      joined st = joined st'.
+  Proof.
+    unfold end_query.
+    intuition.
+    break_match.
+    - tuple_inversion; auto.
+    - find_apply_lem_hyp joined_preserved_by_try_rectify; auto.
+  Qed.
+
+  Lemma joined_preserved_by_handle_stabilize : forall h src st q new_succ succ st' ms nts cts,
+      handle_stabilize h src st q new_succ succ = (st', ms, nts, cts) ->
+      joined st = joined st'.
+  Proof.
+    unfold handle_stabilize.
+    unfold update_succ_list.
+    intuition.
+    repeat break_match.
+    - find_apply_lem_hyp joined_preserved_by_start_query; auto.
+    - find_apply_lem_hyp joined_preserved_by_end_query; auto.
+  Qed.
+
+  Lemma joined_preserved_by_end_query_handle_rectify : forall h st p q n st' ms nts cts,
+      end_query h (handle_rectify h st p q n) = (st', ms, nts, cts) ->
+      joined st = joined st'.
+  Proof.
+    unfold end_query.
+    unfold handle_rectify.
+    unfold update_pred.
+    unfold update_query.
+    intuition.
+    repeat break_match;
+      tuple_inversion;
+      find_inversion || find_apply_lem_hyp joined_preserved_by_try_rectify;
+      auto.
+  Qed.
+
+  (* not as strong as the other ones since handle_query for a Join query can change joined st from false to true *)
+  Lemma joined_preserved_by_handle_query : forall src h st p q m st' ms nts cts,
+        handle_query src h st p q m = (st', ms, nts, cts) ->
+        joined st = true ->
+        joined st' = true.
+  Proof.
+    unfold handle_query.
+    unfold update_for_join.
+    unfold add_tick.
+    intuition.
+    repeat break_match;
+      try congruence;
+      repeat find_reverse_rewrite.
+    - find_apply_lem_hyp joined_preserved_by_end_query_handle_rectify; auto.
+    - find_apply_lem_hyp joined_preserved_by_end_query; auto.
+    - find_apply_lem_hyp joined_preserved_by_handle_stabilize; auto.
+    - find_apply_lem_hyp joined_preserved_by_end_query; auto.
+    - simpl in *.
+      unfold clear_rectify_with in *.
+      repeat break_match;
+        try find_apply_lem_hyp joined_preserved_by_start_query;
+        tuple_inversion; auto.
+    - find_apply_lem_hyp joined_preserved_by_end_query; auto.
+    - find_apply_lem_hyp joined_preserved_by_start_query; auto.
+    - simpl in *.
+      unfold clear_rectify_with in *.
+      repeat break_match;
+        try discriminate;
+        find_injection;
+        intuition;
+        repeat tuple_inversion;
+        auto.
+  Qed.
+
+  Lemma joined_preserved_by_recv_handler : forall src h st msg st' ms nts cts,
+      recv_handler src h st msg = (st', ms, nts, cts) ->
+      joined st = true ->
+      joined st' = true.
+  Proof.
+    unfold recv_handler.
+    intuition.
+    repeat break_match;
+      try tuple_inversion;
+      eauto using joined_preserved_by_handle_query.
+  Qed.
+
+  Lemma live_node_preserved_by_recv_step : forall gst h src st msg gst' e st' ms nts cts,
       live_node gst h ->
-      recv_handler src h st msg = res ->
-      gst' = apply_handler_result h res e gst' ->
+      Some st = sigma gst h ->
+      recv_handler src h st msg = (st', ms, nts, cts) ->
+      gst' = apply_handler_result h (st', ms, nts, cts) e gst ->
       live_node gst' h.
   Proof.
     intuition.
-    unfold apply_handler_result in H1.
-
-
+    eapply when_apply_handler_result_preserves_live_node; eauto.
+    - unfold apply_handler_result in *.
+      repeat find_rewrite.
+      simpl.
+      unfold update.
+      unfold addr_eq_dec.
+      break_if.
+      * auto.
+      * congruence.
+    - eapply joined_preserved_by_recv_handler.
+      * eauto.
+      * break_live_node.
+        find_rewrite.
+        find_injection.
+        auto.
+  Qed.
 End ChordProof.
