@@ -15,8 +15,10 @@ Section ChordProof.
   Notation start_handler := (start_handler SUCC_LIST_LEN hash).
   Notation recv_handler := (recv_handler SUCC_LIST_LEN hash).
   Notation timeout_handler := (timeout_handler hash).
+  Notation tick_handler := (tick_handler hash).
 
   Notation handle_query := (handle_query SUCC_LIST_LEN hash).
+  Notation handle_query_timeout := (handle_query_timeout hash).
 
   Notation global_state := (global_state addr payload data timeout).
   Notation nodes := (nodes addr payload data timeout).
@@ -64,7 +66,7 @@ Section ChordProof.
     end.
     intuition.
   Qed.
-   
+
   Definition live_node_dec (gst : global_state) (h : addr) :=
     match sigma gst h with
       | Some st => if joined st
@@ -403,7 +405,61 @@ Section ChordProof.
       eauto using joined_preserved_by_handle_query.
   Qed.
 
-  Lemma live_node_preserved_by_recv_step : forall gst h src st msg gst' e st' ms nts cts,
+  Lemma joined_preserved_by_tick_handler : forall h st st' ms nts cts,
+    tick_handler h st = (st', ms, nts, cts) ->
+    joined st = joined st'.
+  Proof.
+    unfold tick_handler, add_tick.
+    intuition.
+    - repeat break_match; repeat tuple_inversion; auto.
+      * repeat tuple_inversion.
+        find_apply_lem_hyp joined_preserved_by_start_query; eauto.
+  Qed.
+
+  Lemma joined_preserved_by_update_pred : forall st p st',
+      st' = update_pred st p ->
+      joined st = joined st'.
+  Proof.
+    unfold update_pred.
+    intuition.
+    find_rewrite; auto.
+  Qed.
+
+  Lemma joined_preserved_by_handle_query_timeout : forall h st dst q st' ms nts cts,
+      handle_query_timeout h st dst q = (st', ms, nts, cts) ->
+      joined st = joined st'.
+  Proof.
+    unfold handle_query_timeout.
+    intuition.
+    repeat break_match;
+      find_apply_lem_hyp joined_preserved_by_end_query ||
+      find_apply_lem_hyp joined_preserved_by_start_query;
+      eauto.
+  Qed.
+
+  Lemma joined_preserved_by_timeout_handler : forall h st t st' ms nts cts,
+    timeout_handler h st t = (st', ms, nts, cts) ->
+    joined st = joined st'.
+  Proof.
+    unfold timeout_handler.
+    intuition.
+    repeat break_match;
+      try tuple_inversion;
+      eauto using joined_preserved_by_tick_handler, joined_preserved_by_handle_query_timeout.
+  Qed.
+
+  Lemma apply_handler_result_updates_sigma : forall h st ms nts cts e gst gst',
+      gst' = apply_handler_result h (st, ms, nts, cts) e gst ->
+      sigma gst' h = Some st.
+  Proof.
+    unfold apply_handler_result, update.
+    intuition.
+    repeat find_rewrite.
+    simpl in *.
+    break_if; congruence.
+  Qed.
+
+  Theorem live_node_preserved_by_recv_step : forall gst h src st msg gst' e st' ms nts cts,
       live_node gst h ->
       Some st = sigma gst h ->
       recv_handler src h st msg = (st', ms, nts, cts) ->
@@ -412,14 +468,7 @@ Section ChordProof.
   Proof.
     intuition.
     eapply when_apply_handler_result_preserves_live_node; eauto.
-    - unfold apply_handler_result in *.
-      repeat find_rewrite.
-      simpl.
-      unfold update.
-      unfold addr_eq_dec.
-      break_if.
-      * auto.
-      * congruence.
+    - eauto using apply_handler_result_updates_sigma.
     - eapply joined_preserved_by_recv_handler.
       * eauto.
       * break_live_node.
@@ -427,4 +476,22 @@ Section ChordProof.
         find_injection.
         auto.
   Qed.
+
+  Theorem live_node_preserved_by_timeout_step : forall gst h st st' t ms nts cts e gst',
+      live_node gst h ->
+      sigma gst h = Some st ->
+      timeout_handler h st t = (st', ms, nts, cts) ->
+      gst' = apply_handler_result h (st', ms, nts, t :: cts) e gst ->
+      live_node gst' h.
+  Proof.
+    intuition.
+    eapply when_apply_handler_result_preserves_live_node; eauto.
+    - eauto using apply_handler_result_updates_sigma.
+    - break_live_node.
+      find_apply_lem_hyp joined_preserved_by_timeout_handler.
+      repeat find_rewrite.
+      find_injection.
+      eauto.
+  Qed.
+
 End ChordProof.
