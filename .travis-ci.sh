@@ -7,6 +7,12 @@ pushd ..
   pushd StructTact
     ./build.sh
   popd
+
+  git clone 'http://github.com/uwplse/cheerios' Cheerios
+  pushd Cheerios
+    ./build.sh
+  popd
+
 popd
 
 case $MODE in
