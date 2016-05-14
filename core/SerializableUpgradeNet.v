@@ -289,6 +289,10 @@ Module PBKV.
       end
       end
       end.
+
+    Definition initial_data : data := Data [] [] 0.
+
+    Definition upgrade (_ : bytes) : option bytes := Some (serialize initial_data).
   End VersionOne.
 
 
@@ -514,6 +518,22 @@ Module PBKV.
       | _, _ => nop (serialize s)
       end
       end
+      end.
+
+    Definition upgrade_input (i : VersionOne.input) : VersionTwo.input :=
+      match i with
+      | VersionOne.Put k v => VersionTwo.Put k v
+      | VersionOne.Get k => VersionTwo.Get k
+      end.
+
+    Definition upgrade_data (d : VersionOne.data) : VersionTwo.data :=
+      VersionTwo.Data (VersionOne.db d)
+                      (map upgrade_input (VersionOne.log d))
+                      (VersionOne.nextIndex d).
+
+    Definition upgrade (b : bytes) : option bytes :=
+      match deserialize b with None => None
+      | Some (d, _) => Some (serialize (upgrade_data d))
       end.
   End VersionTwo.
 End PBKV.
