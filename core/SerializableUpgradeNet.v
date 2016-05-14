@@ -258,7 +258,7 @@ Module PBKV.
     destruct x;
       rewrite !app_assoc_reverse;
       now rewrite !Serialize_reversible.
-    Qed.
+    Defined.
 
     Record data := Data { db : list (string * string);
                           log : list input;
@@ -285,7 +285,7 @@ Module PBKV.
     destruct x.
     rewrite !app_assoc_reverse.
     now rewrite !Serialize_reversible.
-    Qed.
+    Defined.
 
     Definition nop (s : bytes) : bytes * list (name * bytes) * list bytes := (s, [], []).
 
@@ -484,7 +484,7 @@ Module PBKV.
     destruct x;
       rewrite !app_assoc_reverse;
       now rewrite !Serialize_reversible.
-    Qed.
+    Defined.
 
     Record data := Data { db : list (string * string);
                           log : list input;
@@ -511,7 +511,7 @@ Module PBKV.
     destruct x.
     rewrite !app_assoc_reverse.
     now rewrite !Serialize_reversible.
-    Qed.
+    Defined.
 
     Definition nop (s : bytes) : bytes * list (name * bytes) * list bytes := (s, [], []).
 
