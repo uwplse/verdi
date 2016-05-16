@@ -347,6 +347,10 @@ Module PBKV.
     Definition initial_data : data := Data [] [] 0.
 
     Definition upgrade (_ : bytes) : option bytes := Some (serialize initial_data).
+
+    Definition version : Top.version name := Version handleInput handleMsg.
+    Definition versions := [(upgrade, version)].
+
   End VersionOne.
 
 
@@ -589,5 +593,8 @@ Module PBKV.
       match deserialize b with None => None
       | Some (d, _) => Some (serialize (upgrade_data d))
       end.
+
+    Definition version : Top.version name := Version handleInput handleMsg.
+    Definition versions := VersionOne.versions ++ [(upgrade, version)].
   End VersionTwo.
 End PBKV.
