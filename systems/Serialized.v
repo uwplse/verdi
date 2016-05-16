@@ -78,7 +78,7 @@ Section Serialized.
   Proof.
     - eauto using all_names_nodes.
     - eauto using no_dup_nodes.
-  Qed.
+  Defined.
 End Serialized.
 
 Hint Extern 5 (@BaseParams) => apply base_params : typeclass_instances.
