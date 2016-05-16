@@ -382,12 +382,6 @@ Module PBKV.
       end
       end.
 
-    Definition serialize_packet_invariant (P : name -> msg -> Prop) (p : name * bytes) : Prop :=
-      let (dst, m) := p in
-      match deserialize m with
-      | None => False
-      | Some (m,_) => P dst m
-      end.
     Definition backup_network_prefix (w : world name) : Prop :=
       match deserialize (localState w Backup) with
       | None => nextVersion w Backup = 0 /\ localState w Backup = []
@@ -406,13 +400,34 @@ Module PBKV.
          end) \/ (packets w = [] /\ Prefix (log backup) (log primary))
       end
       end.
-    Lemma Serialize_reversible' A {sA : Serializer A} :
-      forall a, deserialize (serialize a) = Some (a, []).
-    Proof.
-      intros.
-      rewrite <- app_nil_r with (l := serialize a).
-      now rewrite Serialize_reversible.
-    Qed.
+    Section Serializer.
+      Variable A : Type.
+      Context {sA : Serializer A}.
+
+      Definition serialize_predicate (P : A -> Prop) (b : bytes) : Prop :=
+        match deserialize b with
+        | None => False
+        | Some (a,_) => P a
+        end.
+
+      Lemma Serialize_reversible' :
+        forall a, deserialize (serialize a) = Some (a, []).
+      Proof.
+        intros.
+        rewrite <- app_nil_r with (l := serialize a).
+        now rewrite Serialize_reversible.
+      Qed.
+
+      Lemma serialize_packet_invariant_of_serialize:
+        forall (P : A -> Prop) a,
+          P a ->
+          serialize_predicate P (serialize a).
+      Proof.
+        unfold serialize_predicate.
+        intros.
+        now rewrite Serialize_reversible'.
+      Qed.
+    End Serializer.
 
     Lemma nop_no_msgs :
       forall s st ms os,
@@ -453,26 +468,18 @@ Module PBKV.
       Qed.
     End Forall.
 
-    Lemma serialize_packet_invariant_of_serialize:
-      forall (P : _ -> _ -> Prop) h m,
-        P h m ->
-        serialize_packet_invariant P (h, serialize m).
-    Proof.
-      unfold serialize_packet_invariant.
-      intros.
-      now rewrite Serialize_reversible'.
-    Qed.
-
     Lemma handleMsg_all_packets_deserialize :
       forall h m st st' ms os,
         handleMsg h m st = (st', ms, os) ->
-        Forall (serialize_packet_invariant (fun _ _ => True)) ms.
+        Forall (fun p => serialize_predicate (fun _ : msg => True) (snd p)) ms.
     Proof.
       unfold handleMsg.
       intros.
       repeat break_match;
           try solve [find_apply_lem_hyp nop_no_msgs; repeat find_rewrite; auto];
-        find_inversion; auto using serialize_packet_invariant_of_serialize.
+        find_inversion; auto.
+      - constructor; simpl; auto using serialize_packet_invariant_of_serialize.
+      - constructor; simpl; auto using serialize_packet_invariant_of_serialize.
     Qed.
 
     Lemma handleMsg_version :
@@ -490,20 +497,21 @@ Module PBKV.
     Lemma handleInput_all_packets_deserialize :
       forall h i st st' ms os,
         handleInput h i st = (st', ms, os) ->
-        Forall (serialize_packet_invariant (fun _ _ => True)) ms.
+        Forall (fun p => serialize_predicate (fun _ : msg => True) (snd p)) ms.
     Proof.
       unfold handleInput.
       intros.
       intros.
       repeat break_match;
           try solve [find_apply_lem_hyp nop_no_msgs; repeat find_rewrite; auto];
-        find_inversion; auto using serialize_packet_invariant_of_serialize.
+        find_inversion; auto.
+      constructor; simpl; auto using serialize_packet_invariant_of_serialize.
     Qed.
 
     Lemma all_packets_deserialize :
       forall w,
         step_reachable versions w ->
-        Forall (serialize_packet_invariant (fun _ _ => True)) (packets w).
+        Forall (fun p => serialize_predicate (fun _ : msg => True) (snd p)) (packets w).
     Proof.
       induction 1; intros.
       - unfold initial_world in *. simpl in *. constructor.
