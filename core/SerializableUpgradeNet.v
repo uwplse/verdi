@@ -31,8 +31,24 @@ Class Eq (A : Type) :=
     eq_dec : forall x y : A, {x = y} + {x <> y}
   }.
 
-Definition update {A} {_ : Eq A} {B} (f : A -> B) (a : A) (b : B) : A -> B :=
+Definition update {A} {eqA : Eq A} {B} (f : A -> B) (a : A) (b : B) : A -> B :=
   fun a' => if eq_dec a a' then b else f a'.
+
+Lemma update_same : forall {A} {eqA : Eq A} {B} (f : A -> B) (a : A) (b : B),
+    update(eqA := eqA) f a b a = b.
+Proof.
+  unfold update.
+  intros. break_if; congruence.
+Qed.
+
+Lemma update_neq : forall {A} {eqA : Eq A} {B} (f : A -> B) (a1 a2 : A) (b : B),
+    a1 <> a2 ->
+    update(eqA := eqA) f a1 b a2 = f a2.
+Proof.
+  unfold update.
+  intros.
+  break_if; congruence.
+Qed.
 
 Section upgrade.
   Variable name : Type.
