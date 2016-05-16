@@ -66,7 +66,7 @@ Section Serialized.
 
   Instance multi_params : MultiParams _ :=
     {
-      name := @name _ orig_multi_params;
+      name := name;
       name_eq_dec := name_eq_dec;
       msg := list bool;
       msg_eq_dec := (list_eq_dec Bool.bool_dec);
