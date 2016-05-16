@@ -18,6 +18,9 @@ Notation msg := bytes (only parsing).
 Notation output := bytes (only parsing).
 Notation state := bytes (only parsing).
 
+Local Arguments serialize : simpl never.
+Local Arguments deserialize : simpl never.
+
 Set Implicit Arguments.
 
 Record version (name : Type) : Type :=
@@ -379,6 +382,12 @@ Module PBKV.
       end
       end.
 
+    Definition serialize_packet_invariant (P : name -> msg -> Prop) (p : name * bytes) : Prop :=
+      let (dst, m) := p in
+      match deserialize m with
+      | None => False
+      | Some (m,_) => P dst m
+      end.
     Definition backup_network_prefix (w : world name) : Prop :=
       match deserialize (localState w Backup) with
       | None => nextVersion w Backup = 0 /\ localState w Backup = []
@@ -397,6 +406,123 @@ Module PBKV.
          end) \/ (packets w = [] /\ Prefix (log backup) (log primary))
       end
       end.
+    Lemma Serialize_reversible' A {sA : Serializer A} :
+      forall a, deserialize (serialize a) = Some (a, []).
+    Proof.
+      intros.
+      rewrite <- app_nil_r with (l := serialize a).
+      now rewrite Serialize_reversible.
+    Qed.
+
+    Lemma nop_no_msgs :
+      forall s st ms os,
+        nop s = (st, ms, os) -> ms = [].
+    Proof. unfold nop. congruence. Qed.
+
+    Lemma only_one_version :
+      forall n u v,
+        nth_error versions n = Some (u, v) ->
+        u = upgrade /\ v = version.
+    Proof.
+      unfold versions.
+      intros.
+      destruct n; simpl in *.
+      - find_inversion. auto.
+      - destruct n; simpl in *; discriminate.
+    Qed.
+
+    Section Forall.
+      Variable A : Type.
+      Variable P : A -> Prop.
+
+      Lemma Forall_app_intro :
+        forall xs ys,
+          Forall P xs ->
+          Forall P ys ->
+          Forall P (xs ++ ys).
+      Proof.
+        induction 1; simpl; auto.
+      Qed.
+
+      Lemma Forall_middle_elim :
+        forall xs y zs,
+          Forall P (xs ++ y :: zs) ->
+          Forall P (xs ++ zs).
+      Proof.
+        induction xs; simpl; intros; invc H; eauto.
+      Qed.
+    End Forall.
+
+    Lemma serialize_packet_invariant_of_serialize:
+      forall (P : _ -> _ -> Prop) h m,
+        P h m ->
+        serialize_packet_invariant P (h, serialize m).
+    Proof.
+      unfold serialize_packet_invariant.
+      intros.
+      now rewrite Serialize_reversible'.
+    Qed.
+
+    Lemma handleMsg_all_packets_deserialize :
+      forall h m st st' ms os,
+        handleMsg h m st = (st', ms, os) ->
+        Forall (serialize_packet_invariant (fun _ _ => True)) ms.
+    Proof.
+      unfold handleMsg.
+      intros.
+      repeat break_match;
+          try solve [find_apply_lem_hyp nop_no_msgs; repeat find_rewrite; auto];
+        find_inversion; auto using serialize_packet_invariant_of_serialize.
+    Qed.
+
+    Lemma handleMsg_version :
+      Top.handleMsg version = handleMsg.
+    Proof.
+      reflexivity.
+    Qed.
+
+    Lemma handleInput_version :
+      Top.handleInput version = handleInput.
+    Proof.
+      reflexivity.
+    Qed.
+
+    Lemma handleInput_all_packets_deserialize :
+      forall h i st st' ms os,
+        handleInput h i st = (st', ms, os) ->
+        Forall (serialize_packet_invariant (fun _ _ => True)) ms.
+    Proof.
+      unfold handleInput.
+      intros.
+      intros.
+      repeat break_match;
+          try solve [find_apply_lem_hyp nop_no_msgs; repeat find_rewrite; auto];
+        find_inversion; auto using serialize_packet_invariant_of_serialize.
+    Qed.
+
+    Lemma all_packets_deserialize :
+      forall w,
+        step_reachable versions w ->
+        Forall (serialize_packet_invariant (fun _ _ => True)) (packets w).
+    Proof.
+      induction 1; intros.
+      - unfold initial_world in *. simpl in *. constructor.
+      - clear H0. invcs H.
+        + auto.
+        + repeat find_rewrite.
+          apply Forall_app_intro.
+          * find_apply_lem_hyp only_one_version.
+            break_and. subst.
+            rewrite handleMsg_version in *.
+            eauto using handleMsg_all_packets_deserialize.
+          * eauto using Forall_middle_elim.
+        + apply Forall_app_intro.
+          * find_apply_lem_hyp only_one_version.
+            break_and. subst.
+            rewrite handleInput_version in *.
+            eauto using handleInput_all_packets_deserialize.
+          * eauto using Forall_middle_elim.
+    Qed.
 
     Lemma backup_network_prefix_true :
       forall w,
