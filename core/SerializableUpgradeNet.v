@@ -147,8 +147,9 @@ Section upgrade.
     firstorder.
   Qed.
 
-  
-  
+  Definition step_star := Relation_Operators.clos_refl_trans_n1 _ step.
+
+  Definition step_reachable w := step_star initial_world w.
 End upgrade.
 
 
@@ -367,6 +368,62 @@ Module PBKV.
     Definition version : Top.version name := Version handleInput handleMsg.
     Definition versions := [(upgrade, version)].
 
+    Definition backup_prefix (w : world name) : Prop :=
+      match deserialize (localState w Backup) with
+      | None => nextVersion w Backup = 0 /\ localState w Backup = []
+      | Some (backup, _) =>
+      match deserialize (localState w Primary) with
+      | None => nextVersion w Primary = 0 /\ localState w Primary = []
+      | Some (primary, _) =>
+      Prefix (log backup) (log primary)
+      end
+      end.
+
+    Definition backup_network_prefix (w : world name) : Prop :=
+      match deserialize (localState w Backup) with
+      | None => nextVersion w Backup = 0 /\ localState w Backup = []
+      | Some (backup, _) =>
+      match deserialize (localState w Primary) with
+      | None => nextVersion w Primary = 0 /\ localState w Primary = []
+      | Some (primary, _) =>
+        (exists dst m,
+         packets w = [(dst, m)] /\
+         match deserialize m with None => False
+         | Some (m, _) =>
+         match m with
+         | Cmd i => Prefix (log backup ++ [i]) (log primary)
+         | Ack => Prefix (log backup) (log primary)
+         end
+         end) \/ (packets w = [] /\ Prefix (log backup) (log primary))
+      end
+      end.
+
+    Lemma backup_network_prefix_true :
+      forall w,
+        step_reachable versions w ->
+        backup_network_prefix w.
+    Proof.
+    Admitted.
+
+    Theorem backup_prefix_true :
+      forall w,
+        step_reachable versions w ->
+        backup_prefix w.
+    Proof.
+      intros w Hreach.
+      pose proof backup_network_prefix_true Hreach.
+      unfold backup_network_prefix, backup_prefix in *.
+      repeat break_match; intuition; subst.
+      break_exists_name dst.
+      break_exists_name m.
+      break_and.
+      repeat break_match; intuition.
+      find_apply_lem_hyp Prefix_elim.
+      break_exists.
+      find_rewrite.
+      rewrite app_assoc_reverse.
+      eauto using app_Prefix.
+    Qed.
   End VersionOne.
 
 
