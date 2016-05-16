@@ -38,15 +38,14 @@ def put(args):
     res = client.put(args.key, args.value)
     print res
 
-VARD_CLUSTER_ENV = 'VARD_CLUSTER'
-
 def main():
     parser = argparse.ArgumentParser()
-    if VARD_CLUSTER_ENV in os.environ:
-        parser.add_argument('--cluster', type=cluster_type, required=False, default=os.environ[VARD_CLUSTER_ENV])
-    else:
-        parser.add_argument('--cluster', type=cluster_type, required=True)
 
+    # global options
+    cluster_default = os.environ.get('VARD_CLUSTER')
+    parser.add_argument('--cluster', type=cluster_type, required=(cluster_default is None), default=cluster_default)
+
+    # subcommands
     subparsers = parser.add_subparsers(dest='cmd', help='commands')
 
     status_parser = subparsers.add_parser('status', help='Check status of nodes in cluster')
