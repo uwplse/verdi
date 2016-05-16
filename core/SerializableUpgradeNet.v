@@ -79,6 +79,60 @@ Section upgrade.
                  (trace w ++ [(h, inl i)] ++ map (fun o => (h, inr o)) os) ->
       step w w'
   .
+
+  Definition wpred := world -> Prop.
+  Definition wlift (P : Prop) : wpred := fun _ => P.
+  Definition wand (P Q : wpred) : wpred := fun w => P w /\ Q w.
+  Definition wor (P Q : wpred) : wpred := fun w => P w \/ Q w.
+  Definition wimp (P Q : wpred) : wpred := fun w => P w -> Q w.
+
+  Inductive reachable : wpred :=
+  | reachInit : reachable initial_world
+  | reachStep : forall w w',
+      reachable w ->
+      step w w' ->
+      reachable w'.
+
+  Definition invariant (P : wpred) :=
+    forall w,
+      reachable w ->
+      P w.
+
+  Definition hoare (P Q : wpred) :=
+    forall w w',
+      P w ->
+      step w w' ->
+      Q w'.
+
+  Definition inductive (P : wpred) :=
+    P initial_world /\
+    hoare P P.
+
+  Lemma inductive_invariant :
+    forall P,
+      inductive P ->
+      invariant P.
+  Proof.
+    intros. unfold inductive, invariant, hoare in *.
+    intros.
+    match goal with
+    | H : context [reachable] |- _ =>
+      induction H
+    end; firstorder.
+  Qed.
+
+  Lemma invariant_and :
+    forall P Q,
+      invariant P ->
+      invariant Q ->
+      invariant (wand P Q).
+  Proof.
+    intros. 
+    firstorder.
+  Qed.
+
+  
+  
 End upgrade.
 
 
