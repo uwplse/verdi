@@ -3,7 +3,7 @@
 ## Configures and calls coqproject.sh (https://github.com/dwoos/coqproject)
 
 ## Configuration options for coqproject.sh
-DEPS=(StructTact)
+DEPS=(StructTact Cheerios)
 DIRS=(core lib systems raft raft-proofs extraction/vard/coq)
 CANARIES=("mathcomp.ssreflect.ssreflect" "Verdi requires mathcomp to be installed" "StructTact.StructTactics" "Build StructTact before building Verdi")
 EXTRA=(raft/RaftState.v)
