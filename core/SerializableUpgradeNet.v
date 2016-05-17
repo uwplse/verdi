@@ -643,7 +643,16 @@ Module PBKV.
         (forall h,
             nextVersion w h = 0 -> localState w h = []).
     Proof.
-    Admitted.
+      induction 1; intros.
+      - auto.
+      - clear H0. invcs H; find_apply_lem_hyp only_one_version; break_and; subst.
+        + destruct (eq_dec h h0); subst; update_rewrite; try discriminate.
+          auto.
+        + assert (h <> h0) by congruence.
+          update_rewrite. auto.
+        + assert (h <> h0) by congruence.
+          update_rewrite. auto.
+    Qed.
 
     Definition backup_prefix (w : world name) : Prop :=
       match deserialize (localState w Backup) with
