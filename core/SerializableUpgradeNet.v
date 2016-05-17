@@ -807,6 +807,23 @@ Module PBKV.
       rewrite Serialize_reversible'; auto.
     Qed.
 
+    Lemma I_packet_to_primary_elim :
+      forall w mb, I w ->
+              In (Primary, mb) (packets w) ->
+              deserialize mb = Some (Ack, []) /\
+              packets w = [(Primary, mb)] /\
+              exists primary rest,
+                deserialize (localState w Primary) = Some (primary, rest) /\
+                take_strict (S (nextIndex primary)) (log primary) =
+                Some (get_log (localState w Backup)).
+    Proof.
+      unfold I.
+      intros.
+      repeat break_match; repeat break_or_hyp; break_exists; break_and; subst;
+        repeat find_rewrite; simpl in *; repeat break_or_hyp; intuition; find_inversion; eauto.
+    Qed.
+
+
     Lemma I_true :
       forall w,
         step_reachable versions w ->
@@ -835,59 +852,33 @@ Module PBKV.
           find_apply_lem_hyp only_one_version.
           break_and. subst.
           rewrite handleMsg_version in *.
-          unfold I, handleMsg in *. simpl in *.
+          unfold handleMsg in *. simpl in *.
           break_match_hyp; [| find_apply_lem_hyp initialized_state_deserializes; auto; omega].
           break_let. subst.
           break_match_hyp.
           * break_let. subst.
             break_match_hyp; subst; update_rewrite.
             -- (* Primary *)
-              break_match_hyp.
-              ++ (* Primary receives Cmd; nop *)
-                 find_apply_lem_hyp nop_elim. break_and. subst.
-                 rewrite Serialize_reversible'.
-                 repeat find_rewrite.
-                 exfalso.
-                 intuition.
-                 ** destruct xs; discriminate.
-                 ** break_exists. break_and.
-                    destruct xs.
-                    --- simpl in *. find_inversion.
-                    --- destruct xs; try discriminate.
-                 ** destruct xs.
-                    simpl in *. find_inversion.
-                    --- rewrite Serialize_reversible' in *. congruence.
-                    --- destruct xs; discriminate.
-              ++ subst. repeat find_rewrite.
+              find_eapply_lem_hyp I_packet_to_primary_elim; [|repeat find_rewrite; eauto with *].
+              break_and. break_exists. break_and.
+              repeat find_rewrite. repeat find_inversion.
+              ++ unfold I. simpl. update_rewrite.
+                 destruct xs; [|destruct xs; discriminate].
+                 cbn [app] in *. find_inversion.
                  break_match_hyp.
                  ** break_let. find_inversion.
                     rewrite Serialize_reversible'.
-                    intuition.
-                    --- destruct xs; discriminate.
-                    --- break_exists. break_and. destruct xs; try discriminate.
-                        destruct xs; try discriminate.
-                    --- destruct xs.
-                        +++ simpl in *. find_inversion.
-                            break_match.
-                            *** right. left. rewrite app_nil_r.
-                                eexists. intuition eauto.
-                                eauto using take_strict_nth_error_Some.
-                            *** auto.
-                        +++ destruct xs; simpl in *; try discriminate.
+                    simpl in *.
+                    break_match; auto.
+                    rewrite app_nil_r.
+                    intuition eauto using take_strict_nth_error_Some.
                  ** find_apply_lem_hyp nop_elim. break_and. subst.
                     exfalso.
-                    intuition.
-                    --- destruct xs; discriminate.
-                    --- break_exists. break_and.
-                        destruct xs; try discriminate.
-                        destruct xs; discriminate.
-                    --- destruct xs.
-                        +++ simpl in *. find_inversion.
-                            find_apply_lem_hyp nth_error_None.
-                            rewrite take_strict_lt_None in * by omega.
-                            discriminate.
-                        +++ destruct xs; discriminate.
+                    find_apply_lem_hyp nth_error_None.
+                    rewrite take_strict_lt_None in * by omega.
+                    discriminate.
             -- (* Backup *)
+              unfold I in *. simpl in *. update_rewrite.
               repeat find_rewrite.
               break_match; try break_let; repeat break_or_hyp;
                 try solve [exfalso; break_and; destruct xs;
