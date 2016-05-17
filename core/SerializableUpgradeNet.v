@@ -748,8 +748,37 @@ Module PBKV.
         + discriminate.
     Qed.
 
+    Lemma take_strict_length_exact :
+      forall A (l : list A) x,
+        length l = x ->
+        take_strict x l = Some l.
+    Proof.
+      induction l; intros; subst; simpl in *; auto.
+      rewrite IHl; auto.
+    Qed.
+
+    Lemma take_strict_app :
+      forall A (l : list A) x l' l'',
+        take_strict x l = Some l' ->
+        take_strict x (l ++ l'') = Some l'.
+    Proof.
+      induction l; intros; subst; simpl in *; auto.
+      - destruct x; simpl in *; auto. discriminate.
+      - destruct x; simpl in *; auto.
+        break_match_hyp; try discriminate.
+        erewrite IHl; eauto.
+    Qed.
+    
     Local Arguments nth_error : simpl never.
     Local Arguments take_strict : simpl never.
+    Lemma get_log_serialize :
+      forall x,
+        get_log (serialize x) = log x.
+    Proof.
+      intros.
+      unfold get_log.
+      rewrite Serialize_reversible'; auto.
+    Qed.
 
     Lemma I_true :
       forall w,
@@ -832,15 +861,73 @@ Module PBKV.
                             discriminate.
                         +++ destruct xs; discriminate.
             -- (* Backup *)
-              admit.
+              repeat find_rewrite.
+              break_match; try break_let; repeat break_or_hyp;
+                try solve [exfalso; break_and; destruct xs;
+                           try discriminate; destruct xs; discriminate].
+              break_exists. break_and.
+              destruct xs; simpl in *;
+                [|destruct xs; discriminate].
+              find_inversion.
+              rewrite Serialize_reversible' in *.
+              find_inversion.
+              break_let.
+              find_inversion.
+              unfold get_log in *.
+              rewrite Serialize_reversible' in *.
+              repeat find_rewrite. simpl. auto.
           * find_apply_lem_hyp all_packets_deserialize.
             exfalso.
             find_eapply_lem_hyp Forall_forall; [|eauto with *].
             simpl in *.
             eapply lift_strict_not_None with (A := msg); eauto.
         + (* handleInput *)
-          admit.
-    Admitted.
+          find_apply_lem_hyp only_one_version.
+          break_and. subst.
+          rewrite handleInput_version in *.
+          unfold I, handleInput in *. simpl in *.
+          break_match_hyp; [| find_apply_lem_hyp initialized_state_deserializes; auto; omega].
+          break_let. subst.
+          break_match_hyp.
+          * break_let. break_match_hyp; subst.
+            -- repeat find_rewrite.
+               update_rewrite.
+               find_inversion.
+               rewrite Serialize_reversible'. simpl.
+               break_if; simpl.
+               ++ right. left.
+                  intuition.
+                  ** repeat find_rewrite. eexists; intuition eauto.
+                     rewrite take_strict_length_exact in *; auto; [congruence|].
+                     rewrite app_length. simpl. omega.
+                  ** exfalso.
+                     break_exists. break_and.
+                     erewrite take_strict_lt_None in *; try discriminate. omega.
+                  ** exfalso. erewrite take_strict_lt_None in *; try discriminate. omega.
+               ++ repeat break_or_hyp.
+                  ** left.
+                     break_and.
+                     erewrite take_strict_app; eauto.
+                  ** right. left.
+                     break_exists; break_and.
+                     erewrite take_strict_app; eauto.
+                  ** right. right.
+                     break_and.
+                     erewrite take_strict_app; eauto.
+            -- find_apply_lem_hyp nop_elim.
+               break_and; subst. simpl in *.
+               update_rewrite.
+               unfold get_log in *.
+               repeat find_rewrite.
+               rewrite Serialize_reversible'. auto.
+          * find_apply_lem_hyp nop_elim.
+            break_and; subst. simpl in *.
+            destruct h; update_rewrite; repeat find_rewrite;
+              try rewrite Serialize_reversible'; auto.
+            unfold get_log in *.
+            repeat find_rewrite.
+            rewrite Serialize_reversible'. auto.
+    Qed.
 
     Theorem backup_prefix_true :
       forall w,
