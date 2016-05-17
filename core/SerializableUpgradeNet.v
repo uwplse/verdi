@@ -153,6 +153,20 @@ Section upgrade.
   Definition step_star := Relation_Operators.clos_refl_trans_n1 _ step.
 
   Definition step_reachable w := step_star initial_world w.
+
+  Lemma step_reachable_ind :
+    forall (P : world -> Prop),
+      P initial_world ->
+      (forall w1 w2,
+          step_reachable w1 ->
+          step w1 w2 ->
+          P w1 ->
+          P w2) ->
+      forall w, step_reachable w -> P w.
+  Proof.
+    intros.
+    induction H1; eauto.
+  Qed.
 End upgrade.
 
 
@@ -350,7 +364,7 @@ Module PBKV.
                    let ni' := S (nextIndex s) in
                    let ms := match nth_error (log s) ni' with
                              | None => []
-                             | Some i' => [(Backup, serialize (Cmd i))]
+                             | Some i' => [(Backup, serialize (Cmd i'))]
                              end
                    in (serialize (Data db' (log s) ni'), ms, [serialize o])
         end
@@ -371,43 +385,20 @@ Module PBKV.
     Definition version : Top.version name := Version handleInput handleMsg.
     Definition versions := [(upgrade, version)].
 
-    Definition backup_prefix (w : world name) : Prop :=
-      match deserialize (localState w Backup) with
-      | None => nextVersion w Backup = 0 /\ localState w Backup = []
-      | Some (backup, _) =>
-      match deserialize (localState w Primary) with
-      | None => nextVersion w Primary = 0 /\ localState w Primary = []
-      | Some (primary, _) =>
-      Prefix (log backup) (log primary)
-      end
-      end.
-
-    Definition backup_network_prefix (w : world name) : Prop :=
-      match deserialize (localState w Backup) with
-      | None => nextVersion w Backup = 0 /\ localState w Backup = []
-      | Some (backup, _) =>
-      match deserialize (localState w Primary) with
-      | None => nextVersion w Primary = 0 /\ localState w Primary = []
-      | Some (primary, _) =>
-        (exists dst m,
-         packets w = [(dst, m)] /\
-         match deserialize m with None => False
-         | Some (m, _) =>
-         match m with
-         | Cmd i => Prefix (log backup ++ [i]) (log primary)
-         | Ack => Prefix (log backup) (log primary)
-         end
-         end) \/ (packets w = [] /\ Prefix (log backup) (log primary))
-      end
-      end.
     Section Serializer.
       Variable A : Type.
       Context {sA : Serializer A}.
       Variable P : A -> Prop.
 
-      Definition serialize_predicate (b : bytes) : Prop :=
+      Definition lift_strict (b : bytes) : Prop :=
         match deserialize b with
         | None => False
+        | Some (a,_) => P a
+        end.
+
+      Definition lift (b : bytes) : Prop :=
+        match deserialize b with
+        | None => True
         | Some (a,_) => P a
         end.
 
@@ -419,47 +410,47 @@ Module PBKV.
         now rewrite Serialize_reversible.
       Qed.
 
-      Lemma serialize_predicate_of_serialize :
+      Lemma lift_strict_of_serialize :
         forall a,
           P a ->
-          serialize_predicate (serialize a).
+          lift_strict (serialize a).
       Proof.
-        unfold serialize_predicate.
+        unfold lift_strict.
         intros.
         now rewrite Serialize_reversible'.
       Qed.
 
-      Lemma serialize_predicate_of_deserialize_some :
+      Lemma lift_strict_of_deserialize_some :
         forall a b rest,
           deserialize b = Some (a, rest) ->
           P a ->
-          serialize_predicate b.
+          lift_strict b.
       Proof.
-        unfold serialize_predicate.
+        unfold lift_strict.
         intros.
         now find_rewrite.
       Qed.
 
-      Lemma serialize_predicate_not_None :
+      Lemma lift_strict_not_None :
         forall b,
           deserialize b = None ->
-          serialize_predicate b ->
+          lift_strict b ->
           False.
       Proof.
-        unfold serialize_predicate.
+        unfold lift_strict.
         intros.
         find_rewrite.
         auto.
       Qed.
     End Serializer.
 
-    Lemma serialize_predicate_None :
+    Lemma lift_strict_None :
       forall A (sA : Serializer A) b1 b2,
-        serialize_predicate (fun _ => True) b1 <-> serialize_predicate (fun _ => True) b2 ->
+        lift_strict (fun _ => True) b1 <-> lift_strict (fun _ => True) b2 ->
         deserialize b1 = None ->
         deserialize b2 = None.
     Proof.
-      unfold serialize_predicate.
+      unfold lift_strict.
       intros.
       repeat break_match; intuition; subst.
       discriminate.
@@ -475,11 +466,17 @@ Module PBKV.
         nop s = (st, ms, os) -> st = s.
     Proof. unfold nop. congruence. Qed.
 
+    Lemma nop_elim :
+      forall s st ms os,
+        nop s = (st, ms, os) -> st = s /\ ms = [] /\ os = [].
+    Proof. unfold nop. intuition congruence. Qed.
+
+
 
     Lemma only_one_version :
       forall n u v,
         nth_error versions n = Some (u, v) ->
-        u = upgrade /\ v = version.
+        u = upgrade /\ v = version /\ n = 0.
     Proof.
       unfold versions.
       intros.
@@ -513,15 +510,15 @@ Module PBKV.
     Lemma handleMsg_all_packets_deserialize :
       forall h m st st' ms os,
         handleMsg h m st = (st', ms, os) ->
-        Forall (fun p => serialize_predicate (fun _ : msg => True) (snd p)) ms.
+        Forall (fun p => lift_strict (fun _ : msg => True) (snd p)) ms.
     Proof.
       unfold handleMsg.
       intros.
       repeat break_match;
           try solve [find_apply_lem_hyp nop_no_msgs; repeat find_rewrite; auto];
         find_inversion; auto.
-      - constructor; simpl; auto using serialize_predicate_of_serialize.
-      - constructor; simpl; auto using serialize_predicate_of_serialize.
+      - constructor; simpl; auto using lift_strict_of_serialize.
+      - constructor; simpl; auto using lift_strict_of_serialize.
     Qed.
 
     Lemma handleMsg_version :
@@ -539,7 +536,7 @@ Module PBKV.
     Lemma handleInput_all_packets_deserialize :
       forall h i st st' ms os,
         handleInput h i st = (st', ms, os) ->
-        Forall (fun p => serialize_predicate (fun _ : msg => True) (snd p)) ms.
+        Forall (fun p => lift_strict (fun _ : msg => True) (snd p)) ms.
     Proof.
       unfold handleInput.
       intros.
@@ -547,13 +544,13 @@ Module PBKV.
       repeat break_match;
           try solve [find_apply_lem_hyp nop_no_msgs; repeat find_rewrite; auto];
         find_inversion; auto.
-      constructor; simpl; auto using serialize_predicate_of_serialize.
+      constructor; simpl; auto using lift_strict_of_serialize.
     Qed.
 
     Lemma all_packets_deserialize :
       forall w,
         step_reachable versions w ->
-        Forall (fun p => serialize_predicate (fun _ : msg => True) (snd p)) (packets w).
+        Forall (fun p => lift_strict (fun _ : msg => True) (snd p)) (packets w).
     Proof.
       induction 1; intros.
       - unfold initial_world in *. simpl in *. constructor.
@@ -577,12 +574,12 @@ Module PBKV.
     Lemma upgrade_deserializes :
       forall st st',
         upgrade st = Some st' ->
-        serialize_predicate (fun _ => True) st'.
+        lift_strict (fun _ => True) st'.
     Proof.
       unfold upgrade.
       intros.
       find_inversion.
-      auto using serialize_predicate_of_serialize.
+      auto using lift_strict_of_serialize.
     Qed.
 
     Lemma handleMsg_deserializes_None_eq :
@@ -627,7 +624,7 @@ Module PBKV.
       - clear H0. invcs H; find_apply_lem_hyp only_one_version; break_and; subst.
         + destruct (eq_dec h0 h); subst; update_rewrite.
           * find_apply_lem_hyp upgrade_deserializes.
-            exfalso. eauto using serialize_predicate_not_None.
+            exfalso. eauto using lift_strict_not_None.
           * find_apply_hyp_hyp.
             auto.
         + rewrite handleMsg_version in *.
@@ -640,12 +637,209 @@ Module PBKV.
           * auto.
     Qed.
 
-
-    Lemma backup_network_prefix_true :
+    Lemma version_0_is_init :
       forall w,
         step_reachable versions w ->
-        backup_network_prefix w.
+        (forall h,
+            nextVersion w h = 0 -> localState w h = []).
     Proof.
+    Admitted.
+
+    Definition backup_prefix (w : world name) : Prop :=
+      match deserialize (localState w Backup) with
+      | None => True
+      | Some (backup, _) =>
+      match deserialize (localState w Primary) with
+      | None => True
+      | Some (primary, _) =>
+      Prefix (log backup) (log primary)
+      end
+      end.
+
+    Definition get_log (b : bytes) : list input :=
+      match deserialize b with
+      | None => []
+      | Some (d, _) => log d
+      end.
+
+    Fixpoint take_strict {A} (n : nat) (l : list A) : option (list A) :=
+      match n with
+      | 0 => Some []
+      | S n' => match l with
+               | [] => None
+               | x :: l' => match take_strict n' l' with None => None
+                           | Some l'' => Some (x :: l'')
+                           end
+               end
+      end.
+
+    Lemma take_strict_length :
+      forall A n (l : list A) l',
+        take_strict n l = Some l' ->
+        length l' = n.
+    Proof.
+      induction n; simpl; intros.
+      - find_inversion. auto.
+      - repeat break_match; try discriminate.
+        find_inversion. simpl. eauto.
+    Qed.
+
+
+    Definition I (w : world name) : Prop :=
+      match deserialize (localState w Primary) with
+      | None => packets w = [] /\ get_log (localState w Backup) = []
+      | Some (primary, _) =>
+        (packets w = [] /\
+         take_strict (nextIndex primary) (log primary) = Some (get_log (localState w Backup))) \/
+        (exists i, packets w = [(Backup, serialize (Cmd i))] /\
+              take_strict (S (nextIndex primary)) (log primary) =
+                  Some (get_log (localState w Backup) ++ [i])) \/
+        (packets w = [(Primary, serialize Ack)] /\
+         take_strict (S (nextIndex primary)) (log primary) = Some (get_log (localState w Backup)))
+      end.
+
+    Lemma deserialize_data_nil :
+      deserialize [] = @None (data * _).
+    Proof.
+      auto.
+    Qed.
+
+    Lemma get_log_initialize :
+      get_log [] = get_log (serialize initial_data).
+    Proof. auto. Qed.
+
+    Lemma take_strict_lt_None :
+      forall A n (l : list A),
+        length l < n ->
+        take_strict n l = None.
+    Proof.
+      induction n; destruct l; simpl; intros.
+      - omega.
+      - omega.
+      - auto.
+      - now rewrite IHn by omega.
+    Qed.
+
+    Lemma take_strict_unroll :
+      forall A n (l : list A),
+        take_strict (S n) l = match l with
+                              | [] => None
+                              | x :: l' => match take_strict n l' with None => None
+                                          | Some l'' => Some (x :: l'')
+                                          end
+                              end.
+    Proof. auto. Qed.
+
+    Lemma take_strict_nth_error_Some :
+      forall A n (l : list A) l' a,
+        take_strict n l = Some l' ->
+        nth_error l n = Some a ->
+        take_strict (S n) l = Some (l' ++ [a]).
+    Proof.
+      induction n; intros.
+      - simpl in *. find_inversion. simpl. break_match; congruence.
+      - rewrite take_strict_unroll in *.
+        cbn [nth_error] in *.
+        break_match; try discriminate.
+        break_match_hyp.
+        + find_inversion.
+          erewrite IHn; eauto.
+          auto.
+        + discriminate.
+    Qed.
+
+    Local Arguments nth_error : simpl never.
+    Local Arguments take_strict : simpl never.
+
+    Lemma I_true :
+      forall w,
+        step_reachable versions w ->
+        I w.
+    Proof.
+      induction 1 using step_reachable_ind.
+      - unfold I, initial_world. simpl. auto.
+      - invcs H0.
+        + (* upgrade case *)
+          find_apply_lem_hyp only_one_version.
+          break_and. subst.
+          unfold I in *. simpl in *.
+          unfold upgrade in *. find_inversion.
+          destruct h; subst; update_rewrite.
+          * (* Primary *)
+            rewrite Serialize_reversible'.
+            simpl in *.
+            rewrite version_0_is_init in * by auto.
+            rewrite deserialize_data_nil in *.
+            unfold take_strict.
+            intuition congruence.
+          * (* Backup *)
+            rewrite version_0_is_init with (h := Backup) in * by auto.
+            now rewrite get_log_initialize in *.
+        + (* msg case *)
+          find_apply_lem_hyp only_one_version.
+          break_and. subst.
+          rewrite handleMsg_version in *.
+          unfold I, handleMsg in *. simpl in *.
+          break_match_hyp; [| find_apply_lem_hyp initialized_state_deserializes; auto; omega].
+          break_let. subst.
+          break_match_hyp.
+          * break_let. subst.
+            break_match_hyp; subst; update_rewrite.
+            -- (* Primary *)
+              break_match_hyp.
+              ++ (* Primary receives Cmd; nop *)
+                 find_apply_lem_hyp nop_elim. break_and. subst.
+                 rewrite Serialize_reversible'.
+                 repeat find_rewrite.
+                 exfalso.
+                 intuition.
+                 ** destruct xs; discriminate.
+                 ** break_exists. break_and.
+                    destruct xs.
+                    --- simpl in *. find_inversion.
+                    --- destruct xs; try discriminate.
+                 ** destruct xs.
+                    simpl in *. find_inversion.
+                    --- rewrite Serialize_reversible' in *. congruence.
+                    --- destruct xs; discriminate.
+              ++ subst. repeat find_rewrite.
+                 break_match_hyp.
+                 ** break_let. find_inversion.
+                    rewrite Serialize_reversible'.
+                    intuition.
+                    --- destruct xs; discriminate.
+                    --- break_exists. break_and. destruct xs; try discriminate.
+                        destruct xs; try discriminate.
+                    --- destruct xs.
+                        +++ simpl in *. find_inversion.
+                            break_match.
+                            *** right. left. rewrite app_nil_r.
+                                eexists. intuition eauto.
+                                eauto using take_strict_nth_error_Some.
+                            *** auto.
+                        +++ destruct xs; simpl in *; try discriminate.
+                 ** find_apply_lem_hyp nop_elim. break_and. subst.
+                    exfalso.
+                    intuition.
+                    --- destruct xs; discriminate.
+                    --- break_exists. break_and.
+                        destruct xs; try discriminate.
+                        destruct xs; discriminate.
+                    --- destruct xs.
+                        +++ simpl in *. find_inversion.
+                            find_apply_lem_hyp nth_error_None.
+                            rewrite take_strict_lt_None in * by omega.
+                            discriminate.
+                        +++ destruct xs; discriminate.
+            -- (* Backup *)
+              admit.
+          * find_apply_lem_hyp all_packets_deserialize.
+            exfalso.
+            find_eapply_lem_hyp Forall_forall; [|eauto with *].
+            simpl in *.
+            eapply lift_strict_not_None with (A := msg); eauto.
+        + (* handleInput *)
+          admit.
     Admitted.
 
     Theorem backup_prefix_true :
@@ -653,19 +847,6 @@ Module PBKV.
         step_reachable versions w ->
         backup_prefix w.
     Proof.
-      intros w Hreach.
-      pose proof backup_network_prefix_true Hreach.
-      unfold backup_network_prefix, backup_prefix in *.
-      repeat break_match; intuition; subst.
-      break_exists_name dst.
-      break_exists_name m.
-      break_and.
-      repeat break_match; intuition.
-      find_apply_lem_hyp Prefix_elim.
-      break_exists.
-      find_rewrite.
-      rewrite app_assoc_reverse.
-      eauto using app_Prefix.
     Qed.
   End VersionOne.
 
