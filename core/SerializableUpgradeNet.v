@@ -832,6 +832,32 @@ Module PBKV.
         repeat find_rewrite; simpl in *; repeat break_or_hyp; intuition; find_inversion; eauto.
     Qed.
 
+    Lemma I_packet_to_backup_elim :
+      forall w mb, I w ->
+              In (Backup, mb) (packets w) ->
+              (exists i, deserialize mb = Some (Cmd i, []) /\
+                    packets w = [(Backup, mb)] /\
+                    exists primary rest,
+                      deserialize (localState w Primary) = Some (primary, rest) /\
+                      take_strict (S (nextIndex primary)) (log primary) =
+                      Some (get_log (localState w Backup) ++ [i])).
+    Proof.
+      unfold I.
+      intros.
+      repeat break_match; repeat break_or_hyp; break_exists; break_and; subst;
+        repeat find_rewrite; simpl in *; repeat break_or_hyp; intuition; find_inversion; eauto.
+      rewrite Serialize_reversible'. eauto 10.
+    Qed.
+
+    Lemma get_log_deserialize_Some :
+      forall s d rest,
+        deserialize s = Some (d, rest) ->
+        get_log s = log d.
+    Proof.
+      unfold get_log.
+      intros.
+      now find_rewrite.
+    Qed.
 
     Lemma I_true :
       forall w,
@@ -887,22 +913,17 @@ Module PBKV.
                     rewrite take_strict_lt_None in * by omega.
                     discriminate.
             -- (* Backup *)
-              unfold I in *. simpl in *. update_rewrite.
-              repeat find_rewrite.
-              break_match; try break_let; repeat break_or_hyp;
-                try solve [exfalso; break_and; destruct xs;
-                           try discriminate; destruct xs; discriminate].
-              break_exists. break_and.
-              destruct xs; simpl in *;
-                [|destruct xs; discriminate].
-              find_inversion.
-              rewrite Serialize_reversible' in *.
-              find_inversion.
-              break_let.
-              find_inversion.
-              unfold get_log in *.
-              rewrite Serialize_reversible' in *.
-              repeat find_rewrite. simpl. auto.
+              find_eapply_lem_hyp I_packet_to_backup_elim; [|eauto with *].
+              break_exists. break_and. break_exists. break_and.
+              repeat find_rewrite. repeat find_inversion.
+              break_let. find_inversion.
+              destruct xs; [|destruct xs; discriminate].
+              cbn [app] in *. find_inversion.
+              unfold I. simpl. update_rewrite. repeat find_rewrite.
+              right. right.
+              rewrite get_log_serialize. simpl.
+              erewrite get_log_deserialize_Some by eauto.
+              auto.
           * find_apply_lem_hyp all_packets_deserialize.
             exfalso.
             find_eapply_lem_hyp Forall_forall; [|eauto with *].
