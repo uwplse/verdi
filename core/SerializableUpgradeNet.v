@@ -781,42 +781,20 @@ Module PBKV.
         constructor; auto.
     Qed.
 
-    Lemma take_strict_None :
-      forall A x (l : list A) a,
-        take_strict x (a :: l) = None ->
-        take_strict x l = None.
-    Proof.
-      induction x; intros; simpl in *; try discriminate.
-      repeat break_match; auto; try discriminate. 
-      find_apply_hyp_hyp. congruence.
-    Qed.
-
     Lemma take_strict_S_snoc :
-      forall A (l : list A) x l' a,
+      forall A x (l : list A) l' a,
         take_strict (S x) l = Some (l' ++ [a]) ->
         take_strict x l = Some l'.
     Proof.
-      induction l; intros; simpl in *; try discriminate.
-      destruct x eqn:?; simpl in *.
-      - find_inversion.
-        destruct l'; auto.
-        simpl in *. find_inversion.
+      induction x; intros; rewrite take_strict_unroll in *;
+          destruct l; try discriminate.
+      - destruct l'; auto.
         destruct l'; discriminate.
-      - repeat break_match; try congruence.
-        + subst. repeat find_inversion.
-          specialize (IHl n). repeat find_rewrite.
-          destruct l'; simpl in *.
-          * find_inversion.
-          * find_inversion.
-            specialize (IHl l' a0).
-            repeat find_rewrite. intuition. find_inversion.
-            auto.
-        + destruct n; simpl in *; try discriminate.
-          repeat break_match; try discriminate.
-          repeat find_inversion.
-          find_apply_lem_hyp take_strict_None. congruence.
+      - break_match_hyp; try discriminate.
+        destruct l'; cbn [app] in *; find_inversion.
+        + find_apply_lem_hyp take_strict_length. cbn [length] in *. omega.
+        + now erewrite IHx by eauto.
     Qed.
-          
     
     Local Arguments nth_error : simpl never.
     Local Arguments take_strict : simpl never.
