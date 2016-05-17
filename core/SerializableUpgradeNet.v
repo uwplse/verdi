@@ -613,6 +613,7 @@ Module PBKV.
       auto.
     Qed.
 
+    Ltac update_rewrite := rewrite ?@update_same in *; rewrite ?@update_neq in * by congruence.
 
     Lemma initialized_state_deserializes :
       forall w,
@@ -623,31 +624,20 @@ Module PBKV.
     Proof.
       induction 1; intros.
       - simpl. auto.
-      - clear H0. invcs H.
-        + find_apply_lem_hyp only_one_version. break_and. subst.
-          destruct (eq_dec h0 h).
-          * subst. rewrite !@update_same in *.
-            find_apply_lem_hyp upgrade_deserializes.
+      - clear H0. invcs H; find_apply_lem_hyp only_one_version; break_and; subst.
+        + destruct (eq_dec h0 h); subst; update_rewrite.
+          * find_apply_lem_hyp upgrade_deserializes.
             exfalso. eauto using serialize_predicate_not_None.
-          * rewrite !@update_neq in * by auto.
-            find_apply_hyp_hyp.
+          * find_apply_hyp_hyp.
             auto.
-        + find_apply_lem_hyp only_one_version.
-          break_and. subst.
-          rewrite handleMsg_version in *.
-          destruct (eq_dec h h0).
-          * subst. rewrite !@update_same in *.
-            find_apply_lem_hyp handleMsg_deserializes_None_eq; subst; auto.
-          * rewrite !@update_neq in * by congruence.
-            auto.
-        + find_apply_lem_hyp only_one_version.
-          break_and. subst.
-          rewrite handleInput_version in *.
-          destruct (eq_dec h h0).
-          * subst. rewrite !@update_same in *.
-            find_apply_lem_hyp handleInput_deserializes_None_eq; subst; auto.
-          * rewrite !@update_neq in * by congruence.
-            auto.
+        + rewrite handleMsg_version in *.
+          destruct (eq_dec h h0); subst; update_rewrite.
+          * find_apply_lem_hyp handleMsg_deserializes_None_eq; subst; auto.
+          * auto.
+        + rewrite handleInput_version in *.
+          destruct (eq_dec h h0); subst; update_rewrite.
+          * find_apply_lem_hyp handleInput_deserializes_None_eq; subst; auto.
+          * auto.
     Qed.
 
 
