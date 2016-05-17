@@ -768,6 +768,55 @@ Module PBKV.
         break_match_hyp; try discriminate.
         erewrite IHl; eauto.
     Qed.
+
+    Lemma take_strict_Prefix :
+      forall A x (l : list A) l',
+        take_strict x l = Some l' ->
+        Prefix l' l.
+    Proof.
+      induction x; intros; simpl in *; auto.
+      - find_inversion. constructor.
+      - repeat break_match; try discriminate.
+        find_inversion.
+        constructor; auto.
+    Qed.
+
+    Lemma take_strict_None :
+      forall A x (l : list A) a,
+        take_strict x (a :: l) = None ->
+        take_strict x l = None.
+    Proof.
+      induction x; intros; simpl in *; try discriminate.
+      repeat break_match; auto; try discriminate. 
+      find_apply_hyp_hyp. congruence.
+    Qed.
+
+    Lemma take_strict_S_snoc :
+      forall A (l : list A) x l' a,
+        take_strict (S x) l = Some (l' ++ [a]) ->
+        take_strict x l = Some l'.
+    Proof.
+      induction l; intros; simpl in *; try discriminate.
+      destruct x eqn:?; simpl in *.
+      - find_inversion.
+        destruct l'; auto.
+        simpl in *. find_inversion.
+        destruct l'; discriminate.
+      - repeat break_match; try congruence.
+        + subst. repeat find_inversion.
+          specialize (IHl n). repeat find_rewrite.
+          destruct l'; simpl in *.
+          * find_inversion.
+          * find_inversion.
+            specialize (IHl l' a0).
+            repeat find_rewrite. intuition. find_inversion.
+            auto.
+        + destruct n; simpl in *; try discriminate.
+          repeat break_match; try discriminate.
+          repeat find_inversion.
+          find_apply_lem_hyp take_strict_None. congruence.
+    Qed.
+          
     
     Local Arguments nth_error : simpl never.
     Local Arguments take_strict : simpl never.
@@ -929,11 +978,21 @@ Module PBKV.
             rewrite Serialize_reversible'. auto.
     Qed.
 
+
     Theorem backup_prefix_true :
       forall w,
         step_reachable versions w ->
         backup_prefix w.
     Proof.
+      intros.
+      find_apply_lem_hyp I_true.
+      unfold I, backup_prefix in *.
+      repeat break_match; auto.
+      unfold get_log in *. repeat find_rewrite.
+      intuition eauto using take_strict_Prefix.
+      - break_exists. intuition.
+        find_apply_lem_hyp take_strict_S_snoc.
+        eauto using take_strict_Prefix.
     Qed.
   End VersionOne.
 
