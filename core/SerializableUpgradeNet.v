@@ -403,8 +403,9 @@ Module PBKV.
     Section Serializer.
       Variable A : Type.
       Context {sA : Serializer A}.
+      Variable P : A -> Prop.
 
-      Definition serialize_predicate (P : A -> Prop) (b : bytes) : Prop :=
+      Definition serialize_predicate (b : bytes) : Prop :=
         match deserialize b with
         | None => False
         | Some (a,_) => P a
@@ -418,21 +419,62 @@ Module PBKV.
         now rewrite Serialize_reversible.
       Qed.
 
-      Lemma serialize_packet_invariant_of_serialize:
-        forall (P : A -> Prop) a,
+      Lemma serialize_predicate_of_serialize :
+        forall a,
           P a ->
-          serialize_predicate P (serialize a).
+          serialize_predicate (serialize a).
       Proof.
         unfold serialize_predicate.
         intros.
         now rewrite Serialize_reversible'.
       Qed.
+
+      Lemma serialize_predicate_of_deserialize_some :
+        forall a b rest,
+          deserialize b = Some (a, rest) ->
+          P a ->
+          serialize_predicate b.
+      Proof.
+        unfold serialize_predicate.
+        intros.
+        now find_rewrite.
+      Qed.
+
+      Lemma serialize_predicate_not_None :
+        forall b,
+          deserialize b = None ->
+          serialize_predicate b ->
+          False.
+      Proof.
+        unfold serialize_predicate.
+        intros.
+        find_rewrite.
+        auto.
+      Qed.
     End Serializer.
+
+    Lemma serialize_predicate_None :
+      forall A (sA : Serializer A) b1 b2,
+        serialize_predicate (fun _ => True) b1 <-> serialize_predicate (fun _ => True) b2 ->
+        deserialize b1 = None ->
+        deserialize b2 = None.
+    Proof.
+      unfold serialize_predicate.
+      intros.
+      repeat break_match; intuition; subst.
+      discriminate.
+    Qed.
 
     Lemma nop_no_msgs :
       forall s st ms os,
         nop s = (st, ms, os) -> ms = [].
     Proof. unfold nop. congruence. Qed.
+
+    Lemma nop_state :
+      forall s st ms os,
+        nop s = (st, ms, os) -> st = s.
+    Proof. unfold nop. congruence. Qed.
+
 
     Lemma only_one_version :
       forall n u v,
@@ -478,8 +520,8 @@ Module PBKV.
       repeat break_match;
           try solve [find_apply_lem_hyp nop_no_msgs; repeat find_rewrite; auto];
         find_inversion; auto.
-      - constructor; simpl; auto using serialize_packet_invariant_of_serialize.
-      - constructor; simpl; auto using serialize_packet_invariant_of_serialize.
+      - constructor; simpl; auto using serialize_predicate_of_serialize.
+      - constructor; simpl; auto using serialize_predicate_of_serialize.
     Qed.
 
     Lemma handleMsg_version :
@@ -505,7 +547,7 @@ Module PBKV.
       repeat break_match;
           try solve [find_apply_lem_hyp nop_no_msgs; repeat find_rewrite; auto];
         find_inversion; auto.
-      constructor; simpl; auto using serialize_packet_invariant_of_serialize.
+      constructor; simpl; auto using serialize_predicate_of_serialize.
     Qed.
 
     Lemma all_packets_deserialize :
@@ -531,6 +573,83 @@ Module PBKV.
             eauto using handleInput_all_packets_deserialize.
           * eauto using Forall_middle_elim.
     Qed.
+
+    Lemma upgrade_deserializes :
+      forall st st',
+        upgrade st = Some st' ->
+        serialize_predicate (fun _ => True) st'.
+    Proof.
+      unfold upgrade.
+      intros.
+      find_inversion.
+      auto using serialize_predicate_of_serialize.
+    Qed.
+
+    Lemma handleMsg_deserializes_None_eq :
+      forall h m st st' ms os,
+        handleMsg h m st = (st', ms, os) ->
+        deserialize st' = None ->
+        st' = st.
+    Proof.
+      unfold handleMsg.
+      intros.
+      repeat break_match; repeat find_inversion;
+      try find_apply_lem_hyp nop_state; subst;
+      try (rewrite Serialize_reversible' in *; discriminate).
+      auto.
+    Qed.
+
+    Lemma handleInput_deserializes_None_eq :
+      forall h m st st' ms os,
+        handleInput h m st = (st', ms, os) ->
+        deserialize st' = None ->
+        st' = st.
+    Proof.
+      unfold handleInput.
+      intros.
+      repeat break_match; repeat find_inversion;
+      try find_apply_lem_hyp nop_state; subst;
+      try (rewrite Serialize_reversible' in *; discriminate).
+      auto.
+    Qed.
+
+
+    Lemma initialized_state_deserializes :
+      forall w,
+        step_reachable versions w ->
+        (forall h,
+            deserialize (localState w h) = None ->
+            nextVersion w h = 0 /\ localState w h = []).
+    Proof.
+      induction 1; intros.
+      - simpl. auto.
+      - clear H0. invcs H.
+        + find_apply_lem_hyp only_one_version. break_and. subst.
+          destruct (eq_dec h0 h).
+          * subst. rewrite !@update_same in *.
+            find_apply_lem_hyp upgrade_deserializes.
+            exfalso. eauto using serialize_predicate_not_None.
+          * rewrite !@update_neq in * by auto.
+            find_apply_hyp_hyp.
+            auto.
+        + find_apply_lem_hyp only_one_version.
+          break_and. subst.
+          rewrite handleMsg_version in *.
+          destruct (eq_dec h h0).
+          * subst. rewrite !@update_same in *.
+            find_apply_lem_hyp handleMsg_deserializes_None_eq; subst; auto.
+          * rewrite !@update_neq in * by congruence.
+            auto.
+        + find_apply_lem_hyp only_one_version.
+          break_and. subst.
+          rewrite handleInput_version in *.
+          destruct (eq_dec h h0).
+          * subst. rewrite !@update_same in *.
+            find_apply_lem_hyp handleInput_deserializes_None_eq; subst; auto.
+          * rewrite !@update_neq in * by congruence.
+            auto.
+    Qed.
+
 
     Lemma backup_network_prefix_true :
       forall w,
