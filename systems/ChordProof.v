@@ -174,7 +174,15 @@ Section ChordProof.
       reachable gst from x ->
       reachable gst x to ->
       reachable gst from to.
-  Admitted.
+  Proof.
+    intros gst from x to H.
+    generalize dependent to.
+    induction H.
+    - intuition.
+      eauto using ReachableSucc, ReachableTransL.
+    - intuition.
+      eauto using ReachableSucc, ReachableTransL.
+  Qed.
 
   Definition best_succ_of (gst : global_state) (h : addr) : option addr :=
     match (sigma gst) h with
@@ -660,9 +668,23 @@ Section ChordProof.
     - eauto using adding_nodes_does_not_affect_live_node.
   Qed.
 
+  Lemma adding_node_preserves_reachable : forall h from to gst gst' st,
+        reachable gst from to ->
+        ~ In h (nodes gst) ->
+        nodes gst' = h :: nodes gst ->
+        failed_nodes gst' = failed_nodes gst ->
+        sigma gst' = update (sigma gst) h st ->
+        reachable gst' from to.
+  Proof.
+    intuition.
+    induction H.
+    - apply ReachableSucc.
+      eauto using adding_nodes_does_not_affect_best_succ.
+    - eauto using ReachableTransL, adding_nodes_does_not_affect_best_succ.
+  Qed.
+
   Theorem start_step_keeps_at_least_one_ring : forall h gst gst' st known k,
         at_least_one_ring gst ->
-        can_be_node h ->
         ~ In h (nodes gst) ->
         (In k known -> In k (nodes gst)) ->
         (In k known -> ~ In k (failed_nodes gst)) ->
@@ -671,7 +693,12 @@ Section ChordProof.
         failed_nodes gst' = failed_nodes gst ->
         sigma gst' = update (sigma gst) h st ->
         at_least_one_ring gst'.
-  Admitted.
+  Proof.
+    unfold at_least_one_ring, ring_member.
+    intuition.
+    break_exists_exists.
+    eauto using adding_node_preserves_reachable.
+  Qed.
 
   Theorem invariant_steps_to_at_least_one_ring : forall gst gst',
       inductive_invariant gst ->
@@ -682,7 +709,6 @@ Section ChordProof.
     break_invariant.
     break_step.
     - eapply start_step_keeps_at_least_one_ring; simpl; eauto.
-    - admit.
     - admit.
     - admit.
     - admit.
