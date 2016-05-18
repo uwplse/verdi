@@ -26,7 +26,10 @@ Section ChordProof.
   Notation nodes := (nodes addr payload data timeout).
   Notation failed_nodes := (failed_nodes addr payload data timeout).
   Notation sigma := (sigma addr payload data timeout).
+  Notation timeouts := (timeouts addr payload data timeout).
+  Notation msgs := (msgs addr payload data timeout).
   Notation update := (update addr addr_eq_dec data).
+  Notation update_msgs := (update_msgs addr payload data timeout).
 
   Notation apply_handler_result := (apply_handler_result addr addr_eq_dec payload data timeout timeout_eq_dec).
   Notation end_query := (end_query hash).
@@ -680,32 +683,161 @@ Section ChordProof.
       eauto using ReachableSucc, ReachableTransL, adding_nodes_does_not_affect_best_succ.
   Qed.
 
-  Theorem start_step_keeps_at_least_one_ring : forall h gst gst' st known k,
-        at_least_one_ring gst ->
-        ~ In h (nodes gst) ->
-        (In k known -> In k (nodes gst)) ->
-        (In k known -> ~ In k (failed_nodes gst)) ->
-        (known = [] -> nodes gst = []) ->
-        nodes gst' = h :: nodes gst ->
-        failed_nodes gst' = failed_nodes gst ->
-        sigma gst' = update (sigma gst) h st ->
-        at_least_one_ring gst'.
+  Notation start_step_preserves P :=
+    (forall gst gst' h st k known,
+      inductive_invariant gst ->
+      ~ In h (nodes gst) ->
+      (In k known -> In k (nodes gst)) ->
+      (In k known -> ~ In k (failed_nodes gst)) ->
+      (known = [] -> nodes gst = []) ->
+      nodes gst' = h :: nodes gst ->
+      failed_nodes gst' = failed_nodes gst ->
+      sigma gst' = update (sigma gst) h st ->
+      P gst').
+
+  Theorem start_step_keeps_at_most_one_ring :
+    start_step_preserves at_most_one_ring.
+  Admitted.
+
+  Theorem start_step_keeps_ordered_ring :
+    start_step_preserves ordered_ring.
+  Admitted.
+
+  Theorem start_step_keeps_connected_appendages :
+    start_step_preserves connected_appendages.
+  Admitted.
+
+  Theorem start_step_keeps_base_not_skipped :
+    start_step_preserves base_not_skipped.
+  Admitted.
+
+  Theorem start_step_keeps_at_least_one_ring :
+    start_step_preserves at_least_one_ring.
   Proof.
-    unfold at_least_one_ring, ring_member.
     intuition.
+    break_invariant.
+    unfold at_least_one_ring, ring_member in *.
     break_exists_exists.
     eauto using adding_node_preserves_reachable.
   Qed.
 
-  Lemma fail_step_keeps_at_least_one_ring : forall gst gst' h,
+  Notation fail_step_preserves P := (forall gst gst' h,
       inductive_invariant gst ->
       In h (nodes gst) ->
       sigma gst' = sigma gst ->
       nodes gst' = nodes gst ->
       failed_nodes gst' = h :: failed_nodes gst ->
-      at_least_one_ring gst'.
+      P gst').
+
+  Lemma fail_step_keeps_at_least_one_ring :
+    fail_step_preserves at_least_one_ring.
+  Admitted.
+
+  Lemma fail_step_keeps_at_most_one_ring :
+    fail_step_preserves at_most_one_ring.
+  Admitted.
+
+  Lemma fail_step_keeps_ordered_ring :
+    fail_step_preserves ordered_ring.
+  Admitted.
+
+  Lemma fail_step_keeps_connected_appendages :
+    fail_step_preserves connected_appendages.
+  Admitted.
+
+  Lemma fail_step_keeps_base_not_skipped :
+    fail_step_preserves base_not_skipped.
   Admitted.
    
+  Notation timeout_step_preserves P :=
+    (forall gst gst' h st t st' ms newts clearedts,
+      inductive_invariant gst ->
+      In h (nodes gst) ->
+      ~ In h (failed_nodes gst) ->
+      sigma gst h = Some st ->
+      In t (timeouts gst h) ->
+      timeout_handler h st t = (st', ms, newts, clearedts) ->
+      gst' = (apply_handler_result
+               h
+               (st', ms, newts, t :: clearedts)
+               (e_timeout h t)
+               gst) ->
+      P gst').
+
+  Theorem timeout_step_keeps_at_least_one_ring :
+    timeout_step_preserves at_least_one_ring.
+  Admitted.
+
+  Theorem timeout_step_keeps_at_most_one_ring :
+    timeout_step_preserves at_most_one_ring.
+  Admitted.
+
+  Theorem timeout_step_keeps_ordered_ring :
+    timeout_step_preserves ordered_ring.
+  Admitted.
+
+  Theorem timeout_step_keeps_connected_appendages :
+    timeout_step_preserves connected_appendages.
+  Admitted.
+
+  Theorem timeout_step_keeps_base_not_skipped :
+    timeout_step_preserves base_not_skipped.
+  Admitted.
+
+  Lemma invariant_preserved_when_all_nodes_and_sigma_preserved : forall gst gst',
+      inductive_invariant gst ->
+      nodes gst' = nodes gst ->
+      failed_nodes gst' = failed_nodes gst ->
+      sigma gst' = sigma gst ->
+      inductive_invariant gst'.
+  Admitted.
+
+  Notation node_deliver_step_preserves P :=
+    (forall gst xs m ys gst' h d st ms nts cts e,
+      inductive_invariant gst ->
+      In h (nodes gst) ->
+      ~ In h (failed_nodes gst) ->
+      sigma gst h = Some d ->
+      h = fst (snd m) ->
+      msgs gst = xs ++ m :: ys ->
+      gst' = update_msgs gst (xs ++ ys) ->
+      recv_handler h (fst m) d (snd (snd m)) = (st, ms, nts, cts) ->
+      P (apply_handler_result h (st, ms, nts, cts) e gst')).
+
+  Lemma node_deliver_step_keeps_at_least_one_ring :
+    node_deliver_step_preserves at_least_one_ring.
+  Admitted.
+
+  Lemma node_deliver_step_keeps_at_most_one_ring :
+    node_deliver_step_preserves at_most_one_ring.
+  Admitted.
+
+  Lemma node_deliver_step_keeps_ordered_ring :
+    node_deliver_step_preserves ordered_ring.
+  Admitted.
+
+  Lemma node_deliver_step_keeps_connected_appendages :
+    node_deliver_step_preserves connected_appendages.
+  Admitted.
+
+  Lemma node_deliver_step_keeps_base_not_skipped :
+    node_deliver_step_preserves base_not_skipped.
+  Admitted.
+ 
+  Lemma invariant_preserved_by_client_recv_step : forall gst gst' m h xs ys,
+      inductive_invariant gst ->
+      can_be_client h ->
+      msgs gst = xs ++ m :: ys ->
+      h = fst (snd m) ->
+      ~ In h (nodes gst) ->
+      nodes gst' = nodes gst ->
+      failed_nodes gst' = failed_nodes gst ->
+      timeouts gst' = timeouts gst ->
+      sigma gst' = sigma gst ->
+      msgs gst' = xs ++ ys ->
+      inductive_invariant gst'.
+  Admitted.
+
   Theorem invariant_steps_to_at_least_one_ring : forall gst gst',
       inductive_invariant gst ->
       step_dynamic gst gst' ->
@@ -713,37 +845,73 @@ Section ChordProof.
   Proof.
     intuition.
     break_step.
-    - break_invariant.
-      eapply start_step_keeps_at_least_one_ring; simpl; eauto.
-    - eapply fail_step_keeps_at_least_one_ring; simpl; eauto.
-    - admit. (* timeout step *)
-    - admit. (* receive step (client) *)
-    - admit. (* receive step (node) *)
-  Admitted.
+    - eapply start_step_keeps_at_least_one_ring; simpl; eauto.
+    - eauto using fail_step_keeps_at_least_one_ring.
+    - eauto using timeout_step_keeps_at_least_one_ring.
+    - eapply invariant_preserved_by_client_recv_step; simpl; eauto.
+    - eauto using node_deliver_step_keeps_at_least_one_ring.
+    - eapply invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
+  Qed.
 
   Theorem invariant_steps_to_at_most_one_ring : forall gst gst',
       inductive_invariant gst ->
       step_dynamic gst gst' ->
       at_most_one_ring gst'.
-  Admitted.
+  Proof.
+    intuition.
+    break_step.
+    - eapply start_step_keeps_at_most_one_ring; simpl; eauto.
+    - eauto using fail_step_keeps_at_most_one_ring.
+    - eauto using timeout_step_keeps_at_most_one_ring.
+    - eapply invariant_preserved_by_client_recv_step; simpl; eauto.
+    - eauto using node_deliver_step_keeps_at_most_one_ring.
+    - eapply invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
+  Qed.
 
   Theorem invariant_steps_to_ordered_ring : forall gst gst',
       inductive_invariant gst ->
       step_dynamic gst gst' ->
       ordered_ring gst'.
-  Admitted.
+  Proof.
+    intuition.
+    break_step.
+    - eapply start_step_keeps_ordered_ring; simpl; eauto.
+    - eauto using fail_step_keeps_ordered_ring.
+    - eauto using timeout_step_keeps_ordered_ring.
+    - eapply invariant_preserved_by_client_recv_step; simpl; eauto.
+    - eauto using node_deliver_step_keeps_ordered_ring.
+    - eapply invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
+  Qed.
 
   Theorem invariant_steps_to_connected_appendages : forall gst gst',
       inductive_invariant gst ->
       step_dynamic gst gst' ->
       connected_appendages gst'.
-  Admitted.
+  Proof.
+    intuition.
+    break_step.
+    - eapply start_step_keeps_connected_appendages; simpl; eauto.
+    - eauto using fail_step_keeps_connected_appendages.
+    - eauto using timeout_step_keeps_connected_appendages.
+    - eapply invariant_preserved_by_client_recv_step; simpl; eauto.
+    - eauto using node_deliver_step_keeps_connected_appendages.
+    - eapply invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
+  Qed.
 
   Theorem invariant_steps_to_base_not_skipped : forall gst gst',
       inductive_invariant gst ->
       step_dynamic gst gst' ->
       base_not_skipped gst'.
-  Admitted.
+  Proof.
+    intuition.
+    break_step.
+    - eapply start_step_keeps_base_not_skipped; simpl; eauto.
+    - eauto using fail_step_keeps_base_not_skipped.
+    - eauto using timeout_step_keeps_base_not_skipped.
+    - eapply invariant_preserved_by_client_recv_step; simpl; eauto.
+    - eauto using node_deliver_step_keeps_base_not_skipped.
+    - eapply invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
+  Qed.
 
   Theorem invariant_is_invariant : forall gst gst',
       inductive_invariant gst ->

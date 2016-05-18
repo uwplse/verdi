@@ -140,14 +140,13 @@ Section Dynamic.
                             trace := trace gst ++ [e_recv m]
                          |}
   | Deliver_node :
-      forall gst gst' m h d xs ys ms st ts ts' t newts clearedts,
+      forall gst gst' m h d xs ys ms st ts t newts clearedts,
         msgs gst = xs ++ m :: ys ->
         h = fst (snd m) ->
         In h (nodes gst) ->
         ~ In h (failed_nodes gst) ->
         sigma gst h = Some d ->
         (In t clearedts -> In t ts) ->
-        (In t ts' -> ~ In t clearedts /\ (In t ts \/ In t newts)) ->
         recv_handler h (fst m) d (snd (snd m)) = (st, ms, newts, clearedts) ->
         gst' = update_msgs gst (xs ++ ys) ->
         step_dynamic gst (apply_handler_result
