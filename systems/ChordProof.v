@@ -655,17 +655,16 @@ Section ChordProof.
     unfold best_succ.
     intuition.
     break_exists_exists.
-    repeat split; break_and.
-    - eauto using adding_nodes_does_not_affect_live_node.
-    - eapply update_preserving_states; eauto.
-      repeat break_live_node.
-      congruence.
-    - auto.
+    repeat split;
+      break_and;
+      eauto using adding_nodes_does_not_affect_live_node.
+    - repeat break_live_node.
+      eapply update_preserving_states;
+        congruence || eauto.
     - intuition.
       find_copy_apply_hyp_hyp.
       break_dead_node.
-      eapply adding_nodes_does_not_affect_dead_node; eauto.
-    - eauto using adding_nodes_does_not_affect_live_node.
+      eauto using adding_nodes_does_not_affect_dead_node.
   Qed.
 
   Lemma adding_node_preserves_reachable : forall h from to gst gst' st,
@@ -677,10 +676,8 @@ Section ChordProof.
         reachable gst' from to.
   Proof.
     intuition.
-    induction H.
-    - apply ReachableSucc.
-      eauto using adding_nodes_does_not_affect_best_succ.
-    - eauto using ReachableTransL, adding_nodes_does_not_affect_best_succ.
+    induction H;
+      eauto using ReachableSucc, ReachableTransL, adding_nodes_does_not_affect_best_succ.
   Qed.
 
   Theorem start_step_keeps_at_least_one_ring : forall h gst gst' st known k,
@@ -700,19 +697,28 @@ Section ChordProof.
     eauto using adding_node_preserves_reachable.
   Qed.
 
+  Lemma fail_step_keeps_at_least_one_ring : forall gst gst' h,
+      inductive_invariant gst ->
+      In h (nodes gst) ->
+      sigma gst' = sigma gst ->
+      nodes gst' = nodes gst ->
+      failed_nodes gst' = h :: failed_nodes gst ->
+      at_least_one_ring gst'.
+  Admitted.
+   
   Theorem invariant_steps_to_at_least_one_ring : forall gst gst',
       inductive_invariant gst ->
       step_dynamic gst gst' ->
       at_least_one_ring gst'.
   Proof.
     intuition.
-    break_invariant.
     break_step.
-    - eapply start_step_keeps_at_least_one_ring; simpl; eauto.
-    - admit.
-    - admit.
-    - admit.
-    - admit.
+    - break_invariant.
+      eapply start_step_keeps_at_least_one_ring; simpl; eauto.
+    - eapply fail_step_keeps_at_least_one_ring; simpl; eauto.
+    - admit. (* timeout step *)
+    - admit. (* receive step (client) *)
+    - admit. (* receive step (node) *)
   Admitted.
 
   Theorem invariant_steps_to_at_most_one_ring : forall gst gst',
