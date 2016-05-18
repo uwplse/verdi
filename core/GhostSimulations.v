@@ -11,7 +11,7 @@ Require Import mathcomp.ssreflect.ssreflect.
 
 Set Implicit Arguments.
 
-Class GhostFailureParams (B : BaseParams) (M : MultiParams B) (P : FailureParams M) :=
+Class GhostFailureParams `(P : FailureParams) :=
   {
     ghost_data : Type;
     ghost_init : ghost_data ;
@@ -35,7 +35,7 @@ Definition refined_net_handlers me src m st :=
 
 Definition refined_input_handlers me inp st :=
   let '(out, st', ps) :=
-      @input_handlers _ multi_params me inp (snd st) in
+      input_handlers me inp (snd st) in
   (out, (ghost_input_handlers me inp st, st'), ps).
 
 Definition refined_reboot (st : ghost_data * data) :=
@@ -94,31 +94,37 @@ Arguments deghost_packet /_.
 Definition deghost_prop I (failed_net : list name * network) : Prop :=
   I ((fst failed_net), deghost (snd failed_net)).
 
-Instance refined_base_params_tot_map : BaseParamsTotalMap refined_base_params base_params :=
+Instance refined_base_params_tot_map :
+ BaseParamsTotalMap refined_base_params base_params :=
   {
     tot_map_data := snd ;
     tot_map_input := id ;
     tot_map_output := id
   }.
 
-Instance refined_multi_params_name_tot_map : MultiParamsNameTotalMap refined_multi_params multi_params :=
+Instance refined_multi_params_name_tot_map :
+ MultiParamsNameTotalMap refined_multi_params multi_params :=
   {
     tot_map_name := id ;
     tot_map_name_inv := id
   }.
 
-Instance refined_multi_params_name_tot_map_bijective : MultiParamsNameTotalMapBijective refined_multi_params_name_tot_map :=
+Instance refined_multi_params_name_tot_map_bijective :
+ MultiParamsNameTotalMapBijective refined_multi_params_name_tot_map :=
   {
     tot_map_name_inv_inverse := fun _ => eq_refl ;
     tot_map_name_inverse_inv := fun _ => eq_refl
   }.
 
-Instance refined_multi_params_tot_msg_map : MultiParamsMsgTotalMap refined_multi_params multi_params :=
+Instance refined_multi_params_tot_msg_map :
+ MultiParamsMsgTotalMap refined_multi_params multi_params :=
   {
     tot_map_msg := id
   }.
 
-Instance refined_multi_params_map_congruency : MultiParamsTotalMapCongruency refined_base_params_tot_map refined_multi_params_name_tot_map refined_multi_params_tot_msg_map := 
+Instance refined_multi_params_map_congruency :
+ MultiParamsTotalMapCongruency refined_base_params_tot_map
+  refined_multi_params_name_tot_map refined_multi_params_tot_msg_map :=
   {
     tot_init_handlers_eq := fun _ => eq_refl ;
     tot_net_handlers_eq := _ ;
@@ -140,7 +146,9 @@ Proof.
   by rewrite /id /= map_id /tot_map_name_msgs /= /id /= map_fst_snd_id.
 Qed.
 
-Instance refined_failure_params_map_congruency : FailureParamsTotalMapCongruency refined_failure_params failure_params refined_base_params_tot_map := 
+Instance refined_failure_params_map_congruency :
+ FailureParamsTotalMapCongruency refined_failure_params
+  failure_params refined_base_params_tot_map :=
   {
     tot_reboot_eq := fun _ => eq_refl
   }.
