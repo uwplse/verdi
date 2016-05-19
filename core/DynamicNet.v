@@ -45,6 +45,8 @@ Section Dynamic.
       trace : list event
     }.
 
+  Variable extra_constraints : global_state -> Prop.
+
   Definition nil_state : addr -> option data := fun _ => None.
   Definition nil_timeouts : addr -> list timeout := fun _ => [].
   Definition init :=
@@ -86,7 +88,7 @@ Section Dynamic.
 
   Inductive step_dynamic : global_state -> global_state -> Prop :=
   | Start :
-      forall h gst ms st new_msgs known k newts,
+      forall h gst gst' ms st new_msgs known k newts,
         can_be_node h ->
         ~ In h (nodes gst) ->
         (* hypotheses on the list of known nodes *)
@@ -96,49 +98,57 @@ Section Dynamic.
         (* note that clearedts might as well be [] *)
         start_handler h known = (st, ms, newts) ->
         new_msgs = map (send h) ms ->
-        step_dynamic gst {| nodes := h :: nodes gst;
-                            failed_nodes := failed_nodes gst;
-                            timeouts := (timeouts gst)[h ==> newts];
-                            sigma := (sigma gst)[h => st];
-                            msgs := new_msgs ++ msgs gst;
-                            trace := trace gst ++ (map e_send new_msgs)
-                         |}
+        gst' = {| nodes := h :: nodes gst;
+                  failed_nodes := failed_nodes gst;
+                  timeouts := (timeouts gst)[h ==> newts];
+                  sigma := (sigma gst)[h => st];
+                  msgs := new_msgs ++ msgs gst;
+                  trace := trace gst ++ (map e_send new_msgs)
+               |} ->
+        extra_constraints gst' ->
+        step_dynamic gst gst'
   | Fail :
-      forall h gst,
+      forall h gst gst',
         In h (nodes gst) ->
         ~ In h (failed_nodes gst) ->
-        step_dynamic gst {| nodes := nodes gst;
-                            failed_nodes := h :: (failed_nodes gst);
-                            timeouts := timeouts gst;
-                            sigma := sigma gst;
-                            msgs := msgs gst;
-                            trace := trace gst ++ [e_fail h]
-                         |}
+        gst' = {| nodes := nodes gst;
+                  failed_nodes := h :: (failed_nodes gst);
+                  timeouts := timeouts gst;
+                  sigma := sigma gst;
+                  msgs := msgs gst;
+                  trace := trace gst ++ [e_fail h]
+               |} ->
+        extra_constraints gst' ->
+        step_dynamic gst gst'
   | Timeout :
-      forall gst h st t st' ms newts clearedts,
+      forall gst gst' h st t st' ms newts clearedts,
         In h (nodes gst) ->
         ~ In h (failed_nodes gst) ->
         sigma gst h = Some st ->
         In t (timeouts gst h) ->
         timeout_handler h st t = (st', ms, newts, clearedts) ->
-        step_dynamic gst (apply_handler_result
-                            h
-                            (st', ms, newts, t :: clearedts)
-                            (e_timeout h t)
-                            gst)
+        gst' = (apply_handler_result
+                  h
+                  (st', ms, newts, t :: clearedts)
+                  (e_timeout h t)
+                  gst) ->
+        extra_constraints gst' ->
+        step_dynamic gst gst'
   | Deliver_client :
-      forall gst m h xs ys,
+      forall gst gst' m h xs ys,
         can_be_client h ->
         msgs gst = xs ++ m :: ys ->
         h = fst (snd m) ->
         ~ In h (nodes gst) ->
-        step_dynamic gst {| nodes := nodes gst;
-                            failed_nodes := failed_nodes gst;
-                            timeouts := timeouts gst;
-                            sigma := sigma gst;
-                            msgs := xs ++ ys;
-                            trace := trace gst ++ [e_recv m]
-                         |}
+        gst' = {| nodes := nodes gst;
+                  failed_nodes := failed_nodes gst;
+                  timeouts := timeouts gst;
+                  sigma := sigma gst;
+                  msgs := xs ++ ys;
+                  trace := trace gst ++ [e_recv m]
+               |} ->
+        extra_constraints gst' ->
+        step_dynamic gst gst'
   | Deliver_node :
       forall gst gst' m h d xs ys ms st ts t newts clearedts,
         msgs gst = xs ++ m :: ys ->
@@ -148,23 +158,26 @@ Section Dynamic.
         sigma gst h = Some d ->
         (In t clearedts -> In t ts) ->
         recv_handler h (fst m) d (snd (snd m)) = (st, ms, newts, clearedts) ->
-        gst' = update_msgs gst (xs ++ ys) ->
-        step_dynamic gst (apply_handler_result
-                            h
-                            (st, ms, newts, clearedts)
-                            (e_recv m)
-                            gst')
+        gst' = apply_handler_result
+                 h
+                 (st, ms, newts, clearedts)
+                 (e_recv m)
+                 (update_msgs gst (xs ++ ys)) ->
+        extra_constraints gst' ->
+        step_dynamic gst gst'
   | Input :
-      forall gst m h to i,
+      forall gst gst' m h to i,
         can_be_client h ->
         client_payload i ->
         ~ In h (nodes gst) ->
         m = send h (to, i) ->
-        step_dynamic gst {| nodes := nodes gst;
-                            failed_nodes := failed_nodes gst;
-                            timeouts := timeouts gst;
-                            sigma := sigma gst;
-                            msgs := m :: (msgs gst);
-                            trace := trace gst ++ [e_send m]
-                         |}.
+        gst' = {| nodes := nodes gst;
+                  failed_nodes := failed_nodes gst;
+                  timeouts := timeouts gst;
+                  sigma := sigma gst;
+                  msgs := m :: (msgs gst);
+                  trace := trace gst ++ [e_send m]
+               |} ->
+        extra_constraints gst' ->
+        step_dynamic gst gst'.
 End Dynamic.

@@ -37,18 +37,22 @@ Section ChordProof.
   Notation handle_stabilize := (handle_stabilize SUCC_LIST_LEN hash).
   Notation try_rectify := (try_rectify hash).
 
-  Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler client_payload can_be_client can_be_node).
-
   Notation e_recv := (e_recv addr payload timeout).
   Notation e_timeout := (e_timeout addr payload timeout).
   Notation e_fail := (e_fail addr payload timeout).
 
-  Axiom timeouts_detect_failure : forall trace xs ys t h dead req,
-      trace = xs ++ t :: ys ->
+  Definition timeouts_detect_failure (gst : global_state) : Prop :=
+    forall xs t ys h dead req,
+      (trace _ _ _ _ gst) = xs ++ t :: ys ->
       (* if a request timeout occurs at some point in the trace... *)
       t = (e_timeout h (Request dead req)) ->
       (* then it corresponds to an earlier node failure. *)
       In (e_fail dead) xs.
+
+  Definition extra_constraints := timeouts_detect_failure.
+
+  Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler client_payload can_be_client can_be_node extra_constraints).
+
 
   (* tip: treat this as opaque and use lemmas: it never gets stopped except by failure *)
   Definition live_node (gst : global_state) (h : addr) : Prop :=
@@ -102,7 +106,7 @@ Section ChordProof.
     match goal with
       | H : step_dynamic _ _ |- _ =>
         induction H
-    end.
+    end; subst.
 
   Ltac break_live_node :=
     match goal with
