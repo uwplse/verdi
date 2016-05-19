@@ -102,7 +102,7 @@ Section ChordProof.
     match goal with
       | H : step_dynamic _ _ |- _ =>
         induction H
-    end.
+    end; subst.
 
   Ltac break_live_node :=
     match goal with
