@@ -21,8 +21,7 @@ Class MultiParamsPartialExtendedMap
 {
   pt_ext_map_data : @data B0 -> @name _ P0 -> @data B1 ;
   pt_ext_map_input : @input B0 -> @name _ P0 -> @data B0 -> option (@input B1) ;
-  pt_ext_map_output : @output B0 -> option (@output B1) ;
-  pt_ext_map_msg : @msg B0 P0 -> option (@msg B1 P1) ;
+  pt_ext_map_msg : @msg _ P0 -> option (@msg _ P1) ;
 }.
 
 Section PartialExtendedMapDefs.
@@ -41,20 +40,13 @@ Definition pt_ext_map_name_msgs :=
                 | None => l
                 end) [].
 
-Definition pt_ext_map_outputs :=
-  fold_right (fun o l =>
-                match pt_ext_map_output o with
-                | Some o' => o' :: l
-                | None => l
-                end) [].
-
 Definition pt_ext_mapped_net_handlers me src m st :=
-  let '(out, st', ps) := net_handlers me src m st in
-  (pt_ext_map_outputs out, pt_ext_map_data st' me, pt_ext_map_name_msgs ps).
+  let '(_, st', ps) := net_handlers me src m st in
+  (pt_ext_map_data st' me, pt_ext_map_name_msgs ps).
 
 Definition pt_ext_mapped_input_handlers me inp st :=
-  let '(out, st', ps) := input_handlers me inp st in
-  (pt_ext_map_outputs out, pt_ext_map_data st' me, pt_ext_map_name_msgs ps).
+  let '(_, st', ps) := input_handlers me inp st in
+  (pt_ext_map_data st' me, pt_ext_map_name_msgs ps).
 
 End PartialExtendedMapDefs.
 
@@ -66,18 +58,18 @@ Class MultiParamsPartialExtendedMapCongruency
   {
     pt_ext_init_handlers_eq : forall n,
       pt_ext_map_data (init_handlers n) n = init_handlers (tot_map_name n) ;
-    pt_ext_net_handlers_some : forall me src m st m',
+    pt_ext_net_handlers_some : forall me src m st m' out st' ps,
       pt_ext_map_msg m = Some m' ->
-      pt_ext_mapped_net_handlers me src m st = 
-        net_handlers (tot_map_name me) (tot_map_name src) m' (pt_ext_map_data st me) ;
+      net_handlers (tot_map_name me) (tot_map_name src) m' (pt_ext_map_data st me) = (out, st', ps) ->
+      pt_ext_mapped_net_handlers me src m st = (st', ps) ;
     pt_ext_net_handlers_none : forall me src m st out st' ps,
       pt_ext_map_msg m = None ->
       net_handlers me src m st = (out, st', ps) ->
       pt_ext_map_data st' me = pt_ext_map_data st me /\ pt_ext_map_name_msgs ps = [] ;
-    pt_ext_input_handlers_some : forall me inp st inp',
+    pt_ext_input_handlers_some : forall me inp st inp' out st' ps,
       pt_ext_map_input inp me st = Some inp' ->
-      pt_ext_mapped_input_handlers me inp st = 
-        input_handlers (tot_map_name me) inp' (pt_ext_map_data st me) ;
+      input_handlers (tot_map_name me) inp' (pt_ext_map_data st me) = (out, st', ps) ->
+      pt_ext_mapped_input_handlers me inp st = (st', ps) ;
     pt_ext_input_handlers_none : forall me inp st out st' ps,
       pt_ext_map_input inp me st = None ->
       input_handlers me inp st = (out, st', ps) ->
@@ -229,24 +221,24 @@ case => {net net' tr}.
       case: p H_eq H_hnd H_eq' H_m => /= src dst m H_eq H_hnd H_eq'.
       case (pt_ext_map_msg m) => //= m' H_m.
       by inversion H_m.
-    exists [(pDst p', inr (pt_ext_map_outputs out))].
+    case H_n: (net_handlers (pDst p') (pSrc p') (pBody p') (pt_ext_map_data (nwState net (pDst p)) (pDst p))) => [[out' d'] ps].
+    exists [(pDst p', inr out')].
     apply SM_deliver with (xs := pt_ext_map_packets ms) (ys := pt_ext_map_packets ms') (d0 := pt_ext_map_data d (pDst p)) (l0 := pt_ext_map_name_msgs l).
     * rewrite /= H_eq pt_ext_map_packets_app_distr /=.
-      case H_p: (pt_ext_map_packet _) => [p0|].
-        rewrite H_p in H_m.
-        by injection H_m => H_eq_p; rewrite H_eq_p.
-      by rewrite H_p in H_m.
+      case H_p: (pt_ext_map_packet _) => [p0|]; last by rewrite H_p in H_m.
+      by rewrite H_p in H_m; injection H_m => H_eq_p; rewrite H_eq_p.
     * rewrite /=.
       rewrite -{2}H_eq_dst tot_map_name_inv_inverse.
-      case: p H_eq H_hnd H_eq' H_m H_eq_dst => /= src dst mg H_eq H_hnd H_eq'.
+      case: p H_eq H_hnd H_eq' H_m H_eq_dst H_n => /= src dst mg H_eq H_hnd H_eq'.
       case H_m: (pt_ext_map_msg mg) => [mg'|] //.
       case: p' H_eq' => src' dst' m0 H_eq' H_eq_p.
       inversion H_eq_p; subst.
-      rewrite /= {H_eq_p} => H_eq'.
-      have H_q := pt_ext_net_handlers_some dst src mg (nwState net dst) H_m.
+      move => H_eq_dst H_eq_n {H_eq_p H_eq_dst}.
+      simpl in *.
+      have H_q := @pt_ext_net_handlers_some _ _ _ _ _ _ multi_map_congr dst src mg (nwState net dst) _ _ _ _ H_m H_eq_n.
       rewrite /pt_ext_mapped_net_handlers in H_q.
       rewrite H_hnd in H_q.
-      rewrite H_q.
+      find_inversion.
       by rewrite tot_map_name_inv_inverse.
     * rewrite /= /pt_ext_map_net /= 2!pt_ext_map_packets_app_distr.
       rewrite (pt_ext_map_packet_eq_some _ _ H_m).
@@ -271,14 +263,15 @@ case => {net net' tr}.
     by rewrite H_eq_s.
 - move => h net net' out inp d l H_hnd H_eq.  
   case H_i: (pt_ext_map_input inp h (nwState net h)) => [inp'|].
-    left.    
-    exists [(tot_map_name h, inl inp'); (tot_map_name h, inr (pt_ext_map_outputs out))].
+    left.
+    case H_h: (input_handlers (tot_map_name h) inp' (pt_ext_map_data (nwState net h) h)) => [[out' d'] ps].
+    exists [(tot_map_name h, inl inp'); (tot_map_name h, inr out')].
     apply (@SM_input _ _ _ _ _ _ _ (pt_ext_map_data d h) (pt_ext_map_name_msgs l)).
       rewrite /=.
-      have H_q := pt_ext_input_handlers_some h inp (nwState net h) H_i.
+      have H_q := @pt_ext_input_handlers_some _ _ _ _ _ _ multi_map_congr h inp (nwState net h) _ _ _ _ H_i H_h.
       rewrite /pt_ext_mapped_input_handlers /= in H_q.
       rewrite H_hnd in H_q.
-      rewrite H_q.
+      find_inversion.
       by rewrite tot_map_name_inv_inverse.
     rewrite /= H_eq /= /pt_ext_map_net /= pt_ext_map_packets_app_distr pt_ext_map_packet_map_eq.
     by rewrite -pt_ext_map_update_eq.
