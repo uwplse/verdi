@@ -200,6 +200,8 @@ Section ChordProof.
   (* treat as opaque *)
   Definition ring_member (gst : global_state) (h : addr) : Prop :=
     reachable gst h h.
+  Transparent ring_member.
+  Hint Unfold ring_member.
 
   Definition at_least_one_ring (gst : global_state) : Prop :=
     exists h, ring_member gst h.
@@ -222,9 +224,8 @@ Section ChordProof.
       (* or between h x s -> s = x *)
 
   Definition connected_appendages (gst : global_state) : Prop :=
-    forall a, exists r,
-      live_node gst a ->
-      ring_member gst r /\ reachable gst a r.
+    forall a, live_node gst a ->
+      exists r, ring_member gst r /\ reachable gst a r.
 
   Definition base_not_skipped (gst : global_state) : Prop :=
     forall h b succs xs s ys st,
@@ -314,6 +315,36 @@ Section ChordProof.
       eauto.
     * repeat find_rewrite; auto.
     * repeat find_rewrite; auto.
+  Qed.
+
+  Lemma live_node_means_state_exists : forall gst h,
+      live_node gst h ->
+      exists st, sigma gst h = Some st.
+  Proof.
+    unfold live_node.
+    intuition.
+    break_exists_exists.
+    break_and.
+    auto.
+  Qed.
+
+  Lemma coarse_live_node_characterization : forall gst gst' h,
+      live_node gst h ->
+      nodes gst = nodes gst' ->
+      failed_nodes gst = failed_nodes gst' ->
+      sigma gst = sigma gst' ->
+      live_node gst' h.
+  Proof.
+    intuition.
+    find_copy_apply_lem_hyp live_node_means_state_exists.
+    break_exists.
+    eapply live_node_equivalence.
+    * repeat find_rewrite; eauto.
+    * repeat find_rewrite; eauto.
+    * repeat find_rewrite; eauto.
+    * repeat find_rewrite; eauto.
+    * repeat find_rewrite; eauto.
+    * repeat find_rewrite; eauto.
   Qed.
 
   Lemma apply_handler_result_preserves_nodes : forall gst gst' h res e,
@@ -651,6 +682,43 @@ Section ChordProof.
     - find_rewrite; auto.
   Qed.
 
+  Lemma coarse_dead_node_characterization : forall gst gst' h,
+      dead_node gst h ->
+      sigma gst' = sigma gst ->
+      nodes gst' = nodes gst ->
+      failed_nodes gst' = failed_nodes gst ->
+      dead_node gst' h.
+  Proof.
+    unfold dead_node.
+    intuition.
+    break_exists_exists.
+    break_and.
+    repeat split; repeat find_rewrite; auto.
+  Qed.
+
+  Lemma coarse_best_succ_characterization : forall gst gst' h s,
+      best_succ gst h s ->
+      sigma gst' = sigma gst ->
+      nodes gst' = nodes gst ->
+      failed_nodes gst' = failed_nodes gst ->
+      best_succ gst' h s.
+  Proof.
+    unfold best_succ.
+    intuition.
+    break_exists_exists.
+    repeat split; break_and.
+    - match goal with
+        | H : live_node gst h |- _ => unfold live_node in H
+      end.
+      break_exists_exists.
+      break_and.
+      repeat split; repeat find_rewrite; auto.
+    - repeat find_rewrite; auto.
+    - repeat find_rewrite; auto.
+    - eauto using coarse_dead_node_characterization.
+    - find_eapply_lem_hyp live_node_specificity; find_rewrite; auto.
+  Qed.
+
   Lemma adding_nodes_does_not_affect_best_succ : forall gst gst' h s n st,
       best_succ gst h s ->
       ~ In n (nodes gst) ->
@@ -672,6 +740,18 @@ Section ChordProof.
       find_copy_apply_hyp_hyp.
       break_dead_node.
       eauto using adding_nodes_does_not_affect_dead_node.
+  Qed.
+
+  Lemma coarse_reachable_characterization : forall from to gst gst',
+        reachable gst from to ->
+        nodes gst' = nodes gst ->
+        failed_nodes gst' = failed_nodes gst ->
+        sigma gst' = sigma gst ->
+        reachable gst' from to.
+  Proof.
+    intuition.
+    induction H;
+      eauto using ReachableSucc, ReachableTransL, coarse_best_succ_characterization.
   Qed.
 
   Lemma adding_node_preserves_reachable : forall h from to gst gst' st,
@@ -752,7 +832,7 @@ Section ChordProof.
   Lemma fail_step_keeps_base_not_skipped :
     fail_step_preserves base_not_skipped.
   Admitted.
-   
+
   Notation timeout_step_preserves P :=
     (forall gst gst' h st t st' ms newts clearedts,
       inductive_invariant gst ->
@@ -788,13 +868,101 @@ Section ChordProof.
     timeout_step_preserves base_not_skipped.
   Admitted.
 
-  Lemma invariant_preserved_when_all_nodes_and_sigma_preserved : forall gst gst',
-      inductive_invariant gst ->
-      nodes gst' = nodes gst ->
-      failed_nodes gst' = failed_nodes gst ->
-      sigma gst' = sigma gst ->
-      inductive_invariant gst'.
-  Admitted.
+  Notation preserved_when_nodes_and_sigma_preserved P :=
+      (forall gst gst',
+          inductive_invariant gst ->
+          nodes gst' = nodes gst ->
+          failed_nodes gst' = failed_nodes gst ->
+          sigma gst' = sigma gst ->
+          P gst').
+
+  Lemma at_least_one_ring_preserved_when_nodes_and_sigma_preserved :
+    preserved_when_nodes_and_sigma_preserved at_least_one_ring.
+  Proof.
+    intuition.
+    break_invariant.
+    unfold at_least_one_ring, ring_member in *.
+    break_exists_exists.
+    eauto using coarse_reachable_characterization.
+  Qed.
+
+  Lemma at_most_one_ring_preserved_when_nodes_and_sigma_preserved :
+    preserved_when_nodes_and_sigma_preserved at_most_one_ring.
+  Proof.
+    intuition.
+    break_invariant.
+    unfold at_most_one_ring in *.
+    intuition.
+    eapply coarse_reachable_characterization; eauto.
+    * match goal with
+        | [ H : _ |- _ ] => apply H
+      end.
+      (* why does this work but eauto using CRC; eauto using CRC. doesn't *)
+      eauto using coarse_reachable_characterization.
+      + eauto using coarse_reachable_characterization.
+  Qed.
+
+  Lemma ordered_ring_preserved_when_nodes_and_sigma_preserved :
+    preserved_when_nodes_and_sigma_preserved ordered_ring.
+  Proof.
+    intuition.
+    break_invariant.
+    unfold ordered_ring.
+    intuition.
+    match goal with
+      | H : ordered_ring _ |- _ => eapply H
+    end.
+    - eapply coarse_reachable_characterization.
+      * match goal with
+          | [ H : ring_member gst' ?h, H' : best_succ gst' ?h _ |- _ ] => apply H
+        end.
+      * auto.
+      * auto.
+      * auto.
+    - eauto using coarse_best_succ_characterization.
+    - eauto using coarse_reachable_characterization.
+    - auto.
+  Qed.
+
+  Lemma connected_appendages_preserved_when_nodes_and_sigma_preserved :
+    preserved_when_nodes_and_sigma_preserved connected_appendages.
+  Proof.
+    intuition.
+    break_invariant.
+    unfold connected_appendages in *.
+    intuition.
+    find_copy_eapply_lem_hyp coarse_live_node_characterization;
+      try find_apply_hyp_hyp;
+      break_exists_exists;
+      break_and;
+      eauto using coarse_reachable_characterization.
+  Qed.
+
+  Lemma base_not_skipped_preserved_when_nodes_and_sigma_preserved :
+    preserved_when_nodes_and_sigma_preserved base_not_skipped.
+  Proof.
+    intuition.
+    break_invariant.
+    unfold base_not_skipped.
+    intuition.
+    find_copy_eapply_lem_hyp live_node_means_state_exists.
+    break_exists.
+    repeat find_rewrite.
+    find_injection.
+    eauto using coarse_live_node_characterization.
+   Qed.
+
+  Lemma invariant_preserved_when_all_nodes_and_sigma_preserved :
+      preserved_when_nodes_and_sigma_preserved inductive_invariant.
+  Proof.
+    intuition.
+    repeat split;
+      eauto using at_least_one_ring_preserved_when_nodes_and_sigma_preserved,
+                  at_most_one_ring_preserved_when_nodes_and_sigma_preserved,
+                  ordered_ring_preserved_when_nodes_and_sigma_preserved,
+                  connected_appendages_preserved_when_nodes_and_sigma_preserved,
+                  base_not_skipped_preserved_when_nodes_and_sigma_preserved.
+  Qed.
 
   Notation node_deliver_step_preserves P :=
     (forall gst xs m ys gst' h d st ms nts cts e,
@@ -827,20 +995,26 @@ Section ChordProof.
   Lemma node_deliver_step_keeps_base_not_skipped :
     node_deliver_step_preserves base_not_skipped.
   Admitted.
- 
-  Lemma invariant_preserved_by_client_recv_step : forall gst gst' m h xs ys,
-      inductive_invariant gst ->
-      can_be_client h ->
-      msgs gst = xs ++ m :: ys ->
-      h = fst (snd m) ->
-      ~ In h (nodes gst) ->
-      nodes gst' = nodes gst ->
-      failed_nodes gst' = failed_nodes gst ->
-      timeouts gst' = timeouts gst ->
-      sigma gst' = sigma gst ->
-      msgs gst' = xs ++ ys ->
-      inductive_invariant gst'.
-  Admitted.
+
+  Notation client_recv_step_preserves P :=
+      (forall gst gst' m h xs ys,
+          inductive_invariant gst ->
+          can_be_client h ->
+          msgs gst = xs ++ m :: ys ->
+          h = fst (snd m) ->
+          ~ In h (nodes gst) ->
+          nodes gst' = nodes gst ->
+          failed_nodes gst' = failed_nodes gst ->
+          timeouts gst' = timeouts gst ->
+          sigma gst' = sigma gst ->
+          msgs gst' = xs ++ ys ->
+          P gst').
+
+  Lemma invariant_preserved_by_client_recv_step :
+      client_recv_step_preserves inductive_invariant.
+  Proof.
+    eauto using invariant_preserved_when_all_nodes_and_sigma_preserved.
+  Qed.
 
   Theorem invariant_steps_to_at_least_one_ring : forall gst gst',
       inductive_invariant gst ->
@@ -920,6 +1094,7 @@ Section ChordProof.
   Theorem invariant_is_invariant : forall gst gst',
       inductive_invariant gst ->
       step_dynamic gst gst' ->
+      (* put the thing here *)
       inductive_invariant gst'.
   Proof.
     intuition.
