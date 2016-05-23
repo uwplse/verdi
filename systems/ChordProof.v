@@ -4,6 +4,7 @@ Require Import List.
 Import ListNotations.
 Require Import Arith.
 Require Import StructTact.StructTactics.
+Require Import StructTact.Util.
 
 Section ChordProof.
   Variable SUCC_LIST_LEN : nat.
@@ -11,7 +12,15 @@ Section ChordProof.
   Variable hash_inj : forall a b : addr,
       hash a = hash b -> a = b.
   Variable base : list addr.
+
+  Definition between (x y z : id) :=
+    x < y < z \/ y < z < x \/ z < x < y.
+
   Variable base_size : length base = SUCC_LIST_LEN + 1.
+  Variable base_nodup : NoDup base.
+  Variable base_ordered : forall a b xs ys,
+      base = xs ++ a :: b :: ys ->
+      a < b.
 
   Notation start_handler := (start_handler SUCC_LIST_LEN hash).
   Notation recv_handler := (recv_handler SUCC_LIST_LEN hash).
@@ -23,6 +32,7 @@ Section ChordProof.
   Notation send := (send addr payload).
 
   Notation global_state := (global_state addr payload data timeout).
+  Notation nil_timeouts := (nil_timeouts addr timeout).
   Notation nodes := (nodes addr payload data timeout).
   Notation failed_nodes := (failed_nodes addr payload data timeout).
   Notation sigma := (sigma addr payload data timeout).
@@ -30,6 +40,7 @@ Section ChordProof.
   Notation msgs := (msgs addr payload data timeout).
   Notation update := (update addr addr_eq_dec data).
   Notation update_msgs := (update_msgs addr payload data timeout).
+  Notation make_pointer := (make_pointer hash).
 
   Notation apply_handler_result := (apply_handler_result addr addr_eq_dec payload data timeout timeout_eq_dec).
   Notation end_query := (end_query hash).
@@ -53,6 +64,22 @@ Section ChordProof.
 
   Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler client_payload can_be_client can_be_node extra_constraints).
 
+  Definition init_sigma (h : addr) : option data.
+  Admitted. (* TODO should map base addresses to data for an ideal ring of just the base nodes *)
+  Definition initial_st : global_state :=
+    {| DynamicNet.nodes := base;
+       DynamicNet.failed_nodes := [];
+       DynamicNet.timeouts := nil_timeouts;
+       DynamicNet.sigma := init_sigma;
+       DynamicNet.msgs := [];
+       DynamicNet.trace := []; |}.
+
+  Inductive reachable_st : global_state -> Prop :=
+    | reachableInit : reachable_st initial_st
+    | rechableStep : forall gst gst',
+        reachable_st gst -> 
+        step_dynamic gst gst' ->
+        reachable_st gst'.
 
   (* tip: treat this as opaque and use lemmas: it never gets stopped except by failure *)
   Definition live_node (gst : global_state) (h : addr) : Prop :=
@@ -211,9 +238,6 @@ Section ChordProof.
       ring_member gst x ->
       ring_member gst y ->
       reachable gst x y.
-
-  Definition between (x y z : id) :=
-    x < y < z \/ y < z < x \/ z < x < y.
 
   Definition ordered_ring (gst : global_state) : Prop :=
     forall h s x,
@@ -554,6 +578,16 @@ Section ChordProof.
     break_if; congruence.
   Qed.
 
+  Lemma update_determined_by_f : forall f x d d' y,
+    y <> x ->
+    update f x d y = d' ->
+    f y = d'.
+  Proof.
+    intuition.
+    find_copy_eapply_lem_hyp update_fixes_other_arguments.
+    find_rewrite; auto.
+  Qed.
+
   Lemma update_preserving_states : forall gst gst' h st st' o,
     sigma gst h = Some st ->
     sigma gst' = update (sigma gst) o st' ->
@@ -682,6 +716,29 @@ Section ChordProof.
     - find_rewrite; auto.
   Qed.
 
+  Lemma adding_nodes_did_not_affect_dead_node : forall gst gst' h n st,
+      ~ In n (nodes gst) ->
+      In h (nodes gst) ->
+      sigma gst' = update (sigma gst) n st ->
+      nodes gst' = n :: nodes gst ->
+      failed_nodes gst' = failed_nodes gst ->
+      dead_node gst' h ->
+      dead_node gst h.
+  Proof.
+    intuition.
+    break_dead_node.
+    unfold dead_node.
+    eexists.
+    repeat split.
+    - eapply update_determined_by_f.
+      * instantiate (1 := n).
+        eauto using In_notIn_implies_neq.
+      * repeat find_rewrite; eauto.
+    - find_rewrite.
+      eauto using in_cons.
+    - find_rewrite; auto.
+  Qed.
+
   Lemma coarse_dead_node_characterization : forall gst gst' h,
       dead_node gst h ->
       sigma gst' = sigma gst ->
@@ -730,8 +787,8 @@ Section ChordProof.
     unfold best_succ.
     intuition.
     break_exists_exists.
+    break_and.
     repeat split;
-      break_and;
       eauto using adding_nodes_does_not_affect_live_node.
     - repeat break_live_node.
       eapply update_preserving_states;
@@ -742,12 +799,88 @@ Section ChordProof.
       eauto using adding_nodes_does_not_affect_dead_node.
   Qed.
 
+  Lemma in_half_means_in_whole : forall A (x : A) (xs ys : list A),
+      In x xs -> In x (xs ++ ys).
+  Admitted.
+
+  Lemma in_middle_means_in_whole : forall A (x : A) (xs ys : list A),
+      In x (xs ++ x :: ys).
+  Admitted.
+
+  Lemma adding_nodes_did_not_affect_best_succ : forall gst gst' h s n st,
+      best_succ gst' h s ->
+      In h (nodes gst) ->
+      ~ In n (nodes gst) ->
+      sigma gst' h = Some st ->
+      ~ In n (map addr_of (succ_list st)) ->
+      sigma gst' = update (sigma gst) n st ->
+      nodes gst' = n :: nodes gst ->
+      failed_nodes gst' = failed_nodes gst ->
+      best_succ gst h s.
+  Proof.
+    intuition.
+    unfold best_succ in *.
+    break_exists_exists.
+    break_and.
+    repeat split.
+    - unfold live_node in *.
+      break_exists.
+      break_and.
+      match goal with
+        | H : sigma gst' ?h = Some ?st |- exists _, sigma gst ?h = _ /\ _ => exists st
+      end.
+      repeat find_rewrite.
+      repeat find_injection.
+      repeat split.
+      * repeat find_reverse_rewrite.
+        eapply update_determined_by_f.
+        + intuition.
+          match goal with
+            | [ H : ?h = _, H' : In n (nodes gst) -> False |- False ] => rewrite <- H in H'
+          end; eauto.
+        + repeat find_rewrite; auto.
+      * eauto.
+      * eauto.
+      * eauto.
+    - repeat find_reverse_rewrite.
+      eapply update_determined_by_f.
+      * intuition.
+        match goal with
+          | [ H : ?h = _, H' : In n (nodes gst) -> False |- False ] => rewrite <- H in H'
+        end; eauto.
+      * repeat find_rewrite; auto.
+    - eauto.
+    - intuition.
+      eapply adding_nodes_did_not_affect_dead_node; eauto.
+      find_copy_apply_hyp_hyp.
+      unfold dead_node in *.
+      break_exists.
+      break_and.
+      repeat find_rewrite.
+      find_injection.
+      eapply In_cons_neq.
+      * eauto.
+      * intuition; subst.
+        match goal with
+          | H : In ?n (map addr_of (succ_list _)) -> False |- False => apply H
+        end.
+        repeat find_rewrite.
+        auto using in_half_means_in_whole.
+    - eapply adding_nodes_did_not_affect_live_node; eauto.
+      * intuition; subst.
+        match goal with
+          | H : In ?n (map addr_of (succ_list _)) -> False |- False => apply H
+        end.
+        repeat (find_rewrite; try find_injection).
+        auto using in_middle_means_in_whole.
+  Qed.
+
   Lemma coarse_reachable_characterization : forall from to gst gst',
-        reachable gst from to ->
-        nodes gst' = nodes gst ->
-        failed_nodes gst' = failed_nodes gst ->
-        sigma gst' = sigma gst ->
-        reachable gst' from to.
+      reachable gst from to ->
+      nodes gst' = nodes gst ->
+      failed_nodes gst' = failed_nodes gst ->
+      sigma gst' = sigma gst ->
+      reachable gst' from to.
   Proof.
     intuition.
     induction H;
@@ -767,6 +900,26 @@ Section ChordProof.
       eauto using ReachableSucc, ReachableTransL, adding_nodes_does_not_affect_best_succ.
   Qed.
 
+  Ltac break_best_succ :=
+    match goal with
+      | H : best_succ _ _ _ |- _ =>
+        let x := fresh in
+        pose proof H as x;
+        unfold best_succ in x;
+        break_exists;
+        break_and
+    end.
+
+  Lemma adding_node_preserves_reachable_converse : forall h from to gst gst' st,
+        reachable gst' from to ->
+        ~ In h (nodes gst) ->
+        In from (nodes gst) ->
+        nodes gst' = h :: nodes gst ->
+        failed_nodes gst' = failed_nodes gst ->
+        sigma gst' = update (sigma gst) h st ->
+        reachable gst from to.
+  Admitted.
+
   Notation start_step_preserves P :=
     (forall gst gst' h st k known,
       inductive_invariant gst ->
@@ -781,6 +934,15 @@ Section ChordProof.
 
   Theorem start_step_keeps_at_most_one_ring :
     start_step_preserves at_most_one_ring.
+  Proof.
+    intuition.
+    break_invariant.
+    unfold at_most_one_ring in *.
+    intuition.
+    eapply adding_node_preserves_reachable; eauto.
+    match goal with
+      | H : forall _ _, _ -> _ -> reachable gst _ _ |- _ => eapply H
+    end. (* eauto using adding_node_preserves_reachable_converse. *)
   Admitted.
 
   Theorem start_step_keeps_ordered_ring :
