@@ -1008,8 +1008,16 @@ Module PBKV.
     Definition input_deserialize (bs : bytes) : option (input * bytes) :=
       match deserialize bs with None => None
       | Some (ver, rest) =>
-        if Nat.eq_dec ver 1
-        then
+        match ver with
+        | 0 =>
+          match deserialize rest with
+          | Some (VersionOne.Put k v, rest) =>
+            Some (Put k v, rest)
+          | Some (VersionOne.Get k, rest) =>
+            Some (Get k, rest)
+          | None => None
+          end
+        | 1 =>
           match deserialize rest with None => None
           | Some (tag, rest) =>
           match deserialize rest with None => None
@@ -1028,7 +1036,8 @@ Module PBKV.
               end
           end
           end
-        else None
+        | _ => None
+        end
       end.
     Instance input_Serializer : Serializer input :=
       {| serialize := input_serialize;
