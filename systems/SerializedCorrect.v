@@ -65,6 +65,20 @@ Section SerializedCorrect.
     auto.
   Qed.
 
+  Definition all_packets_deserialize (net : serialized_network) :=
+    forall p,
+      In p (nwPackets net) ->
+      exists m,
+        deserialize (pBody p) = Some (m, []).
+
+  Lemma all_packets_deserialize_inv :
+    forall net,
+      reachable step_m step_m_init net ->
+      all_packets_deserialize net.
+  Proof.
+  Admitted.
+      
+
   Lemma reachable_revert_step :
     forall state new_state output,
       reachable step_d step_m_init state ->
