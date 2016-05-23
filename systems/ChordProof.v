@@ -833,22 +833,14 @@ Section ChordProof.
       repeat find_injection.
       repeat split.
       * repeat find_reverse_rewrite.
-        eapply update_determined_by_f.
-        + intuition.
-          match goal with
-            | [ H : ?h = _, H' : In n (nodes gst) -> False |- False ] => rewrite <- H in H'
-          end; eauto.
-        + repeat find_rewrite; auto.
+        eapply update_determined_by_f;
+          [eapply In_notIn_implies_neq; now eauto|]; now repeat find_rewrite.
       * eauto.
       * eauto.
       * eauto.
     - repeat find_reverse_rewrite.
-      eapply update_determined_by_f.
-      * intuition.
-        match goal with
-          | [ H : ?h = _, H' : In n (nodes gst) -> False |- False ] => rewrite <- H in H'
-        end; eauto.
-      * repeat find_rewrite; auto.
+      eapply update_determined_by_f;
+        [eapply In_notIn_implies_neq; now eauto|]; now repeat find_rewrite.
     - eauto.
     - intuition.
       eapply adding_nodes_did_not_affect_dead_node; eauto.
@@ -861,16 +853,12 @@ Section ChordProof.
       eapply In_cons_neq.
       * eauto.
       * intuition; subst.
-        match goal with
-          | H : In ?n (map addr_of (succ_list _)) -> False |- False => apply H
-        end.
+        find_false.
         repeat find_rewrite.
         auto using in_half_means_in_whole.
     - eapply adding_nodes_did_not_affect_live_node; eauto.
       * intuition; subst.
-        match goal with
-          | H : In ?n (map addr_of (succ_list _)) -> False |- False => apply H
-        end.
+        find_false.
         repeat (find_rewrite; try find_injection).
         auto using in_middle_means_in_whole.
   Qed.
