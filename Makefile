@@ -5,6 +5,13 @@ ifeq "$(COQVERSION)" ""
 $(error "Verdi is only compatible with Coq version 8.5")
 endif
 
+CHECKPATH := $(shell ./script/checkpaths.sh)
+
+ifneq ("$(CHECKPATH)","")
+$(info $(CHECKPATH))
+$(warning checkpath reported an error)
+endif
+
 default: Makefile.coq
 	$(MAKE) -f Makefile.coq
 
@@ -36,16 +43,21 @@ clean:
 	find . -name '*.buildtime' -delete
 	$(MAKE) -C proofalytics clean
 
-vard: Makefile.coq
+vard:
+	@echo "To build everything (including vard) use the default target."
+	@echo "To quickly provision vard use the vard-quick target."
+
+vard-quick: Makefile.coq
 	$(MAKE) -f Makefile.coq systems/VarD.vo
 	$(MAKE) -f Makefile.coq raft/Raft.vo
+	$(MAKE) -f Makefile.coq extraction/vard/coq/ExtractVarDRaft.vo
 	cd extraction/vard; make
 
 lint:
-	echo "Possible use of hypothesis names:"
+	@echo "Possible use of hypothesis names:"
 	find . -name '*.v' -exec grep -Hn 'H[0-9][0-9]*' {} \;
 
 distclean: clean
 	rm -f _CoqProject
 
-.PHONY: default clean vard lint hacks proofalytics distclean
+.PHONY: default clean vard vard-quick lint hacks proofalytics distclean

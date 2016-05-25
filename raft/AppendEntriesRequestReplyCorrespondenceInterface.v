@@ -1,12 +1,3 @@
-Require Import List.
-Import ListNotations.
-Require Import Omega.
-Require Import FunctionalExtensionality.
-
-
-Require Import StructTact.StructTactics.
-Require Import Net.
-Require Import StructTact.Util.
 Require Import Raft.
 
 

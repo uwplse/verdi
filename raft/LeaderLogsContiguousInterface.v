@@ -1,12 +1,6 @@
-Require Import List.
-
-Require Import StructTact.StructTactics.
-Require Import StructTact.Util.
-Require Import Net.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 
-Require Import CommonDefinitions.
 Require Import CommonTheorems.
 
 Section LeaderLogsContiguous.

@@ -6,31 +6,38 @@ provision: |
   tar xf coq-8.5-build-local.tgz
   echo "PATH=\"$$PWD/coq-8.5/bin:\$$PATH\"" >> ~/.profile
   source ~/.profile
+  # StructTact dependency
+  git clone https://github.com/uwplse/StructTact.git
+  pushd StructTact
+  ./configure && make
+  popd
   # vard
   git clone https://github.com/uwplse/verdi.git
   pushd verdi
-  patch extraction/vard/ml/vard.ml <<EOF
-  --- verdi/extraction/vard/ml/vard.ml	2015-09-23 17:13:42.000000000 -0700
-  +++ verdi_vard_patch/extraction/vard/ml/vard.ml	2015-09-23 16:54:15.000000000 -0700
-  @@ -1,9 +1,9 @@
-   module VarDDebug = Shim.Shim(VarDArrangement.VarDArrangement(VarDArrangement.DebugParams))
-   module VarDBench = Shim.Shim(VarDArrangement.VarDArrangement(VarDArrangement.BenchParams))
-
-  -let nodes = [ (1, ("127.0.0.1", 9001))
-  -            ; (2, ("127.0.0.1", 9002))
-  -            ; (3, ("127.0.0.1", 9003))
-  +let nodes = [ (1, ("$db1", 9001))
-  +            ; (2, ("$db2", 9001))
-  +            ; (3, ("$db3", 9001))
-               ]
-  EOF
-  ./configure && make vard
+  ./configure && make vard-quick
   popd
   sudo ln -s "$$PWD/verdi/extraction/vard" /vard
+  sudo cp /vard/vard.conf /etc/init
+  sudo sed -i 's/$$id/$id/' /etc/init/vard.conf
+  sudo sed -i 's/$$db1/$db1/' /etc/init/vard.conf
+  sudo sed -i 's/$$db2/$db2/' /etc/init/vard.conf
+  sudo sed -i 's/$$db3/$db3/' /etc/init/vard.conf
   # etcd
   curl -L https://github.com/coreos/etcd/releases/download/v2.0.9/etcd-v2.0.9-linux-amd64.tar.gz -o etcd-v2.0.9-linux-amd64.tar.gz
   tar xzf etcd-v2.0.9-linux-amd64.tar.gz
   sudo ln -s "$$PWD/etcd-v2.0.9-linux-amd64" /etcd
+  # ergonomics
+  sudo apt-get install htop
+  cat >vard.sh <<EOF
+  export me=$name
+  export db1=$db1
+  export db2=$db2
+  export db3=$db3
+  export cluster="$db1:8351,$db2:8351,$db3:8351"
+  export client=$client
+  EOF
+  sudo mv vard.sh /etc/profile.d
+  echo "PS1='\[\e[0;32m\]\u\e[0;35m@$name\[\e[m\] \[\e[1;34m\]\w\[\e[m\] \[\e[1;32m\]$$\[\e[m\] \[\e[1;37m\]'" >> ~/.bashrc
 vars:
   keys: 500
   threads: 8
@@ -38,15 +45,21 @@ vars:
 instances:
   client:
   db1:
+    id: 1
   db2:
+    id: 2
   db3:
+    id: 3
+  client:
+    id: 0
 setup:
   db1: |
-    /vard/vard.native 1
+    sudo start vard
   db2: |
-    /vard/vard.native 2
+    sudo start vard
   db3: |
-    /vard/vard.native 3
+    sudo start vard
+  client: |
 experiment:
   client: |
     cd /vard

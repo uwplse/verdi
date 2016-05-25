@@ -1,12 +1,4 @@
-Require Import List.
-Import ListNotations.
-Require Import Arith.
-
-Require Import Net.
-Require Import StructTact.Util.
-
 Require Import Raft.
-Require Import CommonDefinitions.
 Require Import TraceUtil.
 
 Section InputBeforeOutputInterface.

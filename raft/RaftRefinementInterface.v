@@ -1,17 +1,5 @@
-Require Import Arith.
-Require Import NPeano.
-Require Import List.
-Require Import Coq.Numbers.Natural.Abstract.NDiv.
-Import ListNotations.
-Require Import Sorting.Permutation.
-Require Import Sumbool.
-
-Require Import StructTact.Util.
-Require Import Net.
 Require Import GhostSimulations.
-Require Import RaftState.
 Require Import Raft.
-Require Import StructTact.StructTactics.
 
 Section RaftRefinementInterface.
   Context {orig_base_params : BaseParams}.

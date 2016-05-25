@@ -1,6 +1,3 @@
-Require Import List.
-
-Require Import Net.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 

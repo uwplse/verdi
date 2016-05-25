@@ -1,16 +1,5 @@
-Require Import Arith.
-Require Import NPeano.
-Require Import List.
-Require Import Coq.Numbers.Natural.Abstract.NDiv.
-Import ListNotations.
-Require Import Sorting.Permutation.
-Require Import Omega.
-
-Require Import StructTact.Util.
-Require Import Net.
 Require Import GhostSimulations.
 Require Import Raft.
-Require Import StructTact.StructTactics.
 Require Import CommonTheorems.
 Require Import OneLeaderPerTermInterface.
 
@@ -20,11 +9,11 @@ Require Import VotesCorrectInterface.
 Require Import CroniesCorrectInterface.
 Require Import RefinementCommonTheorems.
 
+Require Import LeaderSublogInterface.
+
 Hint Extern 4 (@BaseParams) => apply base_params : typeclass_instances.
 Hint Extern 4 (@MultiParams _) => apply multi_params : typeclass_instances.
 Hint Extern 4 (@FailureParams _ _) => apply failure_params : typeclass_instances.
-
-Require Import LeaderSublogInterface.
 
 Section LeaderSublogProof.
   Context {orig_base_params : BaseParams}.

@@ -1,10 +1,6 @@
-Require Import List.
-Import ListNotations.
-
-Require Import StructTact.StructTactics.
+Require Import Verdi.
 Require Import HandlerMonad.
-Require Import Net.
-Require Import StructTact.Util.
+Require Import StructTact.Fin.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.

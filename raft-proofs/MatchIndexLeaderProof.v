@@ -1,12 +1,5 @@
-Require Import List.
-Require Import Omega.
-
-Require Import StructTact.StructTactics.
-Require Import Net.
-Require Import StructTact.Util.
 Require Import Raft.
 
-Require Import CommonTheorems.
 Require Import SpecLemmas.
 
 Require Import UpdateLemmas.

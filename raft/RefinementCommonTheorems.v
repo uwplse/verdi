@@ -1,12 +1,3 @@
-Require Import List.
-Import ListNotations.
-
-Require Import PeanoNat.
-Require Import Arith.
-
-Require Import StructTact.StructTactics.
-Require Import StructTact.Util.
-Require Import Net.
 Require Import GhostSimulations.
 Require Import Raft.
 Require Import RaftRefinementInterface.
@@ -15,7 +6,7 @@ Require Import VotesCorrectInterface.
 Require Import CroniesCorrectInterface.
 
 Require Import CommonTheorems.
-Require Import RefinementCommonDefinitions.
+Require Export RefinementCommonDefinitions.
 
 Require Import SpecLemmas.
 

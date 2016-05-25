@@ -1,12 +1,3 @@
-Require Import List.
-Import ListNotations.
-Require Import Min.
-Require Import Omega.
-
-Require Import StructTact.StructTactics.
-Require Import StructTact.Util.
-Require Import Net.
-
 Require Import RaftState.
 Require Import Raft.
 Require Import CommonTheorems.

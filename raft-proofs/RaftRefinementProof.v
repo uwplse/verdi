@@ -1,17 +1,7 @@
-Require Import Arith.
-Require Import NPeano.
-Require Import List.
-Require Import Coq.Numbers.Natural.Abstract.NDiv.
-Import ListNotations.
-Require Import Sorting.Permutation.
-Require Import Sumbool.
+Require Import FunctionalExtensionality.
 
-Require Import StructTact.Util.
-Require Import Net.
 Require Import GhostSimulations.
-Require Import RaftState.
 Require Import Raft.
-Require Import StructTact.StructTactics.
 
 Require Import RaftRefinementInterface.
 
@@ -420,8 +410,6 @@ Section RaftRefinementProof.
       eapply RRIR_doGenericServer; eauto.
   Qed.
 
-  Require Import FunctionalExtensionality.
-
   Ltac workhorse :=
     try match goal with
         | [ |- mkNetwork _ _ = mkNetwork _ _ ] => f_equal
@@ -515,8 +503,6 @@ Section RaftRefinementProof.
     intros.
     eauto using simulation_1.
   Qed.
-
-  Require Import FunctionalExtensionality.
 
   Theorem simulation_2 :
     forall net,

@@ -1,21 +1,10 @@
-Require Import List.
-Import ListNotations.
-Require Import Arith.
-Require Import Nat.
-Require Import Omega.
-Require Import Sorting.Permutation.
-
-
-Require Import Net.
-Require Import StructTact.Util.
-Require Import StructTact.StructTactics.
+Require Import Sumbool.
 
 Require Import Raft.
 Require Import CommonTheorems.
 Require Import TraceUtil.
 Require Import Linearizability.
 Require Import OutputImpliesAppliedInterface.
-Require Import UniqueIndicesInterface.
 Require Import AppliedImpliesInputInterface.
 Require Import CausalOrderPreservedInterface.
 Require Import OutputCorrectInterface.
@@ -70,8 +59,6 @@ Section RaftLinearizableProofs.
                     exported env_i env_o l tr ->
                     exported env_i env_o (IRI k :: IRU k :: l) ((i, o) :: tr).
 
-  Require Import Sumbool.
-  Require Import Arith.
 
   Fixpoint get_input (tr : list (name * (raft_input + list raft_output))) (k : key)
     : option input :=

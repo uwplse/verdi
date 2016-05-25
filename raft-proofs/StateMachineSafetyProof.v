@@ -1,13 +1,5 @@
-Require Import List.
-Import ListNotations.
-Require Import Omega.
-
-Require Import StructTact.StructTactics.
-Require Import StructTact.Util.
-Require Import Net.
 Require Import GhostSimulations.
 
-Require Import RaftState.
 Require Import Raft.
 Require Import CommonTheorems.
 Require Import CommitRecordedCommittedInterface.
@@ -3128,8 +3120,6 @@ Section StateMachineSafetyProof.
       + eapply state_machine_safety'_state_same_packet_subset; eauto.
         auto using state_machine_safety'_invariant, msg_simulation_1.
   Qed.
-
-  Require Import FunctionalExtensionality.
 
   Lemma everything_reboot :
     msg_refined_raft_net_invariant_reboot' everything.

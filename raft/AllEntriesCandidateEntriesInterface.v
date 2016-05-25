@@ -1,12 +1,5 @@
-Require Import List.
-Import ListNotations.
-
-Require Import StructTact.Util.
-Require Import Net.
-
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
 Require Import RefinementCommonDefinitions.
 
 Section CandidateEntriesInterface.

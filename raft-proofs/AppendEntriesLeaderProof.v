@@ -1,10 +1,3 @@
-Require Import List.
-Require Import Omega.
-
-Require Import StructTact.StructTactics.
-Require Import StructTact.Util.
-Require Import Net.
-
 Require Import Raft.
 Require Import RaftRefinementInterface.
 
@@ -12,9 +5,7 @@ Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 Require Import CommonTheorems.
-Require Import RefinementCommonTheorems.
 Require Import SpecLemmas.
-Require Import RefinementSpecLemmas.
 
 Require Import AppendEntriesRequestsCameFromLeadersInterface.
 Require Import OneLeaderLogPerTermInterface.

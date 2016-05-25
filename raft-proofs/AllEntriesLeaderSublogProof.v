@@ -1,14 +1,7 @@
-Require Import List.
-
-Require Import StructTact.StructTactics.
-Require Import StructTact.Util.
-Require Import Net.
 Require Import GhostSimulations.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 
-Require Import CommonDefinitions.
-Require Import RefinementCommonDefinitions.
 Require Import RefinementCommonTheorems.
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.

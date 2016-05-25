@@ -70,7 +70,7 @@ def main():
         thr = t.Thread(target=benchmark, args=(c, args.requests, args.keys, args.put_percentage, i))
         threads.append(thr)
         thr.start()
-        time.sleep(10)
+        #time.sleep(10)
     for thr in threads:
         thr.join()
     end = time.time()
