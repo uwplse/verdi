@@ -1,7 +1,8 @@
+Require Import StructTact.Util.
 Require Import Verdi.
 Require Import FunctionalExtensionality.
 Require Import Serialized.
-Require Import Cheerios.Types.
+Require Import Cheerios.Core.
 
 Section SerializedCorrect.
   Context {orig_base_params : BaseParams}.
@@ -23,32 +24,13 @@ Section SerializedCorrect.
       Some (@mkPacket _ orig_multi_params (pSrc p) (pDst p) body)
     end.
 
-  Fixpoint filteredMap {A B: Type} (mapFun: A -> option B) (xs: list A) : list B :=
-    match xs with
-    | nil => nil
-    | hd :: tl =>
-      match mapFun hd with
-      | None => filteredMap mapFun tl 
-      | Some x => x :: filteredMap mapFun tl
-      end
-    end.
-
   Definition revertNetwork (net: serialized_network) : orig_network :=
     mkNetwork
-      (filteredMap revertPacket (nwPackets net))
+      (filterMap revertPacket (nwPackets net))
       (fun h => match (deserialize (nwState net h)) with
              | Some (data, rest) => data
              | None => init_handlers h
              end).
-
-  Lemma Serialize_reversible_no_bin:
-    forall (A: Type) (serializer: Serializer A) (x: A),
-      deserialize (serialize x) = Some(x, []).
-  Proof.
-    intros.
-    rewrite <- Serialize_reversible with (x0 := x) (bin := []).
-    rewrite app_nil_r. reflexivity.
-  Qed.
 
   Lemma Serialize_deserialize_init_handlers:
     (fun h : name => match deserialize (serialize (init_handlers h)) with
@@ -61,7 +43,7 @@ Section SerializedCorrect.
                                                                  | None => init_handlers h
                                                                  end)); auto.
     intros.
-    rewrite Serialize_reversible_no_bin with (x := (init_handlers x)).
+    rewrite serialize_reversible with (x := (init_handlers x)).
     auto.
   Qed.
 
@@ -76,6 +58,15 @@ Section SerializedCorrect.
       reachable step_m step_m_init net ->
       all_packets_deserialize net.
   Proof.
+    intros.
+    unfold reachable in *.
+    destruct H.
+    inversion H.
+    - subst.
+      unfold step_m_init.
+      unfold init_handlers.
+      unfold all_packets_deserialize.
+
   Admitted.
       
 
