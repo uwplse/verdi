@@ -41,6 +41,8 @@ Section ChordProof.
   Notation update := (update addr addr_eq_dec data).
   Notation update_msgs := (update_msgs addr payload data timeout).
   Notation make_pointer := (make_pointer hash).
+  Notation gpred := (gpred addr payload data timeout).
+  Notation gpand := (gpand addr payload data timeout).
 
   Notation apply_handler_result := (apply_handler_result addr addr_eq_dec payload data timeout timeout_eq_dec).
   Notation end_query := (end_query hash).
@@ -59,27 +61,6 @@ Section ChordProof.
       t = (e_timeout h (Request dead req)) ->
       (* then it corresponds to an earlier node failure. *)
       In (e_fail dead) xs.
-
-  Definition extra_constraints := timeouts_detect_failure.
-
-  Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler client_payload can_be_client can_be_node extra_constraints).
-
-  Definition init_sigma (h : addr) : option data.
-  Admitted. (* TODO should map base addresses to data for an ideal ring of just the base nodes *)
-  Definition initial_st : global_state :=
-    {| DynamicNet.nodes := base;
-       DynamicNet.failed_nodes := [];
-       DynamicNet.timeouts := nil_timeouts;
-       DynamicNet.sigma := init_sigma;
-       DynamicNet.msgs := [];
-       DynamicNet.trace := []; |}.
-
-  Inductive reachable_st : global_state -> Prop :=
-    | reachableInit : reachable_st initial_st
-    | rechableStep : forall gst gst',
-        reachable_st gst -> 
-        step_dynamic gst gst' ->
-        reachable_st gst'.
 
   (* tip: treat this as opaque and use lemmas: it never gets stopped except by failure *)
   Definition live_node (gst : global_state) (h : addr) : Prop :=
@@ -101,6 +82,72 @@ Section ChordProof.
       joined st = false /\
       In h (nodes gst) /\
       ~ In h (failed_nodes gst).
+
+  Definition best_succ (gst : global_state) (h s : addr) : Prop :=
+    exists st xs ys,
+      live_node gst h /\
+      sigma gst h = Some st /\
+      map addr_of (succ_list st) = xs ++ s :: ys /\
+      (forall o, In o xs -> dead_node gst o) /\
+      live_node gst s.
+
+  Definition live_node_in_succ_lists (gst : global_state) : Prop :=
+    forall h st,
+      sigma gst h = Some st ->
+      live_node gst h ->
+      exists s,
+        best_succ gst h s.
+
+  Definition extra_constraints : gpred := gpand timeouts_detect_failure live_node_in_succ_lists.
+
+  Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler client_payload can_be_client can_be_node extra_constraints).
+
+  Ltac request_payload_inversion :=
+    match goal with
+      | H : request_payload _ |- _ => inv H
+    end.
+
+  Lemma is_request_same_as_request_payload : forall msg : payload,
+      is_request msg = true <-> request_payload msg.
+  Proof.
+    unfold is_request.
+    intuition.
+    - break_match;
+        discriminate ||
+        eauto using req_GetBestPredecessor, req_GetSuccList, req_GetPredAndSuccs, req_Ping.
+    - now request_payload_inversion.
+  Qed.
+
+  Lemma requests_are_always_responded_to : forall src dst msg st sends nts cts,
+      request_payload msg ->
+      (st, sends, nts, cts) = recv_handler src dst st msg ->
+      exists res, In (src, res) sends.
+  Proof.
+    unfold recv_handler, handle_query, handle_stabilize.
+    intuition.
+    destruct msg;
+      repeat break_match;
+      request_payload_inversion;
+      try tuple_inversion;
+      discriminate || eexists; intuition.
+  Qed.
+
+  Definition init_sigma (h : addr) : option data.
+  Admitted. (* TODO should map base addresses to data for an ideal ring of just the base nodes *)
+  Definition initial_st : global_state :=
+    {| DynamicNet.nodes := base;
+       DynamicNet.failed_nodes := [];
+       DynamicNet.timeouts := nil_timeouts;
+       DynamicNet.sigma := init_sigma;
+       DynamicNet.msgs := [];
+       DynamicNet.trace := []; |}.
+
+  Inductive reachable_st : global_state -> Prop :=
+    | reachableInit : reachable_st initial_st
+    | rechableStep : forall gst gst',
+        reachable_st gst -> 
+        step_dynamic gst gst' ->
+        reachable_st gst'.
 
   Theorem live_node_characterization : forall gst h st,
       sigma gst h = Some st ->
@@ -165,14 +212,6 @@ Section ChordProof.
         congruence || eauto using live_node_characterization.
   Qed.
 
-  Definition best_succ (gst : global_state) (h s : addr) : Prop :=
-    exists st xs ys,
-      live_node gst h /\
-      sigma gst h = Some st /\
-      map addr_of (succ_list st) = xs ++ s :: ys /\
-      (forall o, In o xs -> dead_node gst o) /\
-      live_node gst s.
-
   (* transitive closure of best_succ *)
   (* treat as opaque *)
   Inductive reachable (gst : global_state) : addr -> addr -> Prop :=
@@ -227,7 +266,6 @@ Section ChordProof.
   (* treat as opaque *)
   Definition ring_member (gst : global_state) (h : addr) : Prop :=
     reachable gst h h.
-  Transparent ring_member.
   Hint Unfold ring_member.
 
   Definition at_least_one_ring (gst : global_state) : Prop :=
@@ -261,17 +299,76 @@ Section ChordProof.
       between h b s ->
       In b xs.
 
-  Definition inductive_invariant (gst : global_state) : Prop :=
+  Definition state_invariant (gst : global_state) : Prop :=
     at_least_one_ring gst /\
     at_most_one_ring gst /\
     ordered_ring gst /\
     connected_appendages gst /\
     base_not_skipped gst.
 
+  (* this is not quite what it sounds like, since Chord.start_query will sometimes not send anything *)
+  Inductive query_request : query -> payload -> Prop :=
+    | QReq_RectifyPing : forall n, query_request (Rectify n) Ping
+    | QReq_StabilizeGetPredAndSuccs : query_request Stabilize GetPredAndSuccs
+    | QReq_Stabilize2 : forall p, query_request (Stabilize2 p) GetSuccList
+    | QReq_JoinGetBestPredecessor : forall k a, query_request (Join k) (GetBestPredecessor a)
+    | QReq_JoinGetSuccList : forall k, query_request (Join k) GetSuccList
+    | QReq_Join2 : forall n, query_request (Join2 n) GetSuccList.
+
+  Inductive query_response : query -> payload -> Prop :=
+    | QRes_RectifyPong : forall n, query_response (Rectify n) Pong
+    | QRes_StabilizeGetPredAndSuccs : forall p l, query_response Stabilize (GotPredAndSuccs p l)
+    | QRes_Stabilize2 : forall p l, query_response (Stabilize2 p) (GotSuccList l)
+    | QRes_JoinGotBestPredecessor : forall k p, query_response (Join k) (GotBestPredecessor p)
+    | QRes_JoinGotSuccList : forall k l, query_response (Join k) (GotSuccList l)
+    | QRes_Join2 : forall n l, query_response (Join2 n) (GotSuccList l).
+
+  Definition queries_have_messages (gst : global_state) : Prop :=
+    forall src dst st q remove,
+      sigma gst src = Some st ->
+      cur_request st = Some (make_pointer dst, q, remove) ->
+      exists msg,
+        (In (src, (dst, msg)) (msgs gst) /\ query_request q msg) \/
+        (In (dst, (src, msg)) (msgs gst) /\ query_response q msg).
+
+  Definition requests_have_queries (gst : global_state) : Prop :=
+    forall src dst r st,
+      sigma gst src = Some st ->
+      request_payload r ->
+      In (src, (dst, r)) (msgs gst) ->
+      exists q remove,
+        query_request q r /\
+        cur_request st = Some (make_pointer dst, q, remove).
+
+  (*Definition responses_have_queries :=
+    forall src dst r st,
+      sigma gst src = Some st ->
+      request_payload r ->
+      In (src, (dst, r)) (msgs gst) ->
+      exists q remove,
+        query_request q r /\
+        cur_request st = Some (make_pointer dst, q, remove).
+
+  Definition requests_correspond_to_queries (gst : global_state) : Prop :=
+    forall src dst msg,
+      In (src, dst, msg) (msgs gst) ->
+      request_payload msg ->
+      sigma src = Some srcst ->
+      sigma dst = Some dstst ->
+      cur_query src = 
+      request_payload m -> queries_producing m. *)
+
+  Definition network_invariant (gst : global_state) : Prop :=
+    True. (* messages_correspond_to_queries *)
+
+  Definition inductive_invariant (gst : global_state) : Prop :=
+    state_invariant gst /\
+    network_invariant gst.
+
   Ltac break_invariant :=
     match goal with
       | H : inductive_invariant _ |- _ =>
-        unfold inductive_invariant in H; break_and
+        unfold inductive_invariant, state_invariant, network_invariant in H; break_and
     end.
 
   Lemma live_node_specificity : forall gst gst',
@@ -908,8 +1005,8 @@ Section ChordProof.
         reachable gst from to.
   Admitted.
 
-  Notation start_step_preserves P :=
-    (forall gst gst' h st k known,
+  Definition start_step_preserves (P : global_state -> Prop) : Prop :=
+    forall gst gst' h st k known,
       inductive_invariant gst ->
       ~ In h (nodes gst) ->
       (In k known -> In k (nodes gst)) ->
@@ -918,11 +1015,13 @@ Section ChordProof.
       nodes gst' = h :: nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
       sigma gst' = update (sigma gst) h st ->
-      P gst').
+      P gst'.
+  Hint Unfold start_step_preserves.
 
   Theorem start_step_keeps_at_most_one_ring :
     start_step_preserves at_most_one_ring.
   Proof.
+    unfold start_step_preserves.
     intuition.
     break_invariant.
     unfold at_most_one_ring in *.
@@ -948,6 +1047,7 @@ Section ChordProof.
   Theorem start_step_keeps_at_least_one_ring :
     start_step_preserves at_least_one_ring.
   Proof.
+    unfold start_step_preserves.
     intuition.
     break_invariant.
     unfold at_least_one_ring, ring_member in *.
@@ -955,13 +1055,15 @@ Section ChordProof.
     eauto using adding_node_preserves_reachable.
   Qed.
 
-  Notation fail_step_preserves P := (forall gst gst' h,
+  Definition fail_step_preserves (P : global_state -> Prop) : Prop :=
+    forall gst gst' h,
       inductive_invariant gst ->
       In h (nodes gst) ->
       sigma gst' = sigma gst ->
       nodes gst' = nodes gst ->
       failed_nodes gst' = h :: failed_nodes gst ->
-      P gst').
+      P gst'.
+  Hint Unfold fail_step_preserves.
 
   Lemma fail_step_keeps_at_least_one_ring :
     fail_step_preserves at_least_one_ring.
@@ -983,8 +1085,8 @@ Section ChordProof.
     fail_step_preserves base_not_skipped.
   Admitted.
 
-  Notation timeout_step_preserves P :=
-    (forall gst gst' h st t st' ms newts clearedts,
+  Definition timeout_step_preserves (P : global_state -> Prop) : Prop :=
+    forall gst gst' h st t st' ms newts clearedts,
       inductive_invariant gst ->
       In h (nodes gst) ->
       ~ In h (failed_nodes gst) ->
@@ -996,7 +1098,8 @@ Section ChordProof.
                (st', ms, newts, t :: clearedts)
                (e_timeout h t)
                gst) ->
-      P gst').
+      P gst'.
+  Hint Unfold timeout_step_preserves.
 
   Theorem timeout_step_keeps_at_least_one_ring :
     timeout_step_preserves at_least_one_ring.
@@ -1018,17 +1121,19 @@ Section ChordProof.
     timeout_step_preserves base_not_skipped.
   Admitted.
 
-  Notation preserved_when_nodes_and_sigma_preserved P :=
-      (forall gst gst',
+  Definition preserved_when_nodes_and_sigma_preserved (P : global_state -> Prop) : Prop :=
+      forall gst gst',
           inductive_invariant gst ->
           nodes gst' = nodes gst ->
           failed_nodes gst' = failed_nodes gst ->
           sigma gst' = sigma gst ->
-          P gst').
+          P gst'.
+  Hint Unfold preserved_when_nodes_and_sigma_preserved.
 
   Lemma at_least_one_ring_preserved_when_nodes_and_sigma_preserved :
     preserved_when_nodes_and_sigma_preserved at_least_one_ring.
   Proof.
+    unfold preserved_when_nodes_and_sigma_preserved.
     intuition.
     break_invariant.
     unfold at_least_one_ring, ring_member in *.
@@ -1039,6 +1144,7 @@ Section ChordProof.
   Lemma at_most_one_ring_preserved_when_nodes_and_sigma_preserved :
     preserved_when_nodes_and_sigma_preserved at_most_one_ring.
   Proof.
+    unfold preserved_when_nodes_and_sigma_preserved.
     intuition.
     break_invariant.
     unfold at_most_one_ring in *.
@@ -1055,6 +1161,7 @@ Section ChordProof.
   Lemma ordered_ring_preserved_when_nodes_and_sigma_preserved :
     preserved_when_nodes_and_sigma_preserved ordered_ring.
   Proof.
+    unfold preserved_when_nodes_and_sigma_preserved.
     intuition.
     break_invariant.
     unfold ordered_ring.
@@ -1077,6 +1184,7 @@ Section ChordProof.
   Lemma connected_appendages_preserved_when_nodes_and_sigma_preserved :
     preserved_when_nodes_and_sigma_preserved connected_appendages.
   Proof.
+    unfold preserved_when_nodes_and_sigma_preserved.
     intuition.
     break_invariant.
     unfold connected_appendages in *.
@@ -1091,6 +1199,7 @@ Section ChordProof.
   Lemma base_not_skipped_preserved_when_nodes_and_sigma_preserved :
     preserved_when_nodes_and_sigma_preserved base_not_skipped.
   Proof.
+    unfold preserved_when_nodes_and_sigma_preserved.
     intuition.
     break_invariant.
     unfold base_not_skipped.
@@ -1114,8 +1223,8 @@ Section ChordProof.
                   base_not_skipped_preserved_when_nodes_and_sigma_preserved.
   Qed.
 
-  Notation node_deliver_step_preserves P :=
-    (forall gst xs m ys gst' h d st ms nts cts e,
+  Definition node_deliver_step_preserves (P : global_state -> Prop) : Prop :=
+    forall gst xs m ys gst' h d st ms nts cts e,
       inductive_invariant gst ->
       In h (nodes gst) ->
       ~ In h (failed_nodes gst) ->
@@ -1124,7 +1233,8 @@ Section ChordProof.
       msgs gst = xs ++ m :: ys ->
       gst' = update_msgs gst (xs ++ ys) ->
       recv_handler h (fst m) d (snd (snd m)) = (st, ms, nts, cts) ->
-      P (apply_handler_result h (st, ms, nts, cts) e gst')).
+      P (apply_handler_result h (st, ms, nts, cts) e gst').
+  Hint Unfold node_deliver_step_preserves.
 
   Lemma node_deliver_step_keeps_at_least_one_ring :
     node_deliver_step_preserves at_least_one_ring.
@@ -1146,8 +1256,8 @@ Section ChordProof.
     node_deliver_step_preserves base_not_skipped.
   Admitted.
 
-  Notation client_recv_step_preserves P :=
-      (forall gst gst' m h xs ys,
+  Definition client_recv_step_preserves P :=
+      forall gst gst' m h xs ys,
           inductive_invariant gst ->
           can_be_client h ->
           msgs gst = xs ++ m :: ys ->
@@ -1158,7 +1268,8 @@ Section ChordProof.
           timeouts gst' = timeouts gst ->
           sigma gst' = sigma gst ->
           msgs gst' = xs ++ ys ->
-          P gst').
+          P gst'.
+  Hint Unfold client_recv_step_preserves.
 
   Lemma invariant_preserved_by_client_recv_step :
       client_recv_step_preserves inductive_invariant.
@@ -1248,7 +1359,6 @@ Section ChordProof.
       inductive_invariant gst'.
   Proof.
     intuition.
-    unfold inductive_invariant.
     repeat split.
     - eauto using invariant_steps_to_at_least_one_ring.
     - eauto using invariant_steps_to_at_most_one_ring.

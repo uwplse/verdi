@@ -79,7 +79,7 @@ Section Chord.
   Definition client_payload msg := exists (p : pointer), msg = GetBestPredecessor p.
 
   Inductive request_payload : payload -> Prop :=
-  | req_GetBestPredecessor : forall m p, m = GetBestPredecessor p -> request_payload m
+  | req_GetBestPredecessor : forall p, request_payload (GetBestPredecessor p)
   | req_GetSuccList : request_payload GetSuccList
   | req_GetPredAndSuccs : request_payload GetPredAndSuccs
   | req_Ping : request_payload Ping.
@@ -348,53 +348,4 @@ Section Chord.
         end
       | Tick => tick_handler h st
     end.
-
-  Lemma is_request_same_as_request_payload : forall msg : payload,
-      is_request msg = true <-> request_payload msg.
-  Proof.
-    intuition.
-    - induction msg.
-      * constructor 1 with (p := p). reflexivity.
-      * inversion H.
-      * constructor.
-      * inversion H.
-      * constructor.
-      * inversion H.
-      * inversion H.
-      * constructor.
-      * inversion H.
-    - induction msg; intuition; inversion H; inversion H0.
-  Qed.
-
-  Lemma requests_are_always_responded_to : forall src dst msg st sends nts cts,
-      request_payload msg ->
-      (st, sends, nts, cts) = recv_handler src dst st msg ->
-      exists res, In (src, res) sends.
-  Proof.
-    intuition.
-    induction msg.
-    * inversion H.
-      inversion H0.
-      exists (GotBestPredecessor (best_predecessor (ptr st) (succ_list st) (id_of p))).
-      intuition.
-    * inversion H.
-      inversion H1.
-    * inversion H0.
-      exists (GotSuccList (succ_list st)).
-      intuition.
-    * inversion H.
-      inversion H1.
-    * inversion H0.
-      exists (GotPredAndSuccs (pred st) (succ_list st)).
-      intuition.
-    * inversion H.
-      inversion H1.
-    * inversion H.
-      inversion H1.
-    * inversion H0.
-      exists Pong.
-      intuition.
-    * inversion H.
-      inversion H1.
-  Qed.
 End Chord.

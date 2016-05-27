@@ -45,7 +45,10 @@ Section Dynamic.
       trace : list event
     }.
 
-  Variable extra_constraints : global_state -> Prop.
+  Definition gpred := global_state -> Prop.
+  Definition gpand (P Q : gpred) : gpred := fun gst => P gst /\ Q gst.
+
+  Variable extra_constraints : gpred.
 
   Definition nil_state : addr -> option data := fun _ => None.
   Definition nil_timeouts : addr -> list timeout := fun _ => [].
