@@ -78,12 +78,6 @@ Section Chord.
 
   Definition client_payload msg := exists (p : pointer), msg = GetBestPredecessor p.
 
-  Inductive request_payload : payload -> Prop :=
-  | req_GetBestPredecessor : forall p, request_payload (GetBestPredecessor p)
-  | req_GetSuccList : request_payload GetSuccList
-  | req_GetPredAndSuccs : request_payload GetPredAndSuccs
-  | req_Ping : request_payload Ping.
-
   Definition is_request (p : payload) : bool :=
     match p with
       | GetBestPredecessor _ => true

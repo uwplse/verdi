@@ -38,6 +38,7 @@ Section ChordProof.
   Notation sigma := (sigma addr payload data timeout).
   Notation timeouts := (timeouts addr payload data timeout).
   Notation msgs := (msgs addr payload data timeout).
+  Notation trace := (trace addr payload data timeout).
   Notation update := (update addr addr_eq_dec data).
   Notation update_msgs := (update_msgs addr payload data timeout).
   Notation make_pointer := (make_pointer hash).
@@ -50,13 +51,14 @@ Section ChordProof.
   Notation handle_stabilize := (handle_stabilize SUCC_LIST_LEN hash).
   Notation try_rectify := (try_rectify hash).
 
+  Notation e_send := (e_send addr payload timeout).
   Notation e_recv := (e_recv addr payload timeout).
   Notation e_timeout := (e_timeout addr payload timeout).
   Notation e_fail := (e_fail addr payload timeout).
 
   Definition timeouts_detect_failure (gst : global_state) : Prop :=
     forall xs t ys h dead req,
-      (trace _ _ _ _ gst) = xs ++ t :: ys ->
+      (trace gst) = xs ++ t :: ys ->
       (* if a request timeout occurs at some point in the trace... *)
       t = (e_timeout h (Request dead req)) ->
       (* then it corresponds to an earlier node failure. *)
@@ -101,6 +103,18 @@ Section ChordProof.
   Definition extra_constraints : gpred := gpand timeouts_detect_failure live_node_in_succ_lists.
 
   Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler client_payload can_be_client can_be_node extra_constraints).
+
+  Inductive request_payload : payload -> Prop :=
+  | req_GetBestPredecessor : forall p, request_payload (GetBestPredecessor p)
+  | req_GetSuccList : request_payload GetSuccList
+  | req_GetPredAndSuccs : request_payload GetPredAndSuccs
+  | req_Ping : request_payload Ping.
+
+  Inductive response_payload : payload -> Prop :=
+  | res_GotBestPredecessor : forall p, response_payload (GotBestPredecessor p)
+  | res_GotSuccList : forall l, response_payload (GotSuccList l)
+  | res_GotPredAndSuccs : forall p l, response_payload (GotPredAndSuccs p l)
+  | res_Pong : response_payload Pong.
 
   Ltac request_payload_inversion :=
     match goal with
@@ -323,43 +337,60 @@ Section ChordProof.
     | QRes_JoinGotSuccList : forall k l, query_response (Join k) (GotSuccList l)
     | QRes_Join2 : forall n l, query_response (Join2 n) (GotSuccList l).
 
-  Definition queries_have_messages (gst : global_state) : Prop :=
-    forall src dst st q remove,
-      sigma gst src = Some st ->
-      cur_request st = Some (make_pointer dst, q, remove) ->
-      exists msg,
-        (In (src, (dst, msg)) (msgs gst) /\ query_request q msg) \/
-        (In (dst, (src, msg)) (msgs gst) /\ query_response q msg).
+  (* for all nodes, query = none -> no request or response in the network for node *)
+  (* for all nodes, query = some -> exactly one corresponding req or res in net *)
+  Definition request_for_query (gst : global_state) (src dst : addr) (q : query) (msg : payload) : Prop :=
+      query_request q msg /\
+      In (dst, (src, msg)) (msgs gst).
 
-  Definition requests_have_queries (gst : global_state) : Prop :=
+  Definition response_for_query (gst : global_state) (src dst : addr) (q : query) (msg : payload) : Prop :=
+      query_response q msg /\
+      In (src, (dst, msg)) (msgs gst).
+
+  Definition queries_have_unique_messages (gst : global_state) : Prop :=
+    forall src dst st q m,
+      sigma gst src = Some st ->
+      cur_request st = Some (make_pointer dst, q, m) ->
+      exists qmsg,
+        (request_for_query gst src dst q qmsg \/ response_for_query gst src dst q qmsg) /\
+        forall msg,
+          (In (dst, (src, msg)) (msgs gst) /\ request_payload msg) \/
+          (In (src, (dst, msg)) (msgs gst) /\ response_payload msg) ->
+          msg = qmsg.
+  
+  Definition query_set_for_request (st : data) (dst : addr) (r : payload) :=
+    exists q remove,
+      cur_request st = Some (make_pointer dst, q, remove) /\
+      query_request q r.
+        
+  Definition request_timed_out (gst : global_state) (src dst : addr) (r : payload) :=
+    forall req_event,
+      req_event = e_send (dst, (src, r)) ->
+      exists before since,
+        trace gst = before ++ req_event :: since /\
+        ~ In req_event since /\
+        In (e_timeout src (Request dst r)) since.
+      
+  Definition requests_have_queries_or_timeouts (gst : global_state) : Prop :=
+    forall src dst r st,
+      request_payload r ->
+      In (dst, (src, r)) (msgs gst) ->
+      sigma gst src = Some st ->
+      query_set_for_request st dst r \/ request_timed_out gst src dst r.
+
+  Definition responses_have_queries (gst : global_state) : Prop :=
     forall src dst r st,
       sigma gst src = Some st ->
-      request_payload r ->
+      response_payload r ->
       In (src, (dst, r)) (msgs gst) ->
-      exists q remove,
+      exists q m,
         query_request q r /\
-        cur_request st = Some (make_pointer dst, q, remove).
-
-  (*Definition responses_have_queries :=
-    forall src dst r st,
-      sigma gst src = Some st ->
-      request_payload r ->
-      In (src, (dst, r)) (msgs gst) ->
-      exists q remove,
-        query_request q r /\
-        cur_request st = Some (make_pointer dst, q, remove).
-
-  Definition requests_correspond_to_queries (gst : global_state) : Prop :=
-    forall src dst msg,
-      In (src, dst, msg) (msgs gst) ->
-      request_payload msg ->
-      sigma src = Some srcst ->
-      sigma dst = Some dstst ->
-      cur_query src = 
-      request_payload m -> queries_producing m. *)
+        cur_request st = Some (make_pointer dst, q, m).
 
   Definition network_invariant (gst : global_state) : Prop :=
-    True. (* messages_correspond_to_queries *)
+    queries_have_unique_messages gst /\
+    requests_have_queries_or_timeouts gst /\
+    responses_have_queries gst.
 
   Definition inductive_invariant (gst : global_state) : Prop :=
     state_invariant gst /\
@@ -1211,8 +1242,8 @@ Section ChordProof.
     eauto using coarse_live_node_characterization.
    Qed.
 
-  Lemma invariant_preserved_when_all_nodes_and_sigma_preserved :
-      preserved_when_nodes_and_sigma_preserved inductive_invariant.
+  Lemma state_invariant_preserved_when_all_nodes_and_sigma_preserved :
+      preserved_when_nodes_and_sigma_preserved state_invariant.
   Proof.
     intuition.
     repeat split;
@@ -1271,10 +1302,10 @@ Section ChordProof.
           P gst'.
   Hint Unfold client_recv_step_preserves.
 
-  Lemma invariant_preserved_by_client_recv_step :
-      client_recv_step_preserves inductive_invariant.
+  Lemma state_invariant_preserved_by_client_recv_step :
+      client_recv_step_preserves state_invariant.
   Proof.
-    eauto using invariant_preserved_when_all_nodes_and_sigma_preserved.
+    eauto using state_invariant_preserved_when_all_nodes_and_sigma_preserved.
   Qed.
 
   Theorem invariant_steps_to_at_least_one_ring : forall gst gst',
@@ -1287,9 +1318,9 @@ Section ChordProof.
     - eapply start_step_keeps_at_least_one_ring; simpl; eauto.
     - eauto using fail_step_keeps_at_least_one_ring.
     - eauto using timeout_step_keeps_at_least_one_ring.
-    - eapply invariant_preserved_by_client_recv_step; simpl; eauto.
+    - eapply state_invariant_preserved_by_client_recv_step; simpl; eauto.
     - eauto using node_deliver_step_keeps_at_least_one_ring.
-    - eapply invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
+    - eapply state_invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
   Qed.
 
   Theorem invariant_steps_to_at_most_one_ring : forall gst gst',
@@ -1302,9 +1333,9 @@ Section ChordProof.
     - eapply start_step_keeps_at_most_one_ring; simpl; eauto.
     - eauto using fail_step_keeps_at_most_one_ring.
     - eauto using timeout_step_keeps_at_most_one_ring.
-    - eapply invariant_preserved_by_client_recv_step; simpl; eauto.
+    - eapply state_invariant_preserved_by_client_recv_step; simpl; eauto.
     - eauto using node_deliver_step_keeps_at_most_one_ring.
-    - eapply invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
+    - eapply state_invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
   Qed.
 
   Theorem invariant_steps_to_ordered_ring : forall gst gst',
@@ -1317,9 +1348,9 @@ Section ChordProof.
     - eapply start_step_keeps_ordered_ring; simpl; eauto.
     - eauto using fail_step_keeps_ordered_ring.
     - eauto using timeout_step_keeps_ordered_ring.
-    - eapply invariant_preserved_by_client_recv_step; simpl; eauto.
+    - eapply state_invariant_preserved_by_client_recv_step; simpl; eauto.
     - eauto using node_deliver_step_keeps_ordered_ring.
-    - eapply invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
+    - eapply state_invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
   Qed.
 
   Theorem invariant_steps_to_connected_appendages : forall gst gst',
@@ -1332,9 +1363,9 @@ Section ChordProof.
     - eapply start_step_keeps_connected_appendages; simpl; eauto.
     - eauto using fail_step_keeps_connected_appendages.
     - eauto using timeout_step_keeps_connected_appendages.
-    - eapply invariant_preserved_by_client_recv_step; simpl; eauto.
+    - eapply state_invariant_preserved_by_client_recv_step; simpl; eauto.
     - eauto using node_deliver_step_keeps_connected_appendages.
-    - eapply invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
+    - eapply state_invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
   Qed.
 
   Theorem invariant_steps_to_base_not_skipped : forall gst gst',
@@ -1347,16 +1378,16 @@ Section ChordProof.
     - eapply start_step_keeps_base_not_skipped; simpl; eauto.
     - eauto using fail_step_keeps_base_not_skipped.
     - eauto using timeout_step_keeps_base_not_skipped.
-    - eapply invariant_preserved_by_client_recv_step; simpl; eauto.
+    - eapply state_invariant_preserved_by_client_recv_step; simpl; eauto.
     - eauto using node_deliver_step_keeps_base_not_skipped.
-    - eapply invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
+    - eapply state_invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
   Qed.
 
-  Theorem invariant_is_invariant : forall gst gst',
+  Theorem state_invariant_is_invariant : forall gst gst',
       inductive_invariant gst ->
       step_dynamic gst gst' ->
       (* put the thing here *)
-      inductive_invariant gst'.
+      state_invariant gst'.
   Proof.
     intuition.
     repeat split.
