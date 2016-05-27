@@ -5,6 +5,6 @@
 ## Configuration options for coqproject.sh
 DEPS=(StructTact Cheerios)
 DIRS=(core lib systems raft raft-proofs extraction/vard/coq)
-CANARIES=("mathcomp.ssreflect.ssreflect" "Verdi requires mathcomp to be installed" "StructTact.StructTactics" "Build StructTact before building Verdi" "Cheerios.Types" "Build cheerios before building Verdi")
+CANARIES=("mathcomp.ssreflect.ssreflect" "Verdi requires mathcomp to be installed" "StructTact.StructTactics" "Build StructTact before building Verdi" "Cheerios.Cheerios" "Build cheerios before building Verdi")
 EXTRA=(raft/RaftState.v)
 source script/coqproject.sh

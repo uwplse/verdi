@@ -4,9 +4,7 @@ Require Import Omega.
 Import ListNotations.
 Require Import StructTact.StructTactics.
 Require Import StructTact.Util.
-Require Import Cheerios.ComplexSerializers.
-Require Import Cheerios.Combinators.
-Require Import Cheerios.Types.
+From Cheerios Require Import Cheerios Morphism.
 Require String.
 Notation string := String.string.
 
@@ -191,7 +189,7 @@ Section Serializer.
   Proof.
     intros.
     rewrite <- app_nil_r with (l := serialize a).
-    now rewrite Serialize_reversible.
+    now rewrite serialize_deserialize_id.
   Qed.
 
   Lemma lift_strict_of_serialize :
@@ -201,7 +199,7 @@ Section Serializer.
   Proof.
     unfold lift_strict.
     intros.
-    now rewrite Serialize_reversible'.
+    now rewrite serialize_deserialize_id_nil.
   Qed.
 
   Lemma lift_strict_of_deserialize_some :
@@ -226,11 +224,10 @@ Section Serializer.
     find_rewrite.
     auto.
   Qed.
-
 End Serializer.
 
 Lemma lift_strict_None :
-  forall b1 b2,
+  forall A (sA : Serializer A) b1 b2,
     lift_strict (fun _ => True) b1 <-> lift_strict (fun _ => True) b2 ->
     deserialize b1 = None ->
     deserialize b2 = None.
@@ -394,43 +391,38 @@ Module PBKV.
     decide equality.
   Defined.
 
+  Import DeserializerNotations.
+
   Module VersionOne.
     Inductive input := Put (k v : string) | Get (k : string).
     Definition input_serialize (i : input) : bytes :=
-      serialize 0 ++
+      serialize 0 ++ 
       match i with
       | Put k v => serialize true ++ serialize k ++ serialize v
       | Get k => serialize false ++ serialize k
       end.
-    Definition input_deserialize (bs : bytes) : option (input * bytes) :=
-      match deserialize bs with None => None
-      | Some (ver, rest) =>
-        if Nat.eq_dec ver 0
-        then
-          match deserialize rest with None => None
-          | Some (b, rest) =>
-          match deserialize rest with None => None
-          | Some (k, rest) =>
-              if b:bool then
-                match deserialize rest with None => None
-                | Some (v, rest) => Some (Put k v, rest)
-                end
-              else
-                Some (Get k, rest)
-          end
-          end
-        else None
+    Definition input_deserialize : deserializer input :=
+      ver <- deserialize ;; 
+      match ver with
+      | 0 => 
+        tag <- deserialize ;;
+        match tag with
+        | true => liftD2 Put
+        | false => liftD1 Get
+        end
+      | _ => fail
       end.
+    Lemma input_serialize_deserialize_id : 
+      forall i bin, input_deserialize (input_serialize i ++ bin) = Some (i, bin).
+    Proof.
+      unfold input_serialize, input_deserialize.
+      destruct i; serialize_deserialize_id_crush.
+    Qed.
     Instance input_Serializer : Serializer input :=
       {| serialize := input_serialize;
-         deserialize := input_deserialize
+         deserialize := input_deserialize;
+         serialize_deserialize_id := input_serialize_deserialize_id
       |}.
-    unfold input_serialize, input_deserialize.
-    intros.
-    destruct x;
-       rewrite !app_assoc_reverse;
-       now rewrite !Serialize_reversible.
-    Defined.
 
     Inductive msg := Cmd (i : input) | Ack.
     Definition msg_serialize (m : msg) : bytes :=
@@ -439,30 +431,28 @@ Module PBKV.
       | Cmd i => serialize true ++ serialize i
       | Ack => serialize false
       end.
-    Definition msg_deserialize (bs : bytes) : option (msg * bytes) :=
-        match deserialize bs with None => None
-        | Some (ver, rest)  =>
-        match deserialize rest with None => None
-        | Some (b, rest) =>
-          if Nat.eq_dec ver 0
-          then if b:bool
-               then match deserialize rest with None => None
-                                           | Some (i, rest) => Some (Cmd i, rest)
-                    end
-               else Some (Ack, rest)
-          else None
+    Definition msg_deserialize : deserializer msg :=
+      ver <- deserialize ;; 
+      match ver with
+      | 0 => 
+        tag <- deserialize ;; 
+        match tag with
+        | true => Cmd <$> deserialize 
+        | false => ret Ack
         end
-        end.
+      | _ => fail
+      end.
+    Lemma msg_serialize_deserialize_id : 
+      forall m bin, msg_deserialize (msg_serialize m ++ bin) = Some (m, bin).
+    Proof.
+      unfold msg_serialize, msg_deserialize.
+      destruct m; serialize_deserialize_id_crush.
+    Qed.
     Instance msg_Serializer : Serializer msg :=
       {| serialize := msg_serialize;
-         deserialize := msg_deserialize
+         deserialize := msg_deserialize; 
+         serialize_deserialize_id := msg_serialize_deserialize_id
       |}.
-    unfold msg_serialize, msg_deserialize.
-    intros.
-    destruct x;
-      rewrite !app_assoc_reverse;
-      now rewrite !Serialize_reversible.
-    Defined.
 
     Inductive output := ResGet (k v : string) | ResPut (k old_v v : string).
     Definition output_serialize (o : output) : bytes :=
@@ -471,44 +461,27 @@ Module PBKV.
       | ResGet k v => serialize true ++ serialize k ++ serialize v
       | ResPut k old_v v => serialize false ++ serialize k ++ serialize old_v ++ serialize v
       end.
-    Definition output_deserialize (bs : bytes) : option (output * bytes) :=
-      match deserialize bs with None => None
-      | Some (ver, rest) =>
-        if Nat.eq_dec ver 0
-        then
-          match deserialize rest with None => None
-          | Some (b, rest) =>
-            if b:bool
-            then
-              match deserialize rest with None => None
-              | Some (k, rest) =>
-              match deserialize rest with None => None
-              | Some (v, rest) => Some (ResGet k v, rest)
-              end
-              end
-            else
-              match deserialize rest with None => None
-              | Some (k, rest) =>
-              match deserialize rest with None => None
-              | Some (old_v, rest) =>
-              match deserialize rest with None => None
-              | Some (v, rest) => Some (ResPut k old_v v, rest)
-              end
-              end
-              end
-          end
-        else None
+    Definition output_deserialize : deserializer output :=
+      ver <- deserialize ;; 
+      match ver with
+      | 0 => tag <- deserialize ;; 
+            match tag with
+            | true => liftD2 ResGet
+            | false => liftD3 ResPut
+            end
+      | _ => fail
       end.
+    Lemma output_serialize_deserialize_id : 
+      forall o bin, output_deserialize (output_serialize o ++ bin) = Some (o, bin).
+    Proof.
+      unfold output_serialize, output_deserialize.
+      destruct o; serialize_deserialize_id_crush.
+    Qed.
     Instance output_Serializer : Serializer output :=
       {| serialize := output_serialize;
-         deserialize := output_deserialize
+         deserialize := output_deserialize;
+         serialize_deserialize_id := output_serialize_deserialize_id
       |}.
-    unfold output_serialize, output_deserialize.
-    intros.
-    destruct x;
-      rewrite !app_assoc_reverse;
-      now rewrite !Serialize_reversible.
-    Defined.
 
     Record data := Data { db : list (string * string);
                           log : list input;
@@ -516,26 +489,18 @@ Module PBKV.
                         }.
     Definition data_serialize (d : data) : bytes :=
       serialize (db d) ++ serialize (log d) ++ serialize (nextIndex d).
-    Definition data_deserialize (bs : bytes) : option (data * bytes) :=
-      match deserialize bs with None => None
-      | Some (db, rest) =>
-      match deserialize rest with None => None
-      | Some (log, rest) =>
-      match deserialize rest with None => None
-      | Some (ni, rest) => Some (Data db log ni, rest)
-      end
-      end
-      end.
+    Definition data_deserialize : deserializer data := liftD3 Data.
+    Lemma data_serialize_deserialize_id : 
+      forall d bin, data_deserialize (data_serialize d ++ bin) = Some (d, bin).
+    Proof.
+      unfold data_serialize, data_deserialize.
+      destruct d; serialize_deserialize_id_crush.
+    Qed.
     Instance data_Serializer : Serializer data :=
       {| serialize := data_serialize;
-         deserialize := data_deserialize
+         deserialize := data_deserialize;
+         serialize_deserialize_id := data_serialize_deserialize_id
       |}.
-    unfold data_serialize, data_deserialize.
-    intros.
-    destruct x.
-    rewrite !app_assoc_reverse.
-    now rewrite !Serialize_reversible.
-    Defined.
 
     Definition nop (s : bytes) : bytes * list (name * bytes) * list bytes := (s, [], []).
     Definition nopm (n : name) (m : bytes) (s : bytes) : bytes * list (name * bytes) * list bytes := (s, [(n, m)], []).
@@ -735,7 +700,7 @@ Module PBKV.
         try find_apply_lem_hyp nop_state;
         try find_apply_lem_hyp nopm_state;
         subst;
-      try (rewrite Serialize_reversible' in *; discriminate).
+      try (rewrite serialize_deserialize_id_nil in *; discriminate).
       auto.
     Qed.
 
@@ -749,7 +714,7 @@ Module PBKV.
       intros.
       repeat break_match; repeat find_inversion;
       try find_apply_lem_hyp nop_state; subst;
-      try (rewrite Serialize_reversible' in *; discriminate).
+      try (rewrite serialize_deserialize_id_nil in *; discriminate).
       auto.
     Qed.
 
@@ -845,7 +810,7 @@ Module PBKV.
     Proof.
       intros.
       unfold get_log.
-      rewrite Serialize_reversible'; auto.
+      rewrite serialize_deserialize_id_nil; auto.
     Qed.
 
     Lemma I_packet_to_primary_elim :
@@ -878,7 +843,7 @@ Module PBKV.
       intros.
       repeat break_match; repeat break_or_hyp; break_exists; break_and; subst;
         repeat find_rewrite; simpl in *; repeat break_or_hyp; intuition; find_inversion; eauto.
-      rewrite Serialize_reversible'. eauto 10.
+      rewrite serialize_deserialize_id_nil. eauto 10.
     Qed.
 
     Lemma get_log_deserialize_Some :
@@ -906,7 +871,7 @@ Module PBKV.
           unfold upgrade in *. find_inversion.
           destruct h; subst; update_rewrite.
           * (* Primary *)
-            rewrite Serialize_reversible'.
+            rewrite serialize_deserialize_id_nil.
             simpl in *.
             rewrite version_0_is_init in * by auto.
             rewrite deserialize_data_nil in *.
@@ -934,7 +899,7 @@ Module PBKV.
                  cbn [app] in *. find_inversion.
                  break_match_hyp.
                  ** break_let. find_inversion.
-                    rewrite Serialize_reversible'.
+                    rewrite serialize_deserialize_id_nil.
                     simpl in *.
                     break_match; auto.
                     rewrite app_nil_r.
@@ -973,7 +938,7 @@ Module PBKV.
             -- repeat find_rewrite.
                update_rewrite.
                find_inversion.
-               rewrite Serialize_reversible'. simpl.
+               rewrite serialize_deserialize_id_nil. simpl.
                break_if; simpl.
                ++ right. left.
                   intuition.
@@ -999,14 +964,14 @@ Module PBKV.
                update_rewrite.
                unfold get_log in *.
                repeat find_rewrite.
-               rewrite Serialize_reversible'. auto.
+               rewrite serialize_deserialize_id_nil. auto.
           * find_apply_lem_hyp nop_elim.
             break_and; subst. simpl in *.
             destruct h; update_rewrite; repeat find_rewrite;
-              try rewrite Serialize_reversible'; auto.
+              try rewrite serialize_deserialize_id_nil; auto.
             unfold get_log in *.
             repeat find_rewrite.
-            rewrite Serialize_reversible'. auto.
+            rewrite serialize_deserialize_id_nil. auto.
     Qed.
 
 
@@ -1030,6 +995,13 @@ Module PBKV.
 
   Module VersionTwo.
     Inductive input := Put (k v : string) | Get (k : string) | Append (k s : string).
+
+    Definition upgrade_input (i : VersionOne.input) : VersionTwo.input :=
+      match i with
+      | VersionOne.Put k v => VersionTwo.Put k v
+      | VersionOne.Get k => VersionTwo.Get k
+      end.
+
     Definition input_serialize (i : input) : bytes :=
       serialize 1 ++
       match i with
@@ -1037,82 +1009,95 @@ Module PBKV.
       | Get k => serialize 1 ++ serialize k
       | Append k s => serialize 2 ++ serialize k ++ serialize s
       end.
-    Definition input_deserialize (bs : bytes) : option (input * bytes) :=
-      match deserialize bs with None => None
-      | Some (ver, rest) =>
-        match ver with
-        | 0 =>
-          match deserialize bs with
-          | Some (VersionOne.Put k v, rest) =>
-            Some (Put k v, rest)
-          | Some (VersionOne.Get k, rest) =>
-            Some (Get k, rest)
-          | None => None
-          end
-        | 1 =>
-          match deserialize rest with None => None
-          | Some (tag, rest) =>
-          match deserialize rest with None => None
-          | Some (k, rest) =>
-              match tag with
-              | 0 =>
-                match deserialize rest with None => None
-                | Some (v,rest) => Some (Put k v, rest)
-                end
-              | 1 => Some (Get k, rest)
-              | 2 =>
-                match deserialize rest with None => None
-                | Some (s,rest) => Some (Append k s, rest)
-                end
-              | _ => None
-              end
-          end
-          end
-        | _ => None
-        end
+    Definition input_deserialize : deserializer input :=
+      ver <- deserialize ;; 
+      match ver with
+      | 0 => push (serialize 0) ;; upgrade_input <$> deserialize
+      | 1 => tag <- deserialize ;;
+            match tag with
+            | 0 => liftD2 Put
+            | 1 => liftD1 Get
+            | 2 => liftD2 Append
+            | _ => fail
+            end
+      | _ => fail
       end.
+    Lemma input_serialize_deserialize_id : 
+      forall i bin, input_deserialize (input_serialize i ++ bin) = Some (i, bin).
+    Proof.
+      unfold input_serialize, input_deserialize.
+      destruct i; serialize_deserialize_id_crush.
+    Qed.
     Instance input_Serializer : Serializer input :=
       {| serialize := input_serialize;
-         deserialize := input_deserialize
+         deserialize := input_deserialize; 
+         serialize_deserialize_id := input_serialize_deserialize_id
       |}.
-    unfold input_serialize, input_deserialize.
-    intros.
-    destruct x;
-       rewrite !app_assoc_reverse;
-       now rewrite !Serialize_reversible.
-    Defined.
+
+    Lemma upgrade_input_triangle : 
+      forall i bin,
+        input_deserialize (VersionOne.input_serialize i ++ bin) = Some (upgrade_input i, bin).
+    Proof.
+      unfold input_deserialize, VersionOne.input_serialize.
+      change (@deserialize _ VersionOne.input_Serializer) with VersionOne.input_deserialize.
+      unfold VersionOne.input_deserialize.
+      destruct i; triangle_crush.
+    Qed.
+    Instance input_Morphism : SerializerMorphism VersionOne.input_Serializer input_Serializer := 
+      {| morphism := upgrade_input;
+         triangle := upgrade_input_triangle
+      |}.
 
     Inductive msg := Cmd (i : input) | Ack.
+
+    Definition upgrade_msg (m : VersionOne.msg) : msg :=
+      match m with
+      | VersionOne.Cmd i => Cmd (upgrade_input i)
+      | VersionOne.Ack => Ack
+      end.
+
     Definition msg_serialize (m : msg) : bytes :=
       serialize 0 ++
       match m with
       | Cmd i => serialize true ++ serialize i
       | Ack => serialize false
       end.
-    Definition msg_deserialize (bs : bytes) : option (msg * bytes) :=
-        match deserialize bs with None => None
-        | Some (ver, rest)  =>
-        match deserialize rest with None => None
-        | Some (b, rest) =>
-          if Nat.eq_dec ver 0
-          then if b:bool
-               then match deserialize rest with None => None
-                                           | Some (i, rest) => Some (Cmd i, rest)
-                    end
-               else Some (Ack, rest)
-          else None
-        end
-        end.
+    Definition msg_deserialize : deserializer msg :=
+      ver <- deserialize ;; 
+      match ver with
+      | 0 => tag <- deserialize ;;
+            match tag with
+            | true => Cmd <$> deserialize
+            | false => ret Ack
+            end
+      | _ => fail
+      end.
+    Lemma msg_serialize_deserialize_id : 
+      forall m bin, msg_deserialize (msg_serialize m ++ bin) = Some (m, bin).
+    Proof.
+      unfold msg_serialize, msg_deserialize.
+      destruct m; serialize_deserialize_id_crush.
+    Qed.
     Instance msg_Serializer : Serializer msg :=
       {| serialize := msg_serialize;
-         deserialize := msg_deserialize
+         deserialize := msg_deserialize;
+         serialize_deserialize_id := msg_serialize_deserialize_id
       |}.
-    unfold msg_serialize, msg_deserialize.
-    intros.
-    destruct x;
-      rewrite !app_assoc_reverse;
-      now rewrite !Serialize_reversible.
-    Defined.
+
+    Lemma upgrade_msg_triangle : 
+      forall m bin,
+        msg_deserialize (VersionOne.msg_serialize m ++ bin) = Some (upgrade_msg m, bin).
+    Proof.
+      unfold msg_deserialize, VersionOne.msg_serialize.
+      change (@deserialize _ VersionOne.msg_Serializer) with VersionOne.msg_deserialize.
+      unfold VersionOne.msg_deserialize.
+      destruct m; triangle_crush.
+    Qed.
+    Instance msg_Morphism : SerializerMorphism VersionOne.msg_Serializer msg_Serializer :=
+      {| morphism := upgrade_msg;
+         triangle := upgrade_msg_triangle
+      |}.
+
 
     Inductive output := ResGet (k v : string)
                       | ResPut (k old_v v : string)
@@ -1125,80 +1110,70 @@ Module PBKV.
       | ResAppend k s old_v v => serialize 2 ++ serialize k ++ serialize s ++
                                 serialize old_v ++ serialize v
       end.
-    Definition output_deserialize (bs : bytes) : option (output * bytes) :=
-      match deserialize bs with None => None
-      | Some (ver, rest) =>
-        if Nat.eq_dec ver 1
-        then
-          match deserialize rest with None => None
-          | Some (tag, rest) =>
-            match deserialize rest with None => None
-            | Some (k, rest) =>
+    Definition output_deserialize : deserializer output :=
+      ver <- deserialize ;;
+      match ver with
+      | 1 => tag <- deserialize ;; 
             match tag with
-            | 0 =>
-              match deserialize rest with None => None
-              | Some (v, rest) => Some (ResGet k v, rest)
-              end
-            | 1 =>
-              match deserialize rest with None => None
-              | Some (old_v, rest) =>
-              match deserialize rest with None => None
-              | Some (v, rest) => Some (ResPut k old_v v, rest)
-              end
-              end
-            | 2 =>
-              match deserialize rest with None => None
-              | Some (s, rest) =>
-              match deserialize rest with None => None
-              | Some (old_v, rest) =>
-              match deserialize rest with None => None
-              | Some (v, rest) => Some (ResAppend k s old_v v, rest)
-              end
-              end
-              end
-            | _ => None
+            | 0 => liftD2 ResGet
+            | 1 => liftD3 ResPut
+            | 2 => liftD4 ResAppend
+            | _ => fail
             end
-            end
-          end
-        else None
+      | _ => fail
       end.
+    Lemma output_serialize_deserialize_id : 
+      forall o bin, output_deserialize (output_serialize o ++ bin) = Some (o, bin).
+    Proof.
+      unfold output_serialize, output_deserialize.
+      destruct o; serialize_deserialize_id_crush.
+    Qed.
     Instance output_Serializer : Serializer output :=
       {| serialize := output_serialize;
-         deserialize := output_deserialize
+         deserialize := output_deserialize;
+         serialize_deserialize_id := output_serialize_deserialize_id
       |}.
-    unfold output_serialize, output_deserialize.
-    intros.
-    destruct x;
-      rewrite !app_assoc_reverse;
-      now rewrite !Serialize_reversible.
-    Defined.
+
 
     Record data := Data { db : list (string * string);
                           log : list input;
                           nextIndex : nat
                         }.
+
+    Definition upgrade_data (d : VersionOne.data) : VersionTwo.data :=
+      VersionTwo.Data (VersionOne.db d)
+                      (map upgrade_input (VersionOne.log d))
+                      (VersionOne.nextIndex d).
+
     Definition data_serialize (d : data) : bytes :=
       serialize (db d) ++ serialize (log d) ++ serialize (nextIndex d).
-    Definition data_deserialize (bs : bytes) : option (data * bytes) :=
-      match deserialize bs with None => None
-      | Some (db, rest) =>
-      match deserialize rest with None => None
-      | Some (log, rest) =>
-      match deserialize rest with None => None
-      | Some (ni, rest) => Some (Data db log ni, rest)
-      end
-      end
-      end.
+    Definition data_deserialize : deserializer data := liftD3 Data.
+    Lemma data_serialize_deserialize_id : 
+      forall d bin, data_deserialize (data_serialize d ++ bin) = Some (d, bin).
+    Proof.
+      unfold data_serialize, data_deserialize.
+      destruct d; serialize_deserialize_id_crush.
+    Qed.
     Instance data_Serializer : Serializer data :=
       {| serialize := data_serialize;
-         deserialize := data_deserialize
+         deserialize := data_deserialize;
+         serialize_deserialize_id := data_serialize_deserialize_id
       |}.
-    unfold data_serialize, data_deserialize.
-    intros.
-    destruct x.
-    rewrite !app_assoc_reverse.
-    now rewrite !Serialize_reversible.
-    Defined.
+
+    Lemma upgrade_data_triangle : 
+      forall d bin,
+        data_deserialize (VersionOne.data_serialize d ++ bin) = Some (upgrade_data d, bin).
+    Proof.
+      unfold data_deserialize, VersionOne.data_serialize.
+      change (@deserialize _ VersionOne.data_Serializer) with VersionOne.data_deserialize.
+      unfold VersionOne.data_deserialize.
+      destruct d; triangle_crush.
+    Qed.
+    Instance data_Morphism : SerializerMorphism VersionOne.data_Serializer data_Serializer :=
+      {| morphism := upgrade_data;
+         triangle := upgrade_data_triangle
+      |}.
+
 
     Definition nop (s : bytes) : bytes * list (name * bytes) * list bytes := (s, [], []).
     Definition nopm (n : name) (m : bytes) (s : bytes) : bytes * list (name * bytes) * list bytes := (s, [(n, m)], []).
@@ -1261,17 +1236,6 @@ Module PBKV.
       end
       end
       end.
-
-    Definition upgrade_input (i : VersionOne.input) : VersionTwo.input :=
-      match i with
-      | VersionOne.Put k v => VersionTwo.Put k v
-      | VersionOne.Get k => VersionTwo.Get k
-      end.
-
-    Definition upgrade_data (d : VersionOne.data) : VersionTwo.data :=
-      VersionTwo.Data (VersionOne.db d)
-                      (map upgrade_input (VersionOne.log d))
-                      (VersionOne.nextIndex d).
 
     Definition upgrade (b : bytes) : option bytes :=
       match deserialize b with None => None
@@ -1343,141 +1307,6 @@ Module PBKV.
       find_apply_lem_hyp lift_strict_not_None; intuition.
     Qed.
 
-    Definition upgrade_msg (m : VersionOne.msg) : msg :=
-      match m with
-      | VersionOne.Cmd i => Cmd (upgrade_input i)
-      | VersionOne.Ack => Ack
-      end.
-
-    Lemma V1V2_input_deserialize :
-      forall b i rest,
-        deserialize b = Some (i, rest) ->
-        deserialize b = Some (upgrade_input i, rest).
-    Proof.
-      intros.
-      unfold deserialize; simpl in *.
-      unfold input_deserialize. break_match.
-      - break_let. subst.
-        repeat find_rewrite.
-        break_match.
-        + break_match; subst; simpl; auto.
-        + exfalso.
-          unfold deserialize in H.
-          simpl in *.
-          unfold VersionOne.input_deserialize in *.
-          repeat find_rewrite.
-          break_if; discriminate.
-      - exfalso.
-        unfold deserialize in H.
-          simpl in *.
-          unfold VersionOne.input_deserialize in *.
-          repeat find_rewrite. discriminate.
-    Qed.
-    
-    Lemma V1V2_list_input_deserialize':
-      forall (n : nat) (l : list VersionOne.input) (rest : list bool) (l' : list bool),
-        list_deserialize_rec VersionOne.input VersionOne.input_Serializer n l' =
-        Some (l, rest) ->
-        list_deserialize_rec input input_Serializer n l' = Some (map upgrade_input l, rest).
-    Proof.
-      induction n; intros; simpl in *; auto.
-      - now find_inversion.
-      - break_match_hyp; try discriminate.
-        break_let. subst. 
-        erewrite V1V2_input_deserialize; eauto.
-        break_match_hyp; try discriminate.
-        break_let. find_inversion.
-        simpl.
-        erewrite IHn; eauto.
-    Qed.
-
-        
-    Lemma V1V2_list_input_deserialize :
-      forall l b rest,
-        deserialize b = Some (l, rest) ->
-        deserialize b = Some (map upgrade_input l, rest).
-    Proof.
-      intros.
-      unfold deserialize in *. simpl in *.
-      unfold list_deserialize in *. simpl in *.
-      break_match; try discriminate.
-      break_let. subst.
-      eauto using V1V2_list_input_deserialize'.
-    Qed.
-    
-    Lemma V1V2_input_serialize :
-      forall i,
-        @deserialize input _ (serialize i) = deserialize (serialize (upgrade_input i)).
-    Proof.
-      intros.
-      rewrite Serialize_reversible'.
-      apply V1V2_input_deserialize.
-      rewrite Serialize_reversible'. auto.
-    Qed.
-
-    Lemma V1V2_msg_deserialize :
-      forall m b rest,
-        deserialize b = Some (m, rest) ->
-        deserialize b = Some (upgrade_msg m, rest).
-    Proof.
-      intros.
-      unfold deserialize in *; simpl in *.
-      unfold msg_deserialize, VersionOne.msg_deserialize in *; simpl in *.
-      break_match; try discriminate.
-      break_let. subst.
-      break_match; try discriminate.
-      break_let. repeat break_if; try discriminate.
-      - break_match_hyp; try discriminate.
-        break_let. subst.
-        find_apply_lem_hyp V1V2_input_deserialize.
-        find_rewrite.
-        now find_inversion.
-      - now find_inversion.
-    Qed.
-    
-    Lemma V1V2_msg_serialize :
-      forall m,
-        @deserialize msg _ (serialize m) = deserialize (serialize (upgrade_msg m)).
-    Proof.
-      intros.
-      rewrite Serialize_reversible'.
-      destruct m; simpl; auto.
-      unfold serialize; simpl; unfold VersionOne.msg_serialize.
-      simpl.
-      unfold deserialize. simpl.
-      unfold msg_deserialize.
-      simpl.
-      rewrite V1V2_input_serialize.
-      rewrite Serialize_reversible'. auto.
-    Qed.
-
-    Lemma V1V2_data_deserialize :
-      forall d b rest,
-        deserialize b = Some (d, rest) ->
-        deserialize b = Some (upgrade_data d, rest).
-    Proof.
-      intros.
-      unfold deserialize in *. simpl in *.
-      unfold data_deserialize, VersionOne.data_deserialize in *.
-      break_match; try discriminate.
-      break_let. subst.
-      break_match_hyp; try discriminate.
-      break_let. subst.
-      erewrite V1V2_list_input_deserialize; eauto.
-      break_match; try discriminate.
-      break_let. now find_inversion.
-    Qed.
-    
-    Lemma V1V2_data_serialize :
-      forall d,
-        @deserialize data _ (serialize d) = deserialize (serialize (upgrade_data d)).
-    Proof.
-      intros.
-      rewrite Serialize_reversible'.
-      apply V1V2_data_deserialize.
-      apply Serialize_reversible'.
-    Qed.
-    
     Lemma old_handleMsg_all_packets_deserialize :
       forall h m st st' ms os,
         lift_strict (fun _ : msg => True) m ->
@@ -1493,13 +1322,11 @@ Module PBKV.
       - find_inversion.
         constructor; auto.
         simpl. eapply lift_strict_of_deserialize_some; eauto.
-        rewrite V1V2_msg_serialize.
-        rewrite Serialize_reversible'; eauto.
+        rewrite triangle_nil. eauto.
       - find_inversion.
         constructor; auto.
         simpl. eapply lift_strict_of_deserialize_some; eauto.
-        rewrite V1V2_msg_serialize.
-        rewrite Serialize_reversible'; eauto.
+        rewrite triangle_nil. eauto.
       - find_apply_lem_hyp nopm_msgs.
         subst. constructor; auto.
     Qed.
@@ -1545,8 +1372,7 @@ Module PBKV.
       constructor; simpl; auto.
       simpl.
       eapply lift_strict_of_deserialize_some; eauto.
-      rewrite V1V2_msg_serialize.
-      rewrite Serialize_reversible'; eauto.
+      rewrite triangle_nil. eauto.
     Qed.
     
     Lemma all_packets_deserialize :
@@ -1605,7 +1431,7 @@ Module PBKV.
         try find_apply_lem_hyp nop_state;
         try find_apply_lem_hyp nopm_state;
         subst;
-      try (rewrite Serialize_reversible' in *; discriminate).
+      try (rewrite serialize_deserialize_id_nil in *; discriminate).
       auto.
     Qed.
 
@@ -1619,7 +1445,7 @@ Module PBKV.
       intros.
       repeat break_match; repeat find_inversion;
       try find_apply_lem_hyp nop_state; subst;
-      try (rewrite Serialize_reversible' in *; discriminate).
+      try (rewrite serialize_deserialize_id_nil in *; discriminate).
       auto.
     Qed.
 
@@ -1638,7 +1464,7 @@ Module PBKV.
         + destruct (eq_dec h0 h); subst; update_rewrite.
           * unfold VersionOne.upgrade in *.
             find_inversion.
-            find_rewrite_lem Serialize_reversible'. discriminate.
+            find_rewrite_lem serialize_deserialize_id_nil. discriminate.
           * find_apply_hyp_hyp.
             auto.
         + repeat find_rewrite.
@@ -1672,7 +1498,7 @@ Module PBKV.
           unfold upgrade in *.
           repeat break_match; simpl in *; auto; try congruence.
           find_inversion.
-          rewrite Serialize_reversible' in *. congruence.
+          rewrite serialize_deserialize_id_nil in *. congruence.
         + destruct (eq_dec h h0); subst; update_rewrite; auto.
         + destruct (eq_dec h h0); subst; update_rewrite; auto.
           find_apply_lem_hyp handleMsg_deserializes_None_eq; subst; auto.
@@ -1756,7 +1582,7 @@ Module PBKV.
     Proof.
       intros.
       unfold get_log.
-      rewrite Serialize_reversible'; auto.
+      rewrite serialize_deserialize_id_nil; auto.
     Qed.
 
     Lemma get_log_serialize_V1V2 :
@@ -1765,8 +1591,7 @@ Module PBKV.
     Proof.
       intros.
       unfold get_log.
-      rewrite V1V2_data_serialize.
-      rewrite Serialize_reversible'; auto.
+      rewrite triangle_nil. auto.
     Qed.
     
     Lemma map_single :
@@ -1914,8 +1739,7 @@ Module PBKV.
               unfold VersionOne.upgrade in *. find_inversion.
               destruct h; subst; update_rewrite.
               * (* Primary *)
-                rewrite V1V2_data_serialize.
-                rewrite Serialize_reversible'.
+                rewrite triangle_nil.
                 simpl in *.
                 rewrite version_0_is_init in * by auto.
                 rewrite deserialize_data_nil in *.
@@ -1932,14 +1756,15 @@ Module PBKV.
               break_let. find_inversion.
               destruct h; subst; update_rewrite.
               * (* Primary *)
-                rewrite Serialize_reversible'.
+                rewrite serialize_deserialize_id_nil.
                 repeat find_rewrite.
+                rewrite @Morphism.triangle_nil in Heqo.
                 find_apply_lem_hyp V1V2_data_deserialize.
                 now find_rewrite.
               * (* Backup *)
                 find_apply_lem_hyp V1V2_data_deserialize.
                 erewrite get_log_deserialize_Some in IHstep_reachable; eauto.
-                erewrite get_log_deserialize_Some; eauto using Serialize_reversible'.
+                erewrite get_log_deserialize_Some; eauto using serialize_deserialize_id_nil.
             }
         + (* msg case *)
           find_apply_lem_hyp only_two_versions. break_or_hyp. {
@@ -1969,12 +1794,12 @@ Module PBKV.
               break_match_hyp.
               ++ break_let. find_inversion.
                  rewrite V1V2_data_serialize.
-                 rewrite Serialize_reversible'. simpl in *.
+                 rewrite serialize_deserialize_id_nil. simpl in *.
                  rewrite app_nil_r.
                  break_match; auto.
                  simpl in *. 
                  rewrite V1V2_msg_serialize.
-                 rewrite Serialize_reversible'. simpl.
+                 rewrite serialize_deserialize_id_nil. simpl.
                  intuition eauto using take_strict_nth_error_Some, map_nth_error.
               ++ find_apply_lem_hyp nop_elim. break_and. subst.
                  exfalso.
@@ -1998,7 +1823,7 @@ Module PBKV.
               unfold I. simpl. update_rewrite. repeat find_rewrite.
               right. right.
               rewrite V1V2_msg_serialize. simpl.
-              rewrite Serialize_reversible'. intuition.
+              rewrite serialize_deserialize_id_nil. intuition.
               rewrite get_log_serialize_V1V2.
               erewrite get_log_deserialize_Some by eauto.
               simpl.
@@ -2052,7 +1877,7 @@ Module PBKV.
             -- repeat find_rewrite.
                update_rewrite.
                find_inversion.
-               rewrite Serialize_reversible'. simpl.
+               rewrite serialize_deserialize_id_nil. simpl.
                break_if; simpl.
                ++ right. left.
                   intuition.
@@ -2078,14 +1903,14 @@ Module PBKV.
                update_rewrite.
                unfold get_log in *.
                repeat find_rewrite.
-               rewrite Serialize_reversible'. auto.
+               rewrite serialize_deserialize_id_nil. auto.
           * find_apply_lem_hyp nop_elim.
             break_and; subst. simpl in *.
             destruct h; update_rewrite; repeat find_rewrite;
-              try rewrite Serialize_reversible'; auto.
+              try rewrite serialize_deserialize_id_nil; auto.
             unfold get_log in *.
             repeat find_rewrite.
-            rewrite Serialize_reversible'. auto.
+            rewrite serialize_deserialize_id_nil. auto.
     Qed.
 
 
