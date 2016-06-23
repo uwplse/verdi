@@ -1,13 +1,6 @@
-Require Import List.
-Import ListNotations.
-
-Require Import Util.
-Require Import Net.
-
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Export CommonDefinitions.
-Require Export RefinementCommonDefinitions.
+Require Import RefinementCommonDefinitions.
 
 Section CandidateEntriesInterface.
   Context {orig_base_params : BaseParams}.

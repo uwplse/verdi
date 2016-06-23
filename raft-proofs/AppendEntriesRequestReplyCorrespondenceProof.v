@@ -1,19 +1,9 @@
-Require Import List.
-Import ListNotations.
-Require Import Omega.
 Require Import FunctionalExtensionality.
 
-
-Require Import VerdiTactics.
-Require Import Net.
-Require Import Util.
 Require Import Raft.
 
-Require Import CommonTheorems.
 Require Import SpecLemmas.
 
-Require Import UpdateLemmas.
-Require Import DecompositionWithPostState.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 Require Import AppendEntriesRequestReplyCorrespondenceInterface.
 
@@ -198,7 +188,7 @@ Section AppendEntriesRequestReplyCorrespondence.
       raft_intermediate_reachable net'.
   Proof.
     intros.
-    pose proof dup_drop_reorder _ packet_eq_dec _ _ $(eauto)$.
+    pose proof dup_drop_reorder _ packet_eq_dec _ _ ltac:(eauto).
     match goal with
     | [ H : dup_drop_step_star _ _ _ |- _ ] =>
       eapply step_f_dup_drop_step with (f := []) (Sigma := nwState net) in H

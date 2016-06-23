@@ -1,12 +1,3 @@
-Require Import List.
-Import ListNotations.
-Require Import Omega.
-Require Import FunctionalExtensionality.
-
-
-Require Import VerdiTactics.
-Require Import Net.
-Require Import Util.
 Require Import Raft.
 
 

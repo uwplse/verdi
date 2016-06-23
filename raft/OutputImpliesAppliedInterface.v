@@ -1,10 +1,3 @@
-Require Import List.
-Require Import Arith.
-
-Require Import Net.
-Require Import Util.
-Require Import VerdiTactics.
-
 Require Import Raft.
 Require Import CommonDefinitions.
 Require Import TraceUtil.

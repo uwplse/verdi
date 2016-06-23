@@ -1,12 +1,6 @@
-Require Import List.
-
-Require Import VerdiTactics.
-Require Import Net.
-Require Import Util.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 Require Import LeaderCompletenessInterface.
-Require Import CommonDefinitions.
 
 Section TransitiveCommit.
 

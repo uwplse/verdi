@@ -1,15 +1,10 @@
-Require Import List.
-Require Import Omega.
+Require Import GhostSimulations.
+Require Import Raft.
 
-Require Import VerdiTactics.
-Require Import Util.
-Require Import Net.
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
-Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonTheorems.
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 
@@ -102,6 +97,7 @@ Section AllEntriesVotesWithLog.
   Proof.
     unfold currentTerm_votedFor_votesWithLog. intros.
     eapply votes_votesWithLog_correspond_invariant; eauto.
+    break_and.
     eapply votes_correct_invariant; eauto.
   Qed.
 

@@ -1,11 +1,3 @@
-Require Import List.
-Import ListNotations.
-
-Require Import Net.
-Require Import Util.
-Require Import VerdiTactics.
-Require Import CommonDefinitions.
-
 Require Import Raft.
 Require Import RaftRefinementInterface.
 Require Import LeaderCompletenessInterface.

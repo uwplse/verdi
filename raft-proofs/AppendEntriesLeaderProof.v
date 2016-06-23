@@ -1,10 +1,3 @@
-Require Import List.
-Require Import Omega.
-
-Require Import VerdiTactics.
-Require Import Util.
-Require Import Net.
-
 Require Import Raft.
 Require Import RaftRefinementInterface.
 
@@ -12,9 +5,7 @@ Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 Require Import CommonTheorems.
-Require Import RefinementCommonTheorems.
 Require Import SpecLemmas.
-Require Import RefinementSpecLemmas.
 
 Require Import AppendEntriesRequestsCameFromLeadersInterface.
 Require Import OneLeaderLogPerTermInterface.
@@ -343,7 +334,7 @@ Section AppendEntriesLeader.
       h = h'.
   Proof.
     intros.
-    eapply (lift_prop _ one_leader_per_term_invariant _ $(eauto)$);
+    eapply (lift_prop _ one_leader_per_term_invariant _ ltac:(eauto));
       simpl in *; repeat break_match; repeat (find_rewrite; simpl in *);
       auto; simpl in *; repeat find_rewrite; simpl in *; auto.
   Qed.

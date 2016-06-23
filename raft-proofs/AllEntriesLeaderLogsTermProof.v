@@ -1,12 +1,8 @@
-Require Import List.
+Require Import Raft.
 
-Require Import VerdiTactics.
-Require Import Net.
-Require Import Util.
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
-Require Import Raft.
 Require Import RaftRefinementInterface.
 Require Import RefinementSpecLemmas.
 Require Import SpecLemmas.

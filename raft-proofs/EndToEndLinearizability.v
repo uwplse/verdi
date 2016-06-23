@@ -1,18 +1,4 @@
-Require Import List.
-Import ListNotations.
-Require Import Arith.
-Require Import Nat.
-Require Import Omega.
-Require Import Sorting.Permutation.
-
-
-Require Import Net.
-Require Import Util.
-Require Import VerdiTactics.
-
 Require Import Raft.
-Require Import CommonTheorems.
-Require Import TraceUtil.
 Require Import Linearizability.
 
 Require Import RaftLinearizableProofs.
@@ -55,6 +41,9 @@ Require Import CroniesTermProof.
 
 Require Import CroniesCorrectInterface.
 Require Import CroniesCorrectProof.
+
+Require Import VotesLeCurrentTermInterface.
+Require Import VotesLeCurrentTermProof.
 
 Require Import VotesCorrectInterface.
 Require Import VotesCorrectProof.
@@ -120,12 +109,6 @@ Require Import AllEntriesVotesWithLogProof.
 
 Require Import VotesWithLogSortedInterface.
 Require Import VotesWithLogSortedProof.
-
-Require Import TermsAndIndicesFromOneInterface.
-Require Import TermsAndIndicesFromOneProof.
-
-Require Import LeaderLogsLogMatchingInterface.
-Require Import LeaderLogsLogMatchingProof.
 
 Require Import LeaderLogsLogMatchingInterface.
 Require Import LeaderLogsLogMatchingProof.
@@ -300,6 +283,7 @@ Hint Extern 4 (@raft_refinement_interface _ _ _) => apply rri : typeclass_instan
 Hint Extern 4 (@raft_msg_refinement_interface _ _ _) => apply rmri : typeclass_instances.
 Hint Extern 4 (@cronies_term_interface _ _ _) => apply cti : typeclass_instances.
 Hint Extern 4 (@votes_correct_interface _ _ _) => apply vci : typeclass_instances.
+Hint Extern 4 (@votes_le_current_term_interface _ _ _) => apply vlcti : typeclass_instances.
 Hint Extern 4 (@cronies_correct_interface _ _ _) => apply cci : typeclass_instances.
 Hint Extern 4 (@candidates_vote_for_selves_interface _ _ _) => apply cvfsi : typeclass_instances.
 Hint Extern 4 (@candidate_entries_interface _ _ _) => apply cei : typeclass_instances.
@@ -332,7 +316,6 @@ Hint Extern 4 (@leaderLogs_votesWithLog_interface _ _ _) => apply llvwli : typec
 Hint Extern 4 (@allEntries_log_interface _ _ _) => apply aeli : typeclass_instances.
 Hint Extern 4 (@allEntries_votesWithLog_interface _ _ _) => apply aevwli : typeclass_instances.
 Hint Extern 4 (@votesWithLog_sorted_interface _ _ _) => apply vwlsi : typeclass_instances.
-Hint Extern 4 (@terms_and_indices_from_one_interface _ _ _) => apply taifoi : typeclass_instances.
 Hint Extern 4 (@leaderLogs_entries_match_interface _ _ _) => apply lllmi : typeclass_instances.
 Hint Extern 4 (@state_machine_safety'interface _ _ _) => apply sms'i : typeclass_instances.
 Hint Extern 4 (@append_entries_leaderLogs_interface _ _ _) => apply aerlli : typeclass_instances.

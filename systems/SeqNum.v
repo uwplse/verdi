@@ -1,12 +1,4 @@
-Require Import List.
-Require Import Arith.
-Require Import Omega.
-Import ListNotations.
-Require Import FunctionalExtensionality.
-Require Import VerdiTactics.
-
-Require Import Net.
-Require Import Util.
+Require Import Verdi.
 
 Set Implicit Arguments.
 

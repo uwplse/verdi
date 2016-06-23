@@ -1,14 +1,7 @@
-Require Import List.
-Import ListNotations.
-Require Import Omega.
-
-Require Import VerdiTactics.
-Require Import Util.
-Require Import Net.
+Require Import GhostSimulations.
 
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
 Require Import CommonTheorems.
 
 Require Import SpecLemmas.
@@ -587,9 +580,6 @@ Section LogsLeaderLogs.
       repeat find_higher_order_rewrite;
       update_destruct; subst; rewrite_update; eauto.
   Qed.
-
-  Require Import PeanoNat.
-  Require Import Nat.
 
   Lemma doLeader_spec :
     forall st h os st' ms m t n pli plt es ci,

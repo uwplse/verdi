@@ -1,13 +1,3 @@
-Require Import List.
-Import ListNotations.
-
-Require Import Arith.
-Require Import Omega.
-
-Require Import VerdiTactics.
-Require Import Util.
-Require Import Net.
-
 Require Import Raft.
 
 Require Import UpdateLemmas.
@@ -181,7 +171,7 @@ Section NextIndexSafety.
           apply Max.max_case; auto.
           { destruct es; simpl.
             * omega.
-            * pose proof append_entries_reply_sublog_invariant _ $(eauto)$.
+            * pose proof append_entries_reply_sublog_invariant _ ltac:(eauto).
               unfold append_entries_reply_sublog in *.
               eapply_prop_hyp pBody pBody; simpl; eauto.
               apply maxIndex_is_max; auto.

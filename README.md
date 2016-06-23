@@ -10,11 +10,21 @@ The Verdi Framework
 
 Requirements:
 
- - `coq 8.5beta2`
+ - [`Coq 8.5`](https://coq.inria.fr/download)
+ - [`Mathematical Components 1.6`](http://math-comp.github.io/math-comp/)
+ - [`StructTact`](https://github.com/uwplse/StructTact)
 
-Running `make` in the root directory will compile the specifications
-and proofs of the core Verdi framework, as well as some simple
-examples. The files in the root directory include:
+Building:
+
+First run `./configure` in the Verdi root directory.  This will check
+for the appropriate version of Coq and ensure all necessary
+dependencies can be located. By default, it checks for `StructTact` in
+the current parent directory, but this can be overridden by setting
+the `StructTact_PATH` environment variable.
+
+Then run `make` in the Verdi root directory.  This will compile the
+specifications and proofs of the core Verdi framework, as well as some
+simple examples. The files in the root directory include:
 
 - Core Verdi files:
     - `Net.v`: core network semantics, including ghost variables
@@ -67,7 +77,7 @@ The vard Key-Value Store
 
 Requirements:
 
-- `coq 8.5beta2`
+- `coq 8.5`
 - `ocaml`, `ocamlbuild`
 
 As discussed above, vard is a simple key-value store implemented in
@@ -100,7 +110,7 @@ Running vard on a cluster
 
 vard doesn't support run-time configuration, so in order to run vard
 in another configuration (i.e. on multiple hosts) you'll have to edit
-the `extraction/vard/vard.ml` file, specifically the 4 lines starting
+the `extraction/vard/ml/vard.ml` file, specifically the 4 lines starting
 with `let nodes = ...`. For instance, to run it on a cluster with ip
 addresses `192.168.0.1, 192.168.0.2, 192.168.0.3` you'd edit those
 lines to read

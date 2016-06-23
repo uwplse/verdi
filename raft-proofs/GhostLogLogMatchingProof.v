@@ -1,15 +1,8 @@
-Require Import List.
-Import ListNotations.
-Require Import Omega.
-
-Require Import VerdiTactics.
-Require Import Util.
-Require Import Net.
+Require Import GhostSimulations.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 Require Import RaftMsgRefinementInterface.
 
-Require Import CommonDefinitions.
 Require Import CommonTheorems.
 
 Require Import SpecLemmas.
@@ -137,7 +130,7 @@ Section GhostLogLogMatching.
     intros.
     unfold lifted_entries_match; intros.
     find_eapply_lem_hyp msg_lift_prop;
-      [|intros; eapply (entries_match_invariant $(eauto)$ h h'); eauto].
+      [|intros; eapply (entries_match_invariant ltac:(eauto) h h'); eauto].
     simpl in *.
     repeat break_match; simpl in *; auto.
   Qed.

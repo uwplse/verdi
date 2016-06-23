@@ -1,22 +1,14 @@
-Require Import List.
-Require Import Omega.
-
-Require Import Util.
-Require Import VerdiTactics.
-Require Import Net.
+Require Import GhostSimulations.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
-Require Import CommonDefinitions.
 Require Import CommonTheorems.
 
 Require Import LeaderLogsContiguousInterface.
 Require Import LogMatchingInterface.
-
-Require Import SpecLemmas.
 
 Section LeaderLogsContiguous.
 

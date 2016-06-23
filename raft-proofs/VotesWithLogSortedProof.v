@@ -1,9 +1,4 @@
-Require Import List.
-Import ListNotations.
-
-Require Import VerdiTactics.
-Require Import Util.
-Require Import Net.
+Require Import GhostSimulations.
 
 Require Import Raft.
 Require Import RaftRefinementInterface.
@@ -91,7 +86,7 @@ Section VotesWithLogSorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
     update_destruct; simpl in *.
     - destruct (votesWithLog (update_elections_data_timeout h0 (nwState net h0)))
-               using (votesWithLog_update_elections_data_timeout $(eauto)$).
+               using (votesWithLog_update_elections_data_timeout ltac:(eauto)).
       + simpl in *. intuition.
         * find_inversion. erewrite handleTimeout_log_same by eauto.
           eauto using sorted_host_lifted.

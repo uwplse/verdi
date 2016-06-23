@@ -1,14 +1,5 @@
-Require Import List.
-Import ListNotations.
-
-Require Import VerdiTactics.
-Require Import Util.
-Require Import Net.
-
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
-Require Import CommonTheorems.
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 

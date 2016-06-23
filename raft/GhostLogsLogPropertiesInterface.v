@@ -1,13 +1,4 @@
-Require Import List.
-Import ListNotations.
-
-Require Import Util.
-Require Import Net.
-
-Require Import CommonDefinitions.
-Require Import CommonTheorems.
 Require Import Raft.
-Require Import VerdiTactics.
 Require Import RaftMsgRefinementInterface.
 
 Section GhostLogsLogProperties.

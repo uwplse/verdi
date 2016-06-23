@@ -1,13 +1,9 @@
-Require Import Net.
+Require Import Verdi.
+
 Require Import VarD.
 Require Import PrimaryBackup.
 
-Require Import List.
-Import ListNotations.
 Open Scope string_scope.
-
-Require Import Util.
-Require Import VerdiTactics.
 
 Instance vard_pbj_params : PrimaryBackupParams vard_base_params :=
   {

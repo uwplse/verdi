@@ -1,20 +1,10 @@
-Require Import List.
-Import ListNotations.
-Require Import Omega.
-
-Require Import VerdiTactics.
-Require Import Util.
-Require Import Net.
-
 Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
-Require Import CommonTheorems.
 
 Require Import RequestVoteMaxIndexMaxTermInterface.
 Require Import RequestVoteTermSanityInterface.

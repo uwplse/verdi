@@ -1,9 +1,4 @@
-Require Import List.
-
-Require Import Net.
 Require Import Raft.
-
-Require Import CommonDefinitions.
 
 Section CurrentTermGtZeroInterface.
   Context {orig_base_params : BaseParams}.

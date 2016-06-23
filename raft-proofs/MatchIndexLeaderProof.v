@@ -1,12 +1,5 @@
-Require Import List.
-Require Import Omega.
-
-Require Import VerdiTactics.
-Require Import Net.
-Require Import Util.
 Require Import Raft.
 
-Require Import CommonTheorems.
 Require Import SpecLemmas.
 
 Require Import UpdateLemmas.

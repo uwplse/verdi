@@ -1,10 +1,4 @@
-Require Import List.
-Import ListNotations.
-Require Import Omega.
-
-Require Import VerdiTactics.
-Require Import Util.
-Require Import Net.
+Require Import GhostSimulations.
 
 Require Import Raft.
 Require Import RaftRefinementInterface.

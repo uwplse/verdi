@@ -64,8 +64,10 @@ class Client(object):
             raise e
         
     def process_response(self):
-        data = self.sock.recv(256).strip()
-        return self.parse_response(data)
+        while True:
+            data = self.sock.recv(256).strip()
+            if data != '':
+                return self.parse_response(data)
 
     def get_responses(self, timeout):
         if poll(self.sock, timeout):

@@ -1,17 +1,8 @@
-Require Import Arith.
-Require Import NPeano.
-Require Import List.
-Require Import Coq.Numbers.Natural.Abstract.NDiv.
-Import ListNotations.
-Require Import Sorting.Permutation.
-Require Import Sumbool.
 Require Import FunctionalExtensionality.
 
-Require Import Util.
-Require Import Net.
-Require Import RaftState.
+Require Import GhostSimulations.
 Require Import Raft.
-Require Import VerdiTactics.
+Require Import DupDropReordering.
 Require Import SpecLemmas.
 
 Require Import RaftRefinementInterface.
@@ -667,8 +658,6 @@ Section RaftMsgRefinement.
     eauto using simulation_1.
   Qed.
 
-  Require Import DupDropReordering.
-
   Lemma step_f_star_raft_intermediate_reachable_extend :
     forall f net f' net' tr,
       @step_f_star _ _ raft_msg_refined_failure_params (f, net) (f', net') tr ->
@@ -698,7 +687,7 @@ Section RaftMsgRefinement.
         find_apply_lem_hyp in_map_iff.
         firstorder.
       }
-      specialize (IHl' $(intuition)$).
+      specialize (IHl' ltac:(intuition)).
       repeat break_exists.
       break_and.
       exists (x :: x0).

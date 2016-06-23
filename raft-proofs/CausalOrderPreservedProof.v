@@ -1,14 +1,4 @@
-Require Import List.
-Import ListNotations.
-Require Import Arith.
-Require Import Nat.
-Require Import Omega.
-
-Require Import Net.
-Require Import Util.
-Require Import VerdiTactics.
 Require Import TraceRelations.
-Require Import UpdateLemmas.
 
 Require Import Raft.
 Require Import CommonTheorems.

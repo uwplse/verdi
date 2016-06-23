@@ -1,16 +1,6 @@
-Require Import Arith.
-Require Import NPeano.
-Require Import PeanoNat.
-Import Nat.
-Require Import List.
-Require Import Coq.Numbers.Natural.Abstract.NDiv.
-Import ListNotations.
-Require Import Sorting.Permutation.
-
-Require Import Util.
-Require Import Net.
-Require Import VerdiTactics.
+Require Export Verdi.
 Require Import RaftState.
+Require Export StructTact.Fin.
 
 Open Scope bool.
 
@@ -35,10 +25,10 @@ Section Raft.
   Definition name_eq_dec : forall x y : name, {x = y} + {x <> y} := fin_eq_dec _.
 
   
-  Notation "a >? b" := (b <? a) (at level 42).
-  Notation "a >=? b" := (b <=? a) (at level 42).
-  Notation "a == b" := (beq_nat a b) (at level 42).
-  Notation "a != b" := (negb (beq_nat a b)) (at level 42).
+  Notation "a >? b" := (b <? a) (at level 70).
+  Notation "a >=? b" := (b <=? a) (at level 70).
+  Notation "a == b" := (beq_nat a b) (at level 70).
+  Notation "a != b" := (negb (beq_nat a b)) (at level 70).
 
   Notation "a === b" := (if fin_eq_dec _ a b then true else false) (at level 42).
   
@@ -71,18 +61,20 @@ Section Raft.
   | Leader.
 
   Definition serverType_eq_dec : forall x y : serverType, {x = y} + {x <> y}.
-  Proof.
-    repeat decide equality.
-  Defined.
-  
+  Proof. decide equality. Defined.
+
+  Definition term_eq_dec : forall x y : term, {x = y} + {x <> y}.
+  Proof. apply eq_nat_dec. Qed.
+
+  Definition entry_eq_dec : forall x y : entry, {x = y} + {x <> y}.
+  Proof. decide equality; eauto using input_eq_dec, name_eq_dec, term_eq_dec. Qed.
+
+
   Definition msg_eq_dec : forall x y: msg, {x = y} + {x <> y}.
   Proof.
-    repeat decide equality; eauto using name_eq_dec, input_eq_dec.
-  Qed.
-  
-  Definition entry_eq_dec : forall x y : entry, {x = y} + {x <> y}.
-  Proof.
-    repeat decide equality; eauto using input_eq_dec, name_eq_dec.
+    decide equality;
+      eauto using name_eq_dec, input_eq_dec, term_eq_dec, Bool.bool_dec,
+                  list_eq_dec, entry_eq_dec.
   Qed.
 
   Definition raft_data :=
@@ -368,7 +360,7 @@ Section Raft.
     (list raft_output * raft_data * list (name * msg)) :=
     let (out, state) :=
         applyEntries h state
-                     (rev (filter (fun x => andb (ltb (lastApplied state) (eIndex x))
+                     (rev (filter (fun x => andb (Nat.ltb (lastApplied state) (eIndex x))
                                                 (leb (eIndex x) (commitIndex state)))
                                   (findGtIndex (log state) (lastApplied state)))) in
     (out, {[ state with lastApplied := if commitIndex state >? lastApplied state then
@@ -389,7 +381,7 @@ Section Raft.
              (currentTerm state) me prevIndex prevTerm newEntries (commitIndex state)).
 
   Definition haveQuorum (state : raft_data) (me : name) (N : logIndex) : bool :=
-    ltb (div2 (length nodes)) (length (filter (fun h => leb N (assoc_default name_eq_dec (matchIndex state) h 0)) nodes)).
+    Nat.ltb (div2 (length nodes)) (length (filter (fun h => leb N (assoc_default name_eq_dec (matchIndex state) h 0)) nodes)).
   
   Definition advanceCommitIndex (state : raft_data) (me : name) : raft_data :=
     let entriesToCommit :=

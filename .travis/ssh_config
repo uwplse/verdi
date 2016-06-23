@@ -1,0 +1,6 @@
+Host uwplse.org
+    User uwplse
+    IdentityFile ~/.ssh/travis_rsa
+    StrictHostKeyChecking no
+    CheckHostIP no
+    PasswordAuthentication no

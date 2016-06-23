@@ -1,28 +1,17 @@
-Require Import List.
-Import ListNotations.
-Require Import Arith.
-Require Import Nat.
-Require Import Omega.
-
-Require Import Net.
-Require Import Util.
-Require Import VerdiTactics.
-
-Require Import StateMachineCorrectInterface.
+Require Import Raft.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
-Require Import Raft.
-Require Import CommonDefinitions.
 Require Import SpecLemmas.
 Require Import CommonTheorems.
-Require Import SpecLemmas.
+
 Require Import SortedInterface.
 Require Import DecompositionWithPostState.
 Require Import MaxIndexSanityInterface.
 Require Import StateMachineSafetyInterface.
 Require Import LogMatchingInterface.
+Require Import StateMachineCorrectInterface.
 
 Section StateMachineCorrect.
   Context {orig_base_params : BaseParams}.

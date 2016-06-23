@@ -1,17 +1,7 @@
-Require Import Arith.
-Require Import NPeano.
-Require Import List.
-Require Import Coq.Numbers.Natural.Abstract.NDiv.
-Import ListNotations.
-Require Import Sorting.Permutation.
-
-Require Import Util.
-Require Import Net.
-Require Import RaftState.
+Require Import GhostSimulations.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 Require Import CandidatesVoteForSelvesInterface.
-Require Import VerdiTactics.
 Require Import CommonTheorems.
 Require Import VotesCorrectInterface.
 

@@ -1,9 +1,3 @@
-Require Import List.
-Require Import Omega.
-
-Require Import VerdiTactics.
-Require Import Net.
-Require Import Util.
 Require Import Raft.
 
 Require Import CommonTheorems.
@@ -140,7 +134,7 @@ Section MatchIndexSanity.
           apply Max.max_case; auto.
           { destruct es; simpl.
             * omega.
-            * pose proof append_entries_reply_sublog_invariant _ $(eauto)$.
+            * pose proof append_entries_reply_sublog_invariant _ ltac:(eauto).
               unfold append_entries_reply_sublog in *.
               eapply_prop_hyp pBody pBody; simpl; eauto.
               apply maxIndex_is_max; auto.

@@ -1,15 +1,6 @@
-Require Import List.
-Import ListNotations.
-Require Import Omega.
-
-Require Import VerdiTactics.
-Require Import Util.
-Require Import Net.
+Require Import GhostSimulations.
 
 Require Import Raft.
-Require Import CommonDefinitions.
-Require Import CommonTheorems.
-Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 Require Import RaftRefinementInterface.
 Require Import RaftMsgRefinementInterface.
@@ -116,7 +107,7 @@ Section GhostLogAllEntriesProof.
       + do_in_map.
         subst. simpl in *. unfold add_ghost_msg in *.
         do_in_map. subst. simpl in *. unfold write_ghost_log in *.
-        pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) $(eauto)$ (pDst p) e.
+        pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) ltac:(eauto) (pDst p) e.
         simpl in *. find_higher_order_rewrite. rewrite_update.
         simpl in *. auto.
     - find_apply_hyp_hyp; intuition; eauto.
@@ -135,7 +126,7 @@ Section GhostLogAllEntriesProof.
       + eapply_prop_hyp In In;
         repeat find_rewrite; eauto.
       + subst. simpl in *. unfold write_ghost_log in *.
-        pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) $(eauto)$ (pDst p) e.
+        pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) ltac:(eauto) (pDst p) e.
         simpl in *. find_higher_order_rewrite. rewrite_update.
         simpl in *. concludes. break_exists_exists.
         find_rewrite_lem update_elections_data_requestVote_allEntries.
@@ -168,7 +159,7 @@ Section GhostLogAllEntriesProof.
       remember (pSrc p).
       subst p. simpl in *. unfold add_ghost_msg in *.
       do_in_map. subst. simpl in *. unfold write_ghost_log in *.
-      pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) $(eauto)$ n e.
+      pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) ltac:(eauto) n e.
       simpl in *. find_higher_order_rewrite. rewrite_update.
       simpl in *. concludes. break_exists_exists.
       find_rewrite_lem update_elections_data_timeout_allEntries. auto.
@@ -192,7 +183,7 @@ Section GhostLogAllEntriesProof.
       + do_in_map. unfold add_ghost_msg in *. do_in_map.
         subst x. simpl in *. destruct p. simpl in *. find_inversion.
         simpl in *. unfold write_ghost_log in *.
-        pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) $(eauto)$ pSrc e.
+        pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) ltac:(eauto) pSrc e.
         simpl in *. find_higher_order_rewrite. rewrite_update.
         simpl in *. concludes. break_exists_exists.
         auto.
@@ -219,7 +210,7 @@ Section GhostLogAllEntriesProof.
       remember (pSrc p).
       subst p. simpl in *. unfold add_ghost_msg in *.
       do_in_map. subst. simpl in *. unfold write_ghost_log in *.
-      pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) $(eauto)$ n e.
+      pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) ltac:(eauto) n e.
       simpl in *. find_higher_order_rewrite. rewrite_update.
       simpl in *. concludes. auto.
     - find_apply_hyp_hyp; intuition; eauto.
@@ -245,7 +236,7 @@ Section GhostLogAllEntriesProof.
       remember (pSrc p).
       subst p. simpl in *. unfold add_ghost_msg in *.
       do_in_map. subst. simpl in *. unfold write_ghost_log in *.
-      pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) $(eauto)$ n e.
+      pose proof lifted_in_log_in_all_entries_invariant (mkNetwork _ _) ltac:(eauto) n e.
       simpl in *. find_higher_order_rewrite. rewrite_update.
       simpl in *. concludes. auto.
     - find_apply_hyp_hyp; intuition; eauto.

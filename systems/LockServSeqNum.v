@@ -1,5 +1,4 @@
-Require Import VerdiTactics.
-Require Import Net.
+Require Import Verdi.
 
 Require Import LockServ.
 Require SeqNum.

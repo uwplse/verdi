@@ -1,5 +1,4 @@
 Require Import List.
-Import ListNotations.
 
 (*
 This file is very similar to HandlerMonad.v, but supports step_1

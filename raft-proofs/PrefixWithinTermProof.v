@@ -1,18 +1,11 @@
-Require Import List.
-Import ListNotations.
-Require Import Omega.
+Require Import GhostSimulations.
 
-Require Import VerdiTactics.
-Require Import Util.
-Require Import Net.
+Require Import Raft.
 
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
-
-Require Import Raft.
 Require Import RaftRefinementInterface.
-Require Import CommonDefinitions.
 Require Import CommonTheorems.
 Require Import SpecLemmas.
 
@@ -1351,8 +1344,6 @@ Section PrefixWithinTerm.
     eapply lift_prop; eauto using nextIndex_safety_invariant.
   Qed.
 
-  Require Import Omega.
-  
   Lemma nextIndex_sanity :
     forall net h h',
       refined_raft_intermediate_reachable net ->

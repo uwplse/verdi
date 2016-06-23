@@ -1,8 +1,4 @@
-Require Import List.
-
-Require Import VerdiTactics.
-Require Import Net.
-Require Import Util.
+Require Import GhostSimulations.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 Require Import LeaderCompletenessInterface.

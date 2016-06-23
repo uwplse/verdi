@@ -1,15 +1,6 @@
-Require Import List.
-Import ListNotations.
-Require Import Arith.
 Require Import Sumbool.
-Require Import Omega.
-
-Require Import VerdiTactics.
-Require Import Util.
-Require Import Net.
 
 Require Import Raft.
-Require Import CommonDefinitions.
 Require Import CommonTheorems.
 Require Import RaftRefinementInterface.
 

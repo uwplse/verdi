@@ -1,18 +1,9 @@
-Require Import List.
-Import ListNotations.
+Require Import GhostSimulations.
 
-Require Import Util.
-Require Import Net.
-
-Require Import CommonDefinitions.
-Require Import CommonTheorems.
-Require Import VerdiTactics.
 Require Import Raft.
-Require Import VerdiTactics.
 Require Import RaftMsgRefinementInterface.
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
-Require Import SpecLemmas.
 
 Require Import GhostLogsLogPropertiesInterface.
 

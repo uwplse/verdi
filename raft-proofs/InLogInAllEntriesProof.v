@@ -1,14 +1,7 @@
-Require Import List.
-Require Import Omega.
-
-Require Import VerdiTactics.
-Require Import Net.
-Require Import Util.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 
 Require Import CommonTheorems.
-Require Import RefinementCommonTheorems.
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 

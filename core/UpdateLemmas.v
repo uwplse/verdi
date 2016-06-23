@@ -1,4 +1,4 @@
-Require Import VerdiTactics.
+Require Import StructTact.StructTactics.
 Require Import Net.
 
 Require Import FunctionalExtensionality.
@@ -32,6 +32,14 @@ Section OU.
     intros. subst.
     unfold update.
     break_if; congruence.
+  Qed.
+
+  Lemma update_same :
+    forall A sigma x (v : A),
+      update sigma x v x = v.
+  Proof.
+    intros.
+    rewrite update_eq; auto.
   Qed.
 
   Lemma update_nop_ext :

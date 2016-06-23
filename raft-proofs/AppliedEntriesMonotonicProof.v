@@ -1,18 +1,10 @@
-Require Import List.
-Import ListNotations.
-Require Import Arith.
-Require Import Nat.
-Require Import Omega.
-Require Import Permutation.
+Require Import GhostSimulations.
 
-Require Import Net.
-Require Import Util.
-Require Import VerdiTactics.
+Require Import Raft.
+
 Require Import UpdateLemmas.
 Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
 
-
-Require Import Raft.
 Require Import CommonTheorems.
 Require Import StateMachineSafetyInterface.
 Require Import SortedInterface.
@@ -345,7 +337,7 @@ Section AppliedEntriesMonotonicProof.
       eauto using handleTimeout_log, handleTimeout_lastApplied.
     - apply applied_entries_safe_update; eauto using handleClientRequest_lastApplied.
 
-      destruct (log st') using (handleClientRequest_log_ind $(eauto)$); auto.
+      destruct (log st') using (handleClientRequest_log_ind ltac:(eauto)); auto.
 
       simpl in *. break_if; auto.
       exfalso.

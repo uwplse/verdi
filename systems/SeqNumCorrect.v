@@ -1,11 +1,7 @@
-Require Import List.
-Require Import Arith.
-Require Import Omega.
-Import ListNotations.
+Require Import Verdi.
+
 Require Import FunctionalExtensionality.
-Require Import VerdiTactics.
-Require Import Util.
-Require Import Net.
+
 Require Import SeqNum.
 
 Section SeqNumCorrect.
