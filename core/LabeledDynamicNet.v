@@ -1,7 +1,7 @@
 Require Import List.
 Require Import Arith.
 Import ListNotations.
-
+Require Import infseq.
 
 Section LabeledDynamic.
   Variable addr : Type. (* must be finite, decidable *)
@@ -11,8 +11,8 @@ Section LabeledDynamic.
   Variable timeout : Type.
   Variable timeout_eq_dec : forall x y : timeout, {x = y} + {x <> y}.
   Variable label : Type.
-  Variable label_eq_dec : forall x y : label, {x = y} + {x <> y}.
-  
+  Variable label_eq_dec : forall x y : label, {x = y} + {x <> y}.  
+  Variable label_silent : label.
 
   Variable start_handler : addr -> list addr -> data * list (addr * payload) * list timeout.
 
@@ -122,5 +122,53 @@ Section LabeledDynamic.
                  (e_recv m)
                  (update_msgs gst (xs ++ ys)) ->
         extra_constraints gst' ->
-        labeled_step_dynamic gst lb gst'.
+        labeled_step_dynamic gst lb gst'
+   | LStutter : 
+       forall gst, labeled_step_dynamic gst label_silent gst.
+
+Record occurrence := { occ_gst : global_state ; occ_label : label }.
+
+Definition enabled (l : label) (gst : global_state) : Prop :=
+  exists gst', labeled_step_dynamic gst l gst'.
+
+Definition l_enabled (l : label) (occ : occurrence) : Prop :=
+  enabled l (occ_gst occ).
+
+Definition occurred (l : label) (occ :occurrence) : Prop := l = occ_label occ.
+
+Definition inf_enabled (l : label) (s : infseq occurrence) : Prop :=
+  inf_often (now (l_enabled l)) s.
+
+Definition inf_occurred (l : label) (s : infseq occurrence) : Prop :=
+  inf_often (now (occurred l)) s.
+
+Definition strong_local_fairness (s : infseq occurrence) : Prop :=
+  forall l : label, inf_enabled l s -> inf_occurred l s.
+
+Lemma strong_local_fairness_invar :
+  forall e s, strong_local_fairness (Cons e s) -> strong_local_fairness s.
+Proof. 
+  unfold strong_local_fairness. unfold inf_enabled, inf_occurred, inf_often. 
+  intros e s fair a alev. 
+  assert (alevt_es: always (eventually (now (l_enabled a))) (Cons e s)).
+  constructor. 
+  constructor 2. destruct alev; assumption. 
+  simpl. assumption.
+  clear alev. generalize (fair a alevt_es); clear fair alevt_es.
+  intro fair; case (always_Cons fair); trivial.
+Qed.
+
+CoInductive lb_execution : infseq occurrence -> Prop :=
+  Cons_lb_exec : forall (o o' : occurrence) (s : infseq occurrence),
+    labeled_step_dynamic (occ_gst o) (occ_label o) (occ_gst o') ->
+    lb_execution (Cons o' s) ->
+    lb_execution (Cons o (Cons o' s)).
+
+Lemma lb_execution_invar :
+  forall x s, lb_execution (Cons x s) -> lb_execution s.
+Proof.
+  intros x s e. change (lb_execution (tl (Cons x s))).
+  destruct e; simpl. assumption. 
+Qed.
+
 End LabeledDynamic.
