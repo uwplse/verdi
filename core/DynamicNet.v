@@ -153,13 +153,12 @@ Section Dynamic.
         extra_constraints gst' ->
         step_dynamic gst gst'
   | Deliver_node :
-      forall gst gst' m h d xs ys ms st ts t newts clearedts,
+      forall gst gst' m h d xs ys ms st newts clearedts,
         msgs gst = xs ++ m :: ys ->
         h = fst (snd m) ->
         In h (nodes gst) ->
         ~ In h (failed_nodes gst) ->
         sigma gst h = Some d ->
-        (In t clearedts -> In t ts) ->
         recv_handler h (fst m) d (snd (snd m)) = (st, ms, newts, clearedts) ->
         gst' = apply_handler_result
                  h
