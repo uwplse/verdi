@@ -105,7 +105,7 @@ Section LabeledChord.
       labeled_step_dynamic gst (RecvMsg from to p) gst' ->
       labeled_step_dynamic gst (RecvMsg src to m) gst'' ->
       src <> from ->
-      enabled (RecvMsg to src m) gst'.
+      enabled (RecvMsg src to m) gst'.
   Proof.
   Admitted.
 
@@ -136,7 +136,7 @@ Section LabeledChord.
     cofix c.
     case => /=.
     case => /= gst.
-    case => [to from p|h t|].
+    case => [from to p|h t|].
     - case.
       case => /= gst' lb' s H_exec src dst m H_en.
       inversion H_exec; subst_max.
@@ -146,7 +146,6 @@ Section LabeledChord.
           case (payload_eq_dec m p) => H_dec_m.
             subst_max.
             exact: Until0.
-
           subst_max.
           apply: Until_tl; first by [].
           apply: c => //=.
