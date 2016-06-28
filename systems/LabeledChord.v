@@ -47,6 +47,7 @@ Section LabeledChord.
   Notation lb_execution := (lb_execution addr addr_eq_dec payload data timeout timeout_eq_dec label label_silent recv_handler timeout_handler extra_constraints).
   Notation strong_local_fairness := (strong_local_fairness addr addr_eq_dec payload data timeout timeout_eq_dec label label_silent recv_handler timeout_handler extra_constraints).
   Notation inf_occurred := (inf_occurred addr payload data timeout label).
+  Notation enabled := (enabled addr addr_eq_dec payload data timeout timeout_eq_dec label label_silent recv_handler timeout_handler extra_constraints).
   Notation l_enabled := (l_enabled addr addr_eq_dec payload data timeout timeout_eq_dec label label_silent recv_handler timeout_handler extra_constraints).
   Notation occurred := (occurred addr payload data timeout label).
   Notation nodes := (nodes addr payload data timeout).
@@ -57,11 +58,11 @@ Section LabeledChord.
 
   Lemma l_enabled_RecvMsg_In_msgs :
     forall e src dst m d,
-    In dst (nodes (occ_gst e)) ->
-    ~ In dst (failed_nodes (occ_gst e)) ->
-    In (src, (dst, m)) (msgs (occ_gst e)) ->
-    sigma (occ_gst e) dst = Some d ->
-    l_enabled (RecvMsg dst src m) e.
+      In dst (nodes (occ_gst e)) ->
+      ~ In dst (failed_nodes (occ_gst e)) ->
+      In (src, (dst, m)) (msgs (occ_gst e)) ->
+      sigma (occ_gst e) dst = Some d ->
+      l_enabled (RecvMsg dst src m) e.
   Proof.
   move => e src dst m d H_in_n H_in_f H_in H_s.
   find_apply_lem_hyp in_split.
@@ -90,11 +91,44 @@ Section LabeledChord.
   exact: LDeliver_node.
   Qed.
 
+  Lemma labeled_step_dynamic_neq_payload_enabled :
+    forall gst gst' gst'' to from m p,
+      labeled_step_dynamic gst (RecvMsg to from p) gst' ->
+      labeled_step_dynamic gst (RecvMsg to from m) gst'' ->
+      m <> p ->
+      enabled (RecvMsg to from m) gst'.
+  Proof.
+  Admitted.
+
+  Lemma labeled_step_dynamic_neq_src_enabled :
+    forall gst gst' gst'' to src from m p,
+      labeled_step_dynamic gst (RecvMsg to from p) gst' ->
+      labeled_step_dynamic gst (RecvMsg to src m) gst'' ->
+      src <> from ->
+      enabled (RecvMsg to src m) gst'.
+  Proof.
+  Admitted.
+
+  Lemma labeled_step_dynamic_neq_dst_enabled :
+    forall gst gst' gst'' dst to src from m p,
+      labeled_step_dynamic gst (RecvMsg to from p) gst' ->
+      labeled_step_dynamic gst (RecvMsg dst src m) gst'' ->
+      dst <> to -> 
+      enabled (RecvMsg dst src m) gst'.
+  Proof.
+  Admitted.
+
+  Lemma labeled_step_dynamic_timeout_enabled :
+    forall gst gst' gst'' dst src m h t,
+    labeled_step_dynamic gst (Timeout h t) gst' ->
+    labeled_step_dynamic gst (RecvMsg dst src m) gst'' ->
+    enabled (RecvMsg dst src m) gst'.
+  Proof.
+  Admitted.
+
   Lemma RecvMsg_enabled_until_occurred :
-    forall s,
-      lb_execution s ->
-      forall src dst m,
-        l_enabled (RecvMsg dst src m) (hd s) ->
+    forall s, lb_execution s ->
+      forall src dst m, l_enabled (RecvMsg dst src m) (hd s) ->
         until (now (l_enabled (RecvMsg dst src m)))
               (now (occurred (RecvMsg dst src m)))
               s.
@@ -102,25 +136,55 @@ Section LabeledChord.
     cofix c.
     case => /=.
     case => /= gst.
-    case => [h from m|h t|].
+    case => [to from p|h t|].
     - case.
-      case => /= gst' lb'.
-      (* hard case, use (apply: Until_tl) at some point and then (apply: c) *)
-      by admit.
+      case => /= gst' lb' s H_exec src dst m H_en.
+      inversion H_exec; subst_max.
+      simpl in *.
+      case (addr_eq_dec dst to) => H_dec_dst.
+        case (addr_eq_dec src from) => H_dec_src.
+          case (payload_eq_dec m p) => H_dec_m.
+            subst_max.
+            exact: Until0.
+          subst_max.
+          apply: Until_tl; first by [].
+          apply: c => //=.
+          unfold l_enabled in *.
+          simpl in *.
+          unfold enabled in H_en.
+          break_exists.
+          move: H1 H H_dec_m.
+          exact: labeled_step_dynamic_neq_payload_enabled.
+        subst_max.
+        apply: Until_tl; first by [].
+        apply: c => //=.
+        unfold l_enabled in *.
+        simpl in *.
+        unfold enabled in H_en.
+        break_exists.
+        move: H1 H H_dec_src.
+        exact: labeled_step_dynamic_neq_src_enabled.
+      apply: Until_tl; first by [].
+      apply: c => //=.
+      unfold l_enabled in *.
+      simpl in *.
+      unfold enabled in H_en.
+      break_exists.
+      move: H1 H H_dec_dst.
+      exact: labeled_step_dynamic_neq_dst_enabled.
     - case.
       case => /= gst' lb' s H_exec src dst m H_en.
       inversion H_exec; subst_max.
       simpl in *.
       rewrite /l_enabled /= in H_en.
-      inversion H1; subst_max => //.
       apply: Until_tl; first by [].
-      rewrite /=.
-      apply: c; first by [].
-      rewrite /= /l_enabled /=.
-      rewrite /timeout_handler /= in H5.
-      tuple_inversion.
-      (* semi-hard case *)
-      by admit.
+      apply: c => //=.
+      unfold l_enabled in *.
+      simpl in *.
+      unfold enabled in H_en.
+      break_exists.
+      move: H1 H.
+      exact: labeled_step_dynamic_timeout_enabled.
     - case.
       case => /= gst' lb' s H_exec src dst' m H_en.
       inversion H_exec; subst_max.
@@ -128,15 +192,19 @@ Section LabeledChord.
       inversion H1; subst_max => //.      
       apply: Until_tl; first by [].
       exact: c.
-   Admitted.
+  Qed.
 
   Lemma RecvMsg_eventually_occurred :
     forall s, lb_execution s ->
          strong_local_fairness s ->
-         forall src dst m, l_enabled (RecvMsg dst src m) (hd s) ->
-                      eventually (now (occurred (RecvMsg dst src m))) s.
+         forall src dst m d, 
+           In dst (nodes (occ_gst (hd s))) ->
+           ~ In dst (failed_nodes (occ_gst (hd s))) ->
+           In (src, (dst, m)) (msgs (occ_gst (hd s))) ->
+           sigma (occ_gst (hd s)) dst = Some d ->
+           eventually (now (occurred (RecvMsg dst src m))) s.
   Proof.
-    move => s H_exec H_fair src dst m H_en.
+    move => s H_exec H_fair src dst m d H_in_n H_in_f H_in_m H_s.
     set P := eventually _.
     case (classic (P s)) => //.
     rewrite /P {P} => H_ev.
@@ -145,7 +213,8 @@ Section LabeledChord.
     apply: always_always_eventually.
     move: H_ev.
     apply: until_not_eventually_always.
-    exact: RecvMsg_enabled_until_occurred.
+    apply: RecvMsg_enabled_until_occurred => //.
+    move: H_s.
+    exact: l_enabled_RecvMsg_In_msgs.
   Qed.
-
 End LabeledChord.
