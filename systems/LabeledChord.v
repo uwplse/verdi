@@ -8,6 +8,8 @@ Require Import mathcomp.ssreflect.ssreflect.
 
 Require Import Classical. (* yuck *)
 
+Set Bullet Behavior "Strict Subproofs".
+
 Section LabeledChord.
   Variable SUCC_LIST_LEN : nat.
   Variable hash : addr -> id.
@@ -91,6 +93,22 @@ Section LabeledChord.
   exact: LDeliver_node.
   Qed.
 
+  Lemma labeled_step_preserves_state_existing :
+    forall gst gst' l h d,
+      sigma gst h = Some d ->
+      labeled_step_dynamic gst l gst' ->
+      exists d',
+        sigma gst' h = Some d'.
+  Admitted.
+
+  Lemma irrelevant_message_not_removed :
+    forall m p dst src gst gst',
+      In (src, (dst, m)) (msgs gst) ->
+      m <> p ->
+      labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
+      In (src, (dst, m)) (msgs gst').
+  Admitted.
+
   Lemma labeled_step_dynamic_neq_payload_enabled :
     forall gst gst' gst'' to from m p,
       labeled_step_dynamic gst (RecvMsg from to p) gst' ->
@@ -98,7 +116,69 @@ Section LabeledChord.
       m <> p ->
       enabled (RecvMsg from to m) gst'.
   Proof.
-  Admitted.
+    intuition.
+    inversion H0.
+    - unfold timeout_handler in *.
+      tuple_inversion.
+    - assert (H_m0: m0 = (from, (h, m))).
+      * destruct m0.
+        destruct p0.
+        unfold recv_handler in *.
+        tuple_inversion.
+        auto.
+      * subst_max.
+        unfold fst, snd in *.
+        inversion H.
+        unfold timeout_handler in *.
+        tuple_inversion.
+        assert (H_m0: m0 = (from, (to, p))).
+        unfold recv_handler in *.
+        destruct m0.
+        destruct p0.
+        tuple_inversion.
+        auto.
+        unfold fst, snd in *.
+        assert (H_st: exists d, sigma gst' to = Some d).
+        + unfold recv_handler in *.
+          repeat tuple_inversion.
+          eauto using labeled_step_preserves_state_existing.
+        + break_exists.
+          remember (recv_handler from to x m) as res.
+          symmetry in Heqres.
+          destruct res.
+          destruct r.
+          destruct p0.
+          destruct p0.
+          assert (H_in: In (from, (to, m)) (msgs gst')).
+          unfold recv_handler in *.
+          repeat tuple_inversion.
+          eapply irrelevant_message_not_removed.
+          -- match goal with
+             | H: msgs gst = _ |- _ => rewrite H
+             end.
+             apply in_or_app.
+             right.
+             apply in_eq.
+          -- eauto.
+          -- repeat find_rewrite.
+             eauto.
+          -- find_eapply_lem_hyp in_split.
+             break_exists.
+             remember (apply_handler_result
+                         to
+                         (d1, l2, l1, l0)
+                         (e_recv (from, (to, m)))
+                         (update_msgs gst' (x0 ++ x1))) as egst.
+             unfold enabled.
+             exists egst.
+             subst_max.
+             eapply LDeliver_node; eauto.
+             simpl.
+             unfold fst, snd, recv_handler in *.
+             repeat find_rewrite.
+             repeat tuple_inversion.
+             auto.
+  Qed.
 
   Lemma labeled_step_dynamic_neq_src_enabled :
     forall gst gst' gst'' to src from m p,
