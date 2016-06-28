@@ -1263,7 +1263,7 @@ Section ChordProof.
       h = fst (snd m) ->
       msgs gst = xs ++ m :: ys ->
       gst' = update_msgs gst (xs ++ ys) ->
-      recv_handler h (fst m) d (snd (snd m)) = (st, ms, nts, cts) ->
+      recv_handler (fst m) h d (snd (snd m)) = (st, ms, nts, cts) ->
       P (apply_handler_result h (st, ms, nts, cts) e gst').
   Hint Unfold node_deliver_step_preserves.
 

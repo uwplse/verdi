@@ -62,14 +62,14 @@ Section LabeledChord.
       ~ In dst (failed_nodes (occ_gst e)) ->
       In (src, (dst, m)) (msgs (occ_gst e)) ->
       sigma (occ_gst e) dst = Some d ->
-      l_enabled (RecvMsg dst src m) e.
+      l_enabled (RecvMsg src dst m) e.
   Proof.
   move => e src dst m d H_in_n H_in_f H_in H_s.
   find_apply_lem_hyp in_split.
   break_exists.
   rewrite /l_enabled /enabled.
-  case H_r: (recv_handler dst src d m) => [[[[st ms] newts] clearedts] lb].
-  have H_lb: lb = RecvMsg dst src m.
+  case H_r: (recv_handler src dst d m) => [[[[st ms] newts] clearedts] lb].
+  have H_lb: lb = RecvMsg src dst m.
     rewrite /recv_handler /= in H_r.
     by tuple_inversion.
   rewrite H_lb {H_lb} in H_r.
@@ -93,17 +93,17 @@ Section LabeledChord.
 
   Lemma labeled_step_dynamic_neq_payload_enabled :
     forall gst gst' gst'' to from m p,
-      labeled_step_dynamic gst (RecvMsg to from p) gst' ->
-      labeled_step_dynamic gst (RecvMsg to from m) gst'' ->
+      labeled_step_dynamic gst (RecvMsg from to p) gst' ->
+      labeled_step_dynamic gst (RecvMsg from to m) gst'' ->
       m <> p ->
-      enabled (RecvMsg to from m) gst'.
+      enabled (RecvMsg from to m) gst'.
   Proof.
   Admitted.
 
   Lemma labeled_step_dynamic_neq_src_enabled :
     forall gst gst' gst'' to src from m p,
-      labeled_step_dynamic gst (RecvMsg to from p) gst' ->
-      labeled_step_dynamic gst (RecvMsg to src m) gst'' ->
+      labeled_step_dynamic gst (RecvMsg from to p) gst' ->
+      labeled_step_dynamic gst (RecvMsg src to m) gst'' ->
       src <> from ->
       enabled (RecvMsg to src m) gst'.
   Proof.
@@ -111,26 +111,26 @@ Section LabeledChord.
 
   Lemma labeled_step_dynamic_neq_dst_enabled :
     forall gst gst' gst'' dst to src from m p,
-      labeled_step_dynamic gst (RecvMsg to from p) gst' ->
-      labeled_step_dynamic gst (RecvMsg dst src m) gst'' ->
+      labeled_step_dynamic gst (RecvMsg from to p) gst' ->
+      labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
       dst <> to -> 
-      enabled (RecvMsg dst src m) gst'.
+      enabled (RecvMsg src dst m) gst'.
   Proof.
   Admitted.
 
   Lemma labeled_step_dynamic_timeout_enabled :
     forall gst gst' gst'' dst src m h t,
     labeled_step_dynamic gst (Timeout h t) gst' ->
-    labeled_step_dynamic gst (RecvMsg dst src m) gst'' ->
-    enabled (RecvMsg dst src m) gst'.
+    labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
+    enabled (RecvMsg src dst m) gst'.
   Proof.
   Admitted.
 
   Lemma RecvMsg_enabled_until_occurred :
     forall s, lb_execution s ->
-      forall src dst m, l_enabled (RecvMsg dst src m) (hd s) ->
-        until (now (l_enabled (RecvMsg dst src m)))
-              (now (occurred (RecvMsg dst src m)))
+      forall src dst m, l_enabled (RecvMsg src dst m) (hd s) ->
+        until (now (l_enabled (RecvMsg src dst m)))
+              (now (occurred (RecvMsg src dst m)))
               s.
   Proof.
     cofix c.
@@ -146,6 +146,7 @@ Section LabeledChord.
           case (payload_eq_dec m p) => H_dec_m.
             subst_max.
             exact: Until0.
+
           subst_max.
           apply: Until_tl; first by [].
           apply: c => //=.
@@ -202,13 +203,13 @@ Section LabeledChord.
            ~ In dst (failed_nodes (occ_gst (hd s))) ->
            In (src, (dst, m)) (msgs (occ_gst (hd s))) ->
            sigma (occ_gst (hd s)) dst = Some d ->
-           eventually (now (occurred (RecvMsg dst src m))) s.
+           eventually (now (occurred (RecvMsg src dst m))) s.
   Proof.
     move => s H_exec H_fair src dst m d H_in_n H_in_f H_in_m H_s.
     set P := eventually _.
     case (classic (P s)) => //.
     rewrite /P {P} => H_ev.
-    suff H_suff: inf_occurred (RecvMsg dst src m) s by inversion H_suff.
+    suff H_suff: inf_occurred (RecvMsg src dst m) s by inversion H_suff.
     apply: H_fair.
     apply: always_always_eventually.
     move: H_ev.

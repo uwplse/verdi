@@ -121,7 +121,7 @@ Section LabeledDynamic.
         In h (nodes gst) ->
         ~ In h (failed_nodes gst) ->
         sigma gst h = Some d ->
-        recv_handler h (fst m) d (snd (snd m)) = (st, ms, newts, clearedts, lb) ->
+        recv_handler (fst m) h d (snd (snd m)) = (st, ms, newts, clearedts, lb) ->
         gst' = apply_handler_result
                  h
                  (st, ms, newts, clearedts)
