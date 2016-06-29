@@ -1,4 +1,5 @@
 Require Import Chord.
+Require Import ChordProof.
 Require Import LabeledDynamicNet.
 Import List.
 Require Import infseq.
@@ -340,14 +341,129 @@ Section LabeledChord.
           now tuple_inversion.
   Qed.
 
+  Lemma recv_implies_state_exists :
+    forall gst gst' gst'' from to src dst p m,
+      labeled_step_dynamic gst (RecvMsg from to p) gst'  ->
+      labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
+      dst <> to ->
+      exists st,
+        sigma gst' dst = Some st.
+  Proof.
+    intuition.
+    invc_labeled_step.
+    - unfold timeout_handler in *; find_inversion.
+    - invc_labeled_step.
+      * unfold timeout_handler in *; find_inversion.
+      * unfold apply_handler_result, update_msgs, update; simpl.
+        break_if; eauto.
+        unfold recv_handler in *; repeat tuple_inversion.
+        match goal with
+        | H: sigma ?gst ?dst = Some ?st |- exists _, sigma ?gst ?dst = Some _ =>
+          exists st; auto
+        end.
+  Qed.
+
+  Lemma recv_implies_msg_in :
+    forall gst gst' gst'' dst to src from m p,
+      labeled_step_dynamic gst (RecvMsg from to p) gst' ->
+      labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
+      dst <> to ->
+      In (src, (dst, m)) (msgs gst').
+  Proof.
+    intuition.
+    invc_labeled_step.
+    - unfold timeout_handler in *; find_inversion.
+    - invc_labeled_step.
+      * unfold timeout_handler in *; find_inversion.
+      * unfold apply_handler_result, update_msgs; simpl.
+        unfold recv_handler in *; repeat tuple_inversion.
+        unfold fst, snd; repeat break_let.
+        apply in_or_app; right.
+        eapply other_elements_remain_after_removal; eauto.
+        + match goal with
+          | H: msgs ?gst = ?xs ++ ?m :: ?ys |- context[ ?m ] =>
+            rewrite H
+          end.
+          apply in_or_app; right; apply in_eq.
+        + intuition.
+          repeat tuple_inversion.
+          eauto.
+  Qed.
+
+  Ltac construct_gst_RecvMsg :=
+    match goal with
+    | [ Hst: sigma ?gst ?d = Some ?st,
+        Hmsgs: msgs ?gst = ?xs ++ (?s, (?d, ?p)) :: ?ys
+        |- enabled (RecvMsg ?s ?d ?p) ?gst ]=>
+      destruct (recv_handler s d st p) as [[[[?st' ?ms] ?nts] ?cts] ?l] eqn:?H;
+        remember (apply_handler_result
+                    d
+                    (st', ms, nts, cts)
+                    (e_recv (s, (d, p)))
+                    (update_msgs gst (xs ++ ys))) as egst
+    end.
+
   Lemma labeled_step_dynamic_neq_dst_enabled :
     forall gst gst' gst'' dst to src from m p,
       labeled_step_dynamic gst (RecvMsg from to p) gst' ->
       labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
-      dst <> to -> 
+      dst <> to ->
       enabled (RecvMsg src dst m) gst'.
   Proof.
-  Admitted.
+    intuition.
+    find_copy_eapply_lem_hyp recv_implies_state_exists; eauto; break_exists.
+    find_copy_eapply_lem_hyp recv_implies_msg_in; eauto.
+    find_apply_lem_hyp in_split; break_exists.
+    construct_gst_RecvMsg.
+    exists egst.
+    invc_labeled_step.
+    - unfold timeout_handler in *; tuple_inversion.
+    - invc_labeled_step.
+      * unfold timeout_handler in *; tuple_inversion.
+      * eapply LDeliver_node;
+        eauto;
+        unfold apply_handler_result, update_msgs;
+        unfold recv_handler in *;
+        repeat tuple_inversion;
+        eauto.
+  Qed.
+
+  Lemma timeout_implies_state_exists :
+    forall gst gst' gst'' h t src dst m,
+      labeled_step_dynamic gst (Timeout h t) gst'  ->
+      labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
+      exists st,
+        sigma gst' dst = Some st.
+  Proof.
+    intuition.
+    invc_labeled_step.
+    - unfold timeout_handler in *; tuple_inversion.
+    - invc_labeled_step.
+      * unfold recv_handler in *; repeat tuple_inversion.
+        unfold apply_handler_result, update; simpl.
+        break_if; eexists; eauto.
+      * unfold recv_handler in *; tuple_inversion.
+  Qed.
+
+  Lemma recv_implies_message_exists_after_timeout :
+    forall gst gst' gst'' dst src m h t,
+    labeled_step_dynamic gst (Timeout h t) gst' ->
+    labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
+    In (src, (dst, m)) (msgs gst').
+  Proof.
+    intuition.
+    invc_labeled_step.
+    - unfold timeout_handler in *; tuple_inversion.
+    - invc_labeled_step.
+      * unfold recv_handler in *; repeat tuple_inversion.
+        simpl.
+        repeat find_rewrite.
+        repeat (apply in_or_app; right).
+        unfold fst, snd.
+        repeat break_let.
+        apply in_eq.
+      * unfold recv_handler in *; tuple_inversion.
+  Qed.
 
   Lemma labeled_step_dynamic_timeout_enabled :
     forall gst gst' gst'' dst src m h t,
@@ -355,7 +471,24 @@ Section LabeledChord.
     labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
     enabled (RecvMsg src dst m) gst'.
   Proof.
-  Admitted.
+    intuition.
+    find_copy_eapply_lem_hyp timeout_implies_state_exists; eauto.
+    find_copy_eapply_lem_hyp recv_implies_message_exists_after_timeout; eauto.
+    find_apply_lem_hyp in_split.
+    break_exists.
+    construct_gst_RecvMsg.
+    exists egst.
+    invc_labeled_step.
+    - unfold timeout_handler in *; tuple_inversion.
+    - invc_labeled_step.
+      * eapply LDeliver_node;
+        eauto;
+        unfold apply_handler_result, update_msgs;
+        unfold recv_handler in *;
+        repeat tuple_inversion;
+        eauto.
+      * unfold recv_handler in *; tuple_inversion.
+  Qed.
 
   Lemma RecvMsg_enabled_until_occurred :
     forall s, lb_execution s ->
