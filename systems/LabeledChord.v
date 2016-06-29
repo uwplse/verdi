@@ -4,6 +4,7 @@ Import List.
 Require Import infseq.
 Require Import infseq_aux.
 Require Import StructTact.StructTactics.
+Require Import StructTact.Util.
 Require Import mathcomp.ssreflect.ssreflect.
 
 Require Import Classical. (* yuck *)
@@ -93,13 +94,66 @@ Section LabeledChord.
   exact: LDeliver_node.
   Qed.
 
+  Ltac break_labeled_step :=
+    match goal with
+      | H : labeled_step_dynamic _ _ _ |- _ =>
+        destruct H
+    end; subst.
+
+  Ltac invert_labeled_step :=
+    match goal with
+      | H : labeled_step_dynamic _ _ _ |- _ =>
+        invcs H
+    end.
+
   Lemma labeled_step_preserves_state_existing :
     forall gst gst' l h d,
       sigma gst h = Some d ->
       labeled_step_dynamic gst l gst' ->
       exists d',
         sigma gst' h = Some d'.
-  Admitted.
+  Proof.
+    intuition.
+    break_labeled_step.
+    - destruct (addr_eq_dec h0 h) as [H_eq | H_neq].
+      * subst_max.
+        exists st'.
+        unfold apply_handler_result, update.
+        simpl.
+        break_if; eauto || congruence.
+      * exists d.
+        unfold apply_handler_result, update.
+        simpl.
+        break_if; eauto || congruence.
+    - remember (fst (snd m)) as h0.
+      destruct (addr_eq_dec h0 h) as [H_eq | H_neq].
+      * subst_max.
+        exists st.
+        unfold apply_handler_result, update.
+        simpl.
+        break_if; eauto || congruence.
+      * exists d.
+        unfold apply_handler_result, update.
+        simpl.
+        break_if; eauto || congruence.
+    - now exists d.
+  Qed.
+
+  Lemma other_elements_remain_after_removal :
+    forall A (l xs ys : list A) (a b : A),
+      l = xs ++ b :: ys ->
+      In a l ->
+      a <> b ->
+      In a (xs ++ ys).
+  Proof.
+    intuition.
+    subst_max.
+    do_in_app.
+    break_or_hyp.
+    - intuition.
+    - find_apply_lem_hyp in_inv.
+      break_or_hyp; auto using in_or_app || congruence.
+  Qed.
 
   Lemma irrelevant_message_not_removed :
     forall m p dst src gst gst',
@@ -107,8 +161,26 @@ Section LabeledChord.
       m <> p ->
       labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
       In (src, (dst, m)) (msgs gst').
-  Admitted.
-
+  Proof.
+    intuition.
+    invert_labeled_step.
+    - unfold timeout_handler in *.
+      tuple_inversion.
+    - apply in_or_app.
+      right.
+      destruct m0 as [from [to p']].
+      unfold recv_handler in *.
+      repeat tuple_inversion.
+      eapply other_elements_remain_after_removal.
+      * match goal with
+        | H : msgs gst = _ ++ _ :: _ |- _ => apply H
+        end.
+      * auto.
+      * intuition.
+        tuple_inversion.
+        auto.
+  Qed.
+  
   Lemma labeled_step_dynamic_neq_payload_enabled :
     forall gst gst' gst'' to from m p,
       labeled_step_dynamic gst (RecvMsg from to p) gst' ->
