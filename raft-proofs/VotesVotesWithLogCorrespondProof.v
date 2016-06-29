@@ -80,7 +80,7 @@ Section VotesVotesWithLogCorrespond.
       unfold reboot in *; simpl in *;
       (eapply equates_1; [
           match goal with
-          | H : _ |- _ => solve [ eapply H; aggresive_rewrite_goal; eauto ]
+          | H : _ |- _ => solve [ eapply H; aggressive_rewrite_goal; eauto ]
           end |]);
       find_rewrite; auto.
   Qed.
