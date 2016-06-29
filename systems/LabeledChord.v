@@ -100,10 +100,16 @@ Section LabeledChord.
         destruct H
     end; subst.
 
-  Ltac invert_labeled_step :=
+  Ltac inv_labeled_step :=
     match goal with
       | H : labeled_step_dynamic _ _ _ |- _ =>
-        invcs H
+        inv H
+    end.
+
+  Ltac invc_labeled_step :=
+    match goal with
+      | H : labeled_step_dynamic _ _ _ |- _ =>
+        invc H
     end.
 
   Lemma labeled_step_preserves_state_existing :
@@ -156,19 +162,19 @@ Section LabeledChord.
   Qed.
 
   Lemma irrelevant_message_not_removed :
-    forall m p dst src gst gst',
-      In (src, (dst, m)) (msgs gst) ->
+    forall m p dst src to from gst gst',
+      In (from, (to, m)) (msgs gst) ->
       m <> p ->
       labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
-      In (src, (dst, m)) (msgs gst').
+      In (from, (to, m)) (msgs gst').
   Proof.
     intuition.
-    invert_labeled_step.
+    inv_labeled_step.
     - unfold timeout_handler in *.
       tuple_inversion.
     - apply in_or_app.
       right.
-      destruct m0 as [from [to p']].
+      destruct m0 as [s0 [d0 p0]].
       unfold recv_handler in *.
       repeat tuple_inversion.
       eapply other_elements_remain_after_removal.
@@ -259,7 +265,80 @@ Section LabeledChord.
       src <> from ->
       enabled (RecvMsg src to m) gst'.
   Proof.
-  Admitted.
+    intuition.
+    invc_labeled_step.
+    - unfold timeout_handler in *; tuple_inversion.
+    - inv_labeled_step.
+      * unfold timeout_handler in *; tuple_inversion.
+      * repeat match goal with
+        | m : msg |- _ => destruct m as [?src [?dst ?p]]
+        end.
+        unfold fst, snd in *.
+        match goal with
+        | |- enabled (RecvMsg _ ?to _) ?gst' =>
+          remember gst';
+          assert (exists x, sigma gst' to = Some x)
+        end.
+        eapply labeled_step_preserves_state_existing.
+        unfold recv_handler in *.
+        repeat tuple_inversion.
+        eauto.
+        repeat find_rewrite; eauto.
+        break_exists.
+
+        assert (exists st, sigma g to = Some st).
+        unfold recv_handler in *; repeat tuple_inversion.
+        eapply labeled_step_preserves_state_existing; eauto.
+
+        break_exists.
+        match goal with
+          | H: sigma g to = Some ?d |- _ =>
+            destruct (recv_handler src to d m)
+                     as [[[[?st ?ms] ?nts ] ?cts] ?l] eqn:?H
+        end.
+
+        match goal with
+        | |- enabled (RecvMsg ?from ?to ?m) ?gst =>
+          assert (In (from, (to, m)) (msgs gst))
+        end.
+        subst.
+        unfold apply_handler_result, update_msgs; simpl.
+        apply in_or_app; right.
+        eapply other_elements_remain_after_removal; eauto.
+        unfold recv_handler in *; repeat tuple_inversion.
+        repeat find_rewrite.
+        apply in_or_app; right.
+        auto with *.
+        unfold recv_handler in *; repeat tuple_inversion.
+        destruct (addr_eq_dec src from);
+          intuition;
+          tuple_inversion;
+          congruence.
+
+        find_copy_apply_lem_hyp in_split.
+        break_exists.
+        match goal with
+          | H : recv_handler src to ?d m = (?st, ?ms, ?nts, ?cts, ?l) |- _ =>
+            remember (apply_handler_result
+                        to
+                        (st, ms, nts, cts)
+                        (e_recv (src, (to, m)))
+                        (update_msgs g (x1 ++ x2))) as egst
+        end.
+        exists egst.
+        eapply LDeliver_node; eauto; simpl.
+        + subst.
+          unfold apply_handler_result, recv_handler in *; simpl.
+          repeat tuple_inversion.
+          auto.
+        + subst.
+          unfold apply_handler_result, recv_handler in *.
+          repeat tuple_inversion.
+          auto.
+        + repeat find_rewrite.
+          unfold recv_handler in *.
+          now tuple_inversion.
+  Qed.
 
   Lemma labeled_step_dynamic_neq_dst_enabled :
     forall gst gst' gst'' dst to src from m p,
