@@ -24,15 +24,12 @@ Section LabeledChord.
 
   Inductive label :=
   | RecvMsg : addr -> addr -> payload -> label
-  | Timeout : addr -> timeout -> label
-  | Tau : label.
+  | Timeout : addr -> timeout -> label.
 
   Definition label_eq_dec : forall x y : label, {x = y} + {x <> y}.  
   Proof.
     decide equality; eauto using addr_eq_dec, payload_eq_dec, timeout_eq_dec.
   Defined.
-
-  Definition label_silent := Tau.
 
   Notation occ_gst := (occ_gst addr payload data timeout label).
   Notation occurrence := (occurrence addr payload data timeout label).
@@ -45,14 +42,14 @@ Section LabeledChord.
 
   (* todo *)
   Variable extra_constraints : gpred addr payload data timeout.
-  Variable extra_constraints_all : forall gpred, extra_constraints gpred.
+  Hypothesis extra_constraints_all : forall gst, extra_constraints gst.
 
-  Notation labeled_step_dynamic := (labeled_step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec label label_silent recv_handler timeout_handler extra_constraints).
-  Notation lb_execution := (lb_execution addr addr_eq_dec payload data timeout timeout_eq_dec label label_silent recv_handler timeout_handler extra_constraints).
-  Notation strong_local_fairness := (strong_local_fairness addr addr_eq_dec payload data timeout timeout_eq_dec label label_silent recv_handler timeout_handler extra_constraints).
+  Notation labeled_step_dynamic := (labeled_step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler timeout_handler extra_constraints).
+  Notation lb_execution := (lb_execution addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler timeout_handler extra_constraints).
+  Notation strong_local_fairness := (strong_local_fairness addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler timeout_handler extra_constraints).
   Notation inf_occurred := (inf_occurred addr payload data timeout label).
-  Notation enabled := (enabled addr addr_eq_dec payload data timeout timeout_eq_dec label label_silent recv_handler timeout_handler extra_constraints).
-  Notation l_enabled := (l_enabled addr addr_eq_dec payload data timeout timeout_eq_dec label label_silent recv_handler timeout_handler extra_constraints).
+  Notation enabled := (enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler timeout_handler extra_constraints).
+  Notation l_enabled := (l_enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler timeout_handler extra_constraints).
   Notation occurred := (occurred addr payload data timeout label).
   Notation nodes := (nodes addr payload data timeout).
   Notation failed_nodes := (failed_nodes addr payload data timeout).
@@ -83,16 +80,7 @@ Section LabeledChord.
                  (e_recv (src, (dst, m)))
                  (update_msgs (occ_gst e) (x ++ x0)).
   exists gst'.
-  have H_fst_snd: dst = fst (snd (src, (dst, m))) by [].
-  have H_snd_snd: m = snd (snd (src, (dst, m))) by [].
-  rewrite H_snd_snd {H_snd_snd} in H_r.
-  have H_fst: src = fst (src, (dst, m)) by [].
-  rewrite H_fst {H_fst} in H_r.
-  have H_gst': gst' = gst' by [].
-  rewrite {2}/gst' in H_gst'.
-  have H_p: extra_constraints gst' by [].
-  move: H_r H_gst' H_p.  
-  exact: LDeliver_node.
+  by eapply LDeliver_node; eauto.
   Qed.
 
   Ltac break_labeled_step :=
@@ -143,7 +131,6 @@ Section LabeledChord.
         unfold apply_handler_result, update.
         simpl.
         break_if; eauto || congruence.
-    - now exists d.
   Qed.
 
   Lemma other_elements_remain_after_removal :
@@ -500,7 +487,7 @@ Section LabeledChord.
     cofix c.
     case => /=.
     case => /= gst.
-    case => [from to p|h t|].
+    case => [from to p|h t].
     - case.
       case => /= gst' lb' s H_exec src dst m H_en.
       inversion H_exec; subst_max.
@@ -549,13 +536,6 @@ Section LabeledChord.
       break_exists.
       move: H1 H.
       exact: labeled_step_dynamic_timeout_enabled.
-    - case.
-      case => /= gst' lb' s H_exec src dst' m H_en.
-      inversion H_exec; subst_max.
-      simpl in *.
-      inversion H1; subst_max => //.      
-      apply: Until_tl; first by [].
-      exact: c.
   Qed.
 
   Lemma RecvMsg_eventually_occurred :

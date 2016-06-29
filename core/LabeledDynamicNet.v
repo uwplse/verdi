@@ -12,8 +12,7 @@ Section LabeledDynamic.
   Variable timeout : Type.
   Variable timeout_eq_dec : forall x y : timeout, {x = y} + {x <> y}.
   Variable label : Type.
-  Variable label_eq_dec : forall x y : label, {x = y} + {x <> y}.  
-  Variable label_silent : label.
+  Variable label_eq_dec : forall x y : label, {x = y} + {x <> y}.
 
   Variable start_handler : addr -> list addr -> data * list (addr * payload) * list timeout.
 
@@ -31,11 +30,9 @@ Section LabeledDynamic.
   (* msgs *)
   Definition msg := (addr * (addr * payload))%type.
   Definition msg_eq_dec : forall x y : msg, {x = y} + {x <> y}.
-    decide equality.
-    destruct b, p.
+    decide equality; destruct b, p.
     decide equality; eauto using addr_eq_dec, payload_eq_dec.
   Defined.
-
   Definition send (a : addr) (p : addr * payload) : msg :=
     (a, p).
 
@@ -128,9 +125,7 @@ Section LabeledDynamic.
                  (e_recv m)
                  (update_msgs gst (xs ++ ys)) ->
         extra_constraints gst' ->
-        labeled_step_dynamic gst lb gst'
-   | LStutter : 
-       forall gst, labeled_step_dynamic gst label_silent gst.
+        labeled_step_dynamic gst lb gst'.
 
 Record occurrence := { occ_gst : global_state ; occ_label : label }.
 

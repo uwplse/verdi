@@ -7,6 +7,7 @@ Section Dynamic.
   Variable addr : Type. (* must be finite, decidable *)
   Variable addr_eq_dec : forall x y : addr, {x = y} + {x <> y}.
   Variable payload : Type. (* must be serializable *)
+  Variable payload_eq_dec : forall x y : payload, {x = y} + {x <> y}.
   Variable data : Type.
   Variable timeout : Type.
   Variable timeout_eq_dec : forall x y : timeout, {x = y} + {x <> y}.
@@ -26,6 +27,10 @@ Section Dynamic.
 
   (* msgs *)
   Definition msg := (addr * (addr * payload))%type.
+  Definition msg_eq_dec : forall x y : msg, {x = y} + {x <> y}.
+    decide equality; destruct b, p.
+    decide equality; eauto using addr_eq_dec, payload_eq_dec.
+  Defined.
   Definition send (a : addr) (p : addr * payload) : msg :=
     (a, p).
 
