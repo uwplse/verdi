@@ -1,7 +1,7 @@
 Require Import List.
 Require Import Arith.
 Import ListNotations.
-Require Import infseq.
+Require Import InfSeqExt.infseq.
 
 Section LabeledDynamic.
   Variable addr : Type. (* must be finite, decidable *)

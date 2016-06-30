@@ -2,8 +2,8 @@ Require Import Chord.
 Require Import ChordProof.
 Require Import LabeledDynamicNet.
 Import List.
-Require Import infseq.
-Require Import infseq_aux.
+Require Import InfSeqExt.infseq.
+Require Import InfSeqExt.infseq_aux.
 Require Import StructTact.StructTactics.
 Require Import StructTact.Util.
 Require Import mathcomp.ssreflect.ssreflect.
@@ -554,7 +554,7 @@ Section LabeledChord.
     rewrite /P {P} => H_ev.
     suff H_suff: inf_occurred (RecvMsg src dst m) s by inversion H_suff.
     apply: H_fair.
-    apply: always_always_eventually.
+    apply: always_inf_often.
     move: H_ev.
     apply: until_not_eventually_always.
     apply: RecvMsg_enabled_until_occurred => //.
