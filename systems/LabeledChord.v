@@ -1,6 +1,6 @@
 Require Import Chord.
 Require Import ChordProof.
-Require Import LabeledDynamicNet.
+Require Import DynamicNet.
 Import List.
 Require Import InfSeqExt.infseq.
 Require Import StructTact.StructTactics.
@@ -33,22 +33,22 @@ Section LabeledChord.
   Notation occ_gst := (occ_gst addr payload data timeout label).
   Notation occurrence := (occurrence addr payload data timeout label).
 
-  Definition timeout_handler (h : addr) (st : data) (t : timeout) :=
+  Definition timeout_handler_l (h : addr) (st : data) (t : timeout) :=
     (timeout_handler hash h st t, Timeout h t).
 
-  Definition recv_handler (src : addr) (dst : addr) (st : data) (msg : payload) :=
+  Definition recv_handler_l (src : addr) (dst : addr) (st : data) (msg : payload) :=
     (recv_handler SUCC_LIST_LEN hash src dst st msg, RecvMsg src dst msg).
 
   (* todo *)
   Variable extra_constraints : gpred addr payload data timeout.
   Hypothesis extra_constraints_all : forall gst, extra_constraints gst.
 
-  Notation labeled_step_dynamic := (labeled_step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler timeout_handler extra_constraints).
-  Notation lb_execution := (lb_execution addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler timeout_handler extra_constraints).
-  Notation strong_local_fairness := (strong_local_fairness addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler timeout_handler extra_constraints).
+  Notation labeled_step_dynamic := (labeled_step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
+  Notation lb_execution := (lb_execution addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
+  Notation strong_local_fairness := (strong_local_fairness addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
   Notation inf_occurred := (inf_occurred addr payload data timeout label).
-  Notation enabled := (enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler timeout_handler extra_constraints).
-  Notation l_enabled := (l_enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler timeout_handler extra_constraints).
+  Notation enabled := (enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
+  Notation l_enabled := (l_enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
   Notation occurred := (occurred addr payload data timeout label).
   Notation nodes := (nodes addr payload data timeout).
   Notation failed_nodes := (failed_nodes addr payload data timeout).
@@ -68,9 +68,9 @@ Section LabeledChord.
   find_apply_lem_hyp in_split.
   break_exists.
   rewrite /l_enabled /enabled.
-  case H_r: (recv_handler src dst d m) => [[[[st ms] newts] clearedts] lb].
+  case H_r: (recv_handler_l src dst d m) => [[[[st ms] newts] clearedts] lb].
   have H_lb: lb = RecvMsg src dst m.
-    rewrite /recv_handler /= in H_r.
+    rewrite /recv_handler_l /= in H_r.
     by tuple_inversion.
   rewrite H_lb {H_lb} in H_r.
   pose gst' := apply_handler_result
@@ -157,12 +157,12 @@ Section LabeledChord.
   Proof.
     intuition.
     inv_labeled_step.
-    - unfold timeout_handler in *.
+    - unfold timeout_handler_l in *.
       tuple_inversion.
     - apply in_or_app.
       right.
       destruct m0 as [s0 [d0 p0]].
-      unfold recv_handler in *.
+      unfold recv_handler_l in *.
       repeat tuple_inversion.
       eapply other_elements_remain_after_removal.
       * match goal with
@@ -183,39 +183,39 @@ Section LabeledChord.
   Proof.
     intuition.
     inversion H0.
-    - unfold timeout_handler in *.
+    - unfold timeout_handler_l in *.
       tuple_inversion.
     - assert (H_m0: m0 = (from, (h, m))).
       * destruct m0.
         destruct p0.
-        unfold recv_handler in *.
+        unfold recv_handler_l in *.
         tuple_inversion.
         auto.
       * subst_max.
         unfold fst, snd in *.
         inversion H.
-        unfold timeout_handler in *.
+        unfold timeout_handler_l in *.
         tuple_inversion.
         assert (H_m0: m0 = (from, (to, p))).
-        unfold recv_handler in *.
+        unfold recv_handler_l in *.
         destruct m0.
         destruct p0.
         tuple_inversion.
         auto.
         unfold fst, snd in *.
         assert (H_st: exists d, sigma gst' to = Some d).
-        + unfold recv_handler in *.
+        + unfold recv_handler_l in *.
           repeat tuple_inversion.
           eauto using labeled_step_preserves_state_existing.
         + break_exists.
-          remember (recv_handler from to x m) as res.
+          remember (recv_handler_l from to x m) as res.
           symmetry in Heqres.
           destruct res.
           destruct r.
           destruct p0.
           destruct p0.
           assert (H_in: In (from, (to, m)) (msgs gst')).
-          unfold recv_handler in *.
+          unfold recv_handler_l in *.
           repeat tuple_inversion.
           eapply irrelevant_message_not_removed.
           -- match goal with
@@ -239,7 +239,7 @@ Section LabeledChord.
              subst_max.
              eapply LDeliver_node; eauto.
              simpl.
-             unfold fst, snd, recv_handler in *.
+             unfold fst, snd, recv_handler_l in *.
              repeat find_rewrite.
              repeat tuple_inversion.
              auto.
@@ -254,9 +254,9 @@ Section LabeledChord.
   Proof.
     intuition.
     invc_labeled_step.
-    - unfold timeout_handler in *; tuple_inversion.
+    - unfold timeout_handler_l in *; tuple_inversion.
     - inv_labeled_step.
-      * unfold timeout_handler in *; tuple_inversion.
+      * unfold timeout_handler_l in *; tuple_inversion.
       * repeat match goal with
         | m : msg |- _ => destruct m as [?src [?dst ?p]]
         end.
@@ -267,20 +267,20 @@ Section LabeledChord.
           assert (exists x, sigma gst' to = Some x)
         end.
         eapply labeled_step_preserves_state_existing.
-        unfold recv_handler in *.
+        unfold recv_handler_l in *.
         repeat tuple_inversion.
         eauto.
         repeat find_rewrite; eauto.
         break_exists.
 
         assert (exists st, sigma g to = Some st).
-        unfold recv_handler in *; repeat tuple_inversion.
+        unfold recv_handler_l in *; repeat tuple_inversion.
         eapply labeled_step_preserves_state_existing; eauto.
 
         break_exists.
         match goal with
           | H: sigma g to = Some ?d |- _ =>
-            destruct (recv_handler src to d m)
+            destruct (recv_handler_l src to d m)
                      as [[[[?st ?ms] ?nts ] ?cts] ?l] eqn:?H
         end.
 
@@ -292,11 +292,11 @@ Section LabeledChord.
         unfold apply_handler_result, update_msgs; simpl.
         apply in_or_app; right.
         eapply other_elements_remain_after_removal; eauto.
-        unfold recv_handler in *; repeat tuple_inversion.
+        unfold recv_handler_l in *; repeat tuple_inversion.
         repeat find_rewrite.
         apply in_or_app; right.
         auto with *.
-        unfold recv_handler in *; repeat tuple_inversion.
+        unfold recv_handler_l in *; repeat tuple_inversion.
         destruct (addr_eq_dec src from);
           intuition;
           tuple_inversion;
@@ -305,7 +305,7 @@ Section LabeledChord.
         find_copy_apply_lem_hyp in_split.
         break_exists.
         match goal with
-          | H : recv_handler src to ?d m = (?st, ?ms, ?nts, ?cts, ?l) |- _ =>
+          | H : recv_handler_l src to ?d m = (?st, ?ms, ?nts, ?cts, ?l) |- _ =>
             remember (apply_handler_result
                         to
                         (st, ms, nts, cts)
@@ -315,15 +315,15 @@ Section LabeledChord.
         exists egst.
         eapply LDeliver_node; eauto; simpl.
         + subst.
-          unfold apply_handler_result, recv_handler in *; simpl.
+          unfold apply_handler_result, recv_handler_l in *; simpl.
           repeat tuple_inversion.
           auto.
         + subst.
-          unfold apply_handler_result, recv_handler in *.
+          unfold apply_handler_result, recv_handler_l in *.
           repeat tuple_inversion.
           auto.
         + repeat find_rewrite.
-          unfold recv_handler in *.
+          unfold recv_handler_l in *.
           now tuple_inversion.
   Qed.
 
@@ -337,12 +337,12 @@ Section LabeledChord.
   Proof.
     intuition.
     invc_labeled_step.
-    - unfold timeout_handler in *; find_inversion.
+    - unfold timeout_handler_l in *; find_inversion.
     - invc_labeled_step.
-      * unfold timeout_handler in *; find_inversion.
+      * unfold timeout_handler_l in *; find_inversion.
       * unfold apply_handler_result, update_msgs, update; simpl.
         break_if; eauto.
-        unfold recv_handler in *; repeat tuple_inversion.
+        unfold recv_handler_l in *; repeat tuple_inversion.
         match goal with
         | H: sigma ?gst ?dst = Some ?st |- exists _, sigma ?gst ?dst = Some _ =>
           exists st; auto
@@ -358,11 +358,11 @@ Section LabeledChord.
   Proof.
     intuition.
     invc_labeled_step.
-    - unfold timeout_handler in *; find_inversion.
+    - unfold timeout_handler_l in *; find_inversion.
     - invc_labeled_step.
-      * unfold timeout_handler in *; find_inversion.
+      * unfold timeout_handler_l in *; find_inversion.
       * unfold apply_handler_result, update_msgs; simpl.
-        unfold recv_handler in *; repeat tuple_inversion.
+        unfold recv_handler_l in *; repeat tuple_inversion.
         unfold fst, snd; repeat break_let.
         apply in_or_app; right.
         eapply other_elements_remain_after_removal; eauto.
@@ -381,7 +381,7 @@ Section LabeledChord.
     | [ Hst: sigma ?gst ?d = Some ?st,
         Hmsgs: msgs ?gst = ?xs ++ (?s, (?d, ?p)) :: ?ys
         |- enabled (RecvMsg ?s ?d ?p) ?gst ]=>
-      destruct (recv_handler s d st p) as [[[[?st' ?ms] ?nts] ?cts] ?l] eqn:?H;
+      destruct (recv_handler_l s d st p) as [[[[?st' ?ms] ?nts] ?cts] ?l] eqn:?H;
         remember (apply_handler_result
                     d
                     (st', ms, nts, cts)
@@ -403,13 +403,13 @@ Section LabeledChord.
     construct_gst_RecvMsg.
     exists egst.
     invc_labeled_step.
-    - unfold timeout_handler in *; tuple_inversion.
+    - unfold timeout_handler_l in *; tuple_inversion.
     - invc_labeled_step.
-      * unfold timeout_handler in *; tuple_inversion.
+      * unfold timeout_handler_l in *; tuple_inversion.
       * eapply LDeliver_node;
         eauto;
         unfold apply_handler_result, update_msgs;
-        unfold recv_handler in *;
+        unfold recv_handler_l in *;
         repeat tuple_inversion;
         eauto.
   Qed.
@@ -423,12 +423,12 @@ Section LabeledChord.
   Proof.
     intuition.
     invc_labeled_step.
-    - unfold timeout_handler in *; tuple_inversion.
+    - unfold timeout_handler_l in *; tuple_inversion.
     - invc_labeled_step.
-      * unfold recv_handler in *; repeat tuple_inversion.
+      * unfold recv_handler_l in *; repeat tuple_inversion.
         unfold apply_handler_result, update; simpl.
         break_if; eexists; eauto.
-      * unfold recv_handler in *; tuple_inversion.
+      * unfold recv_handler_l in *; tuple_inversion.
   Qed.
 
   Lemma recv_implies_message_exists_after_timeout :
@@ -439,16 +439,16 @@ Section LabeledChord.
   Proof.
     intuition.
     invc_labeled_step.
-    - unfold timeout_handler in *; tuple_inversion.
+    - unfold timeout_handler_l in *; tuple_inversion.
     - invc_labeled_step.
-      * unfold recv_handler in *; repeat tuple_inversion.
+      * unfold recv_handler_l in *; repeat tuple_inversion.
         simpl.
         repeat find_rewrite.
         repeat (apply in_or_app; right).
         unfold fst, snd.
         repeat break_let.
         apply in_eq.
-      * unfold recv_handler in *; tuple_inversion.
+      * unfold recv_handler_l in *; tuple_inversion.
   Qed.
 
   Lemma labeled_step_dynamic_timeout_enabled :
@@ -465,15 +465,15 @@ Section LabeledChord.
     construct_gst_RecvMsg.
     exists egst.
     invc_labeled_step.
-    - unfold timeout_handler in *; tuple_inversion.
+    - unfold timeout_handler_l in *; tuple_inversion.
     - invc_labeled_step.
       * eapply LDeliver_node;
         eauto;
         unfold apply_handler_result, update_msgs;
-        unfold recv_handler in *;
+        unfold recv_handler_l in *;
         repeat tuple_inversion;
         eauto.
-      * unfold recv_handler in *; tuple_inversion.
+      * unfold recv_handler_l in *; tuple_inversion.
   Qed.
 
   Lemma RecvMsg_enabled_until_occurred :
