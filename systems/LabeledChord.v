@@ -479,7 +479,7 @@ Section LabeledChord.
   Lemma RecvMsg_enabled_until_occurred :
     forall s, lb_execution s ->
       forall src dst m, l_enabled (RecvMsg src dst m) (hd s) ->
-        until (now (l_enabled (RecvMsg src dst m)))
+        weak_until (now (l_enabled (RecvMsg src dst m)))
               (now (occurred (RecvMsg src dst m)))
               s.
   Proof.
@@ -495,9 +495,9 @@ Section LabeledChord.
         case (addr_eq_dec src from) => H_dec_src.
           case (payload_eq_dec m p) => H_dec_m.
             subst_max.
-            exact: Until0.
+            exact: W0.
           subst_max.
-          apply: Until_tl; first by [].
+          apply: W_tl; first by [].
           apply: c => //=.
           unfold l_enabled in *.
           simpl in *.
@@ -506,7 +506,7 @@ Section LabeledChord.
           move: H1 H H_dec_m.
           exact: labeled_step_dynamic_neq_payload_enabled.
         subst_max.
-        apply: Until_tl; first by [].
+        apply: W_tl; first by [].
         apply: c => //=.
         unfold l_enabled in *.
         simpl in *.
@@ -514,7 +514,7 @@ Section LabeledChord.
         break_exists.
         move: H1 H H_dec_src.
         exact: labeled_step_dynamic_neq_src_enabled.
-      apply: Until_tl; first by [].
+      apply: W_tl; first by [].
       apply: c => //=.
       unfold l_enabled in *.
       simpl in *.
@@ -527,7 +527,7 @@ Section LabeledChord.
       inversion H_exec; subst_max.
       simpl in *.
       rewrite /l_enabled /= in H_en.
-      apply: Until_tl; first by [].
+      apply: W_tl; first by [].
       apply: c => //=.
       unfold l_enabled in *.
       simpl in *.
@@ -556,7 +556,7 @@ Section LabeledChord.
     apply: always_inf_often.
     apply not_eventually_always_not in H_ev.    
     move: H_ev.
-    apply: until_always_not_always.
+    apply: weak_until_always_not_always.
     apply: RecvMsg_enabled_until_occurred => //.
     move: H_s.
     exact: l_enabled_RecvMsg_In_msgs.
