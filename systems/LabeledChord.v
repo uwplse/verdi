@@ -91,14 +91,36 @@ Section LabeledChord.
   Ltac inv_labeled_step :=
     match goal with
       | H : labeled_step_dynamic _ _ _ |- _ =>
-        inv H
+        inv H; try now (unfold recv_handler_l, timeout_handler_l in *; tuple_inversion)
     end.
 
   Ltac invc_labeled_step :=
     match goal with
       | H : labeled_step_dynamic _ _ _ |- _ =>
-        invc H
+        invc H; try now (unfold recv_handler_l, timeout_handler_l in *; tuple_inversion)
     end.
+
+  Lemma sigma_ahr_updates :
+    forall gst n st ms nts cts e,
+      sigma (apply_handler_result n (st, ms, nts, cts) e gst) n = Some st.
+  Proof.
+    unfold apply_handler_result, update.
+    simpl.
+    intuition. 
+    break_if; auto || congruence.
+  Qed.
+
+  Lemma sigma_ahr_passthrough :
+    forall gst n st ms nts cts e h d,
+      n <> h ->
+      sigma gst h = Some d ->
+      sigma (apply_handler_result n (st, ms, nts, cts) e gst) h = Some d.
+  Proof.
+    unfold apply_handler_result, update.
+    simpl.
+    intuition. 
+    break_if; auto || congruence.
+  Qed.
 
   Lemma labeled_step_preserves_state_existing :
     forall gst gst' l h d,
@@ -108,28 +130,13 @@ Section LabeledChord.
         sigma gst' h = Some d'.
   Proof.
     intuition.
-    break_labeled_step.
-    - destruct (addr_eq_dec h0 h) as [H_eq | H_neq].
-      * subst_max.
-        exists st'.
-        unfold apply_handler_result, update.
-        simpl.
-        break_if; eauto || congruence.
-      * exists d.
-        unfold apply_handler_result, update.
-        simpl.
-        break_if; eauto || congruence.
-    - remember (fst (snd m)) as h0.
-      destruct (addr_eq_dec h0 h) as [H_eq | H_neq].
-      * subst_max.
-        exists st.
-        unfold apply_handler_result, update.
-        simpl.
-        break_if; eauto || congruence.
-      * exists d.
-        unfold apply_handler_result, update.
-        simpl.
-        break_if; eauto || congruence.
+    break_labeled_step;
+      match goal with
+      | H: In ?n (nodes _) |- exists _, sigma _ ?h = _ => destruct (addr_eq_dec n h)
+      end;
+      subst_max;
+      eexists;
+      eauto using sigma_ahr_updates, sigma_ahr_passthrough.
   Qed.
 
   Lemma other_elements_remain_after_removal :
@@ -148,32 +155,198 @@ Section LabeledChord.
       break_or_hyp; auto using in_or_app || congruence.
   Qed.
 
+  Lemma define_msg_from_recv_step_equality :
+    forall m d st ms nts cts src dst p,
+      recv_handler_l (fst m) (fst (snd m)) d (snd (snd m)) = (st, ms, nts, cts, RecvMsg src dst p) ->
+      (m = (src, (dst, p)) /\ fst m = src /\ fst (snd m) = dst /\ snd (snd m) = p).
+  Proof.
+    unfold recv_handler_l.
+    intuition;
+      now tuple_inversion.
+  Qed.
+
+  Ltac recover_msg_from_recv_step_equality :=
+    find_copy_apply_lem_hyp define_msg_from_recv_step_equality;
+    break_and.
+
+  Ltac recover_msg_from_recv_step_equality_clear :=
+    find_apply_lem_hyp define_msg_from_recv_step_equality;
+    break_and.
+
+  Lemma elim_labeled_step_recv :
+    forall gst gst' src dst p,
+      labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
+      exists st xs ys st' ms newts clearedts,
+        sigma gst dst = Some st /\
+        msgs gst = xs ++ (src, (dst, p)) :: ys /\
+        recv_handler_l src dst st p = (st', ms, newts, clearedts, RecvMsg src dst p) /\
+        gst' = (apply_handler_result dst
+                                     (st', ms, newts, clearedts)
+                                     (e_recv (src, (dst, p)))
+                                     (update_msgs gst (xs ++ ys))).
+  Proof.
+    intuition.
+    inv_labeled_step.
+    recover_msg_from_recv_step_equality.
+    repeat find_rewrite.
+    repeat eexists; eauto.
+  Qed.
+
   Lemma irrelevant_message_not_removed :
     forall m p dst src to from gst gst',
-      In (from, (to, m)) (msgs gst) ->
-      m <> p ->
       labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
+      In (from, (to, m)) (msgs gst) ->
+      (from, (to, m)) <> (src, (dst, p)) ->
       In (from, (to, m)) (msgs gst').
   Proof.
     intuition.
     inv_labeled_step.
-    - unfold timeout_handler_l in *.
-      tuple_inversion.
-    - apply in_or_app.
-      right.
-      destruct m0 as [s0 [d0 p0]].
-      unfold recv_handler_l in *.
-      repeat tuple_inversion.
-      eapply other_elements_remain_after_removal.
-      * match goal with
-        | H : msgs gst = _ ++ _ :: _ |- _ => apply H
-        end.
-      * auto.
-      * intuition.
-        tuple_inversion.
-        auto.
+    apply in_or_app.
+    right.
+    recover_msg_from_recv_step_equality.
+    eapply other_elements_remain_after_removal; eauto.
+    now repeat find_rewrite.
   Qed.
-  
+
+  Ltac destruct_recv_handler_l :=
+    match goal with
+      |- context[recv_handler_l ?from ?to ?st ?p] =>
+      unfold recv_handler_l;
+        destruct (recv_handler SUCC_LIST_LEN hash from to st p) as [[[?st ?ms] ?cts] ?nts] eqn:?H
+    end.
+
+  Lemma when_RecvMsg_enabled :
+    forall from to p gst,
+      In to (nodes gst) ->
+      ~ In to (failed_nodes gst) ->
+      (exists st, sigma gst to = Some st) ->
+      In (from, (to, p)) (msgs gst) ->
+      enabled (RecvMsg from to p) gst.
+  Proof.
+    intuition.
+    find_apply_lem_hyp in_split.
+    break_exists.
+    match goal with
+      | H: sigma ?gst ?to = Some ?d |- enabled (RecvMsg ?from ?to ?p) ?gst =>
+        assert (exists st ms nts cts, recv_handler_l from to d p = (st, ms, nts, cts, RecvMsg from to p))
+    end.
+    destruct_recv_handler_l.
+    repeat eexists.
+    break_exists.
+    unfold enabled.
+    eauto using LDeliver_node.
+  Qed.
+
+  Lemma recv_implies_state_exists :
+    forall gst gst' gst'' from to src dst p m,
+      labeled_step_dynamic gst (RecvMsg from to p) gst'  ->
+      labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
+      exists st,
+        sigma gst' dst = Some st.
+  Proof.
+    intuition.
+    invc_labeled_step.
+    invc_labeled_step.
+    recover_msg_from_recv_step_equality_clear.
+    recover_msg_from_recv_step_equality_clear.
+    repeat find_rewrite.
+    unfold update_msgs.
+    destruct (addr_eq_dec to dst).
+    - repeat find_rewrite.
+      eauto using sigma_ahr_updates.
+    - eauto using sigma_ahr_passthrough.
+  Qed.
+
+  Lemma recv_implies_msg_in_before :
+    forall gst gst' src dst p,
+      labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
+      In (src, (dst, p)) (msgs gst).
+  Proof.
+    intuition.
+    invc_labeled_step.
+    recover_msg_from_recv_step_equality_clear.
+    repeat find_rewrite.
+    auto using in_or_app, in_eq.
+  Qed.
+
+  Lemma recv_implies_msg_in_after :
+    forall gst gst' gst'' dst to src from m p,
+      labeled_step_dynamic gst (RecvMsg from to p) gst' ->
+      labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
+      (src, (dst, m)) <> (from, (to, p)) ->
+      In (src, (dst, m)) (msgs gst').
+  Proof.
+    intuition.
+    eapply irrelevant_message_not_removed.
+    - eauto.
+    - invc_labeled_step.
+      invc_labeled_step.
+      recover_msg_from_recv_step_equality_clear.
+      recover_msg_from_recv_step_equality_clear.
+      match goal with
+      | H: msgs ?gst = _ ++ ?packet :: _,
+        H': ?packet = ?tuple
+        |- In ?tuple (msgs ?gst) =>
+        rewrite H; rewrite H'
+      end.
+      auto using in_or_app, in_eq.
+    - congruence.
+  Qed.
+
+  Ltac construct_gst_RecvMsg :=
+    match goal with
+    | Hst: sigma ?gst ?d = Some ?st,
+      Hmsgs: msgs ?gst = ?xs ++ (?s, (?d, ?p)) :: ?ys
+      |- enabled (RecvMsg ?s ?d ?p) ?gst =>
+      destruct (recv_handler_l s d st p) as [[[[?st' ?ms] ?nts] ?cts] ?l] eqn:?H;
+        remember (apply_handler_result
+                    d
+                    (st', ms, nts, cts)
+                    (e_recv (s, (d, p)))
+                    (update_msgs gst (xs ++ ys))) as egst
+    end.
+
+  Lemma recv_implies_node_in :
+    forall gst gst' src dst p,
+      labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
+       In dst (nodes gst).
+  Proof.
+    intuition.
+    invc_labeled_step.
+  Qed.
+
+  Lemma recv_implies_node_not_failed :
+    forall gst gst' src dst p,
+      labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
+      ~ In dst (failed_nodes gst).
+  Proof.
+    intuition.
+    invc_labeled_step.
+  Qed.
+
+  Lemma failed_nodes_never_added :
+    forall gst gst' l h,
+      labeled_step_dynamic gst l gst' ->
+      ~ In h (failed_nodes gst) ->
+      ~ In h (failed_nodes gst').
+  Proof.
+    intuition.
+    invc_labeled_step.
+  Qed.
+
+  Lemma nodes_never_removed :
+    forall gst gst' l h,
+      labeled_step_dynamic gst l gst' ->
+      In h (nodes gst) ->
+      In h (nodes gst').
+  Proof.
+    intuition.
+    match goal with
+    | H: labeled_step_dynamic _ _ _ |- _ => destruct H eqn:?H
+    end;
+      now invc_labeled_step.
+  Qed.
+
   Lemma labeled_step_dynamic_neq_payload_enabled :
     forall gst gst' gst'' to from m p,
       labeled_step_dynamic gst (RecvMsg from to p) gst' ->
@@ -182,67 +355,14 @@ Section LabeledChord.
       enabled (RecvMsg from to m) gst'.
   Proof.
     intuition.
-    inversion H0.
-    - unfold timeout_handler_l in *.
-      tuple_inversion.
-    - assert (H_m0: m0 = (from, (h, m))).
-      * destruct m0.
-        destruct p0.
-        unfold recv_handler_l in *.
-        tuple_inversion.
-        auto.
-      * subst_max.
-        unfold fst, snd in *.
-        inversion H.
-        unfold timeout_handler_l in *.
-        tuple_inversion.
-        assert (H_m0: m0 = (from, (to, p))).
-        unfold recv_handler_l in *.
-        destruct m0.
-        destruct p0.
-        tuple_inversion.
-        auto.
-        unfold fst, snd in *.
-        assert (H_st: exists d, sigma gst' to = Some d).
-        + unfold recv_handler_l in *.
-          repeat tuple_inversion.
-          eauto using labeled_step_preserves_state_existing.
-        + break_exists.
-          remember (recv_handler_l from to x m) as res.
-          symmetry in Heqres.
-          destruct res.
-          destruct r.
-          destruct p0.
-          destruct p0.
-          assert (H_in: In (from, (to, m)) (msgs gst')).
-          unfold recv_handler_l in *.
-          repeat tuple_inversion.
-          eapply irrelevant_message_not_removed.
-          -- match goal with
-             | H: msgs gst = _ |- _ => rewrite H
-             end.
-             apply in_or_app.
-             right.
-             apply in_eq.
-          -- eauto.
-          -- repeat find_rewrite.
-             eauto.
-          -- find_eapply_lem_hyp in_split.
-             break_exists.
-             remember (apply_handler_result
-                         to
-                         (d1, l2, l1, l0)
-                         (e_recv (from, (to, m)))
-                         (update_msgs gst' (x0 ++ x1))) as egst.
-             unfold enabled.
-             exists egst.
-             subst_max.
-             eapply LDeliver_node; eauto.
-             simpl.
-             unfold fst, snd, recv_handler_l in *.
-             repeat find_rewrite.
-             repeat tuple_inversion.
-             auto.
+    apply when_RecvMsg_enabled.
+    - eauto using recv_implies_node_in, nodes_never_removed.
+    - eauto using recv_implies_node_not_failed, failed_nodes_never_added.
+    - eauto using recv_implies_state_exists.
+    - eapply irrelevant_message_not_removed.
+      * eauto.
+      * eauto using recv_implies_msg_in_before.
+      * congruence.
   Qed.
 
   Lemma labeled_step_dynamic_neq_src_enabled :
@@ -253,142 +373,16 @@ Section LabeledChord.
       enabled (RecvMsg src to m) gst'.
   Proof.
     intuition.
-    invc_labeled_step.
-    - unfold timeout_handler_l in *; tuple_inversion.
-    - inv_labeled_step.
-      * unfold timeout_handler_l in *; tuple_inversion.
-      * repeat match goal with
-        | m : msg |- _ => destruct m as [?src [?dst ?p]]
-        end.
-        unfold fst, snd in *.
-        match goal with
-        | |- enabled (RecvMsg _ ?to _) ?gst' =>
-          remember gst';
-          assert (exists x, sigma gst' to = Some x)
-        end.
-        eapply labeled_step_preserves_state_existing.
-        unfold recv_handler_l in *.
-        repeat tuple_inversion.
-        eauto.
-        repeat find_rewrite; eauto.
-        break_exists.
-
-        assert (exists st, sigma g to = Some st).
-        unfold recv_handler_l in *; repeat tuple_inversion.
-        eapply labeled_step_preserves_state_existing; eauto.
-
-        break_exists.
-        match goal with
-          | H: sigma g to = Some ?d |- _ =>
-            destruct (recv_handler_l src to d m)
-                     as [[[[?st ?ms] ?nts ] ?cts] ?l] eqn:?H
-        end.
-
-        match goal with
-        | |- enabled (RecvMsg ?from ?to ?m) ?gst =>
-          assert (In (from, (to, m)) (msgs gst))
-        end.
-        subst.
-        unfold apply_handler_result, update_msgs; simpl.
-        apply in_or_app; right.
-        eapply other_elements_remain_after_removal; eauto.
-        unfold recv_handler_l in *; repeat tuple_inversion.
-        repeat find_rewrite.
-        apply in_or_app; right.
-        auto with *.
-        unfold recv_handler_l in *; repeat tuple_inversion.
-        destruct (addr_eq_dec src from);
-          intuition;
-          tuple_inversion;
-          congruence.
-
-        find_copy_apply_lem_hyp in_split.
-        break_exists.
-        match goal with
-          | H : recv_handler_l src to ?d m = (?st, ?ms, ?nts, ?cts, ?l) |- _ =>
-            remember (apply_handler_result
-                        to
-                        (st, ms, nts, cts)
-                        (e_recv (src, (to, m)))
-                        (update_msgs g (x1 ++ x2))) as egst
-        end.
-        exists egst.
-        eapply LDeliver_node; eauto; simpl.
-        + subst.
-          unfold apply_handler_result, recv_handler_l in *; simpl.
-          repeat tuple_inversion.
-          auto.
-        + subst.
-          unfold apply_handler_result, recv_handler_l in *.
-          repeat tuple_inversion.
-          auto.
-        + repeat find_rewrite.
-          unfold recv_handler_l in *.
-          now tuple_inversion.
+    apply when_RecvMsg_enabled.
+    - eauto using recv_implies_node_in, nodes_never_removed.
+    - eauto using recv_implies_node_not_failed, failed_nodes_never_added.
+    - eauto using recv_implies_state_exists.
+    - eapply irrelevant_message_not_removed.
+      * eauto.
+      * eauto using recv_implies_msg_in_before.
+      * congruence.
   Qed.
-
-  Lemma recv_implies_state_exists :
-    forall gst gst' gst'' from to src dst p m,
-      labeled_step_dynamic gst (RecvMsg from to p) gst'  ->
-      labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
-      dst <> to ->
-      exists st,
-        sigma gst' dst = Some st.
-  Proof.
-    intuition.
-    invc_labeled_step.
-    - unfold timeout_handler_l in *; find_inversion.
-    - invc_labeled_step.
-      * unfold timeout_handler_l in *; find_inversion.
-      * unfold apply_handler_result, update_msgs, update; simpl.
-        break_if; eauto.
-        unfold recv_handler_l in *; repeat tuple_inversion.
-        match goal with
-        | H: sigma ?gst ?dst = Some ?st |- exists _, sigma ?gst ?dst = Some _ =>
-          exists st; auto
-        end.
-  Qed.
-
-  Lemma recv_implies_msg_in :
-    forall gst gst' gst'' dst to src from m p,
-      labeled_step_dynamic gst (RecvMsg from to p) gst' ->
-      labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
-      dst <> to ->
-      In (src, (dst, m)) (msgs gst').
-  Proof.
-    intuition.
-    invc_labeled_step.
-    - unfold timeout_handler_l in *; find_inversion.
-    - invc_labeled_step.
-      * unfold timeout_handler_l in *; find_inversion.
-      * unfold apply_handler_result, update_msgs; simpl.
-        unfold recv_handler_l in *; repeat tuple_inversion.
-        unfold fst, snd; repeat break_let.
-        apply in_or_app; right.
-        eapply other_elements_remain_after_removal; eauto.
-        + match goal with
-          | H: msgs ?gst = ?xs ++ ?m :: ?ys |- context[ ?m ] =>
-            rewrite H
-          end.
-          apply in_or_app; right; apply in_eq.
-        + intuition.
-          repeat tuple_inversion.
-          eauto.
-  Qed.
-
-  Ltac construct_gst_RecvMsg :=
-    match goal with
-    | [ Hst: sigma ?gst ?d = Some ?st,
-        Hmsgs: msgs ?gst = ?xs ++ (?s, (?d, ?p)) :: ?ys
-        |- enabled (RecvMsg ?s ?d ?p) ?gst ]=>
-      destruct (recv_handler_l s d st p) as [[[[?st' ?ms] ?nts] ?cts] ?l] eqn:?H;
-        remember (apply_handler_result
-                    d
-                    (st', ms, nts, cts)
-                    (e_recv (s, (d, p)))
-                    (update_msgs gst (xs ++ ys))) as egst
-    end.
-
+  
   Lemma labeled_step_dynamic_neq_dst_enabled :
     forall gst gst' gst'' dst to src from m p,
       labeled_step_dynamic gst (RecvMsg from to p) gst' ->
@@ -397,21 +391,14 @@ Section LabeledChord.
       enabled (RecvMsg src dst m) gst'.
   Proof.
     intuition.
-    find_copy_eapply_lem_hyp recv_implies_state_exists; eauto; break_exists.
-    find_copy_eapply_lem_hyp recv_implies_msg_in; eauto.
-    find_apply_lem_hyp in_split; break_exists.
-    construct_gst_RecvMsg.
-    exists egst.
-    invc_labeled_step.
-    - unfold timeout_handler_l in *; tuple_inversion.
-    - invc_labeled_step.
-      * unfold timeout_handler_l in *; tuple_inversion.
-      * eapply LDeliver_node;
-        eauto;
-        unfold apply_handler_result, update_msgs;
-        unfold recv_handler_l in *;
-        repeat tuple_inversion;
-        eauto.
+    apply when_RecvMsg_enabled.
+    - eauto using recv_implies_node_in, nodes_never_removed.
+    - eauto using recv_implies_node_not_failed, failed_nodes_never_added.
+    - eauto using recv_implies_state_exists.
+    - eapply irrelevant_message_not_removed.
+      * eauto.
+      * eauto using recv_implies_msg_in_before.
+      * congruence.
   Qed.
 
   Lemma timeout_implies_state_exists :
@@ -423,12 +410,16 @@ Section LabeledChord.
   Proof.
     intuition.
     invc_labeled_step.
-    - unfold timeout_handler_l in *; tuple_inversion.
-    - invc_labeled_step.
-      * unfold recv_handler_l in *; repeat tuple_inversion.
-        unfold apply_handler_result, update; simpl.
-        break_if; eexists; eauto.
-      * unfold recv_handler_l in *; tuple_inversion.
+    invc_labeled_step.
+    match goal with
+    | |- context[sigma (apply_handler_result ?h _ _ _) ?dst] =>
+      destruct (addr_eq_dec h dst)
+    end.
+    - subst.
+      eauto using sigma_ahr_updates.
+    - recover_msg_from_recv_step_equality_clear.
+      repeat find_rewrite.
+      eauto using sigma_ahr_passthrough.
   Qed.
 
   Lemma recv_implies_message_exists_after_timeout :
@@ -438,17 +429,13 @@ Section LabeledChord.
     In (src, (dst, m)) (msgs gst').
   Proof.
     intuition.
+    find_copy_eapply_lem_hyp recv_implies_msg_in_before.
     invc_labeled_step.
-    - unfold timeout_handler_l in *; tuple_inversion.
-    - invc_labeled_step.
-      * unfold recv_handler_l in *; repeat tuple_inversion.
-        simpl.
-        repeat find_rewrite.
-        repeat (apply in_or_app; right).
-        unfold fst, snd.
-        repeat break_let.
-        apply in_eq.
-      * unfold recv_handler_l in *; tuple_inversion.
+    invc_labeled_step.
+    recover_msg_from_recv_step_equality_clear.
+    apply in_or_app.
+    right.
+    assumption.
   Qed.
 
   Lemma labeled_step_dynamic_timeout_enabled :
@@ -458,22 +445,11 @@ Section LabeledChord.
     enabled (RecvMsg src dst m) gst'.
   Proof.
     intuition.
-    find_copy_eapply_lem_hyp timeout_implies_state_exists; eauto.
-    find_copy_eapply_lem_hyp recv_implies_message_exists_after_timeout; eauto.
-    find_apply_lem_hyp in_split.
-    break_exists.
-    construct_gst_RecvMsg.
-    exists egst.
-    invc_labeled_step.
-    - unfold timeout_handler_l in *; tuple_inversion.
-    - invc_labeled_step.
-      * eapply LDeliver_node;
-        eauto;
-        unfold apply_handler_result, update_msgs;
-        unfold recv_handler_l in *;
-        repeat tuple_inversion;
-        eauto.
-      * unfold recv_handler_l in *; tuple_inversion.
+    apply when_RecvMsg_enabled.
+    - eauto using recv_implies_node_in, nodes_never_removed.
+    - eauto using recv_implies_node_not_failed, failed_nodes_never_added.
+    - eauto using timeout_implies_state_exists.
+    - eauto using recv_implies_message_exists_after_timeout.
   Qed.
 
   Lemma RecvMsg_enabled_until_occurred :
