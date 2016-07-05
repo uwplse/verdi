@@ -7,6 +7,10 @@ pushd ..
   pushd StructTact
     ./build.sh
   popd
+  git clone 'http://github.com/palmskog/InfSeqExt'
+  pushd InfSeqExt
+    ./configure && make -k -j 3
+  popd
 popd
 
 case $MODE in
