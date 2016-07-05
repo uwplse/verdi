@@ -9,7 +9,7 @@ pushd ..
   popd
   git clone 'http://github.com/palmskog/InfSeqExt'
   pushd InfSeqExt
-    ./configure && make -k -j 3
+    ./build.sh
   popd
 popd
 
