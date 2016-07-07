@@ -1,5 +1,6 @@
 Require Import List.
 Require Import Arith.
+Require Import StructTact.StructTactics.
 Require Import InfSeqExt.infseq.
 Import ListNotations.
 
@@ -24,16 +25,23 @@ Section Dynamic.
   Variable timeout_handler_l : addr -> data -> timeout -> (res * label).
 
   Variable recv_handler_labeling :
-    forall src dst st p,
-      recv_handler src dst st p = fst (recv_handler_l src dst st p).
+    forall src dst st p r,
+      (recv_handler src dst st p = r ->
+       exists l,
+         recv_handler_l src dst st p = (r, l)) /\
+      (forall l,
+          recv_handler_l src dst st p = (r, l) ->
+          recv_handler src dst st p = r).
+
   Variable timeout_handler_labeling :
-    forall h st t,
-      timeout_handler h st t = fst (timeout_handler_l h st t).
+    forall h st t r,
+      (timeout_handler h st t = r ->
+      exists l,
+        timeout_handler_l h st t = (r, l)) /\
+      (forall l,
+          timeout_handler_l h st t = (r, l) ->
+          timeout_handler h st t = r).
 
-  (* can clients send this payload? disallows forgery *)
-  Variable client_payload : payload -> Prop.
-
-  Variable can_be_client : addr -> Prop.
   Variable can_be_node : addr -> Prop.
 
   (* msgs *)
@@ -153,21 +161,6 @@ Section Dynamic.
                   gst) ->
         extra_constraints gst' ->
         step_dynamic gst gst'
-  | Deliver_client :
-      forall gst gst' m h xs ys,
-        can_be_client h ->
-        msgs gst = xs ++ m :: ys ->
-        h = fst (snd m) ->
-        ~ In h (nodes gst) ->
-        gst' = {| nodes := nodes gst;
-                  failed_nodes := failed_nodes gst;
-                  timeouts := timeouts gst;
-                  sigma := sigma gst;
-                  msgs := xs ++ ys;
-                  trace := trace gst ++ [e_recv m]
-               |} ->
-        extra_constraints gst' ->
-        step_dynamic gst gst'
   | Deliver_node :
       forall gst gst' m h d xs ys ms st newts clearedts,
         msgs gst = xs ++ m :: ys ->
@@ -181,21 +174,6 @@ Section Dynamic.
                  (st, ms, newts, clearedts)
                  (e_recv m)
                  (update_msgs gst (xs ++ ys)) ->
-        extra_constraints gst' ->
-        step_dynamic gst gst'
-  | Input :
-      forall gst gst' m h to i,
-        can_be_client h ->
-        client_payload i ->
-        ~ In h (nodes gst) ->
-        m = send h (to, i) ->
-        gst' = {| nodes := nodes gst;
-                  failed_nodes := failed_nodes gst;
-                  timeouts := timeouts gst;
-                  sigma := sigma gst;
-                  msgs := m :: (msgs gst);
-                  trace := trace gst ++ [e_send m]
-               |} ->
         extra_constraints gst' ->
         step_dynamic gst gst'.
 
@@ -273,6 +251,95 @@ Section Dynamic.
   Proof.
     intros x s e. change (lb_execution (tl (Cons x s))).
     destruct e; simpl. assumption.
+  Qed.
+
+  Lemma labeled_step_is_unlabeled_step :
+    forall gst l gst',
+      labeled_step_dynamic gst l gst' ->
+      step_dynamic gst gst'.
+  Proof.
+    intuition.
+    match goal with
+      | H: labeled_step_dynamic _ _ _ |- _ =>
+        invc H
+    end.
+    - find_apply_lem_hyp timeout_handler_labeling.
+      eauto using Timeout, timeout_handler_labeling.
+    - find_apply_lem_hyp recv_handler_labeling.
+      eauto using Deliver_node.
+  Qed.
+
+  Inductive churn_between (gst gst' : global_state) : Prop :=
+    | fail_churn : failed_nodes gst <> failed_nodes gst' -> churn_between gst gst'
+    | join_churn : nodes gst <> nodes gst' -> churn_between gst gst'.
+
+  Ltac invc_lstep :=
+    match goal with
+      | H: labeled_step_dynamic _ _ _ |- _ =>
+        invc H
+    end.
+
+  Lemma list_neq_cons :
+    forall A (l : list A) x,
+      x :: l <> l.
+  Proof.
+    intuition.
+    symmetry in H.
+    induction l;
+      now inversion H.
+  Qed.
+
+  Lemma labeled_step_dynamic_is_step_dynamic_without_churn :
+    forall gst gst',
+      step_dynamic gst gst' ->
+      ((exists l, labeled_step_dynamic gst l gst') /\ ~ churn_between gst gst') \/
+      ((~ exists l, labeled_step_dynamic gst l gst') /\ churn_between gst gst').
+  Proof.
+    intuition.
+    match goal with
+      | H: step_dynamic _ _ |- _ =>
+        invc H
+    end.
+    - right.
+      split.
+      * intuition.
+        break_exists.
+        invc_lstep;
+          unfold apply_handler_result in *;
+          find_inversion;
+          eapply list_neq_cons;
+          eauto.
+      * eauto using join_churn, list_neq_cons.
+    - right.
+      split.
+      * intuition.
+        break_exists.
+        invc_lstep;
+          unfold apply_handler_result in *;
+          find_inversion;
+          eapply list_neq_cons;
+          eauto.
+      * eauto using fail_churn, list_neq_cons.
+    - left.
+      split.
+      * find_apply_lem_hyp timeout_handler_labeling.
+        break_exists_exists.
+        eauto using LTimeout.
+      * intuition.
+        match goal with
+        | H: churn_between _ _ |- _ =>
+          inversion H; eauto
+        end.
+    - left.
+      split.
+      * find_apply_lem_hyp recv_handler_labeling.
+        break_exists_exists.
+        eauto using LDeliver_node.
+      * intuition.
+        match goal with
+        | H: churn_between _ _ |- _ =>
+          inversion H; eauto
+        end.
   Qed.
 
 End Dynamic.
