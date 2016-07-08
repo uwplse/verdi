@@ -102,7 +102,7 @@ Section ChordProof.
 
   Definition extra_constraints : gpred := gpand timeouts_detect_failure live_node_in_succ_lists.
 
-  Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler client_payload can_be_client can_be_node extra_constraints).
+  Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler can_be_node extra_constraints).
 
   Inductive request_payload : payload -> Prop :=
   | req_GetBestPredecessor : forall p, request_payload (GetBestPredecessor p)
@@ -1287,27 +1287,6 @@ Section ChordProof.
     node_deliver_step_preserves base_not_skipped.
   Admitted.
 
-  Definition client_recv_step_preserves P :=
-      forall gst gst' m h xs ys,
-          inductive_invariant gst ->
-          can_be_client h ->
-          msgs gst = xs ++ m :: ys ->
-          h = fst (snd m) ->
-          ~ In h (nodes gst) ->
-          nodes gst' = nodes gst ->
-          failed_nodes gst' = failed_nodes gst ->
-          timeouts gst' = timeouts gst ->
-          sigma gst' = sigma gst ->
-          msgs gst' = xs ++ ys ->
-          P gst'.
-  Hint Unfold client_recv_step_preserves.
-
-  Lemma state_invariant_preserved_by_client_recv_step :
-      client_recv_step_preserves state_invariant.
-  Proof.
-    eauto using state_invariant_preserved_when_all_nodes_and_sigma_preserved.
-  Qed.
-
   Theorem invariant_steps_to_at_least_one_ring : forall gst gst',
       inductive_invariant gst ->
       step_dynamic gst gst' ->
@@ -1318,9 +1297,7 @@ Section ChordProof.
     - eapply start_step_keeps_at_least_one_ring; simpl; eauto.
     - eauto using fail_step_keeps_at_least_one_ring.
     - eauto using timeout_step_keeps_at_least_one_ring.
-    - eapply state_invariant_preserved_by_client_recv_step; simpl; eauto.
     - eauto using node_deliver_step_keeps_at_least_one_ring.
-    - eapply state_invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
   Qed.
 
   Theorem invariant_steps_to_at_most_one_ring : forall gst gst',
@@ -1333,9 +1310,7 @@ Section ChordProof.
     - eapply start_step_keeps_at_most_one_ring; simpl; eauto.
     - eauto using fail_step_keeps_at_most_one_ring.
     - eauto using timeout_step_keeps_at_most_one_ring.
-    - eapply state_invariant_preserved_by_client_recv_step; simpl; eauto.
     - eauto using node_deliver_step_keeps_at_most_one_ring.
-    - eapply state_invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
   Qed.
 
   Theorem invariant_steps_to_ordered_ring : forall gst gst',
@@ -1348,9 +1323,7 @@ Section ChordProof.
     - eapply start_step_keeps_ordered_ring; simpl; eauto.
     - eauto using fail_step_keeps_ordered_ring.
     - eauto using timeout_step_keeps_ordered_ring.
-    - eapply state_invariant_preserved_by_client_recv_step; simpl; eauto.
     - eauto using node_deliver_step_keeps_ordered_ring.
-    - eapply state_invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
   Qed.
 
   Theorem invariant_steps_to_connected_appendages : forall gst gst',
@@ -1363,9 +1336,7 @@ Section ChordProof.
     - eapply start_step_keeps_connected_appendages; simpl; eauto.
     - eauto using fail_step_keeps_connected_appendages.
     - eauto using timeout_step_keeps_connected_appendages.
-    - eapply state_invariant_preserved_by_client_recv_step; simpl; eauto.
     - eauto using node_deliver_step_keeps_connected_appendages.
-    - eapply state_invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
   Qed.
 
   Theorem invariant_steps_to_base_not_skipped : forall gst gst',
@@ -1378,9 +1349,7 @@ Section ChordProof.
     - eapply start_step_keeps_base_not_skipped; simpl; eauto.
     - eauto using fail_step_keeps_base_not_skipped.
     - eauto using timeout_step_keeps_base_not_skipped.
-    - eapply state_invariant_preserved_by_client_recv_step; simpl; eauto.
     - eauto using node_deliver_step_keeps_base_not_skipped.
-    - eapply state_invariant_preserved_when_all_nodes_and_sigma_preserved; simpl; eauto.
   Qed.
 
   Theorem state_invariant_is_invariant : forall gst gst',
