@@ -42,8 +42,6 @@ Section ChordProof.
   Notation update := (update addr addr_eq_dec data).
   Notation update_msgs := (update_msgs addr payload data timeout).
   Notation make_pointer := (make_pointer hash).
-  Notation gpred := (gpred addr payload data timeout).
-  Notation gpand := (gpand addr payload data timeout).
 
   Notation apply_handler_result := (apply_handler_result addr addr_eq_dec payload data timeout timeout_eq_dec).
   Notation end_query := (end_query hash).
@@ -55,6 +53,13 @@ Section ChordProof.
   Notation e_recv := (e_recv addr payload timeout).
   Notation e_timeout := (e_timeout addr payload timeout).
   Notation e_fail := (e_fail addr payload timeout).
+
+  Inductive timeout_constraint : global_state -> timeout -> Prop :=
+  | Tick_okay : forall gst,
+      timeout_constraint gst Tick
+  | Request_needs_dst_dead : forall gst dst p,
+      In dst (failed_nodes gst) ->
+      timeout_constraint gst (Request dst p).
 
   Definition timeouts_detect_failure (gst : global_state) : Prop :=
     forall xs t ys h dead req,
@@ -100,9 +105,10 @@ Section ChordProof.
       exists s,
         best_succ gst h s.
 
-  Definition extra_constraints : gpred := gpand timeouts_detect_failure live_node_in_succ_lists.
+  Definition failure_constraint : global_state -> Prop :=
+    live_node_in_succ_lists.
 
-  Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler can_be_node extra_constraints).
+  Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler can_be_node timeout_constraint failure_constraint).
 
   Inductive request_payload : payload -> Prop :=
   | req_GetBestPredecessor : forall p, request_payload (GetBestPredecessor p)

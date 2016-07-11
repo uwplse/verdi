@@ -1,6 +1,6 @@
+Require Import DynamicNet.
 Require Import Chord.
 Require Import ChordProof.
-Require Import DynamicNet.
 Import List.
 Require Import InfSeqExt.infseq.
 Require Import StructTact.StructTactics.
@@ -40,16 +40,12 @@ Section LabeledChord.
   Definition recv_handler_l (src : addr) (dst : addr) (st : data) (msg : payload) :=
     (recv_handler SUCC_LIST_LEN hash src dst st msg, RecvMsg src dst msg).
 
-  (* todo *)
-  Variable extra_constraints : gpred addr payload data timeout.
-  Hypothesis extra_constraints_all : forall gst, extra_constraints gst.
-
-  Notation labeled_step_dynamic := (labeled_step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
-  Notation lb_execution := (lb_execution addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
-  Notation strong_local_fairness := (strong_local_fairness addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
+  Notation labeled_step_dynamic := (labeled_step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
+  Notation lb_execution := (lb_execution addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
+  Notation strong_local_fairness := (strong_local_fairness addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
   Notation inf_occurred := (inf_occurred addr payload data timeout label).
-  Notation enabled := (enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
-  Notation l_enabled := (l_enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
+  Notation enabled := (enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
+  Notation l_enabled := (l_enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint). 
   Notation occurred := (occurred addr payload data timeout label).
   Notation nodes := (nodes addr payload data timeout).
   Notation failed_nodes := (failed_nodes addr payload data timeout).
@@ -417,7 +413,7 @@ Section LabeledChord.
       * congruence.
   Qed.
 
-  Lemma timeout_implies_state_exists :
+  Lemma recv_implies_state_exists_after_timeout :
     forall gst gst' gst'' h t src dst m,
       labeled_step_dynamic gst (Timeout h t) gst'  ->
       labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
@@ -464,7 +460,7 @@ Section LabeledChord.
     apply when_RecvMsg_enabled.
     - eauto using recv_implies_node_in, nodes_never_removed.
     - eauto using recv_implies_node_not_failed, failed_nodes_never_added.
-    - eauto using timeout_implies_state_exists.
+    - eauto using recv_implies_state_exists_after_timeout.
     - eauto using recv_implies_message_exists_after_timeout.
   Qed.
 
@@ -554,12 +550,99 @@ Section LabeledChord.
     exact: l_enabled_RecvMsg_In_msgs.
   Qed.
 
-  Lemma labeled_step_dynamic_recv_timeout_enabled :
-    forall gst gst' gst'' a b m h' t',
-      labeled_step_dynamic gst (RecvMsg a b m) gst' ->
-      labeled_step_dynamic gst (Timeout h' t') gst'' ->
-      enabled (Timeout h' t') gst'.
+  Lemma when_Timeout_enabled :
+    forall h t gst,
+      In h (nodes gst) ->
+      ~ In h (failed_nodes gst) ->
+      (exists st, sigma gst h = Some st) ->
+      In t (timeouts gst h) ->
+      timeout_constraint gst t ->
+      enabled (Timeout h t) gst.
+  Proof.
+    move => h t gst H_in H_live H_st H_t.
+    break_exists_name st.
+    unfold enabled.
+    case H_r: (timeout_handler_l h st t) => [[[[st' ms] nts] cts] l].
+    pose gst' := apply_handler_result
+                   h
+                   (st', ms, nts, t :: cts)
+                   (e_timeout h t)
+                   gst.
+    have H_l: l = Timeout h t.
+      rewrite /timeout_handler_l /= in H_r.
+      by tuple_inversion.
+    subst_max.
+    exists gst'.
+    by eapply LTimeout; eauto.
+  Qed.
+
+  Lemma timeout_implies_node_exists :
+    forall gst h t gst',
+      labeled_step_dynamic gst (Timeout h t) gst' ->
+      In h (nodes gst).
+  Proof.
+    intuition.
+    invc_labeled_step.
+  Qed.
+
+  Lemma timeout_implies_node_not_failed :
+    forall gst h t gst',
+      labeled_step_dynamic gst (Timeout h t) gst' ->
+      ~ In h (failed_nodes gst).
+  Proof.
+    intuition.
+    invc_labeled_step.
+  Qed.
+
+  Lemma timeout_implies_state_exists :
+    forall gst h t gst',
+      labeled_step_dynamic gst (Timeout h t) gst' ->
+      exists st,
+        sigma gst h = Some st.
+  Proof.
+    intuition.
+    invc_labeled_step.
+    unfold timeout_handler_l in *.
+    tuple_inversion.
+    by eauto.
+  Qed.
+
+  Lemma states_not_removed_by_recv_step :
+    forall gst gst' h st src dst p,
+      labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
+      sigma gst h = Some st ->
+      exists d,
+        sigma gst' h = Some d.
   Admitted.
+
+  Lemma timeout_step_implies_timeout_exists :
+    forall gst gst' h t,
+      labeled_step_dynamic gst (Timeout h t) gst' ->
+      In t (timeouts gst h).
+  Proof.
+    intuition.
+    invc_labeled_step.
+  Qed.
+
+  Lemma labeled_step_dynamic_recv_timeout_enabled :
+    forall gst gst' gst'' a b m h t,
+      labeled_step_dynamic gst (RecvMsg a b m) gst' ->
+      labeled_step_dynamic gst (Timeout h t) gst'' ->
+      enabled (Timeout h t) gst'.
+  Proof.
+    move => gst gst' gst'' a b m h t H_recv H_timeout.
+    apply when_Timeout_enabled.
+    - find_apply_lem_hyp timeout_implies_node_exists.
+      move: H_recv H_timeout.
+      exact: nodes_never_removed.
+    - find_apply_lem_hyp timeout_implies_node_not_failed.
+      move: H_recv H_timeout.
+      exact: failed_nodes_never_added.
+    - find_apply_lem_hyp timeout_implies_state_exists.
+      break_exists_name st.
+      move: H_recv H_timeout.
+      exact: states_not_removed_by_recv_step.
+  Abort.
 
   Lemma labeled_step_dynamic_timeout_neq_h_timeout_enabled :
     forall gst gst' gst'' h h' t t',
@@ -567,7 +650,7 @@ Section LabeledChord.
       labeled_step_dynamic gst (Timeout h' t') gst'' ->
       h <> h' ->
       enabled (Timeout h' t') gst'.
-  Admitted.
+  Abort.
 
   Lemma labeled_step_dynamic_timeout_neq_timeout_enabled :
     forall gst gst' gst'' h h' t t',
@@ -575,7 +658,7 @@ Section LabeledChord.
       labeled_step_dynamic gst (Timeout h' t') gst'' ->
       t <> t' ->
       enabled (Timeout h' t') gst'.
-  Admitted.
+  Abort.
 
   Lemma Timeout_enabled_until_occurred :
     forall s h t,
@@ -584,7 +667,8 @@ Section LabeledChord.
       weak_until (now (l_enabled (Timeout h t)))
                  (now (occurred (Timeout h t)))
               s.
-  Proof.
+  Abort.
+  (*
     cofix c.
     case => /=.
     case => /= gst.
@@ -633,7 +717,7 @@ Section LabeledChord.
         break_exists_name gst''.
         move: H_step_timeout H_en H_dec_h.
         exact: labeled_step_dynamic_timeout_neq_h_timeout_enabled.
-  Qed.
+   *)
 
   Lemma l_enabled_Timeout_In_timeouts :
     forall h t e st,
@@ -642,7 +726,8 @@ Section LabeledChord.
       In t (timeouts (occ_gst e) h) ->
       sigma (occ_gst e) h = Some st ->
       l_enabled (Timeout h t) e.
-  Proof.
+  Abort.
+    (*
     move => h t e st H_node H_live H_t H_st.
     unfold l_enabled, enabled.
     set (gst := occ_gst e) in *.
@@ -657,8 +742,10 @@ Section LabeledChord.
                    gst.
     exists gst'.
     by eapply LTimeout; eauto.
-  Qed.
+    *)
 
+  (* tick is eventually delivered. *)
+  (* request is only delivered if the query it's attached to isn't. *)
   Lemma Timeout_eventually_occurred :
     forall s,
       lb_execution s ->
@@ -669,6 +756,8 @@ Section LabeledChord.
         ~ In h (failed_nodes (occ_gst (hd s))) ->
         sigma (occ_gst (hd s)) h = Some st ->
         eventually (now (occurred (Timeout h t))) s.
+  Abort.
+  (*
     move => s H_exec H_fair h st t H_in_n H_in_f H_in_m H_s.
     set P := eventually _.
     case (classic (P s)) => //.
@@ -683,4 +772,5 @@ Section LabeledChord.
     generalize H_s.
     now apply l_enabled_Timeout_In_timeouts.
   Qed.
+  *)
 End LabeledChord.

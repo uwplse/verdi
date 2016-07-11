@@ -69,10 +69,8 @@ Section Dynamic.
       trace : list event
     }.
 
-  Definition gpred := global_state -> Prop.
-  Definition gpand (P Q : gpred) : gpred := fun gst => P gst /\ Q gst.
-
-  Variable extra_constraints : gpred.
+  Variable timeout_constraint : global_state -> timeout -> Prop.
+  Variable failure_constraint : global_state -> Prop.
 
   Definition nil_state : addr -> option data := fun _ => None.
   Definition nil_timeouts : addr -> list timeout := fun _ => [].
@@ -132,7 +130,6 @@ Section Dynamic.
                   msgs := new_msgs ++ msgs gst;
                   trace := trace gst ++ (map e_send new_msgs)
                |} ->
-        extra_constraints gst' ->
         step_dynamic gst gst'
   | Fail :
       forall h gst gst',
@@ -145,7 +142,7 @@ Section Dynamic.
                   msgs := msgs gst;
                   trace := trace gst ++ [e_fail h]
                |} ->
-        extra_constraints gst' ->
+        failure_constraint gst' ->
         step_dynamic gst gst'
   | Timeout :
       forall gst gst' h st t st' ms newts clearedts,
@@ -159,7 +156,7 @@ Section Dynamic.
                   (st', ms, newts, t :: clearedts)
                   (e_timeout h t)
                   gst) ->
-        extra_constraints gst' ->
+        timeout_constraint gst t ->
         step_dynamic gst gst'
   | Deliver_node :
       forall gst gst' m h d xs ys ms st newts clearedts,
@@ -174,7 +171,6 @@ Section Dynamic.
                  (st, ms, newts, clearedts)
                  (e_recv m)
                  (update_msgs gst (xs ++ ys)) ->
-        extra_constraints gst' ->
         step_dynamic gst gst'.
 
   Inductive labeled_step_dynamic : global_state -> label -> global_state -> Prop :=
@@ -190,7 +186,7 @@ Section Dynamic.
                   (st', ms, newts, t :: clearedts)
                   (e_timeout h t)
                   gst) ->
-        extra_constraints gst' ->
+        timeout_constraint gst t ->
         labeled_step_dynamic gst lb gst'
   | LDeliver_node :
       forall gst gst' m h d xs ys ms lb st newts clearedts,
@@ -205,7 +201,6 @@ Section Dynamic.
                  (st, ms, newts, clearedts)
                  (e_recv m)
                  (update_msgs gst (xs ++ ys)) ->
-        extra_constraints gst' ->
         labeled_step_dynamic gst lb gst'.
 
   Record occurrence := { occ_gst : global_state ; occ_label : label }.
