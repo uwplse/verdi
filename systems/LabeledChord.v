@@ -7,6 +7,7 @@ Require Import InfSeqExt.classical.
 Require Import StructTact.StructTactics.
 Require Import StructTact.Util.
 Require Import mathcomp.ssreflect.ssreflect.
+Require Import mathcomp.ssreflect.ssrbool.
 
 Set Bullet Behavior "Strict Subproofs".
 
@@ -58,19 +59,9 @@ Section LabeledChord.
   Notation apply_handler_result := (apply_handler_result addr addr_eq_dec payload data timeout timeout_eq_dec).
   Notation update_msgs := (update_msgs addr payload data timeout).
 
-  Definition bool_of_sumbool {A B : Prop} (x : {A} + {B}) : bool :=
-    match x with
-    | left _ => true
-    | right _ => false
-    end.
-
-  Definition failed (gst : global_state) (p : pointer) :=
-    let (_, h) := p in
-    bool_of_sumbool (In_dec addr_eq_dec h (failed_nodes gst)).
-
   (* assuming sigma gst h = Some st *)
-  Definition undetected_dead_successors (gst : global_state) (st : data) (h : addr) : nat :=
-    length (filter (failed gst) (succ_list st)).
+  Definition failed_successors (gst : global_state) (st : data) : list pointer :=
+    filter (fun p : pointer => In_dec addr_eq_dec (snd p) (failed_nodes gst)) (succ_list st).
 
   Lemma l_enabled_RecvMsg_In_msgs :
     forall e src dst m d,
