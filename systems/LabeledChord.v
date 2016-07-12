@@ -2,12 +2,13 @@ Require Import DynamicNet.
 Require Import Chord.
 Require Import ChordProof.
 Import List.
+Require Import Wf_nat.
 Require Import InfSeqExt.infseq.
+Require Import InfSeqExt.classical.
 Require Import StructTact.StructTactics.
 Require Import StructTact.Util.
 Require Import mathcomp.ssreflect.ssreflect.
-
-Require Import Classical. (* yuck *)
+Require Import mathcomp.ssreflect.ssrbool.
 
 Set Bullet Behavior "Strict Subproofs".
 
@@ -47,6 +48,7 @@ Section LabeledChord.
   Notation labeled_step_dynamic := (labeled_step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
   Notation lb_execution := (lb_execution addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
   Notation strong_local_fairness := (strong_local_fairness addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
+  Notation weak_local_fairness := (weak_local_fairness addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
   Notation inf_occurred := (inf_occurred addr payload data timeout label).
   Notation enabled := (enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
   Notation l_enabled := (l_enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint). 
@@ -57,20 +59,11 @@ Section LabeledChord.
   Notation timeouts := (timeouts addr payload data timeout).
   Notation apply_handler_result := (apply_handler_result addr addr_eq_dec payload data timeout timeout_eq_dec).
   Notation update_msgs := (update_msgs addr payload data timeout).
-
-  Definition bool_of_sumbool {A B : Prop} (x : {A} + {B}) : bool :=
-    match x with
-    | left _ => true
-    | right _ => false
-    end.
-
-  Definition failed (gst : global_state) (p : pointer) :=
-    let (_, h) := p in
-    bool_of_sumbool (In_dec addr_eq_dec h (failed_nodes gst)).
+  Notation occ_label := (occ_label addr payload data timeout label).
 
   (* assuming sigma gst h = Some st *)
-  Definition undetected_dead_successors (gst : global_state) (st : data) (h : addr) : nat :=
-    length (filter (failed gst) (succ_list st)).
+  Definition failed_successors (gst : global_state) (st : data) : list pointer :=
+    filter (fun p : pointer => In_dec addr_eq_dec (snd p) (failed_nodes gst)) (succ_list st).
 
   Lemma l_enabled_RecvMsg_In_msgs :
     forall e src dst m d,
@@ -541,7 +534,7 @@ Section LabeledChord.
 
   Lemma RecvMsg_eventually_occurred :
     forall s, lb_execution s ->
-         strong_local_fairness s ->
+         weak_local_fairness s ->
          forall src dst m d, 
            In dst (nodes (occ_gst (hd s))) ->
            ~ In dst (failed_nodes (occ_gst (hd s))) ->
@@ -550,18 +543,14 @@ Section LabeledChord.
            eventually (now (occurred (RecvMsg src dst m))) s.
   Proof.
     move => s H_exec H_fair src dst m d H_in_n H_in_f H_in_m H_s.
-    set P := eventually _.
-    case (classic (P s)) => //.
-    rewrite /P {P} => H_ev.
-    suff H_suff: inf_occurred (RecvMsg src dst m) s by inversion H_suff.
-    apply: H_fair.
-    apply: always_inf_often.
-    apply not_eventually_always_not in H_ev.    
-    move: H_ev.
-    apply: weak_until_always_not_always.
-    apply: RecvMsg_enabled_until_occurred => //.
-    move: H_s.
-    exact: l_enabled_RecvMsg_In_msgs.
+    have H_un := RecvMsg_enabled_until_occurred _ H_exec src dst m.
+    apply weak_until_until_or_always in H_un; last by apply: l_enabled_RecvMsg_In_msgs; eauto.
+    case: H_un; first exact: until_eventually.
+    move => H_al.
+    apply always_continuously in H_al.
+    apply H_fair in H_al.
+    destruct s as [x s].
+    by apply always_now in H_al.
   Qed.
 
   Lemma timeout_step_satisfies_constraint :
@@ -823,12 +812,10 @@ Section LabeledChord.
     by eapply LTimeout; eauto.
   Qed.
 
-  (* tick is eventually delivered. *)
-  (* request is only delivered if the query it's attached to isn't. *)
-  Lemma Tick_eventually_occurred :
+  Lemma unconstrained_timeout_eventually_occurred :
     forall s,
       lb_execution s ->
-      strong_local_fairness s ->
+      weak_local_fairness s ->
       forall h st t,
         In t (timeouts (occ_gst (hd s)) h) ->
         In h (nodes (occ_gst (hd s))) ->
@@ -838,17 +825,158 @@ Section LabeledChord.
         eventually (now (occurred (Timeout h t))) s.
   Proof.
     move => s H_exec H_fair h st t H_in_n H_in_f H_in_m H_s H_constraint.
-    set P := eventually _.
-    case (classic (P s)) => //.
-    rewrite /P {P} => H_ev.
-    suff H_suff: inf_occurred (Timeout h t) s by inversion H_suff.
-    apply H_fair.
-    apply always_inf_often.
-    apply not_eventually_always_not in H_ev.
-    move: H_ev.
-    apply weak_until_always_not_always.
-    apply Timeout_enabled_until_occurred; auto.
-    move: H_s H_constraint.
-    now apply l_enabled_Timeout_In_timeouts.
+    have H_un := Timeout_enabled_until_occurred _ h t H_exec.
+    apply weak_until_until_or_always in H_un;
+      last by eapply l_enabled_Timeout_In_timeouts; eauto.
+    case: H_un; first exact: until_eventually.
+    move => H_al.
+    apply always_continuously in H_al.
+    apply H_fair in H_al.
+    destruct s as [x s].
+    by apply always_now in H_al.
   Qed.
+
+Lemma always_in_nodes :
+  forall s, lb_execution s ->
+       forall h, In h (nodes (occ_gst (hd s))) ->
+       always (now (fun o => In h (nodes (occ_gst o)))) s.
+Proof.
+cofix c.
+case => /= o; case => o' s H_exec h H_in_f.
+inversion H_exec; subst.
+apply: Always; first by [].
+rewrite /=.
+apply: c; first by [].
+rewrite /=.
+by apply: nodes_never_removed; eauto.
+Qed.
+
+Lemma always_not_failed :
+  forall s, lb_execution s ->
+       forall h, ~ In h (failed_nodes (occ_gst (hd s))) ->
+       always (now (fun o => ~ In h (failed_nodes (occ_gst o)))) s.
+Proof.
+cofix c.
+case => /= o; case => o' s H_exec h H_in_f.
+inversion H_exec; subst.
+apply: Always; first by [].
+rewrite /=.
+apply: c; first by [].
+rewrite /=.
+by apply: failed_nodes_never_added; eauto.
+Qed.
+
+Lemma failed_successors_le_monotonic :   
+  forall gst gst' l h d d' k,
+    sigma gst h = Some d ->
+    length (failed_successors gst d) <= k ->
+    labeled_step_dynamic gst l gst' ->
+    sigma gst' h = Some d' -> 
+    length (failed_successors gst' d') <= k.
+Proof.
+Admitted.
+
+Lemma lb_execution_failed_successors_le_monotonic :
+  forall s, lb_execution s ->
+       forall h d, sigma (occ_gst (hd s)) h = Some d ->
+       forall k, length (failed_successors (occ_gst (hd s)) d) <= k ->
+       always (now (fun o => forall d', sigma (occ_gst o) h = Some d' -> length (failed_successors (occ_gst o) d') <= k)) s.
+Proof.
+cofix c.
+case => o; case => o' s H_exec h d H_eq k H_len.
+inversion H_exec; subst.
+apply Always => /=; first by move => d' H_eq'; rewrite H_eq in H_eq'; find_injection.
+simpl in *.
+have [d' H_d'] := labeled_step_preserves_state_existing _ _ _ _ _ H_eq H1.
+have H_k := failed_successors_le_monotonic _ _ _ _ _ _ _ H_eq H_len H1 H_d'.
+by apply: c; eauto.
+Qed.
+
+Lemma eventually_fewer_failed_successors : 
+  forall s, lb_execution s ->
+       weak_local_fairness s ->
+       forall h, In h (nodes (occ_gst (hd s))) ->
+            ~ In h (failed_nodes (occ_gst (hd s))) ->
+       forall d, sigma (occ_gst (hd s)) h = Some d ->
+       forall k, length (failed_successors (occ_gst (hd s)) d) = S k ->
+       eventually (now (fun o => forall d', sigma (occ_gst o) h = Some d' -> length (failed_successors (occ_gst o) d') = k)) s.
+Proof.
+Admitted.
+
+Lemma eventually_zero_failed_successors :
+  forall s, lb_execution s ->
+       weak_local_fairness s ->
+       forall h, In h (nodes (occ_gst (hd s))) ->
+            ~ In h (failed_nodes (occ_gst (hd s))) ->
+            forall d, sigma (occ_gst (hd s)) h = Some d ->
+       eventually (now (fun o => forall d', sigma (occ_gst o) h = Some d' -> length (failed_successors (occ_gst o) d') = 0)) s.
+Proof.
+move => s H_exec H_fair h H_in H_in_f d H_eq.
+have H_ex: exists k, length (failed_successors (occ_gst (hd s)) d) = k.
+  case length; first by exists 0.
+  move => k.
+  by exists (S k).
+break_exists.
+elim/(well_founded_ind lt_wf): x s H_exec H_fair H_in H_in_f d H_eq H.
+case => [|k] IH s H_exec H_fair H_in H_in_f d H_eq H_len.
+  apply: E0.
+  destruct s.
+  simpl in *.
+  move => d' H_eq'.
+  rewrite H_eq in H_eq'.
+  by find_injection.
+have H_k: k < S k by auto.
+have IH' := IH _ H_k.
+have H_ev := eventually_fewer_failed_successors _ H_exec H_fair _ H_in H_in_f _ H_eq _ H_len.
+move {H_len}.
+elim: H_ev H_exec H_fair H_in H_in_f d H_eq.
+  move => s0 H_now H_exec H_fair H_in H_in_f d H_eq.
+  apply: IH' => //; eauto.
+  destruct s0.
+  simpl in *.
+  exact: H_now.
+move => o s0 H_ev H_ev' H_exec H_fair H_in H_in_f d H_eq.
+apply: E_next.
+inversion H_exec; subst.
+simpl in *.
+have [d' H_d'] := labeled_step_preserves_state_existing _ _ _ _ _ H_eq H1.
+apply: H_ev'; eauto.
+- by apply weak_local_fairness_invar in H_fair.
+- by apply: nodes_never_removed; eauto.
+- by apply: failed_nodes_never_added; eauto.
+Qed.
+
+Lemma continuously_live_successors :
+  forall s, lb_execution s ->
+       weak_local_fairness s ->
+       forall h, In h (nodes (occ_gst (hd s))) ->
+            ~ In h (failed_nodes (occ_gst (hd s))) ->
+       forall d, sigma (occ_gst (hd s)) h = Some d ->
+       continuously (now (fun o => forall d', sigma (occ_gst o) h = Some d' -> length (failed_successors (occ_gst o) d') = 0)) s.
+Proof.
+move => s H_exec H_fair h H_in H_in_f d H_eq.
+have H_ev := eventually_zero_failed_successors _ H_exec H_fair _ H_in H_in_f _ H_eq.
+move: H_exec H_fair {H_in H_in_f}.
+elim: H_ev d H_eq.
+  move => s0 H_now d H_eq H_exec H_fair.
+  apply: E0.
+  inversion H_exec; subst.
+  simpl in *.
+  have H_len := H_now _ H_eq.
+  have H_le : length (failed_successors (occ_gst o) d) <= 0 by rewrite H_len.
+  have H_mon := lb_execution_failed_successors_le_monotonic _ H_exec _ _ H_eq _ H_le.
+  move: H_mon.
+  apply: always_monotonic.
+  case => /= o0 s0 H_le' d' H_eq'.
+  apply H_le' in H_eq'.
+  by auto with arith.
+move => o0 s0 H_ev IH d H_eq H_exec H_fair.
+apply: E_next.
+inversion H_exec; subst.
+simpl in *.
+have [d' H_d'] := labeled_step_preserves_state_existing _ _ _ _ _ H_eq H1.
+apply: IH; eauto.
+by apply weak_local_fairness_invar in H_fair.
+Qed.
+
 End LabeledChord.

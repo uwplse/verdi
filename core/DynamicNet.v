@@ -216,11 +216,17 @@ Section Dynamic.
   Definition inf_enabled (l : label) (s : infseq occurrence) : Prop :=
     inf_often (now (l_enabled l)) s.
 
+  Definition cont_enabled (l : label) (s : infseq occurrence) : Prop :=
+    continuously (now (l_enabled l)) s.
+
   Definition inf_occurred (l : label) (s : infseq occurrence) : Prop :=
     inf_often (now (occurred l)) s.
 
   Definition strong_local_fairness (s : infseq occurrence) : Prop :=
     forall l : label, inf_enabled l s -> inf_occurred l s.
+
+  Definition weak_local_fairness (s : infseq occurrence) : Prop :=
+    forall l : label, cont_enabled l s -> inf_occurred l s.
 
   Lemma strong_local_fairness_invar :
     forall e s, strong_local_fairness (Cons e s) -> strong_local_fairness s.
@@ -233,6 +239,29 @@ Section Dynamic.
     simpl. assumption.
     clear alev. generalize (fair a alevt_es); clear fair alevt_es.
     intro fair; case (always_Cons fair); trivial.
+  Qed.
+
+  Lemma weak_local_fairness_invar :
+    forall e s, weak_local_fairness (Cons e s) -> weak_local_fairness s.
+  Proof.
+    unfold weak_local_fairness. unfold cont_enabled, inf_occurred, continuously, inf_often.
+    intros e s fair l eval.
+    assert (eval_es: eventually (always (now (l_enabled l))) (Cons e s)).
+      apply E_next. assumption.
+    apply fair in eval_es.
+    apply always_invar in eval_es.
+    assumption.
+  Qed.
+
+  Lemma strong_local_fairness_weak :
+    forall s, strong_local_fairness s -> weak_local_fairness s.
+  Proof.
+  intros [e s].
+  unfold strong_local_fairness, weak_local_fairness, inf_enabled, cont_enabled.
+  intros H_str l H_cont.
+  apply H_str.
+  apply continuously_inf_often.
+  assumption.
   Qed.
 
   CoInductive lb_execution : infseq occurrence -> Prop :=
