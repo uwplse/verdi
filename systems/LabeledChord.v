@@ -3,11 +3,10 @@ Require Import ChordProof.
 Require Import DynamicNet.
 Import List.
 Require Import InfSeqExt.infseq.
+Require Import InfSeqExt.classical.
 Require Import StructTact.StructTactics.
 Require Import StructTact.Util.
 Require Import mathcomp.ssreflect.ssreflect.
-
-Require Import Classical. (* yuck *)
 
 Set Bullet Behavior "Strict Subproofs".
 
@@ -47,6 +46,7 @@ Section LabeledChord.
   Notation labeled_step_dynamic := (labeled_step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
   Notation lb_execution := (lb_execution addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
   Notation strong_local_fairness := (strong_local_fairness addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
+  Notation weak_local_fairness := (weak_local_fairness addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
   Notation inf_occurred := (inf_occurred addr payload data timeout label).
   Notation enabled := (enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
   Notation l_enabled := (l_enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l extra_constraints).
@@ -531,7 +531,7 @@ Section LabeledChord.
 
   Lemma RecvMsg_eventually_occurred :
     forall s, lb_execution s ->
-         strong_local_fairness s ->
+         weak_local_fairness s ->
          forall src dst m d, 
            In dst (nodes (occ_gst (hd s))) ->
            ~ In dst (failed_nodes (occ_gst (hd s))) ->
@@ -540,18 +540,14 @@ Section LabeledChord.
            eventually (now (occurred (RecvMsg src dst m))) s.
   Proof.
     move => s H_exec H_fair src dst m d H_in_n H_in_f H_in_m H_s.
-    set P := eventually _.
-    case (classic (P s)) => //.
-    rewrite /P {P} => H_ev.
-    suff H_suff: inf_occurred (RecvMsg src dst m) s by inversion H_suff.
-    apply: H_fair.
-    apply: always_inf_often.
-    apply not_eventually_always_not in H_ev.    
-    move: H_ev.
-    apply: weak_until_always_not_always.
-    apply: RecvMsg_enabled_until_occurred => //.
-    move: H_s.
-    exact: l_enabled_RecvMsg_In_msgs.
+    have H_un := RecvMsg_enabled_until_occurred _ H_exec src dst m.
+    apply weak_until_until_or_always in H_un; last by apply: l_enabled_RecvMsg_In_msgs; eauto.
+    case: H_un; first exact: until_eventually.
+    move => H_al.
+    apply always_continuously in H_al.
+    apply H_fair in H_al.
+    destruct s as [x s].
+    by apply always_now in H_al.
   Qed.
 
   Lemma labeled_step_dynamic_recv_timeout_enabled :
@@ -662,7 +658,7 @@ Section LabeledChord.
   Lemma Timeout_eventually_occurred :
     forall s,
       lb_execution s ->
-      strong_local_fairness s ->
+      weak_local_fairness s ->
       forall h st t,
         In t (timeouts (occ_gst (hd s)) h) ->
         In h (nodes (occ_gst (hd s))) ->
@@ -670,17 +666,13 @@ Section LabeledChord.
         sigma (occ_gst (hd s)) h = Some st ->
         eventually (now (occurred (Timeout h t))) s.
     move => s H_exec H_fair h st t H_in_n H_in_f H_in_m H_s.
-    set P := eventually _.
-    case (classic (P s)) => //.
-    rewrite /P {P} => H_ev.
-    suff H_suff: inf_occurred (Timeout h t) s by inversion H_suff.
-    apply H_fair.
-    apply always_inf_often.
-    apply not_eventually_always_not in H_ev.
-    generalize H_ev.
-    apply weak_until_always_not_always.
-    apply Timeout_enabled_until_occurred; auto.
-    generalize H_s.
-    now apply l_enabled_Timeout_In_timeouts.
+    have H_un := Timeout_enabled_until_occurred _ h t H_exec.
+    apply weak_until_until_or_always in H_un; last by apply: l_enabled_Timeout_In_timeouts; eauto.
+    case: H_un; first exact: until_eventually.
+    move => H_al.
+    apply always_continuously in H_al.
+    apply H_fair in H_al.
+    destruct s as [x s].
+    by apply always_now in H_al.
   Qed.
 End LabeledChord.
