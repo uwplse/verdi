@@ -69,7 +69,7 @@ Section Dynamic.
       trace : list event
     }.
 
-  Variable timeout_constraint : global_state -> timeout -> Prop.
+  Variable timeout_constraint : global_state -> addr -> timeout -> Prop.
   Variable failure_constraint : global_state -> Prop.
 
   Definition nil_state : addr -> option data := fun _ => None.
@@ -156,7 +156,7 @@ Section Dynamic.
                   (st', ms, newts, t :: clearedts)
                   (e_timeout h t)
                   gst) ->
-        timeout_constraint gst t ->
+        timeout_constraint gst h t ->
         step_dynamic gst gst'
   | Deliver_node :
       forall gst gst' m h d xs ys ms st newts clearedts,
@@ -186,7 +186,7 @@ Section Dynamic.
                   (st', ms, newts, t :: clearedts)
                   (e_timeout h t)
                   gst) ->
-        timeout_constraint gst t ->
+        timeout_constraint gst h t ->
         labeled_step_dynamic gst lb gst'
   | LDeliver_node :
       forall gst gst' m h d xs ys ms lb st newts clearedts,

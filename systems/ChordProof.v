@@ -54,12 +54,19 @@ Section ChordProof.
   Notation e_timeout := (e_timeout addr payload timeout).
   Notation e_fail := (e_fail addr payload timeout).
 
-  Inductive timeout_constraint : global_state -> timeout -> Prop :=
-  | Tick_okay : forall gst,
-      timeout_constraint gst Tick
-  | Request_needs_dst_dead : forall gst dst p,
+  Inductive request_response_pair : payload -> payload -> Prop :=
+  | pair_GetBestPredecessor : forall n p, request_response_pair (GetBestPredecessor n) (GotBestPredecessor p)
+  | pair_GetSuccList : forall l, request_response_pair GetSuccList (GotSuccList l)
+  | pair_GetPredAndSuccs : forall p l, request_response_pair GetPredAndSuccs (GotPredAndSuccs p l)
+  | pair_Ping : request_response_pair Ping Pong.
+
+  Inductive timeout_constraint : global_state -> addr -> timeout -> Prop :=
+  | Tick_unconstrained : forall gst h,
+      timeout_constraint gst h Tick
+  | Request_needs_dst_dead_and_no_msgs : forall gst dst h p,
       In dst (failed_nodes gst) ->
-      timeout_constraint gst (Request dst p).
+      (forall m, request_response_pair p m -> ~ In (dst, (h, m)) (msgs gst)) ->
+      timeout_constraint gst h (Request dst p).
 
   Definition timeouts_detect_failure (gst : global_state) : Prop :=
     forall xs t ys h dead req,
