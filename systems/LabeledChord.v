@@ -979,4 +979,147 @@ apply: IH; eauto.
 by apply weak_local_fairness_invar in H_fair.
 Qed.
 
+Definition is_best_succ (gst : global_state) (h s : pointer) : Prop :=
+  live_node gst (addr_of s) /\
+  forall s',
+    live_node gst (addr_of s') ->
+    ~ between (id_of h) (id_of s') (id_of s).
+
+Definition is_best_pred (gst : global_state) (h p : pointer) : Prop :=
+  live_node gst (addr_of p) /\
+  forall p',
+    live_node gst (addr_of p') ->
+    ~ between (id_of p) (id_of p') (id_of h).
+
+(* there might be a better way to phrase this, e.g. as an Inductive definition *)
+Definition live_node_count (gst : global_state) (s : nat) : Prop :=
+  exists l,
+    length l = s /\
+    (forall n, In n l <-> live_node gst n).
+
+Inductive pred_error_ind (gst : global_state) (h : pointer) (p : option pointer) : nat -> Prop :=
+| pred_error_ind_O :
+    forall pr,
+      p = Some pr ->
+      live_node gst (addr_of pr) ->
+      is_best_pred gst h pr ->
+      pred_error_ind gst h p 0
+| pred_error_ind_S :
+    forall pr pr' n size,
+      p = Some pr ->
+      live_node gst (addr_of pr') ->
+      pred_error_ind gst h (Some pr') n ->
+      is_best_pred gst pr' pr ->
+      (* these next two prevent wraparound *)
+      live_node_count gst size ->
+      S n < size ->
+      pred_error_ind gst h p (S n)
+| pred_error_ind_None :
+    forall size,
+      p = None ->
+      live_node_count gst size ->
+      pred_error_ind gst h p size
+| pred_error_ind_nonmember :
+    forall pr size,
+      p = Some pr ->
+      ~ live_node gst (addr_of pr) ->
+      live_node_count gst size ->
+      pred_error_ind gst h p (S size).
+
+Definition pred_error (gst : global_state) (h : pointer) (st : data) : nat -> Prop :=
+  pred_error_ind gst h (Chord.pred st).
+
+(* the same as pred_error_ind, just in a different direction *)
+Inductive succ1_error_ind (gst : global_state) (h : pointer) (s : option pointer) : nat -> Prop :=
+| succ1_error_ind_0 :
+    forall s1,
+      s = Some s1 ->
+      live_node gst (addr_of s1) ->
+      is_best_succ gst h s1 ->
+      succ1_error_ind gst h s 0
+| succ1_error_ind_S :
+    forall s1 s' n size,
+      s = Some s1 ->
+      live_node gst (addr_of s') ->
+      succ1_error_ind gst h (Some s') n ->
+      is_best_succ gst s' s1 ->
+      (* these next two prevent wraparound *)
+      live_node_count gst size ->
+      S n < size ->
+      succ1_error_ind gst h s (S n)
+| succ1_error_ind_None :
+    forall size,
+      s = None ->
+      live_node_count gst size ->
+      succ1_error_ind gst h s size
+| succ1_error_ind_nonmember :
+    forall s1 size,
+      s = Some s1 ->
+      ~ live_node gst (addr_of s1) ->
+      live_node_count gst size ->
+      succ1_error_ind gst h s size.
+
+Definition succ1_error (gst : global_state) (h : pointer) (st : data) : nat -> Prop :=
+  succ1_error_ind gst h (head (succ_list st)).
+
+Inductive further_succ_error (gst : global_state) (h s : pointer) (n : nat) : nat -> Prop :=
+| further_succ_error_0 :
+    forall st succ_st s1,
+      sigma gst (addr_of h) = Some st ->
+      head (succ_list st) = Some s1 ->
+      live_node gst (addr_of s1) ->
+      sigma gst (addr_of s1) = Some succ_st ->
+      nth_error (succ_list succ_st) (n - 1) = Some s ->
+      further_succ_error gst h s n 0
+| further_succ_error_1_dead :
+    forall st s1,
+      sigma gst (addr_of h) = Some st ->
+      head (succ_list st) = Some s1 ->
+      ~ live_node gst (addr_of s1) ->
+      further_succ_error gst h s n 1
+| further_succ_error_1_mismatch :
+    forall st succ_st s1,
+      sigma gst (addr_of h) = Some st ->
+      head (succ_list st) = Some s1 ->
+      sigma gst (addr_of s1) = Some succ_st ->
+      nth_error (succ_list succ_st) (n - 1) <> Some s ->
+      further_succ_error gst h s n 1.
+
+Definition list_sum (l : list nat) : nat :=
+  fold_left Nat.add l 0.
+
+Inductive latter_succs_error (gst : global_state) (h : pointer) : nat -> Prop :=
+| mk_latter_succs_error :
+    forall st l,
+      sigma gst (addr_of h) = Some st ->
+      1 + length l = length (succ_list st) ->
+      (forall i s n_i,
+        nth_error (succ_list st) (i + 1) = Some s ->
+        nth_error l i = Some n_i ->
+        further_succ_error gst h s (i + 1) n_i) ->
+      latter_succs_error gst h (list_sum l).
+
+Inductive local_error (gst : global_state) (h : pointer) : nat -> Prop :=
+  | mk_local_error :
+      forall st n_pred n_succ1 n_succs,
+        pred_error gst h st n_pred ->
+        succ1_error gst h st n_succ1 ->
+        latter_succs_error gst h n_succs ->
+        local_error gst h (n_pred + n_succ1 + n_succs).
+
+Inductive total_error (gst : global_state) : nat -> Prop :=
+| mk_total_error :
+    forall live_nodes errs,
+      (forall x, live_node gst x <-> In x live_nodes) ->
+      NoDup live_nodes ->
+      length errs = length live_nodes ->
+      (forall i n_i h,
+          nth_error errs i = Some n_i ->
+          nth_error live_nodes i = Some (addr_of h) ->
+          local_error gst h n_i) ->
+      total_error gst (list_sum errs).
+
+Definition total_error_function (gst : global_state) : {n | total_error gst n}.
+Admitted.
+
 End LabeledChord.
