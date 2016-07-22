@@ -188,7 +188,7 @@ Section Chord.
     map (fun p => (addr_of (fst p), (snd p))).
 
   (* true iff n in (a, b) on some sufficiently large "circle" *)
-  Definition between_bool (a : nat) (x : nat) (b : nat) : bool :=
+  Definition between_bool (a : id) (x : id) (b : id) : bool :=
     if lt_dec a b
     then if (lt_dec a x)
          then if (lt_dec x b)

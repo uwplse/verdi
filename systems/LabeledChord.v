@@ -24,6 +24,7 @@ Section LabeledChord.
   Notation e_timeout := (e_timeout addr payload timeout).
   Notation trace := (trace addr payload data timeout).
   Notation update := (update addr addr_eq_dec data).
+  Notation make_pointer := (make_pointer hash).
 
   Inductive label :=
   | RecvMsg : addr -> addr -> payload -> label
@@ -836,6 +837,9 @@ Section LabeledChord.
     by apply always_now in H_al.
   Qed.
 
+  Definition timeout_cleared (h : addr) (t : timeout) (s : infseq occurrence) :=
+    ~ In t (timeouts (occ_gst (hd s)) h).
+
 Lemma always_in_nodes :
   forall s, lb_execution s ->
        forall h, In h (nodes (occ_gst (hd s))) ->
@@ -991,78 +995,167 @@ Definition is_best_pred (gst : global_state) (h p : pointer) : Prop :=
     live_node gst (addr_of p') ->
     ~ between (id_of p) (id_of p') (id_of h).
 
+Definition is_best_pred_dec :
+  forall gst h p,
+    {is_best_pred gst h p} + {~ is_best_pred gst h p}.
+Admitted.
+
 (* there might be a better way to phrase this, e.g. as an Inductive definition *)
 Definition live_node_count (gst : global_state) (s : nat) : Prop :=
   exists l,
     length l = s /\
     (forall n, In n l <-> live_node gst n).
 
-Inductive pred_error_ind (gst : global_state) (h : pointer) (p : option pointer) : nat -> Prop :=
-| pred_error_ind_O :
+Definition live_nodes (gst : global_state) : list addr :=
+  filter (live_node_dec gst) (nodes gst).
+
+Fixpoint best_succ (live_nodes : list pointer) (h : pointer) : option pointer :=
+  match live_nodes with
+  | n :: rest => if existsb (fun x => between_bool (id_of h) (id_of x) (id_of n)) rest
+                 then best_succ rest h
+                 else Some n
+  | nil => None
+  end.
+
+Lemma best_succ_correct :
+  forall gst h s lns,
+    (forall x, In x (map addr_of lns) <-> In x (live_nodes gst)) ->
+    best_succ lns h = Some s ->
+    is_best_succ gst h s.
+Admitted.
+
+Definition live_pred_err (live_nodes : list pointer) (h p : pointer) :=
+  length (filter (fun x => between_bool (id_of p) (id_of x) (id_of h)) live_nodes).
+
+Definition live_succ1_err (live_nodes : list pointer) (h s : pointer) :=
+  length (filter (fun x => between_bool (id_of h) (id_of x) (id_of s)) live_nodes).
+
+Definition pred_error (gst : global_state) (h : pointer) (st : data) : nat :=
+  let ha := (addr_of h) in
+  let lns := (map make_pointer (live_nodes gst)) in
+  match (Chord.pred st) with
+  | Some p =>
+    if live_node_dec gst (addr_of p)
+    then live_pred_err lns h p
+    else S (length lns)
+  | None => length lns
+  end.
+
+Definition succ1_error (gst : global_state) (h : pointer) (st : data) : nat :=
+  let ha := (addr_of h) in
+  let lns := (map make_pointer (live_nodes gst)) in
+  match (head (succ_list st)) with
+  | Some s1 =>
+    if live_node_dec gst (addr_of s1)
+    then live_succ1_err lns h s1
+    else S (length lns)
+  | None => length lns
+  end.
+
+Definition further_succ_error (gst : global_state) (h s1 s : pointer) (i : nat) : nat :=
+  if live_node_dec gst (addr_of s1)
+  then
+    match sigma gst (addr_of s1) with
+    | Some st =>
+      match nth_error (succ_list st) (i - 1) with
+      | Some s' => if pointer_eq_dec s s'
+                   then 0
+                   else 1
+      | None => 1
+      end
+    | None => 1 (* impossible, since it's live *)
+    end
+  else 1.
+
+Fixpoint further_succs_error_rec (gst : global_state) (h s1 : pointer) (succs : list pointer) (i : nat) : nat :=
+  match succs with
+  | s :: rest => further_succ_error gst h s1 s i +
+                 further_succs_error_rec gst h s1 rest (S i)
+  | nil => 0
+  end.
+
+Definition further_succs_error (gst : global_state) (h s1 : pointer) (succs : list pointer) : nat :=
+  further_succs_error_rec gst h s1 succs 1.
+
+Definition list_sum : list nat -> nat :=
+  fold_right Nat.add 0.
+
+Definition local_error (gst : global_state) (h : addr) : nat :=
+  match sigma gst h with
+  | Some st =>
+    let hp := make_pointer h in
+    pred_error gst hp st +
+    succ1_error gst hp st +
+    match succ_list st with
+    | s1 :: succs => further_succs_error gst hp s1 succs
+    | nil => 0
+    end
+  | None => 0
+  end.
+
+Definition global_error (gst : global_state) : nat :=
+  list_sum (map (local_error gst) (live_nodes gst)).
+
+Inductive pred_error_spec (gst : global_state) (h : pointer) (p : option pointer) : nat -> Prop :=
+| pred_error_spec_O :
     forall pr,
       p = Some pr ->
       live_node gst (addr_of pr) ->
       is_best_pred gst h pr ->
-      pred_error_ind gst h p 0
-| pred_error_ind_S :
+      pred_error_spec gst h p 0
+| pred_error_spec_S :
     forall pr pr' n size,
       p = Some pr ->
       live_node gst (addr_of pr') ->
-      pred_error_ind gst h (Some pr') n ->
+      pred_error_spec gst h (Some pr') n ->
       is_best_pred gst pr' pr ->
       (* these next two prevent wraparound *)
       live_node_count gst size ->
       S n < size ->
-      pred_error_ind gst h p (S n)
-| pred_error_ind_None :
+      pred_error_spec gst h p (S n)
+| pred_error_spec_None :
     forall size,
       p = None ->
       live_node_count gst size ->
-      pred_error_ind gst h p size
-| pred_error_ind_nonmember :
+      pred_error_spec gst h p size
+| pred_error_spec_nonmember :
     forall pr size,
       p = Some pr ->
       ~ live_node gst (addr_of pr) ->
       live_node_count gst size ->
-      pred_error_ind gst h p (S size).
+      pred_error_spec gst h p (S size).
 
-Definition pred_error (gst : global_state) (h : pointer) (st : data) : nat -> Prop :=
-  pred_error_ind gst h (Chord.pred st).
-
-(* the same as pred_error_ind, just in a different direction *)
-Inductive succ1_error_ind (gst : global_state) (h : pointer) (s : option pointer) : nat -> Prop :=
-| succ1_error_ind_0 :
+(* the same as pred_error_spec, just in a different direction *)
+Inductive succ1_error_spec (gst : global_state) (h : pointer) (s : option pointer) : nat -> Prop :=
+| succ1_error_spec_0 :
     forall s1,
       s = Some s1 ->
       live_node gst (addr_of s1) ->
       is_best_succ gst h s1 ->
-      succ1_error_ind gst h s 0
-| succ1_error_ind_S :
+      succ1_error_spec gst h s 0
+| succ1_error_spec_S :
     forall s1 s' n size,
       s = Some s1 ->
       live_node gst (addr_of s') ->
-      succ1_error_ind gst h (Some s') n ->
+      succ1_error_spec gst h (Some s') n ->
       is_best_succ gst s' s1 ->
       (* these next two prevent wraparound *)
       live_node_count gst size ->
       S n < size ->
-      succ1_error_ind gst h s (S n)
-| succ1_error_ind_None :
+      succ1_error_spec gst h s (S n)
+| succ1_error_spec_None :
     forall size,
       s = None ->
       live_node_count gst size ->
-      succ1_error_ind gst h s size
-| succ1_error_ind_nonmember :
+      succ1_error_spec gst h s size
+| succ1_error_spec_nonmember :
     forall s1 size,
       s = Some s1 ->
       ~ live_node gst (addr_of s1) ->
       live_node_count gst size ->
-      succ1_error_ind gst h s size.
+      succ1_error_spec gst h s size.
 
-Definition succ1_error (gst : global_state) (h : pointer) (st : data) : nat -> Prop :=
-  succ1_error_ind gst h (head (succ_list st)).
-
-Inductive further_succ_error (gst : global_state) (h s : pointer) (n : nat) : nat -> Prop :=
+Inductive further_succ_error_spec (gst : global_state) (h s : pointer) (n : nat) : nat -> Prop :=
 | further_succ_error_0 :
     forall st succ_st s1,
       sigma gst (addr_of h) = Some st ->
@@ -1070,56 +1163,18 @@ Inductive further_succ_error (gst : global_state) (h s : pointer) (n : nat) : na
       live_node gst (addr_of s1) ->
       sigma gst (addr_of s1) = Some succ_st ->
       nth_error (succ_list succ_st) (n - 1) = Some s ->
-      further_succ_error gst h s n 0
+      further_succ_error_spec gst h s n 0
 | further_succ_error_1_dead :
     forall st s1,
       sigma gst (addr_of h) = Some st ->
       head (succ_list st) = Some s1 ->
       ~ live_node gst (addr_of s1) ->
-      further_succ_error gst h s n 1
+      further_succ_error_spec gst h s n 1
 | further_succ_error_1_mismatch :
     forall st succ_st s1,
       sigma gst (addr_of h) = Some st ->
       head (succ_list st) = Some s1 ->
       sigma gst (addr_of s1) = Some succ_st ->
       nth_error (succ_list succ_st) (n - 1) <> Some s ->
-      further_succ_error gst h s n 1.
-
-Definition list_sum (l : list nat) : nat :=
-  fold_left Nat.add l 0.
-
-Inductive latter_succs_error (gst : global_state) (h : pointer) : nat -> Prop :=
-| mk_latter_succs_error :
-    forall st l,
-      sigma gst (addr_of h) = Some st ->
-      1 + length l = length (succ_list st) ->
-      (forall i s n_i,
-        nth_error (succ_list st) (i + 1) = Some s ->
-        nth_error l i = Some n_i ->
-        further_succ_error gst h s (i + 1) n_i) ->
-      latter_succs_error gst h (list_sum l).
-
-Inductive local_error (gst : global_state) (h : pointer) : nat -> Prop :=
-  | mk_local_error :
-      forall st n_pred n_succ1 n_succs,
-        pred_error gst h st n_pred ->
-        succ1_error gst h st n_succ1 ->
-        latter_succs_error gst h n_succs ->
-        local_error gst h (n_pred + n_succ1 + n_succs).
-
-Inductive total_error (gst : global_state) : nat -> Prop :=
-| mk_total_error :
-    forall live_nodes errs,
-      (forall x, live_node gst x <-> In x live_nodes) ->
-      NoDup live_nodes ->
-      length errs = length live_nodes ->
-      (forall i n_i h,
-          nth_error errs i = Some n_i ->
-          nth_error live_nodes i = Some (addr_of h) ->
-          local_error gst h n_i) ->
-      total_error gst (list_sum errs).
-
-Definition total_error_function (gst : global_state) : {n | total_error gst n}.
-Admitted.
-
+      further_succ_error_spec gst h s n 1.
 End LabeledChord.
