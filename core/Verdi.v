@@ -10,3 +10,5 @@ Require Export StructTact.StructTactics.
 
 Require Export VerdiHints.
 Require Export Net.
+
+Require NPeano.
