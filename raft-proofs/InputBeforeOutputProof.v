@@ -1,8 +1,8 @@
 Require Import GhostSimulations.
 Require Import InverseTraceRelations.
-Require Import UpdateLemmas.
 
 Require Import Raft.
+Require Import UpdateLemmas.
 Require Import CommonTheorems.
 Require Import TraceUtil.
 
