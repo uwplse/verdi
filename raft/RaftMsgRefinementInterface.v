@@ -45,7 +45,7 @@ Section RaftMsgRefinementInterface.
         msg_refined_raft_intermediate_reachable net ->
         handleInput h inp (snd (nwState net h)) = (out, d, l) ->
         update_elections_data_input h inp (nwState net h) = gd ->
-        (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+        (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
         (forall p', In p' ps' -> In p' (nwPackets net) \/
                            In p' (send_packets h (add_ghost_msg h (gd, d) l))) ->
         msg_refined_raft_intermediate_reachable (mkNetwork ps' st')
@@ -55,7 +55,7 @@ Section RaftMsgRefinementInterface.
         handleMessage (pSrc p) (pDst p) (snd (pBody p)) (snd (nwState net (pDst p))) = (d, l) ->
         update_elections_data_net (pDst p) (pSrc p) (snd (pBody p)) (nwState net (pDst p)) = gd ->
         nwPackets net = xs ++ p :: ys ->
-        (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+        (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
         (forall p', In p' ps' -> In p' (xs ++ ys) \/
                            In p' (send_packets (pDst p) (@add_ghost_msg _ _ _ ghost_log_params (pDst p) (gd, d) l))) ->
         msg_refined_raft_intermediate_reachable (mkNetwork ps' st')
@@ -64,7 +64,7 @@ Section RaftMsgRefinementInterface.
         msg_refined_raft_intermediate_reachable net ->
         doLeader d h = (os, d', ms) ->
         nwState net h = (gd, d) ->
-        (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+        (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
         (forall p, In p ps' -> In p (nwPackets net) \/
                          In p (send_packets h (add_ghost_msg h (gd, d') ms))) ->
         msg_refined_raft_intermediate_reachable (mkNetwork ps' st')
@@ -73,7 +73,7 @@ Section RaftMsgRefinementInterface.
         msg_refined_raft_intermediate_reachable net ->
         doGenericServer h d = (os, d', ms) ->
         nwState net h = (gd, d) ->
-        (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+        (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
         (forall p, In p ps' -> In p (nwPackets net) \/
                          In p (send_packets h (add_ghost_msg h (gd, d') ms))) ->
         msg_refined_raft_intermediate_reachable (mkNetwork ps' st').
@@ -84,7 +84,7 @@ Section RaftMsgRefinementInterface.
       gd = update_elections_data_client_request h (nwState net h) client id c ->
       P net ->
       msg_refined_raft_intermediate_reachable net ->
-      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                          In p' (send_packets h (add_ghost_msg h (gd, d) l))) ->
       P (mkNetwork ps' st').
@@ -95,7 +95,7 @@ Section RaftMsgRefinementInterface.
       gd = update_elections_data_timeout h (nwState net h) ->
       P net ->
       msg_refined_raft_intermediate_reachable net ->
-      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                                In p' (send_packets h (add_ghost_msg h (gd, d) l))) ->
       P (mkNetwork ps' st').
@@ -108,7 +108,7 @@ Section RaftMsgRefinementInterface.
       P net ->
       msg_refined_raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          p' = mkPacket (pDst p) (pSrc p) (write_ghost_log (pDst p) (gd, d), m)) ->
       P (mkNetwork ps' st').
@@ -121,7 +121,7 @@ Section RaftMsgRefinementInterface.
       P net ->
       msg_refined_raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          In p' (send_packets (pDst p) (@add_ghost_msg _ _ _ ghost_log_params (pDst p) (gd, d) m))) ->
       P (mkNetwork ps' st').
@@ -134,7 +134,7 @@ Section RaftMsgRefinementInterface.
       P net ->
       msg_refined_raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          p' = mkPacket (pDst p) (pSrc p) (write_ghost_log (pDst p) (gd, d), m)) ->
       P (mkNetwork ps' st').
@@ -147,7 +147,7 @@ Section RaftMsgRefinementInterface.
       P net ->
       msg_refined_raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys)) ->
       P (mkNetwork ps' st').
 
@@ -157,7 +157,7 @@ Section RaftMsgRefinementInterface.
       P net ->
       msg_refined_raft_intermediate_reachable net ->
       nwState net h = (gd, d) ->
-      (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
                              In p (send_packets h (add_ghost_msg h (gd, d') ms))) ->
       P (mkNetwork ps' st').
@@ -168,7 +168,7 @@ Section RaftMsgRefinementInterface.
       P net ->
       msg_refined_raft_intermediate_reachable net ->
       nwState net h = (gd, d) ->
-      (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
                              In p (send_packets h (add_ghost_msg h (gd, d') ms))) ->
       P (mkNetwork ps' st').
@@ -187,7 +187,7 @@ Section RaftMsgRefinementInterface.
       P net ->
       msg_refined_raft_intermediate_reachable net ->
       nwState net h = (gd, d) ->
-      (forall h', nwState net' h' = update (nwState net) h (gd, d') h') ->
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
       nwPackets net = nwPackets net' ->
       P net'.
 
@@ -201,7 +201,7 @@ Section RaftMsgRefinementInterface.
       P net ->
       msg_refined_raft_intermediate_reachable net ->
       msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
-      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                          In p' (send_packets h (add_ghost_msg h (gd, d) l))) ->
       P (mkNetwork ps' st').
@@ -213,7 +213,7 @@ Section RaftMsgRefinementInterface.
       P net ->
       msg_refined_raft_intermediate_reachable net ->
       msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
-      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                                In p' (send_packets h (add_ghost_msg h (gd, d) l))) ->
       P (mkNetwork ps' st').
@@ -227,7 +227,7 @@ Section RaftMsgRefinementInterface.
       msg_refined_raft_intermediate_reachable net ->
       msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          p' = mkPacket (pDst p) (pSrc p) (write_ghost_log (pDst p) (gd, d), m)) ->
       P (mkNetwork ps' st').
@@ -241,7 +241,7 @@ Section RaftMsgRefinementInterface.
       msg_refined_raft_intermediate_reachable net ->
       msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          In p' (send_packets (pDst p) (@add_ghost_msg _ _ _ ghost_log_params (pDst p) (gd, d) m))) ->
       P (mkNetwork ps' st').
@@ -255,7 +255,7 @@ Section RaftMsgRefinementInterface.
       msg_refined_raft_intermediate_reachable net ->
       msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          p' = mkPacket (pDst p) (pSrc p) (write_ghost_log (pDst p) (gd, d), m)) ->
       P (mkNetwork ps' st').
@@ -269,7 +269,7 @@ Section RaftMsgRefinementInterface.
       msg_refined_raft_intermediate_reachable net ->
       msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys)) ->
       P (mkNetwork ps' st').
 
@@ -280,7 +280,7 @@ Section RaftMsgRefinementInterface.
       msg_refined_raft_intermediate_reachable net ->
       msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       nwState net h = (gd, d) ->
-      (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
                              In p (send_packets h (add_ghost_msg h (gd, d') ms))) ->
       P (mkNetwork ps' st').
@@ -292,7 +292,7 @@ Section RaftMsgRefinementInterface.
       msg_refined_raft_intermediate_reachable net ->
       msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       nwState net h = (gd, d) ->
-      (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
                              In p (send_packets h (add_ghost_msg h (gd, d') ms))) ->
       P (mkNetwork ps' st').
@@ -312,7 +312,7 @@ Section RaftMsgRefinementInterface.
       msg_refined_raft_intermediate_reachable net ->
       msg_refined_raft_intermediate_reachable net' ->
       nwState net h = (gd, d) ->
-      (forall h', nwState net' h' = update (nwState net) h (gd, d') h') ->
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
       nwPackets net = nwPackets net' ->
       P net'.
 

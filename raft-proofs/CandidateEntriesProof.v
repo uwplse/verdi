@@ -11,8 +11,7 @@ Require Import RefinementCommonTheorems.
 
 Require Import SpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import CandidateEntriesInterface.
 
@@ -29,8 +28,8 @@ Section CandidateEntriesProof.
 
   Ltac my_update_destruct :=
     match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
+      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+      | [ H : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
     end.
 
   Lemma handleClientRequest_spec :
@@ -117,7 +116,7 @@ Section CandidateEntriesProof.
 
   Ltac update_destruct :=
     match goal with
-    | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+    | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
     end.
 
   Lemma handleTimeout_only_sends_RequestVotes :
@@ -162,7 +161,7 @@ Section CandidateEntriesProof.
       refined_raft_intermediate_reachable net ->
       handleTimeout h (snd (nwState net h)) = (out, d, l) ->
       candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h (update_elections_data_timeout h (nwState net h), d)).
+      candidateEntries e (update name_eq_dec (nwState net) h (update_elections_data_timeout h (nwState net h), d)).
   Proof.
     intros.
     destruct (serverType_eq_dec (type (snd (A:=electionsData) (B:=raft_data) (nwState net h))) Leader).
@@ -284,7 +283,7 @@ Section CandidateEntriesProof.
       handleAppendEntries h (snd (nwState net h)) t n pli plt es ci = (d, m) ->
       refined_raft_intermediate_reachable net ->
       candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h
+      candidateEntries e (update name_eq_dec (nwState net) h
                                  (update_elections_data_appendEntries
                                     h
                                     (nwState net h) t n pli plt es ci, d)).
@@ -362,7 +361,7 @@ Section CandidateEntriesProof.
       handleAppendEntriesReply h (snd (nwState net h)) h' t es r = (st', ms) ->
       refined_raft_intermediate_reachable net ->
       candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h (fst (nwState net h), st')).
+      candidateEntries e (update name_eq_dec (nwState net) h (fst (nwState net h), st')).
   Proof.
     unfold candidateEntries.
     intros. break_exists. break_and.
@@ -448,7 +447,7 @@ Section CandidateEntriesProof.
     forall net h h' t lli llt e,
       candidateEntries e (nwState net) ->
       candidateEntries e
-                       (update (nwState net) h
+                       (update name_eq_dec (nwState net) h
                                (update_elections_data_requestVote h h' t h' lli llt (nwState net h),
                                 advanceCurrentTerm (snd (nwState net h)) t)).
   Proof.
@@ -471,7 +470,7 @@ Section CandidateEntriesProof.
     forall net h h' t lli llt d e m,
       handleRequestVote h (snd (nwState net h)) t h' lli llt = (d, m) ->
       candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h
+      candidateEntries e (update name_eq_dec (nwState net) h
                                  (update_elections_data_requestVote
                                     h h' t h' lli llt (nwState net h), d)).
   Proof.
@@ -646,7 +645,7 @@ Section CandidateEntriesProof.
       nwState net h = (gd, d) ->
       doGenericServer h d = (os, d', ms) ->
       candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h (gd, d')).
+      candidateEntries e (update name_eq_dec (nwState net) h (gd, d')).
   Proof.
     intros.
     eapply candidateEntries_same; eauto;
@@ -721,7 +720,7 @@ Section CandidateEntriesProof.
     forall net h d gd e,
       nwState net h = (gd, d) ->
       candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h (gd, reboot d)).
+      candidateEntries e (update name_eq_dec (nwState net) h (gd, reboot d)).
   Proof.
     unfold reboot, candidateEntries.
     intros.

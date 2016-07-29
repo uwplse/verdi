@@ -32,8 +32,7 @@ Require Import RefinementSpecLemmas.
 
 Require Import RaftMsgRefinementInterface.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Section StateMachineSafetyProof.
   Context {orig_base_params : BaseParams}.
@@ -110,9 +109,9 @@ Section StateMachineSafetyProof.
 
   Ltac update_destruct :=
     match goal with
-      | [ H : context [ update _ ?x _ ?y ] |- _ ] =>
+      | [ H : context [ update _ _ ?x _ ?y ] |- _ ] =>
         destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-      | [ |- context [ update _ ?x _ ?y ] ] =>
+      | [ |- context [ update _ _ ?x _ ?y ] ] =>
         destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
     end.
 
@@ -501,7 +500,7 @@ Section StateMachineSafetyProof.
       state_machine_safety (deghost (mgv_deghost net)) ->
       msg_refined_raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall (p' : ghost_log_packet), In p' ps' -> In p' (xs ++ ys) \/
                          mgv_deghost_packet p' = mkPacket (params := raft_refined_multi_params)
                                                           (pDst p) (pSrc p) m) ->
@@ -1287,7 +1286,7 @@ Section StateMachineSafetyProof.
   Lemma hCR_preserves_committed :
     forall (net net' : ghost_log_network) h client id c out d l e t,
       handleClientRequest h (snd (nwState net h)) client id c = (out, d, l) ->
-      (forall h', nwState net' h' = update (nwState net) h (update_elections_data_client_request h (nwState net h) client id c, d) h') ->
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h (update_elections_data_client_request h (nwState net h) client id c, d) h') ->
       lifted_committed net e t ->
       lifted_committed net' e t.
   Proof.
@@ -1361,7 +1360,7 @@ Section StateMachineSafetyProof.
       commit_invariant net ->
       maxIndex_sanity (deghost (mgv_deghost net)) ->
       msg_refined_raft_intermediate_reachable net ->
-      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                          In p' (send_packets h (add_ghost_msg (params := ghost_log_params) h (gd, d) l))) ->
       commit_invariant (mkNetwork ps' st').
@@ -1376,9 +1375,9 @@ Section StateMachineSafetyProof.
         repeat match goal with H : _ |- _ => rewrite update_fun_comm with (f := snd) in H end.
         simpl in *.
         repeat match goal with
-                 | [H : _ |- _] => rewrite (update_fun_comm raft_data _) in H
+                 | [H : _ |- _] => rewrite (update_fun_comm _ raft_data _) in H
                end.
-        rewrite (update_fun_comm raft_data _).
+        rewrite (update_fun_comm  _ raft_data).
         rewrite update_nop_ext' by (now erewrite <- handleClientRequest_currentTerm by eauto).
         match goal with
           | [H : _ |- _] => rewrite update_nop_ext' in H
@@ -1430,7 +1429,7 @@ Section StateMachineSafetyProof.
   Lemma handleTimeout_preserves_committed :
     forall h (net net' : ghost_log_network) out d' l e t,
       handleTimeout h (snd (nwState net h)) = (out, d', l) ->
-      (forall h', nwState net' h' = update (nwState net) h (update_elections_data_timeout h (nwState net h), d') h') ->
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h (update_elections_data_timeout h (nwState net h), d') h') ->
       lifted_committed net e t ->
       lifted_committed net' e t.
   Proof.
@@ -1606,7 +1605,7 @@ Section StateMachineSafetyProof.
       In p (nwPackets net) ->
       snd (pBody p) = AppendEntries t n pli plt es ci ->
       handleAppendEntries h (snd (nwState net h)) t n pli plt es ci = (d, m) ->
-      (forall h', nwState net' h' = update (nwState net) h
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h
                                       (update_elections_data_appendEntries
                                          h (nwState net h) t n pli plt es ci, d) h') ->
       lifted_committed net e t' ->
@@ -1917,7 +1916,7 @@ Section StateMachineSafetyProof.
       msg_refined_raft_intermediate_reachable net ->
       lifted_maxIndex_sanity net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' ->
              In p' (xs ++ ys) \/ p' = mkPacket (pDst p) (pSrc p)
                                              (write_ghost_log (pDst p) (gd, d), m)) ->
@@ -2180,7 +2179,7 @@ Section StateMachineSafetyProof.
   Lemma handleAppendEntriesReply_preserves_commit :
     forall (net net' : ghost_log_network) h src t es b st' l e t',
       handleAppendEntriesReply h (snd (nwState net h)) src t es b = (st', l) ->
-      (forall h', nwState net' h' = update (nwState net) h (fst (nwState net h), st') h') ->
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h (fst (nwState net h), st') h') ->
       lifted_committed net e t' ->
       lifted_committed net' e t'.
   Proof.
@@ -2228,7 +2227,7 @@ Section StateMachineSafetyProof.
   Lemma handleRequestVote_preserves_committed :
     forall (net net' : ghost_log_network) h t c li lt st' ms e t',
       handleRequestVote h (snd (nwState net h)) t c li lt = (st', ms) ->
-      (forall h', nwState net' h' = update (nwState net) h (update_elections_data_requestVote h c t c li lt (nwState net h), st') h') ->
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h (update_elections_data_requestVote h c t c li lt (nwState net h), st') h') ->
       lifted_committed net e t' ->
       lifted_committed net' e t'.
   Proof.
@@ -2279,7 +2278,7 @@ Section StateMachineSafetyProof.
   Lemma handleRequestVoteReply_preserves_committed :
     forall (net net' : ghost_log_network) h src t v st' e t',
       handleRequestVoteReply h (snd (nwState net h)) src t v = st' ->
-      (forall h', nwState net' h' = update (nwState net) h
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h
                                       (update_elections_data_requestVoteReply h
                                                                               src t v (nwState net h), st') h') ->
       lifted_committed net e t' ->
@@ -2621,7 +2620,7 @@ Section StateMachineSafetyProof.
     forall (net net' : ghost_log_network) d h os d' ms gd  e t,
       doLeader d h = (os, d', ms) ->
       nwState net h = (gd, d) ->
-      (forall h', nwState net' h' = update (nwState net) h (gd, d') h') ->
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
       lifted_committed net e t ->
       lifted_committed net' e t.
   Proof.
@@ -2677,7 +2676,7 @@ Section StateMachineSafetyProof.
       msg_refined_raft_intermediate_reachable net ->
       lifted_maxIndex_sanity net ->
       nwState net h = (gd, d) ->
-      (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
       (forall p,
           In p ps' -> In p (nwPackets net) \/ In p (send_packets h (add_ghost_msg (params := ghost_log_params) h (gd, d') ms))) ->
       commit_invariant {| nwPackets := ps'; nwState := st' |}.
@@ -2692,7 +2691,7 @@ Section StateMachineSafetyProof.
         eapply lifted_committed_ext' with (ps := nwPackets net) (st := nwState net).
         * intros. subst. repeat find_higher_order_rewrite.
           match goal with
-          | [ |- context [ update _ ?x _ ?y ] ] =>
+          | [ |- context [ update _ _ ?x _ ?y ] ] =>
             destruct (name_eq_dec x y); subst; rewrite_update
           end; auto.
         * match goal with
@@ -2713,7 +2712,7 @@ Section StateMachineSafetyProof.
             clear H
         end.
         match goal with
-        | [ H : context [ update _ ?x _ ?y ] |- _ ] =>
+        | [ H : context [ update _ _ ?x _ ?y ] |- _ ] =>
           destruct (name_eq_dec x y); subst; rewrite_update
         end.
         * { eapply lifted_committed_log_allEntries_preserved.
@@ -2760,7 +2759,7 @@ Section StateMachineSafetyProof.
   Lemma doGenericServer_preserves_committed :
     forall (net net' : ghost_log_network) h out st' ms e t,
       doGenericServer h (snd (nwState net h)) = (out, st', ms) ->
-      (forall h', nwState net' h' = update (nwState net) h (fst (nwState net h), st') h') ->
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h (fst (nwState net h), st') h') ->
       lifted_committed net e t ->
       lifted_committed net' e t.
   Proof.
@@ -2824,7 +2823,7 @@ Section StateMachineSafetyProof.
 
   Lemma reboot_preserves_committed :
     forall (net net' : ghost_log_network) h e t,
-      (forall h', nwState net' h' = update (nwState net) h (fst (nwState net h), reboot (snd (nwState net h))) h') ->
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h (fst (nwState net h), reboot (snd (nwState net h))) h') ->
       lifted_committed net e t ->
       lifted_committed net' e t.
   Proof.

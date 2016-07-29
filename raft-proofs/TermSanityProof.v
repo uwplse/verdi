@@ -218,7 +218,7 @@ Section TermSanityProof.
     forall net st' ps' xs p ys d ms,
       nwPackets net = xs ++ p :: ys ->
       no_entries_past_current_term net ->
-      (forall h : Net.name, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h : Net.name, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p' : packet,
        In p' ps' ->
        In p' (xs ++ ys) \/ In p' (send_packets (pDst p) ms)) ->
@@ -252,7 +252,7 @@ Section TermSanityProof.
     forall net st' ps' xs p ys d m,
       nwPackets net = xs ++ p :: ys ->
       no_entries_past_current_term net ->
-      (forall h : Net.name, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h : Net.name, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p' : packet,
        In p' ps' ->
        In p' (xs ++ ys) \/ p' = m) ->
@@ -285,7 +285,7 @@ Section TermSanityProof.
     forall net st' ps' xs p ys d,
       nwPackets net = xs ++ p :: ys ->
       no_entries_past_current_term net ->
-      (forall h : Net.name, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h : Net.name, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p' : packet,
        In p' ps' ->
        In p' (xs ++ ys)) ->

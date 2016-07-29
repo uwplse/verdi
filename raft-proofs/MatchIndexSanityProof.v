@@ -3,8 +3,7 @@ Require Import Raft.
 Require Import CommonTheorems.
 Require Import SpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import AppendEntriesReplySublogInterface.
 
@@ -29,9 +28,9 @@ Section MatchIndexSanity.
 
   Ltac update_destruct :=
     match goal with
-    | [ H : context [ update _ ?x _ ?y ] |- _ ] =>
+    | [ H : context [ update _ _ ?x _ ?y ] |- _ ] =>
       destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-    | [ |- context [ update _ ?x _ ?y ] ] =>
+    | [ |- context [ update _ _ ?x _ ?y ] ] =>
       destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
     end.
 

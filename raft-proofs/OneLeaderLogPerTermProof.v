@@ -7,8 +7,7 @@ Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 Require Import RefinementCommonTheorems.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import LeaderLogsVotesWithLogInterface.
 Require Import VotesCorrectInterface.
@@ -31,8 +30,8 @@ Section OneLeaderLogPerTerm.
 
   Ltac update_destruct :=
     match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
+      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+      | [ H : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
     end.
 
   Ltac start :=
@@ -53,7 +52,7 @@ Section OneLeaderLogPerTerm.
   Lemma one_leaderLog_per_term_unchanged :
     forall net st' ps' h gd d,
       one_leaderLog_per_term net ->
-      (forall h' : Net.name, st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h' : Net.name, st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       leaderLogs gd = leaderLogs (fst (nwState net h)) ->
       one_leaderLog_per_term {| nwPackets := ps'; nwState := st' |}.
   Proof.

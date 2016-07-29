@@ -10,8 +10,7 @@ Require Import StateMachineCorrectInterface.
 Require Import LastAppliedCommitIndexMatchingInterface.
 Require Import TraceUtil.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import SortedInterface.
 
@@ -84,7 +83,7 @@ Section OutputGreatestId.
 
   Ltac update_destruct :=
     match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
     end.
 
   Lemma has_key_own_key :
@@ -230,7 +229,7 @@ Section OutputGreatestId.
       doGenericServer h (nwState net h) = (os, st', ms) ->
       key_in_output_list client id os ->
       id < id' ->
-      before_func (has_key client id) (has_key client id') (applied_entries (update (nwState net) h st')).
+      before_func (has_key client id) (has_key client id') (applied_entries (update name_eq_dec (nwState net) h st')).
   Proof.
     intros.
     find_copy_apply_lem_hyp logs_sorted_invariant.
@@ -274,7 +273,7 @@ Section OutputGreatestId.
     - do_bool.
         erewrite findGtIndex_removeAfterIndex_i_lt_i' in *; eauto.
         match goal with
-          | |- context [applied_entries (update ?sigma ?h ?st)] =>
+          | |- context [applied_entries (update _ ?sigma ?h ?st)] =>
             pose proof applied_entries_update sigma h st
         end. conclude_using intuition.
         intuition; simpl in *;
@@ -296,7 +295,7 @@ Section OutputGreatestId.
      - do_bool.
         erewrite findGtIndex_removeAfterIndex_i'_le_i in *; eauto.
         match goal with
-          | |- context [applied_entries (update ?sigma ?h ?st)] =>
+          | |- context [applied_entries (update _ ?sigma ?h ?st)] =>
             pose proof applied_entries_update sigma h st
         end. conclude_using intuition.
         intuition; simpl in *;
@@ -343,7 +342,7 @@ Section OutputGreatestId.
       intuition; [exfalso; eapply doLeader_key_in_output_list; eauto|].
       match goal with
         | _ : doLeader ?st ?h = _, _ : doGenericServer _ ?d = _ |- _ =>
-          replace st with ((update (nwState net) h st) h) in *;
+          replace st with ((update name_eq_dec (nwState net) h st) h) in *;
             [|rewrite_update; auto]
       end.
       find_apply_lem_hyp doLeader_appliedEntries.
@@ -369,7 +368,7 @@ Section OutputGreatestId.
       intuition; [exfalso; eapply doLeader_key_in_output_list; eauto|].
       match goal with
         | _ : doLeader ?st ?h = _, _ : doGenericServer _ ?d = _ |- _ =>
-          replace st with ((update (nwState net) h st) h) in *;
+          replace st with ((update name_eq_dec (nwState net) h st) h) in *;
             [|rewrite_update; auto]
       end.
       find_apply_lem_hyp doLeader_appliedEntries.

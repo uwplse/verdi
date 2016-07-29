@@ -175,7 +175,7 @@ Section RaftRefinementInterface.
         refined_raft_intermediate_reachable net ->
         handleInput h inp (snd (nwState net h)) = (out, d, l) ->
         update_elections_data_input h inp (nwState net h) = gd ->
-        (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+        (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
         (forall p', In p' ps' -> In p' (nwPackets net) \/
                            In p' (send_packets h l)) ->
         refined_raft_intermediate_reachable (mkNetwork ps' st')
@@ -185,7 +185,7 @@ Section RaftRefinementInterface.
         handleMessage (pSrc p) (pDst p) (pBody p) (snd (nwState net (pDst p))) = (d, l) ->
         update_elections_data_net (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = gd ->
         nwPackets net = xs ++ p :: ys ->
-        (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+        (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
         (forall p', In p' ps' -> In p' (xs ++ ys) \/
                            In p' (send_packets (pDst p) l)) ->
         refined_raft_intermediate_reachable (mkNetwork ps' st')
@@ -194,7 +194,7 @@ Section RaftRefinementInterface.
         refined_raft_intermediate_reachable net ->
         doLeader d h = (os, d', ms) ->
         nwState net h = (gd, d) ->
-        (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+        (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
         (forall p, In p ps' -> In p (nwPackets net) \/
                          In p (send_packets h ms)) ->
         refined_raft_intermediate_reachable (mkNetwork ps' st')
@@ -203,7 +203,7 @@ Section RaftRefinementInterface.
         refined_raft_intermediate_reachable net ->
         doGenericServer h d = (os, d', ms) ->
         nwState net h = (gd, d) ->
-        (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+        (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
         (forall p, In p ps' -> In p (nwPackets net) \/
                          In p (send_packets h ms)) ->
         refined_raft_intermediate_reachable (mkNetwork ps' st').
@@ -214,7 +214,7 @@ Section RaftRefinementInterface.
       gd = update_elections_data_client_request h (nwState net h) client id c ->
       P net ->
       refined_raft_intermediate_reachable net ->
-      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                          In p' (send_packets h l)) ->
       P (mkNetwork ps' st').
@@ -225,7 +225,7 @@ Section RaftRefinementInterface.
       gd = update_elections_data_timeout h (nwState net h) ->
       P net ->
       refined_raft_intermediate_reachable net ->
-      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                                In p' (send_packets h l)) ->
       P (mkNetwork ps' st').
@@ -238,7 +238,7 @@ Section RaftRefinementInterface.
       P net ->
       refined_raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          p' = mkPacket (pDst p) (pSrc p) m) ->
       P (mkNetwork ps' st').
@@ -251,7 +251,7 @@ Section RaftRefinementInterface.
       P net ->
       refined_raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          In p' (send_packets (pDst p) m)) ->
       P (mkNetwork ps' st').
@@ -264,7 +264,7 @@ Section RaftRefinementInterface.
       P net ->
       refined_raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          p' = mkPacket (pDst p) (pSrc p) m) ->
       P (mkNetwork ps' st').
@@ -277,7 +277,7 @@ Section RaftRefinementInterface.
       P net ->
       refined_raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys)) ->
       P (mkNetwork ps' st').
 
@@ -287,7 +287,7 @@ Section RaftRefinementInterface.
       P net ->
       refined_raft_intermediate_reachable net ->
       nwState net h = (gd, d) ->
-      (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
                              In p (send_packets h ms)) ->
       P (mkNetwork ps' st').
@@ -298,7 +298,7 @@ Section RaftRefinementInterface.
       P net ->
       refined_raft_intermediate_reachable net ->
       nwState net h = (gd, d) ->
-      (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
                              In p (send_packets h ms)) ->
       P (mkNetwork ps' st').
@@ -317,7 +317,7 @@ Section RaftRefinementInterface.
       P net ->
       refined_raft_intermediate_reachable net ->
       nwState net h = (gd, d) ->
-      (forall h', nwState net' h' = update (nwState net) h (gd, d') h') ->
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
       nwPackets net = nwPackets net' ->
       P net'.
 
@@ -331,7 +331,7 @@ Section RaftRefinementInterface.
       P net ->
       refined_raft_intermediate_reachable net ->
       refined_raft_intermediate_reachable (mkNetwork ps' st') ->
-      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                          In p' (send_packets h l)) ->
       P (mkNetwork ps' st').
@@ -343,7 +343,7 @@ Section RaftRefinementInterface.
       P net ->
       refined_raft_intermediate_reachable net ->
       refined_raft_intermediate_reachable (mkNetwork ps' st') ->
-      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                                In p' (send_packets h l)) ->
       P (mkNetwork ps' st').
@@ -357,7 +357,7 @@ Section RaftRefinementInterface.
       refined_raft_intermediate_reachable net ->
       refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          p' = mkPacket (pDst p) (pSrc p) m) ->
       P (mkNetwork ps' st').
@@ -371,7 +371,7 @@ Section RaftRefinementInterface.
       refined_raft_intermediate_reachable net ->
       refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          In p' (send_packets (pDst p) m)) ->
       P (mkNetwork ps' st').
@@ -385,7 +385,7 @@ Section RaftRefinementInterface.
       refined_raft_intermediate_reachable net ->
       refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          p' = mkPacket (pDst p) (pSrc p) m) ->
       P (mkNetwork ps' st').
@@ -399,7 +399,7 @@ Section RaftRefinementInterface.
       refined_raft_intermediate_reachable net ->
       refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys)) ->
       P (mkNetwork ps' st').
 
@@ -410,7 +410,7 @@ Section RaftRefinementInterface.
       refined_raft_intermediate_reachable net ->
       refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       nwState net h = (gd, d) ->
-      (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
                              In p (send_packets h ms)) ->
       P (mkNetwork ps' st').
@@ -422,7 +422,7 @@ Section RaftRefinementInterface.
       refined_raft_intermediate_reachable net ->
       refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       nwState net h = (gd, d) ->
-      (forall h', st' h' = update (nwState net) h (gd, d') h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
                              In p (send_packets h ms)) ->
       P (mkNetwork ps' st').
@@ -434,7 +434,7 @@ Section RaftRefinementInterface.
       refined_raft_intermediate_reachable net ->
       refined_raft_intermediate_reachable net' ->
       nwState net h = (gd, d) ->
-      (forall h', nwState net' h' = update (nwState net) h (gd, d') h') ->
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h (gd, d') h') ->
       nwPackets net = nwPackets net' ->
       P net'.
 
