@@ -391,6 +391,24 @@ Section ChordProof.
       sigma gst src = Some st ->
       query_set_for_request st dst r \/ request_timed_out gst src dst r.
 
+  Definition timeouts_match_msg (gst : global_state) : Prop :=
+    forall src dst m,
+      In (Request dst m) (timeouts gst src) ->
+      In src (nodes gst) ->
+      In (src, (dst, m)) (msgs gst) \/
+      exists p,
+        request_response_pair m p /\
+        In (dst, (src, p)) (msgs gst).
+
+  Definition timeouts_match_query (gst : global_state) : Prop :=
+    forall src dst st m p q,
+      In (Request dst m) (timeouts gst src) ->
+      In src (nodes gst) ->
+      sigma gst src = Some st ->
+      query_request q m ->
+      addr_of p = dst ->
+      cur_request st = Some (p, q, m).
+
   Definition responses_have_queries (gst : global_state) : Prop :=
     forall src dst r st,
       sigma gst src = Some st ->
@@ -400,10 +418,83 @@ Section ChordProof.
         query_request q r /\
         cur_request st = Some (make_pointer dst, q, m).
 
+  (* should follow from invariant *)
+  Definition Request_goes_to_real_node (gst : global_state) : Prop :=
+    forall src dst p,
+      In (Request dst p) (timeouts gst src) ->
+      In dst (nodes gst).
+
   Definition network_invariant (gst : global_state) : Prop :=
     queries_have_unique_messages gst /\
     requests_have_queries_or_timeouts gst /\
     responses_have_queries gst.
+
+  Lemma update_eq :
+    forall sigma x y st,
+      x = y ->
+      update sigma x st y = Some st.
+  Admitted.
+
+  Lemma update_neq :
+    forall sigma x y st,
+      x <> y ->
+      update sigma x st y = sigma y.
+  Admitted.
+
+  Definition live_nodes_have_state (gst : global_state) : Prop :=
+    forall h,
+      In h (nodes gst) ->
+      exists st,
+        sigma gst h = Some st.
+
+  Theorem nodes_have_state :
+    forall gst gst',
+      live_nodes_have_state gst ->
+      step_dynamic gst gst' ->
+      live_nodes_have_state gst'.
+  Proof.
+    unfold live_nodes_have_state.
+    intuition.
+    break_step.
+    - destruct (addr_eq_dec h0 h).
+      + subst_max.
+        exists st.
+        simpl.
+        now apply update_eq.
+      + simpl in *.
+        break_or_hyp.
+        exfalso.
+        apply n.
+        reflexivity.
+        apply H in H7.
+        break_exists_exists.
+        find_reverse_rewrite.
+        now apply update_neq.
+    - eauto.
+    - simpl in *.
+      destruct (addr_eq_dec h0 h).
+      * exists st'.
+        now apply update_eq.
+      * apply H in H1.
+        break_exists_exists.
+        find_reverse_rewrite.
+        now apply update_neq.
+    - simpl in *.
+      destruct (addr_eq_dec (fst (snd m)) h).
+      * exists st.
+        now apply update_eq.
+      * apply H in H1.
+        break_exists_exists.
+        find_reverse_rewrite.
+        now apply update_neq.
+  Qed.
+
+  Theorem network_invariant_is_inductive :
+    forall gst gst',
+      network_invariant gst ->
+      step_dynamic gst gst' ->
+      network_invariant gst'.
+  Abort.
 
   Definition inductive_invariant (gst : global_state) : Prop :=
     state_invariant gst /\
