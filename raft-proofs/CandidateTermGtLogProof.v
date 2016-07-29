@@ -12,12 +12,6 @@ Section CandidateTermGtLog.
   Context {raft_params : RaftParams orig_base_params}.
   Context {tsi : term_sanity_interface}.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma candidate_term_gt_log_init :
     raft_net_invariant_init candidate_term_gt_log.
   Proof.

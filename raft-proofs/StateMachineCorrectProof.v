@@ -21,20 +21,6 @@ Section StateMachineCorrect.
   Context {misi : max_index_sanity_interface}.
   Context {smsi : state_machine_safety_interface}.
   Context {lmi : log_matching_interface}.
-  
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac update_destruct_hyp :=
-    match goal with
-      | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac destruct_update :=
-    repeat (first [update_destruct_hyp|update_destruct]; subst; rewrite_update).
-
 
   Ltac get_invariant_pre inv :=
     match goal with

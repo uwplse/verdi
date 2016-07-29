@@ -103,21 +103,10 @@ Section AppendEntriesRequestLeaderLogs.
     simpl in *. intuition.
   Qed.
 
-  Ltac update_destruct_hyp :=
-    match goal with
-    | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac update_destruct :=
-    match goal with
-    | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
-
   Ltac start :=
     red; unfold append_entries_leaderLogs; intros;
     subst; simpl in *; find_higher_order_rewrite;
-    update_destruct_hyp; subst; rewrite_update; eauto; simpl in *.
+    update_destruct; subst; rewrite_update; eauto; simpl in *.
 
   Ltac prove_in :=
     match goal with

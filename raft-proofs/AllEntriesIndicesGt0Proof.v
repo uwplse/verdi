@@ -19,14 +19,6 @@ Section AllEntriesIndicesGt0.
   Context {rri : raft_refinement_interface}.
   Context {taifoli : terms_and_indices_from_one_log_interface}.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?x _ ?y ] ] =>
-        destruct (name_eq_dec x y); subst_max; rewrite_update; simpl in *
-      | [ H : context [ update _ _ ?x _ ?y ] |- _ ] =>
-        destruct (name_eq_dec x y); subst_max; rewrite_update; simpl in *
-    end.
-
   Lemma allEntries_indices_gt_0_init :
     refined_raft_net_invariant_init allEntries_indices_gt_0.
   Proof.
@@ -40,7 +32,7 @@ Section AllEntriesIndicesGt0.
     unfold refined_raft_net_invariant_client_request, allEntries_indices_gt_0.
     intros. simpl in *.
     repeat find_higher_order_rewrite.
-    update_destruct; eauto.
+    update_destruct_max_simplify; eauto.
     find_apply_lem_hyp update_elections_data_client_request_allEntries.
     intuition.
     - find_rewrite. eauto.
@@ -55,7 +47,7 @@ Section AllEntriesIndicesGt0.
     unfold refined_raft_net_invariant_timeout, allEntries_indices_gt_0.
     intros. simpl in *.
     repeat find_higher_order_rewrite.
-    update_destruct; eauto.
+    update_destruct_max_simplify; eauto.
     find_rewrite_lem update_elections_data_timeout_allEntries.
     eauto.
   Qed.
@@ -92,7 +84,7 @@ Section AllEntriesIndicesGt0.
     unfold refined_raft_net_invariant_append_entries, allEntries_indices_gt_0.
     intros. simpl in *.
     repeat find_higher_order_rewrite.
-    update_destruct; eauto.
+    update_destruct_max_simplify; eauto.
     find_apply_lem_hyp update_elections_data_appendEntries_allEntries.
     intuition eauto.
     eapply lifted_taifol_nw; eauto.
@@ -104,7 +96,7 @@ Section AllEntriesIndicesGt0.
     unfold refined_raft_net_invariant_append_entries_reply, allEntries_indices_gt_0.
     intros. simpl in *.
     repeat find_higher_order_rewrite.
-    update_destruct; eauto.
+    update_destruct_max_simplify; eauto.
   Qed.
 
   Lemma allEntries_indices_gt_0_request_vote :
@@ -113,7 +105,7 @@ Section AllEntriesIndicesGt0.
     unfold refined_raft_net_invariant_request_vote, allEntries_indices_gt_0.
     intros. simpl in *.
     repeat find_higher_order_rewrite.
-    update_destruct; eauto.
+    update_destruct_max_simplify; eauto.
     find_rewrite_lem update_elections_data_requestVote_allEntries.
     eauto.
   Qed.
@@ -124,7 +116,7 @@ Section AllEntriesIndicesGt0.
     unfold refined_raft_net_invariant_request_vote_reply, allEntries_indices_gt_0.
     intros. simpl in *.
     repeat find_higher_order_rewrite.
-    update_destruct; eauto.
+    update_destruct_max_simplify; eauto.
     find_rewrite_lem update_elections_data_requestVoteReply_allEntries.
     eauto.
   Qed.
@@ -135,7 +127,7 @@ Section AllEntriesIndicesGt0.
     unfold refined_raft_net_invariant_do_leader, allEntries_indices_gt_0.
     intros. simpl in *.
     repeat find_higher_order_rewrite.
-    update_destruct; eauto.
+    update_destruct_max_simplify; eauto.
     match goal with
     | [ H : nwState ?net ?h = (?x, _) |- _ ] =>
       replace (x) with (fst (nwState net h)) in * by (rewrite H; auto)
@@ -149,7 +141,7 @@ Section AllEntriesIndicesGt0.
     unfold refined_raft_net_invariant_do_generic_server, allEntries_indices_gt_0.
     intros. simpl in *.
     repeat find_higher_order_rewrite.
-    update_destruct; eauto.
+    update_destruct_max_simplify; eauto.
     match goal with
     | [ H : nwState ?net ?h = (?x, _) |- _ ] =>
       replace (x) with (fst (nwState net h)) in * by (rewrite H; auto)
@@ -172,7 +164,7 @@ Section AllEntriesIndicesGt0.
     unfold refined_raft_net_invariant_reboot, allEntries_indices_gt_0.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct; eauto.
+    update_destruct_max_simplify; eauto.
     match goal with
     | [ H : nwState ?net ?h = (?x, _) |- _ ] =>
       replace (x) with (fst (nwState net h)) in * by (rewrite H; auto)

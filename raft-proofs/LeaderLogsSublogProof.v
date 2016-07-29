@@ -41,14 +41,6 @@ Section LeaderLogsSublog.
     simpl. intuition.
   Qed.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?x _ ?y ] ] =>
-        destruct (name_eq_dec x y); subst_max; rewrite_update; simpl in *
-      | [ H : context [ update _ _ ?x _ ?y ] |- _ ] =>
-        destruct (name_eq_dec x y); subst_max; rewrite_update; simpl in *
-    end.
-
   Ltac start :=
     repeat match goal with
              | [ H : _ |- _ ] =>
@@ -82,7 +74,7 @@ Section LeaderLogsSublog.
     start.
     find_rewrite_lem update_elections_data_client_request_leaderLogs.
     find_erewrite_lem update_nop_ext' .
-    update_destruct.
+    update_destruct_max_simplify.
     - destruct (log d) using (handleClientRequest_log_ind ltac:(eauto)).
       + eauto.
       + simpl. right. eauto.
@@ -100,9 +92,9 @@ Section LeaderLogsSublog.
     - start.
       find_rewrite_lem update_elections_data_timeout_leaderLogs.
       find_erewrite_lem update_nop_ext' .
-      update_destruct; eauto.
+      update_destruct_max_simplify; eauto.
       erewrite handleTimeout_log_same by eauto; eauto.
-    - repeat update_destruct; try congruence.
+    - repeat update_destruct_max_simplify; try congruence.
       + find_rewrite_lem update_elections_data_timeout_leaderLogs.
         eauto.
       + eauto.
@@ -130,10 +122,10 @@ Section LeaderLogsSublog.
     - start.
       find_rewrite_lem update_elections_data_appendEntries_leaderLogs.
       find_erewrite_lem update_nop_ext'.
-      update_destruct; eauto.
+      update_destruct_max_simplify; eauto.
       erewrite handleAppendEntries_leader by (eauto; congruence).
       eauto.
-    - repeat update_destruct; try congruence.
+    - repeat update_destruct_max_simplify; try congruence.
       + find_rewrite_lem update_elections_data_appendEntries_leaderLogs.
         eauto.
       + eauto.
@@ -149,10 +141,10 @@ Section LeaderLogsSublog.
     intuition.
     - start.
       find_erewrite_lem update_nop_ext'.
-      update_destruct; eauto.
+      update_destruct_max_simplify; eauto.
       erewrite handleAppendEntriesReply_same_log by eauto.
       eauto.
-    - repeat update_destruct; try congruence; eauto.
+    - repeat update_destruct_max_simplify; try congruence; eauto.
   Qed.
 
   Theorem leaderLogs_sublog_request_vote :
@@ -166,10 +158,10 @@ Section LeaderLogsSublog.
     - start.
       find_rewrite_lem leaderLogs_update_elections_data_requestVote.
       find_erewrite_lem update_nop_ext'.
-      update_destruct; eauto.
+      update_destruct_max_simplify; eauto.
       erewrite handleRequestVote_same_log by eauto.
       eauto.
-    - repeat update_destruct; try congruence.
+    - repeat update_destruct_max_simplify; try congruence.
       + find_rewrite_lem leaderLogs_update_elections_data_requestVote.
         eauto.
       + eauto.
@@ -256,14 +248,14 @@ Section LeaderLogsSublog.
     find_copy_apply_lem_hyp handleRequestVoteReply_RVR_spec.
     intuition.
     - subst. repeat find_rewrite.
-      repeat update_destruct; eauto;
+      repeat update_destruct_max_simplify; eauto;
       find_eapply_lem_hyp leaderLogs_update_elections_data_RVR; eauto; intuition eauto;
       unfold raft_data in *; congruence.
-    - repeat update_destruct; try congruence.
+    - repeat update_destruct_max_simplify; try congruence.
       + find_eapply_lem_hyp leaderLogs_update_elections_data_RVR; eauto; intuition eauto.
         subst_max. repeat find_rewrite. discriminate.
       + eauto.
-    - repeat update_destruct.
+    - repeat update_destruct_max_simplify.
       + repeat find_rewrite.
         find_eapply_lem_hyp leaderLogs_update_elections_data_RVR; eauto; intuition.
         * exfalso. eauto using contradict_leaderLogs_term_sanity.
@@ -280,7 +272,7 @@ Section LeaderLogsSublog.
         * subst. unfold raft_data in *. repeat find_rewrite.
           eapply lifted_leader_sublog_host; eauto.
       + eauto.
-    - repeat update_destruct.
+    - repeat update_destruct_max_simplify.
       + find_eapply_lem_hyp leaderLogs_update_elections_data_RVR; eauto; intuition.
         * repeat find_rewrite. eauto.
         * subst. unfold raft_data in *. repeat find_rewrite. auto.
@@ -380,7 +372,7 @@ Section LeaderLogsSublog.
     simpl. intuition.
     repeat find_higher_order_rewrite.
     subst.
-    repeat update_destruct; simpl in *; try discriminate;
+    repeat update_destruct_max_simplify; simpl in *; try discriminate;
     match goal with
       | [ H : _, H' : _ |- _ ] => solve [eapply H; eauto; rewrite H'; eauto]
     end.

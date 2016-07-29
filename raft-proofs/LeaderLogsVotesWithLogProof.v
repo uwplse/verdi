@@ -19,20 +19,6 @@ Section LeaderLogsVotesWithLog.
   Context {vrmutdi : votesReceived_moreUpToDate_interface}.
   Context {rvrmutdi : requestVoteReply_moreUpToDate_interface}.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac update_destruct_hyp :=
-    match goal with
-      | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac destruct_update :=
-    repeat (first [update_destruct_hyp|update_destruct]; subst; rewrite_update).
-
-
   Lemma quorum_preserved:
     forall (st st' : name -> electionsData * raft_data)
       (t0 : term) (ll : list entry) (leader : name),

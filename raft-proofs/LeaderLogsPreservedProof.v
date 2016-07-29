@@ -98,20 +98,6 @@ Section LeaderLogsPreserved.
     break_if; try congruence; do_bool; eauto using le_antisym.
   Qed.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac update_destruct_hyp :=
-    match goal with
-      | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac destruct_update :=
-    repeat (first [update_destruct_hyp|update_destruct]; subst; rewrite_update).
-
-
   Lemma leaderLogs_preserved_request_vote_reply :
     refined_raft_net_invariant_request_vote_reply leaderLogs_preserved.
   Proof.

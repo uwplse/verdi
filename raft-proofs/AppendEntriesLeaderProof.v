@@ -26,14 +26,6 @@ Section AppendEntriesLeader.
   Context {lltsi : leaderLogs_term_sanity_interface}.
   Context {olpti : one_leader_per_term_interface}.
 
-  Ltac update_destruct :=
-    match goal with
-    | [ H : context [ update _ _ ?x _ ?y ] |- _ ] =>
-      destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-    | [ |- context [ update _ _ ?x _ ?y ] ] =>
-      destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-    end.
-
   Lemma appendEntries_leader_init :
     refined_raft_net_invariant_init appendEntries_leader.
   Proof.
@@ -90,7 +82,7 @@ Section AppendEntriesLeader.
     intros.
     find_apply_hyp_hyp. intuition.
     - repeat find_higher_order_rewrite.
-      update_destruct.
+      update_destruct_simplify.
       + eapply appendEntries_leader_predicate_TTLM_preserved; eauto using handleClientRequest_TTLM.
         eauto.
       + eauto.
@@ -119,7 +111,7 @@ Section AppendEntriesLeader.
     find_apply_hyp_hyp.
     intuition.
     - repeat find_higher_order_rewrite.
-      update_destruct.
+      update_destruct_simplify.
       + eapply appendEntries_leader_predicate_TTLM_preserved; eauto using handleTimeout_TTLM.
         eauto.
       + eauto.
@@ -147,7 +139,7 @@ Section AppendEntriesLeader.
     find_apply_hyp_hyp.
     intuition.
     - repeat find_higher_order_rewrite.
-      update_destruct.
+      update_destruct_simplify.
       + eapply appendEntries_leader_predicate_TTLM_preserved; eauto using handleAppendEntries_TTLM.
         eauto.
       + eauto.
@@ -174,7 +166,7 @@ Section AppendEntriesLeader.
     find_apply_hyp_hyp.
     intuition.
     - repeat find_higher_order_rewrite.
-      update_destruct.
+      update_destruct_simplify.
       + eapply appendEntries_leader_predicate_TTLM_preserved; eauto using handleAppendEntriesReply_TTLM.
         eauto.
       + eauto.
@@ -201,7 +193,7 @@ Section AppendEntriesLeader.
     find_apply_hyp_hyp.
     intuition.
     - repeat find_higher_order_rewrite.
-      update_destruct.
+      update_destruct_simplify.
       + eapply appendEntries_leader_predicate_TTLM_preserved; eauto using handleRequestVote_TTLM.
         eauto.
       + eauto.
@@ -260,7 +252,7 @@ Section AppendEntriesLeader.
     find_apply_hyp_hyp.
     find_copy_apply_lem_hyp handleRequestVoteReply_spec'.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - rewrite handleRequestVoteReply_same_log.
       intuition; try congruence.
       + repeat find_rewrite.
@@ -348,7 +340,7 @@ Section AppendEntriesLeader.
     find_apply_hyp_hyp.
     intuition.
     - repeat find_higher_order_rewrite.
-      update_destruct.
+      update_destruct_simplify.
       + eapply appendEntries_leader_predicate_TTLM_preserved; eauto using doLeader_TTLM.
         match goal with
         | [ H : nwState ?net ?h = (?gd, ?d) |- _ ] =>
@@ -363,7 +355,7 @@ Section AppendEntriesLeader.
         | [ H : nwState ?net ?h = (?gd, ?d) |- _ ] =>
           replace d with (snd (nwState net h)) in * by (rewrite H; auto)
         end; eauto; break_and.
-      update_destruct.
+      update_destruct_simplify.
       + erewrite doLeader_same_log; eauto.
       + exfalso. eauto using lifted_one_leader_per_term.
   Qed.
@@ -388,7 +380,7 @@ Section AppendEntriesLeader.
     find_apply_hyp_hyp.
     intuition.
     - repeat find_higher_order_rewrite.
-      update_destruct.
+      update_destruct_simplify.
       + eapply appendEntries_leader_predicate_TTLM_preserved; eauto using doGenericServer_TTLM.
         match goal with
         | [ H : nwState ?net ?h = (?gd, ?d) |- _ ] =>
@@ -415,7 +407,7 @@ Section AppendEntriesLeader.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - discriminate.
     - eauto.
   Qed.

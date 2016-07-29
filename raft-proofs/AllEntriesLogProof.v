@@ -41,20 +41,6 @@ Section AllEntriesLog.
   (* strategy : prove allEntries_log as inductive invariant, then
      prove allEntries_leaderLogs inductive from that *)
 
-
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac update_destruct_hyp :=
-    match goal with
-      | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac destruct_update :=
-    repeat (first [update_destruct_hyp|update_destruct]; subst; rewrite_update).
-
   Definition no_entries_past_current_term_host_lifted net :=
     forall (h : name) e,
       In e (log (snd (nwState net h))) ->

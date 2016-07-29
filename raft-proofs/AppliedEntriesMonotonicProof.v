@@ -349,11 +349,6 @@ Section AppliedEntriesMonotonicProof.
       end. omega.
   Qed.
 
-  Ltac update_destruct_hyp :=
-    match goal with
-    | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma doGenericServer_applied_entries :
     forall ps h sigma os st' ms,
       raft_intermediate_reachable (mkNetwork ps sigma) ->

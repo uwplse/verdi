@@ -15,21 +15,6 @@ Section AllEntriesTermSanity.
 
   Context {rri: raft_refinement_interface}.
 
-
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac update_destruct_hyp :=
-    match goal with
-      | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac destruct_update :=
-    repeat (first [update_destruct_hyp|update_destruct]; subst; rewrite_update).
-  
-
   Lemma handleAppendEntries_currentTerm_monotonic:
     forall h st (d : raft_data) 
       (m : msg) (t : term) (n : name) (pli : logIndex) 

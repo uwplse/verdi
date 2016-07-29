@@ -24,19 +24,6 @@ Section AllEntriesVotesWithLog.
   Context {vwltsi : votesWithLog_term_sanity_interface}.
   Context {vvwlci : votes_votesWithLog_correspond_interface}.
   Context {vci : votes_correct_interface}.
-
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac update_destruct_hyp :=
-    match goal with
-      | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac destruct_update :=
-    repeat (first [update_destruct_hyp|update_destruct]; subst; rewrite_update).
   
   Lemma update_elections_data_appendEntries_allEntries' :
     forall h st t h' pli plt es ci t' e,

@@ -139,12 +139,6 @@ Section CommonTheorems.
       eauto using NoDup_dedup, in_dedup_was_in, dedup_In.
   Qed.
 
-  Ltac my_update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma handleRequestVoteReply_preserves_candidate_entries :
     forall net h h' t r st' e,
       st' = handleRequestVoteReply h (snd (nwState net h)) h' t r ->
@@ -160,7 +154,7 @@ Section CommonTheorems.
     split;
       rewrite update_fun_comm; simpl;
       rewrite update_fun_comm; simpl;
-      my_update_destruct; subst; rewrite_update; auto;
+      update_destruct; subst; rewrite_update; auto;
       try (unfold update_elections_data_requestVoteReply in *;
             repeat break_match; simpl in *; auto;
            break_if; simpl in *; repeat find_rewrite; auto);
@@ -207,7 +201,7 @@ Section CommonTheorems.
     eapply candidateEntries_same; eauto;
     intros;
     repeat (rewrite update_fun_comm; simpl in * );
-    my_update_destruct; subst; rewrite_update; auto;
+    update_destruct; subst; rewrite_update; auto;
     repeat find_rewrite; simpl; auto;
     find_apply_lem_hyp doLeader_st; intuition.
   Qed.

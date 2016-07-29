@@ -16,19 +16,6 @@ Section InLogInAllEntries.
 
   Context {rri : raft_refinement_interface}.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac update_destruct_hyp :=
-    match goal with
-      | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac destruct_update :=
-    repeat (first [update_destruct_hyp|update_destruct]; subst; rewrite_update).
-
   Lemma in_log_in_all_entries_append_entries :
     refined_raft_net_invariant_append_entries in_log_in_all_entries.
   Proof.

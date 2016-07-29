@@ -53,14 +53,6 @@ Section NextIndexSafety.
     - omega.
   Qed.
 
-  Ltac update_destruct :=
-    match goal with
-    | [ H : context [ update _ _ ?x _ ?y ] |- _ ] =>
-      destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-    | [ |- context [ update _ _ ?x _ ?y ] ] =>
-      destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-    end.
-
   Theorem handleClientRequest_nextIndex_preserved :
     forall h st client id c out st' ps,
       handleClientRequest h st client id c = (out, st', ps) ->
@@ -79,7 +71,7 @@ Section NextIndexSafety.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - eauto using nextIndex_safety_preserved, handleClientRequest_nextIndex_preserved.
     - auto.
   Qed.
@@ -102,7 +94,7 @@ Section NextIndexSafety.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - eauto using nextIndex_safety_preserved, handleTimeout_nextIndex_preserved.
     - auto.
   Qed.
@@ -124,7 +116,7 @@ Section NextIndexSafety.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - eauto using nextIndex_safety_preserved, handleAppendEntries_nextIndex_preserved.
     - auto.
   Qed.
@@ -159,7 +151,7 @@ Section NextIndexSafety.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - erewrite handleAppendEntriesReply_log by eauto.
       find_copy_apply_lem_hyp handleAppendEntriesReply_nextIndex; auto.
       intuition; repeat find_rewrite.
@@ -205,7 +197,7 @@ Section NextIndexSafety.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - eauto using nextIndex_safety_preserved, handleRequestVote_nextIndex_preserved.
     - auto.
   Qed.
@@ -230,7 +222,7 @@ Section NextIndexSafety.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - find_copy_apply_lem_hyp handleRequestVoteReply_matchIndex.
       unfold getNextIndex in *.
       erewrite handleRequestVoteReply_log in * by eauto.
@@ -258,7 +250,7 @@ Section NextIndexSafety.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - eauto using nextIndex_safety_preserved, doLeader_nextIndex_preserved.
     - auto.
   Qed.
@@ -281,7 +273,7 @@ Section NextIndexSafety.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - eauto using nextIndex_safety_preserved, doGenericServer_nextIndex_preserved.
     - auto.
   Qed.
@@ -304,7 +296,7 @@ Section NextIndexSafety.
     intros.
     subst.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - unfold getNextIndex, assoc_default. simpl. omega.
     - auto.
   Qed.

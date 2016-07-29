@@ -20,12 +20,6 @@ Section LeaderLogsSorted.
   Context {rri : raft_refinement_interface}.
   Context {si : sorted_interface}.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ H : context [ update _ _ ?x _ ?y ] |- _ ] =>
-        destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-    end.
-
   Lemma leaderLogs_sorted_init :
     refined_raft_net_invariant_init leaderLogs_sorted.
   Proof.
@@ -48,7 +42,7 @@ Section LeaderLogsSorted.
   Proof.
     unfold refined_raft_net_invariant_client_request, leaderLogs_sorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
-    update_destruct; simpl in *.
+    update_destruct_simplify; simpl in *.
     - rewrite leaderLogs_update_elections_data_client_request in *.
       eauto.
     - eauto.
@@ -81,7 +75,7 @@ Section LeaderLogsSorted.
   Proof.
     unfold refined_raft_net_invariant_timeout, leaderLogs_sorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
-    update_destruct; simpl in *;
+    update_destruct_simplify; simpl in *;
     try rewrite leaderLogs_update_elections_data_timeout in *;
     eauto.
   Qed.
@@ -101,7 +95,7 @@ Section LeaderLogsSorted.
   Proof.
     unfold refined_raft_net_invariant_append_entries, leaderLogs_sorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
-    update_destruct; simpl in *.
+    update_destruct_simplify; simpl in *.
     - rewrite leaderLogs_update_elections_data_AE in *.
       eauto.
     - eauto.
@@ -112,7 +106,7 @@ Section LeaderLogsSorted.
   Proof.
     unfold refined_raft_net_invariant_append_entries_reply, leaderLogs_sorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
-    update_destruct; simpl in *; eauto.
+    update_destruct_simplify; simpl in *; eauto.
   Qed.
 
   Lemma leaderLogs_sorted_request_vote :
@@ -121,7 +115,7 @@ Section LeaderLogsSorted.
     unfold refined_raft_net_invariant_request_vote, leaderLogs_sorted.
     intros.
     subst. simpl in *. find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - unfold update_elections_data_requestVote in *.
       repeat break_match; simpl in *; intuition; repeat find_inversion; eauto.
     - eauto.
@@ -153,7 +147,7 @@ Section LeaderLogsSorted.
   Proof.
     unfold refined_raft_net_invariant_request_vote_reply, leaderLogs_sorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
-    update_destruct; eauto.
+    update_destruct_simplify; eauto.
     match goal with
       | _ : context [ leaderLogs (update_elections_data_requestVoteReply ?h ?s ?t ?v ?st) ] |- _ =>
         destruct (leaderLogs (update_elections_data_requestVoteReply h s t v st))
@@ -168,7 +162,7 @@ Section LeaderLogsSorted.
   Proof.
     unfold refined_raft_net_invariant_do_leader, leaderLogs_sorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - match goal with
         | [ H : _, H' : _ |- _ ] =>
           eapply H; rewrite H'; simpl; eauto
@@ -181,7 +175,7 @@ Section LeaderLogsSorted.
   Proof.
     unfold refined_raft_net_invariant_do_generic_server, leaderLogs_sorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - match goal with
         | [ H : _, H' : _ |- _ ] =>
           eapply H; rewrite H'; simpl; eauto
@@ -203,7 +197,7 @@ Section LeaderLogsSorted.
     unfold refined_raft_net_invariant_reboot, leaderLogs_sorted.
     intros.
     find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - match goal with
         | [ H : _, H' : _ |- _ ] =>
           eapply H; rewrite H'; simpl; eauto

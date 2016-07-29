@@ -109,11 +109,6 @@ Section OutputCorrect.
     unfold in_output_list in *; break_exists; simpl in *; intuition; congruence.
   Qed.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma deduplicate_log'_app :
     forall l l' ks,
       exists l'',
