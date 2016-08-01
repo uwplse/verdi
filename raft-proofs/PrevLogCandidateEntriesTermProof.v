@@ -10,8 +10,7 @@ Require Import CandidateEntriesInterface.
 Require Import RefinementSpecLemmas.
 Require Import RefinementCommonTheorems.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import PrevLogCandidateEntriesTermInterface.
 
@@ -57,9 +56,9 @@ Section PrevLogCandidateEntriesTerm.
 
   Ltac update_destruct :=
     match goal with
-      | [ H : context [ update _ ?x _ ?y ] |- _ ] =>
+      | [ H : context [ update _ _ ?x _ ?y ] |- _ ] =>
         destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-      | [  |- context [ update _ ?x _ ?y ] ] =>
+      | [  |- context [ update _ _ ?x _ ?y ] ] =>
         destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
     end.
 
@@ -99,7 +98,7 @@ Section PrevLogCandidateEntriesTerm.
       handleTimeout h (snd (nwState net h)) = (out, d, l) ->
       candidateEntriesTerm t (nwState net) ->
       candidateEntriesTerm t
-                           (update (nwState net) h
+                           (update name_eq_dec (nwState net) h
                                    (update_elections_data_timeout h (nwState net h), d)).
   Proof.
     unfold candidateEntriesTerm.
@@ -148,7 +147,7 @@ Section PrevLogCandidateEntriesTerm.
       handleAppendEntries h (snd (nwState net h)) t n pli plt es ci = (d, m) ->
       refined_raft_intermediate_reachable net ->
       candidateEntriesTerm t' (nwState net) ->
-      candidateEntriesTerm t' (update (nwState net) h
+      candidateEntriesTerm t' (update name_eq_dec (nwState net) h
                                  (update_elections_data_appendEntries
                                     h
                                     (nwState net h) t n pli plt es ci, d)).
@@ -182,7 +181,7 @@ Section PrevLogCandidateEntriesTerm.
     handleAppendEntriesReply h (snd (nwState net h)) h' t es r = (st', ms) ->
     refined_raft_intermediate_reachable net ->
     candidateEntriesTerm t' (nwState net) ->
-    candidateEntriesTerm t' (update (nwState net) h (fst (nwState net h), st')).
+    candidateEntriesTerm t' (update name_eq_dec (nwState net) h (fst (nwState net h), st')).
   Proof.
     unfold candidateEntriesTerm.
     intros. break_exists_exists.
@@ -229,7 +228,7 @@ Section PrevLogCandidateEntriesTerm.
     forall net h h' t lli llt t',
       candidateEntriesTerm t' (nwState net) ->
       candidateEntriesTerm t'
-                       (update (nwState net) h
+                       (update name_eq_dec (nwState net) h
                                (update_elections_data_requestVote h h' t h' lli llt (nwState net h),
                                 advanceCurrentTerm (snd (nwState net h)) t)).
   Proof.
@@ -252,7 +251,7 @@ Section PrevLogCandidateEntriesTerm.
     forall net h h' t lli llt d t' m,
       handleRequestVote h (snd (nwState net h)) t h' lli llt = (d, m) ->
       candidateEntriesTerm t' (nwState net) ->
-      candidateEntriesTerm t' (update (nwState net) h
+      candidateEntriesTerm t' (update name_eq_dec (nwState net) h
                                  (update_elections_data_requestVote
                                     h h' t h' lli llt (nwState net h), d)).
   Proof.
@@ -283,7 +282,7 @@ Section PrevLogCandidateEntriesTerm.
       handleRequestVoteReply h (snd (nwState net h)) h' t r = st' ->
       refined_raft_intermediate_reachable net ->
       candidateEntriesTerm t' (nwState net) ->
-      candidateEntriesTerm t' (update (nwState net) h
+      candidateEntriesTerm t' (update name_eq_dec (nwState net) h
                                  (update_elections_data_requestVoteReply h h' t r (nwState net h),
                                   st')).
   Proof.
@@ -332,7 +331,7 @@ Section PrevLogCandidateEntriesTerm.
       nwState net h = (gd, d) ->
       doLeader d h = (os, d', ms) ->
       candidateEntriesTerm t' (nwState net) ->
-      candidateEntriesTerm t' (update (nwState net) h (gd, d')).
+      candidateEntriesTerm t' (update name_eq_dec (nwState net) h (gd, d')).
   Proof.
     unfold candidateEntriesTerm.
     intros. break_exists_exists.
@@ -422,7 +421,7 @@ Section PrevLogCandidateEntriesTerm.
       nwState net h = (gd, d) ->
       doGenericServer h d = (os, d', ms) ->
       candidateEntriesTerm t (nwState net) ->
-      candidateEntriesTerm t (update (nwState net) h (gd, d')).
+      candidateEntriesTerm t (update name_eq_dec (nwState net) h (gd, d')).
   Proof.
     intros.
     find_apply_lem_hyp doGenericServer_type. break_and.

@@ -2,8 +2,7 @@ Require Import GhostSimulations.
 
 Require Import Raft.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import RaftRefinementInterface.
 Require Import CommonTheorems.
@@ -888,12 +887,12 @@ Section PrefixWithinTerm.
   
   Ltac update_destruct :=
     match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
     end.
 
   Ltac update_destruct_hyp :=
     match goal with
-      | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
+      | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
     end.
 
   Ltac destruct_update :=
@@ -1553,7 +1552,7 @@ Section PrefixWithinTerm.
       intros. simpl in *.
       find_apply_hyp_hyp.
       match goal with
-        | H : forall _, _ _ = update _ _ _ _ |- _ =>
+        | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
           rewrite H in *
       end.
       destruct_update; simpl in *; eauto;
@@ -1562,7 +1561,7 @@ Section PrefixWithinTerm.
         in *.
       intros. simpl in *. find_apply_hyp_hyp.
       match goal with
-        | H : forall _, _ _ = update _ _ _ _ |- _ =>
+        | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
           rewrite H in *
       end.
       destruct_update; simpl in *; eauto;
@@ -1570,7 +1569,7 @@ Section PrefixWithinTerm.
     - unfold append_entries_log_prefix_within_term in *.
       intros. simpl in *. find_apply_hyp_hyp.
       match goal with
-        | H : forall _, _ _ = update _ _ _ _ |- _ =>
+        | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
           rewrite H in *
       end.
       destruct_update; simpl in *; eauto;
@@ -1601,7 +1600,7 @@ Section PrefixWithinTerm.
       find_apply_hyp_hyp.
       intuition;
         match goal with
-          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
             rewrite H in *
         end;
         destruct_update; simpl in *; eauto.
@@ -1610,7 +1609,7 @@ Section PrefixWithinTerm.
       find_apply_hyp_hyp.
       intuition;
         match goal with
-          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
             rewrite H in *
         end;
         destruct_update; simpl in *; eauto.
@@ -1619,7 +1618,7 @@ Section PrefixWithinTerm.
       find_apply_hyp_hyp.
       intuition;
         match goal with
-          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
             rewrite H in *
         end;
         destruct_update; simpl in *; repeat find_rewrite; eauto.
@@ -1665,7 +1664,7 @@ Section PrefixWithinTerm.
         [|do_in_map; subst; simpl in *; find_eapply_lem_hyp handleTimeout_packets; eauto;
           find_rewrite; intuition; find_false; repeat eexists; eauto].
       match goal with
-          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
             rewrite H in *
         end;
       destruct_update; simpl in *;
@@ -1678,7 +1677,7 @@ Section PrefixWithinTerm.
         [|do_in_map; subst; simpl in *; find_eapply_lem_hyp handleTimeout_packets; eauto;
           find_rewrite; intuition; find_false; repeat eexists; eauto].
       match goal with
-          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
             rewrite H in *
         end;
       destruct_update; simpl in *;
@@ -1691,7 +1690,7 @@ Section PrefixWithinTerm.
         [|do_in_map; subst; simpl in *; find_eapply_lem_hyp handleTimeout_packets; eauto;
           find_rewrite; intuition; find_false; repeat eexists; eauto].
       match goal with
-          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
             rewrite H in *
         end;
       destruct_update; simpl in *;
@@ -1742,7 +1741,7 @@ Section PrefixWithinTerm.
           find_eapply_lem_hyp handleRequestVote_no_append_entries; subst;
           intuition; find_false; repeat eexists; eauto].
       match goal with
-          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
             rewrite H in *
         end;
       destruct_update; simpl in *;
@@ -1756,7 +1755,7 @@ Section PrefixWithinTerm.
         find_eapply_lem_hyp handleRequestVote_no_append_entries; subst;
         intuition; find_false; repeat eexists; eauto].
       match goal with
-          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
             rewrite H in *
         end;
       destruct_update; simpl in *;
@@ -1770,7 +1769,7 @@ Section PrefixWithinTerm.
         find_eapply_lem_hyp handleRequestVote_no_append_entries; subst;
         intuition; find_false; repeat eexists; eauto].
       match goal with
-          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
             rewrite H in *
         end;
       destruct_update; simpl in *;
@@ -1809,7 +1808,7 @@ intuition.
       find_apply_hyp_hyp.
       intuition;
         match goal with
-          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
             rewrite H in *
         end;
         destruct_update; simpl in *; eauto.
@@ -1818,7 +1817,7 @@ intuition.
       find_apply_hyp_hyp.
       intuition;
         match goal with
-          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
             rewrite H in *
         end;
         destruct_update; simpl in *; eauto.
@@ -1827,7 +1826,7 @@ intuition.
       find_apply_hyp_hyp.
       intuition;
         match goal with
-          | H : forall _, _ _ = update _ _ _ _ |- _ =>
+          | H : forall _, _ _ = update _ _ _ _ _ |- _ =>
             rewrite H in *
         end;
         destruct_update; simpl in *; repeat find_rewrite; eauto.
@@ -1868,7 +1867,7 @@ intuition.
     intros.
     intuition; red; intros; try find_apply_hyp_hyp;
     match goal with
-      | H : forall _, _ _ _ = update _ _ _ _ |- _ =>
+      | H : forall _, _ _ _ = update _ _ _ _ _ |- _ =>
         repeat rewrite H in *
     end;
     match goal with

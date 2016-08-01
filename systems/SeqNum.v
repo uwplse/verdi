@@ -41,7 +41,7 @@ Section SeqNum.
     else
       let '(out, data', pkts) := (net_handlers dst src (tmMsg m) (tdData state)) in
       let (n', tpkts) := processPackets (tdNum state) pkts in
-      (out, mkseq_num_data n' (update (tdSeen state) src (tmNum m :: tdSeen state src)) data', tpkts).
+      (out, mkseq_num_data n' (update name_eq_dec (tdSeen state) src (tmNum m :: tdSeen state src)) data', tpkts).
 
   Definition seq_num_input_handlers
              (h : name)

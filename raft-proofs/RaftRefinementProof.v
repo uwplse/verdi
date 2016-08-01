@@ -23,7 +23,7 @@ Section RaftRefinementProof.
       P net ->
       refined_raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                              In p' (send_packets (pDst p) l)) ->
       P (mkNetwork ps' st').
@@ -46,7 +46,7 @@ Section RaftRefinementProof.
       update_elections_data_input h inp (nwState net h) = gd ->
       P net ->
       refined_raft_intermediate_reachable net ->
-      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                          In p' (send_packets h l)) ->
       P (mkNetwork ps' st').
@@ -86,7 +86,7 @@ Section RaftRefinementProof.
            (refined_raft_intermediate_reachable
               {|
                 nwPackets := (xs ++ ys) ++ send_packets (pDst p) l2;
-                nwState := update (nwState net) (pDst p)
+                nwState := update name_eq_dec (nwState net) (pDst p)
                                   (update_elections_data_net (pDst p)
                                                              (pSrc p)
                                                              (pBody p)
@@ -98,11 +98,12 @@ Section RaftRefinementProof.
                 nwPackets := ((xs ++ ys)
                                 ++ send_packets (pDst p) l2)
                                ++ send_packets (pDst p) l3 ;
-            nwState := update
+            nwState := update name_eq_dec
                          (nwState
                             {|
                               nwPackets := (xs ++ ys) ++ send_packets (pDst p) l2;
-                              nwState := update (nwState net)
+                              nwState := update name_eq_dec 
+                                                (nwState net)
                                                 (pDst p)
                                                 (update_elections_data_net
                                                    (pDst p) (pSrc p)
@@ -133,7 +134,7 @@ Section RaftRefinementProof.
            (refined_raft_intermediate_reachable
               {|
                 nwPackets := nwPackets net ++ send_packets h l2;
-                nwState := update (nwState net) h
+                nwState := update name_eq_dec (nwState net) h
                                   (update_elections_data_input h
                                                                inp
                                                                (nwState net h), r0) |})
@@ -144,11 +145,12 @@ Section RaftRefinementProof.
                 nwPackets := (nwPackets net
                                 ++ send_packets h l2)
                                ++ send_packets h l4 ;
-            nwState := update
+            nwState := update name_eq_dec
                          (nwState
                             {|
                               nwPackets := nwPackets net ++ send_packets h l2;
-                              nwState := update (nwState net)
+                              nwState := update name_eq_dec 
+                                               (nwState net)
                                                 h
                                                 (update_elections_data_input h inp
                                                                              (nwState net h), r0) |})
@@ -207,7 +209,7 @@ Section RaftRefinementProof.
       refined_raft_intermediate_reachable net ->
       refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                              In p' (send_packets (pDst p) l)) ->
       P (mkNetwork ps' st').
@@ -231,7 +233,7 @@ Section RaftRefinementProof.
       P net ->
       refined_raft_intermediate_reachable net ->
       refined_raft_intermediate_reachable (mkNetwork ps' st') ->
-      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                          In p' (send_packets h l)) ->
       P (mkNetwork ps' st').
@@ -283,7 +285,7 @@ Section RaftRefinementProof.
            (refined_raft_intermediate_reachable
               {|
                 nwPackets := (xs ++ ys) ++ send_packets (pDst p) l2;
-                nwState := update (nwState net) (pDst p)
+                nwState := update name_eq_dec (nwState net) (pDst p)
                                   (update_elections_data_net (pDst p)
                                                              (pSrc p)
                                                              (pBody p)
@@ -295,11 +297,11 @@ Section RaftRefinementProof.
                 nwPackets := ((xs ++ ys)
                                 ++ send_packets (pDst p) l2)
                                ++ send_packets (pDst p) l3 ;
-            nwState := update
+            nwState := update name_eq_dec
                          (nwState
                             {|
                               nwPackets := (xs ++ ys) ++ send_packets (pDst p) l2;
-                              nwState := update (nwState net)
+                              nwState := update name_eq_dec (nwState net)
                                                 (pDst p)
                                                 (update_elections_data_net
                                                    (pDst p) (pSrc p)
@@ -343,7 +345,7 @@ Section RaftRefinementProof.
            (refined_raft_intermediate_reachable
               {|
                 nwPackets := nwPackets net ++ send_packets h l2;
-                nwState := update (nwState net) h
+                nwState := update name_eq_dec (nwState net) h
                                   (update_elections_data_input h
                                                                inp
                                                                (nwState net h), r0) |})
@@ -354,11 +356,12 @@ Section RaftRefinementProof.
                 nwPackets := (nwPackets net
                                 ++ send_packets h l2)
                                ++ send_packets h l4 ;
-            nwState := update
+            nwState := update name_eq_dec
                          (nwState
                             {|
                               nwPackets := nwPackets net ++ send_packets h l2;
-                              nwState := update (nwState net)
+                              nwState := update name_eq_dec
+                                               (nwState net)
                                                 h
                                                 (update_elections_data_input h inp
                                                                              (nwState net h), r0) |})
@@ -524,7 +527,7 @@ Section RaftRefinementProof.
     - break_exists. break_and.
       subst.
       exists {| nwPackets := map ghost_packet ps' ;
-           nwState := update (nwState x) h (update_elections_data_input h inp (nwState x h), d)
+           nwState := update name_eq_dec (nwState x) h (update_elections_data_input h inp (nwState x h), d)
         |}. intuition.
       + unfold deghost. simpl in *. map_crush. f_equal.
         * map_id.
@@ -539,7 +542,7 @@ Section RaftRefinementProof.
     - break_exists. break_and.
       subst.
       exists {| nwPackets := map ghost_packet ps' ;
-           nwState := update (nwState x) (pDst p)
+           nwState := update name_eq_dec (nwState x) (pDst p)
                              (update_elections_data_net (pDst p) (pSrc p)
                                                  (pBody p) (nwState x (pDst p)), d)
         |}. intuition.
@@ -566,7 +569,7 @@ Section RaftRefinementProof.
           find_apply_hyp_hyp. in_crush.
     - break_exists. break_and. subst.
       exists {| nwPackets := map ghost_packet ps' ;
-           nwState := update (nwState x) h (fst (nwState x h) , d')
+           nwState := update name_eq_dec (nwState x) h (fst (nwState x h) , d')
         |}. intuition.
       + unfold deghost. simpl in *. map_crush. f_equal.
         * map_id.
@@ -582,7 +585,7 @@ Section RaftRefinementProof.
           destruct x. auto.
     - break_exists. break_and. subst.
       exists {| nwPackets := map ghost_packet ps' ;
-           nwState := update (nwState x) h (fst (nwState x h) , d')
+           nwState := update name_eq_dec (nwState x) h (fst (nwState x h) , d')
         |}. intuition.
       + unfold deghost. simpl in *. map_crush. f_equal.
         * map_id.

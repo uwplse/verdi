@@ -1,7 +1,6 @@
 Require Import Verdi.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Fixpoint distinct_pairs_and {A} (R : A -> A -> Prop) (l : list A) : Prop :=
   match l with
@@ -26,27 +25,27 @@ Class Decomposition (B : BaseParams) (M : MultiParams B) :=
       forall h inp sigma st' out ps,
         input_handlers h inp (sigma h) = (out, st', ps) ->
         state_invariant sigma ->
-        state_invariant (update sigma h st');
+        state_invariant (update name_eq_dec sigma h st');
     state_invariant_maintained_deliver :
       forall p sigma st' out ps,
         net_handlers (pDst p) (pSrc p) (pBody p) (sigma (pDst p)) = (out, st', ps) ->
         state_invariant sigma ->
         network_invariant sigma p ->
-        state_invariant (update sigma (pDst p) st');
+        state_invariant (update name_eq_dec sigma (pDst p) st');
 
     network_invariant_maintained_input_old :
       forall h inp sigma st' out ps p,
         input_handlers h inp (sigma h) = (out, st', ps) ->
         state_invariant sigma ->
         network_invariant sigma p ->
-        network_invariant (update sigma h st') p;
+        network_invariant (update name_eq_dec sigma h st') p;
     network_invariant_maintained_input_new :
       forall h inp sigma st' out ps p,
         input_handlers h inp (sigma h) = (out, st', ps) ->
         state_invariant sigma ->
         In (pDst p, pBody p) ps ->
         pSrc p = h ->
-        network_invariant (update sigma h st') p;
+        network_invariant (update name_eq_dec sigma h st') p;
 
     network_invariant_maintained_deliver_old :
       forall sigma st' out ps p q,
@@ -55,7 +54,7 @@ Class Decomposition (B : BaseParams) (M : MultiParams B) :=
         network_invariant sigma p ->
         network_invariant sigma q ->
         network_network_invariant p q ->
-        network_invariant (update sigma (pDst p) st') q;
+        network_invariant (update name_eq_dec sigma (pDst p) st') q;
     network_invariant_maintained_deliver_new :
       forall sigma st' out ps p p',
         net_handlers (pDst p) (pSrc p) (pBody p) (sigma (pDst p)) = (out, st', ps) ->
@@ -63,7 +62,7 @@ Class Decomposition (B : BaseParams) (M : MultiParams B) :=
         network_invariant sigma p ->
         In (pDst p', pBody p') ps ->
         pSrc p' = pDst p ->
-        network_invariant (update sigma (pDst p) st') p';
+        network_invariant (update name_eq_dec sigma (pDst p) st') p';
 
     network_network_invariant_maintained_input_old :
       forall h inp sigma st' out ps p p',

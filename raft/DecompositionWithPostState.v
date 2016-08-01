@@ -14,7 +14,7 @@ Section DecompositionWithPostState.
       P net ->
       raft_intermediate_reachable net ->
       raft_intermediate_reachable (mkNetwork ps' st') ->
-      (forall h', st' h' = update (nwState net) h d h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h d h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                          In p' (send_packets h l)) ->
       P (mkNetwork ps' st').
@@ -25,7 +25,7 @@ Section DecompositionWithPostState.
       P net ->
       raft_intermediate_reachable net ->
       raft_intermediate_reachable (mkNetwork ps' st') ->
-      (forall h', st' h' = update (nwState net) h d h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h d h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                                In p' (send_packets h l)) ->
       P (mkNetwork ps' st').
@@ -38,7 +38,7 @@ Section DecompositionWithPostState.
       raft_intermediate_reachable net ->
       raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          p' = mkPacket (pDst p) (pSrc p) m) ->
       P (mkNetwork ps' st').
@@ -51,7 +51,7 @@ Section DecompositionWithPostState.
       raft_intermediate_reachable net ->
       raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          In p' (send_packets (pDst p) m)) ->
       P (mkNetwork ps' st').
@@ -64,7 +64,7 @@ Section DecompositionWithPostState.
       raft_intermediate_reachable net ->
       raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          p' = mkPacket (pDst p) (pSrc p) m) ->
       P (mkNetwork ps' st').
@@ -77,7 +77,7 @@ Section DecompositionWithPostState.
       raft_intermediate_reachable net ->
       raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys)) ->
       P (mkNetwork ps' st').
 
@@ -88,7 +88,7 @@ Section DecompositionWithPostState.
       raft_intermediate_reachable net ->
       raft_intermediate_reachable (mkNetwork ps' st') ->
       nwState net h = d ->
-      (forall h', st' h' = update (nwState net) h d' h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h d' h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
                              In p (send_packets h ms)) ->
       P (mkNetwork ps' st').
@@ -100,7 +100,7 @@ Section DecompositionWithPostState.
       raft_intermediate_reachable net ->
       raft_intermediate_reachable (mkNetwork ps' st') ->
       nwState net h = d ->
-      (forall h', st' h' = update (nwState net) h d' h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h d' h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
                              In p (send_packets h ms)) ->
       P (mkNetwork ps' st').
@@ -116,7 +116,7 @@ Section DecompositionWithPostState.
       raft_intermediate_reachable net ->
       raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                              In p' (send_packets (pDst p) l)) ->
       P (mkNetwork ps' st').
@@ -139,7 +139,7 @@ Section DecompositionWithPostState.
       P net ->
       raft_intermediate_reachable net ->
       raft_intermediate_reachable (mkNetwork ps' st') ->
-      (forall h', st' h' = update (nwState net) h d h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h d h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                          In p' (send_packets h l)) ->
       P (mkNetwork ps' st').
@@ -159,7 +159,7 @@ Section DecompositionWithPostState.
       raft_intermediate_reachable net ->
       raft_intermediate_reachable net' ->
       nwState net h = d ->
-      (forall h', nwState net' h' = update (nwState net) h d' h') ->
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h d' h') ->
       nwPackets net = nwPackets net' ->
       P net'.
 
@@ -189,20 +189,20 @@ Section DecompositionWithPostState.
            (HREACH1 : raft_intermediate_reachable
               {|
                 nwPackets := (send_packets (pDst p) l0) ++ xs ++ ys;
-                nwState := update (nwState net) (pDst p) r
+                nwState := update name_eq_dec (nwState net) (pDst p) r
               |}) by (eapply RIR_handleMessage; eauto; in_crush).
          assert
            (HREACH2 : raft_intermediate_reachable
               {|
                 nwPackets := (send_packets (pDst p) (l0 ++ l1)) ++ xs ++ ys;
-                nwState := (update (update (nwState net) (pDst p) r) (pDst p) r0)
+                nwState := (update name_eq_dec (update name_eq_dec (nwState net) (pDst p) r) (pDst p) r0)
               |}) by (eapply RIR_doLeader; eauto;
                       [simpl in *; break_if; try congruence; eauto| in_crush]).
          assert
            (HREACH3 : raft_intermediate_reachable
               {|
                 nwPackets := (send_packets (pDst p) (l0 ++ l1 ++ l3)) ++ xs ++ ys;
-                nwState := (update (update (update (nwState net) (pDst p) r) (pDst p) r0) (pDst p) d)
+                nwState := (update name_eq_dec (update name_eq_dec (update name_eq_dec (nwState net) (pDst p) r) (pDst p) r0) (pDst p) d)
               |}).
          { eapply RIR_doGenericServer; eauto.
            - simpl in *. break_if; try congruence; eauto.
@@ -255,20 +255,20 @@ Section DecompositionWithPostState.
            (HREACH1 : raft_intermediate_reachable
               {|
                 nwPackets := (send_packets h l0) ++ (nwPackets net);
-                nwState := update (nwState net) h r
+                nwState := update name_eq_dec (nwState net) h r
               |}) by (eapply RIR_handleInput; eauto; in_crush).
          assert
            (HREACH2 : raft_intermediate_reachable
               {|
                 nwPackets := (send_packets h (l0 ++ l2)) ++ (nwPackets net);
-                nwState := (update (update (nwState net) h r) h r0)
+                nwState := (update name_eq_dec (update name_eq_dec (nwState net) h r) h r0)
               |}) by (eapply RIR_doLeader; eauto;
                       [simpl in *; break_if; try congruence; eauto| in_crush]).
          assert
            (HREACH3 : raft_intermediate_reachable
               {|
                 nwPackets := (send_packets h (l0 ++ l2 ++ l4)) ++ (nwPackets net);
-                nwState := (update (update (update (nwState net) h r) h r0) h d)
+                nwState := (update name_eq_dec (update name_eq_dec (update name_eq_dec (nwState net) h r) h r0) h d)
               |}).
           { eapply RIR_doGenericServer; eauto.
            - simpl in *. break_if; try congruence; eauto.

@@ -3,8 +3,7 @@ Require Import PeanoNat.
 Require Import RaftState.
 Require Import Raft.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Export CommonDefinitions.
 
@@ -1032,25 +1031,25 @@ Section CommonTheorems.
 
   Ltac update_destruct :=
     match goal with
-    | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+    | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
     end.
 
   Ltac update_destruct_hyp :=
     match goal with
-    | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
+    | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
     end.
 
 
   Lemma applied_entries_update :
     forall sigma h st,
       lastApplied st >= lastApplied (sigma h) ->
-      (applied_entries (update sigma h st) = applied_entries sigma /\
+      (applied_entries (update name_eq_dec sigma h st) = applied_entries sigma /\
        (exists h',
           argmax (fun h => lastApplied (sigma h)) (all_fin N) = Some h' /\
           lastApplied (sigma h') >= lastApplied st))
       \/
-      (argmax (fun h' => lastApplied (update sigma h st h')) (all_fin N) = Some h /\
-       applied_entries (update sigma h st) = (rev (removeAfterIndex (log st) (lastApplied st)))).
+      (argmax (fun h' => lastApplied (update name_eq_dec sigma h st h')) (all_fin N) = Some h /\
+       applied_entries (update name_eq_dec sigma h st) = (rev (removeAfterIndex (log st) (lastApplied st)))).
   Proof.
     intros.
     unfold applied_entries in *.
@@ -1080,7 +1079,7 @@ Section CommonTheorems.
       lastApplied st = lastApplied (sigma h) ->
       removeAfterIndex (log st) (lastApplied (sigma h))
       = removeAfterIndex (log (sigma h)) (lastApplied (sigma h)) ->
-      applied_entries (update sigma h st) = applied_entries sigma.
+      applied_entries (update name_eq_dec sigma h st) = applied_entries sigma.
   Proof.
     intros. unfold applied_entries in *.
     repeat break_match; repeat find_rewrite; intuition;
@@ -1112,7 +1111,7 @@ Section CommonTheorems.
     forall sigma h st,
       log st = log (sigma h) ->
       lastApplied st = lastApplied (sigma h) ->
-      applied_entries (update sigma h st) = applied_entries sigma.
+      applied_entries (update name_eq_dec sigma h st) = applied_entries sigma.
   Proof.
     intros.
     apply applied_entries_log_lastApplied_same;
@@ -1292,7 +1291,7 @@ Section CommonTheorems.
   Lemma doLeader_appliedEntries :
   forall sigma h os st' ms,
     doLeader (sigma h) h = (os, st', ms) ->
-    applied_entries (update sigma h st') = applied_entries sigma.
+    applied_entries (update name_eq_dec sigma h st') = applied_entries sigma.
   Proof.
     intros.
     apply applied_entries_log_lastApplied_same.

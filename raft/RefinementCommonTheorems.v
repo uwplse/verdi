@@ -10,8 +10,7 @@ Require Export RefinementCommonDefinitions.
 
 Require Import SpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Section CommonTheorems.
   Context {orig_base_params : BaseParams}.
@@ -142,8 +141,8 @@ Section CommonTheorems.
 
   Ltac my_update_destruct :=
     match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
+      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+      | [ H : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
     end.
 
   Lemma handleRequestVoteReply_preserves_candidate_entries :
@@ -151,7 +150,7 @@ Section CommonTheorems.
       st' = handleRequestVoteReply h (snd (nwState net h)) h' t r ->
       refined_raft_intermediate_reachable net ->
       candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h
+      candidateEntries e (update name_eq_dec (nwState net) h
                                (update_elections_data_requestVoteReply h h' t r (nwState net h),
                                 st')).
   Proof.
@@ -202,7 +201,7 @@ Section CommonTheorems.
       nwState net h = (gd, d) ->
       doLeader d h = (os, d', ms) ->
       candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h (gd, d')).
+      candidateEntries e (update name_eq_dec (nwState net) h (gd, d')).
   Proof.
     intros.
     eapply candidateEntries_same; eauto;
