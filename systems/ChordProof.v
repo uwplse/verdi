@@ -171,7 +171,7 @@ Section ChordProof.
   Inductive reachable_st : global_state -> Prop :=
     | reachableInit : reachable_st initial_st
     | rechableStep : forall gst gst',
-        reachable_st gst -> 
+        reachable_st gst ->
         step_dynamic gst gst' ->
         reachable_st gst'.
 
@@ -370,18 +370,11 @@ Section ChordProof.
           (In (src, (dst, msg)) (msgs gst) /\ response_payload msg) ->
           msg = qmsg.
 
-  (*
-  forall req res,
-    request_response_pair req res ->
-    exists q,
-      query_request
-  
-*)
   Definition query_set_for_request (st : data) (dst : addr) (r : payload) :=
     exists q remove,
       cur_request st = Some (make_pointer dst, q, remove) /\
       query_request q r.
-        
+
   Definition request_timed_out (gst : global_state) (src dst : addr) (r : payload) :=
     forall req_event,
       req_event = e_send (dst, (src, r)) ->
@@ -389,7 +382,7 @@ Section ChordProof.
         trace gst = before ++ req_event :: since /\
         ~ In req_event since /\
         In (e_timeout src (Request dst r)) since.
-      
+
   Definition requests_have_queries_or_timeouts (gst : global_state) : Prop :=
     forall src dst r st,
       request_payload r ->

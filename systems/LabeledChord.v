@@ -30,7 +30,7 @@ Section LabeledChord.
   | RecvMsg : addr -> addr -> payload -> label
   | Timeout : addr -> timeout -> label.
 
-  Definition label_eq_dec : forall x y : label, {x = y} + {x <> y}.  
+  Definition label_eq_dec : forall x y : label, {x = y} + {x <> y}.
   Proof.
     decide equality; eauto using addr_eq_dec, payload_eq_dec, timeout_eq_dec.
   Defined.
@@ -52,7 +52,7 @@ Section LabeledChord.
   Notation weak_local_fairness := (weak_local_fairness addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
   Notation inf_occurred := (inf_occurred addr payload data timeout label).
   Notation enabled := (enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
-  Notation l_enabled := (l_enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint). 
+  Notation l_enabled := (l_enabled addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
   Notation occurred := (occurred addr payload data timeout label).
   Notation nodes := (nodes addr payload data timeout).
   Notation failed_nodes := (failed_nodes addr payload data timeout).
@@ -116,7 +116,7 @@ Section LabeledChord.
   Proof.
     unfold apply_handler_result.
     simpl.
-    intuition. 
+    intuition.
     exact: update_eq.
   Qed.
 
@@ -128,7 +128,7 @@ Section LabeledChord.
   Proof.
     unfold apply_handler_result.
     simpl.
-    intuition. 
+    intuition.
     find_reverse_rewrite.
     exact: update_diff.
   Qed.
@@ -364,7 +364,7 @@ Section LabeledChord.
     intuition.
     now invc_labeled_step.
   Qed.
-  
+
 
   Lemma nodes_never_removed :
     forall gst gst' l h,
@@ -414,7 +414,7 @@ Section LabeledChord.
       * eauto using recv_implies_msg_in_before.
       * congruence.
   Qed.
-  
+
   Lemma labeled_step_dynamic_neq_dst_enabled :
     forall gst gst' gst'' dst to src from m p,
       labeled_step_dynamic gst (RecvMsg from to p) gst' ->
@@ -548,7 +548,7 @@ Section LabeledChord.
   Lemma RecvMsg_eventually_occurred :
     forall s, lb_execution s ->
          weak_local_fairness s ->
-         forall src dst m d, 
+         forall src dst m d,
            In dst (nodes (occ_gst (hd s))) ->
            ~ In dst (failed_nodes (occ_gst (hd s))) ->
            In (src, (dst, m)) (msgs (occ_gst (hd s))) ->
@@ -898,7 +898,7 @@ Section LabeledChord.
                  (now (clears_timeout src (Request dst p)))
                  s.
   Abort.
-  
+
   Lemma request_stays_in :
     forall o s src dst p,
       lb_execution (Cons o s) ->
@@ -1152,12 +1152,12 @@ rewrite /=.
 by apply: failed_nodes_never_added; eauto.
 Qed.
 
-Lemma failed_successors_le_monotonic :   
+Lemma failed_successors_le_monotonic :
   forall gst gst' l h d d' k,
     sigma gst h = Some d ->
     length (failed_successors gst d) <= k ->
     labeled_step_dynamic gst l gst' ->
-    sigma gst' h = Some d' -> 
+    sigma gst' h = Some d' ->
     length (failed_successors gst' d') <= k.
 Proof.
 Admitted.
@@ -1178,7 +1178,7 @@ have H_k := failed_successors_le_monotonic _ _ _ _ _ _ _ H_eq H_len H1 H_d'.
 by apply: c; eauto.
 Qed.
 
-Lemma eventually_fewer_failed_successors : 
+Lemma eventually_fewer_failed_successors :
   forall s, lb_execution s ->
        weak_local_fairness s ->
        forall h, In h (nodes (occ_gst (hd s))) ->
