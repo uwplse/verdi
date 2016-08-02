@@ -39,7 +39,6 @@ Section ChordProof.
   Notation timeouts := (timeouts addr payload data timeout).
   Notation msgs := (msgs addr payload data timeout).
   Notation trace := (trace addr payload data timeout).
-  Notation update := (update addr addr_eq_dec data).
   Notation update_msgs := (update_msgs addr payload data timeout).
   Notation make_pointer := (make_pointer hash).
 
@@ -436,18 +435,6 @@ Section ChordProof.
     requests_have_queries_or_timeouts gst /\
     responses_have_queries gst.
 
-  Lemma update_eq :
-    forall sigma x y st,
-      x = y ->
-      update sigma x st y = Some st.
-  Admitted.
-
-  Lemma update_neq :
-    forall sigma x y st,
-      x <> y ->
-      update sigma x st y = sigma y.
-  Admitted.
-
   Definition live_nodes_have_state (gst : global_state) : Prop :=
     forall h,
       In h (nodes gst) ->
@@ -476,7 +463,7 @@ Section ChordProof.
         apply H in H7.
         break_exists_exists.
         find_reverse_rewrite.
-        now apply update_neq.
+        now apply update_diff.
     - eauto.
     - simpl in *.
       destruct (addr_eq_dec h0 h).
@@ -485,7 +472,7 @@ Section ChordProof.
       * apply H in H1.
         break_exists_exists.
         find_reverse_rewrite.
-        now apply update_neq.
+        now apply update_diff.
     - simpl in *.
       destruct (addr_eq_dec (fst (snd m)) h).
       * exists st.
@@ -493,7 +480,7 @@ Section ChordProof.
       * apply H in H1.
         break_exists_exists.
         find_reverse_rewrite.
-        now apply update_neq.
+        now apply update_diff.
   Qed.
 
   Theorem network_invariant_is_inductive :
@@ -808,35 +795,16 @@ Section ChordProof.
       eauto using joined_preserved_by_tick_handler, joined_preserved_by_handle_query_timeout.
   Qed.
 
-  Lemma update_fixes_other_arguments : forall f x d y,
-      y <> x ->
-      update f x d y = f y.
-  Proof.
-    unfold update.
-    intuition.
-    break_if; congruence.
-  Qed.
-
-  Lemma update_determined_by_f : forall f x d d' y,
+  Lemma update_determined_by_f : forall A (f : addr -> A) x d d' y,
     y <> x ->
-    update f x d y = d' ->
+    update addr_eq_dec f x d y = d' ->
     f y = d'.
   Proof.
     intuition.
-    find_copy_eapply_lem_hyp update_fixes_other_arguments.
-    find_rewrite; auto.
-  Qed.
-
-  Lemma update_preserving_states : forall gst gst' h st st' o,
-    sigma gst h = Some st ->
-    sigma gst' = update (sigma gst) o st' ->
-    h <> o ->
-    sigma gst' h = Some st.
-  Proof.
-    intuition.
-    find_reverse_rewrite.
-    find_rewrite.
-    apply update_fixes_other_arguments; auto.
+    symmetry.
+    repeat find_reverse_rewrite.
+    apply update_diff.
+    now apply not_eq_sym.
   Qed.
 
   Lemma apply_handler_result_updates_sigma : forall h st ms nts cts e gst gst',
@@ -887,7 +855,7 @@ Section ChordProof.
 
   Lemma adding_nodes_does_not_affect_live_node : forall gst gst' h n st,
       ~ In n (nodes gst) ->
-      sigma gst' = update (sigma gst) n st ->
+      sigma gst' = update addr_eq_dec (sigma gst) n st ->
       nodes gst' = n :: nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
       live_node gst h ->
@@ -897,7 +865,10 @@ Section ChordProof.
     unfold live_node.
     break_live_node_exists_exists.
     repeat split.
-    * eapply update_preserving_states; eauto.
+    * repeat find_reverse_rewrite.
+      find_rewrite.
+      find_rewrite.
+      apply update_diff.
       congruence.
     * auto.
     * find_rewrite.
@@ -909,7 +880,7 @@ Section ChordProof.
   (* reverse of the above, with additional hypothesis that h <> n. *)
   Lemma adding_nodes_did_not_affect_live_node : forall gst gst' h n st,
       ~ In n (nodes gst) ->
-      sigma gst' = update (sigma gst) n st ->
+      sigma gst' = update addr_eq_dec (sigma gst) n st ->
       nodes gst' = n :: nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
       live_node gst' h ->
@@ -926,8 +897,8 @@ Section ChordProof.
       find_rewrite.
       find_rewrite.
       symmetry.
-      apply update_fixes_other_arguments.
-      congruence.
+      apply update_diff.
+      auto.
     * auto.
     * repeat find_rewrite.
       find_apply_lem_hyp in_inv.
@@ -937,18 +908,21 @@ Section ChordProof.
 
   Lemma adding_nodes_does_not_affect_dead_node : forall gst gst' h n st,
       ~ In n (nodes gst) ->
-      sigma gst' = update (sigma gst) n st ->
+      sigma gst' = update addr_eq_dec (sigma gst) n st ->
       nodes gst' = n :: nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
       dead_node gst h ->
       dead_node gst' h.
   Proof.
     intuition.
-    break_dead_node.
-    unfold dead_node.
-    eexists.
+    unfold dead_node in *.
+    break_exists_exists.
+    break_and.
     repeat split.
-    - eapply update_preserving_states; eauto.
+    - repeat find_reverse_rewrite.
+      find_rewrite.
+      find_rewrite.
+      eapply update_diff.
       congruence.
     - find_rewrite.
       eauto using in_cons.
@@ -958,7 +932,7 @@ Section ChordProof.
   Lemma adding_nodes_did_not_affect_dead_node : forall gst gst' h n st,
       ~ In n (nodes gst) ->
       In h (nodes gst) ->
-      sigma gst' = update (sigma gst) n st ->
+      sigma gst' = update addr_eq_dec (sigma gst) n st ->
       nodes gst' = n :: nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
       dead_node gst' h ->
@@ -1018,7 +992,7 @@ Section ChordProof.
   Lemma adding_nodes_does_not_affect_best_succ : forall gst gst' h s n st,
       best_succ gst h s ->
       ~ In n (nodes gst) ->
-      sigma gst' = update (sigma gst) n st ->
+      sigma gst' = update addr_eq_dec (sigma gst) n st ->
       nodes gst' = n :: nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
       best_succ gst' h s.
@@ -1030,8 +1004,12 @@ Section ChordProof.
     repeat split;
       eauto using adding_nodes_does_not_affect_live_node.
     - repeat break_live_node.
-      eapply update_preserving_states;
-        congruence || eauto.
+      repeat find_rewrite.
+      match goal with
+      | H: sigma gst h = Some _ |- _ = Some _ => rewrite <- H
+      end.
+      eapply update_diff.
+      congruence.
     - intuition.
       find_copy_apply_hyp_hyp.
       break_dead_node.
@@ -1052,7 +1030,7 @@ Section ChordProof.
       ~ In n (nodes gst) ->
       sigma gst' h = Some st ->
       ~ In n (map addr_of (succ_list st)) ->
-      sigma gst' = update (sigma gst) n st ->
+      sigma gst' = update addr_eq_dec (sigma gst) n (Some st) ->
       nodes gst' = n :: nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
       best_succ gst h s.
@@ -1071,9 +1049,12 @@ Section ChordProof.
       repeat find_rewrite.
       repeat find_injection.
       repeat split.
-      * repeat find_reverse_rewrite.
-        eapply update_determined_by_f;
-          [eapply In_notIn_implies_neq; now eauto|]; now repeat find_rewrite.
+      * match goal with
+        | H: sigma _ = update _ _ _ (Some ?st) |- sigma _ _ = Some ?st => symmetry in H
+        end.
+        eapply update_determined_by_f.
+        + eapply In_notIn_implies_neq; eauto.
+        + eauto.
       * eauto.
       * eauto.
       * eauto.
@@ -1119,7 +1100,7 @@ Section ChordProof.
         ~ In h (nodes gst) ->
         nodes gst' = h :: nodes gst ->
         failed_nodes gst' = failed_nodes gst ->
-        sigma gst' = update (sigma gst) h st ->
+        sigma gst' = update addr_eq_dec (sigma gst) h st ->
         reachable gst' from to.
   Proof.
     intuition.
@@ -1143,7 +1124,7 @@ Section ChordProof.
         In from (nodes gst) ->
         nodes gst' = h :: nodes gst ->
         failed_nodes gst' = failed_nodes gst ->
-        sigma gst' = update (sigma gst) h st ->
+        sigma gst' = update addr_eq_dec (sigma gst) h st ->
         reachable gst from to.
   Admitted.
 
@@ -1156,7 +1137,7 @@ Section ChordProof.
       (known = [] -> nodes gst = []) ->
       nodes gst' = h :: nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
-      sigma gst' = update (sigma gst) h st ->
+      sigma gst' = update addr_eq_dec (sigma gst) h st ->
       P gst'.
   Hint Unfold start_step_preserves.
 

@@ -114,10 +114,10 @@ Section LabeledChord.
     forall gst n st ms nts cts e,
       sigma (apply_handler_result n (st, ms, nts, cts) e gst) n = Some st.
   Proof.
-    unfold apply_handler_result, update.
+    unfold apply_handler_result.
     simpl.
     intuition. 
-    break_if; auto || congruence.
+    exact: update_eq.
   Qed.
 
   Lemma sigma_ahr_passthrough :
@@ -126,10 +126,11 @@ Section LabeledChord.
       sigma gst h = Some d ->
       sigma (apply_handler_result n (st, ms, nts, cts) e gst) h = Some d.
   Proof.
-    unfold apply_handler_result, update.
+    unfold apply_handler_result.
     simpl.
     intuition. 
-    break_if; auto || congruence.
+    find_reverse_rewrite.
+    exact: update_diff.
   Qed.
 
   Lemma labeled_step_preserves_state_existing :
@@ -630,14 +631,6 @@ Section LabeledChord.
     by eauto.
   Qed.
 
-  Lemma update_characterization : forall f x y,
-      update f x y x = Some y.
-  Proof.
-    intuition.
-    unfold update.
-    case (addr_eq_dec x x) => //.
-  Qed.
-
   Lemma states_not_removed_by_recv_step :
     forall gst gst' h st src dst p,
       labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
@@ -653,13 +646,15 @@ Section LabeledChord.
     case (addr_eq_dec h dst).
     - move => H_eq.
       subst_max.
+      repeat find_rewrite.
+      find_injection.
       eexists.
-      exact: update_characterization.
+      exact: update_eq.
     - move => H_neq.
+      find_apply_lem_hyp not_eq_sym.
       exists st.
       rewrite <- H_st.
-      move: H_neq.
-      exact: update_fixes_other_arguments.
+      exact: update_diff.
   Qed.
 
   Lemma timeout_step_implies_timeout_exists :

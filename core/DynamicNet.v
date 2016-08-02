@@ -84,12 +84,8 @@ Section Dynamic.
   Definition clear_timeouts (ts : list timeout) (cts : list timeout) : list timeout :=
     list_minus timeout_eq_dec ts cts.
 
-  Definition update (f : addr -> option data) (a : addr) (d : data) (a' : addr) :=
-    if addr_eq_dec a a' then Some d else f a'.
-  Definition updatets (f : addr -> list timeout) (a : addr) (t : list timeout) (a' : addr) :=
-    if addr_eq_dec a a' then t else f a'.
-  Notation "f [ a '=>' d ]" := (update f a d) (at level 0).
-  Notation "f [ a '==>' d ]" := (updatets f a d) (at level 0).
+  Notation "f [ a '=>' d ]" := (update addr_eq_dec f a (Some d)) (at level 0).
+  Notation "f [ a '==>' d ]" := (update addr_eq_dec f a d) (at level 0).
 
   Definition update_msgs (gst : global_state) (ms : list msg) : global_state :=
     {| nodes := nodes gst;
