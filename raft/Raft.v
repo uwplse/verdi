@@ -525,7 +525,7 @@ Section Raft.
       forall net h inp out d l ps' st',
         raft_intermediate_reachable net ->
         handleInput h inp (nwState net h) = (out, d, l) ->
-        (forall h', st' h' = update (nwState net) h d h') ->
+        (forall h', st' h' = update name_eq_dec (nwState net) h d h') ->
         (forall p', In p' ps' -> In p' (nwPackets net) \/
                            In p' (send_packets h l)) ->
         raft_intermediate_reachable (mkNetwork ps' st')
@@ -534,7 +534,7 @@ Section Raft.
         raft_intermediate_reachable net ->
         handleMessage (pSrc p) (pDst p) (pBody p) (nwState net (pDst p)) = (d, l) ->
         nwPackets net = xs ++ p :: ys ->
-        (forall h, st' h = update (nwState net) (pDst p) d h) ->
+        (forall h, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
         (forall p', In p' ps' -> In p' (xs ++ ys) \/
                            In p' (send_packets (pDst p) l)) ->
         raft_intermediate_reachable (mkNetwork ps' st')
@@ -542,7 +542,7 @@ Section Raft.
       forall net st' ps' h os d' ms,
         raft_intermediate_reachable net ->
         doLeader (nwState net h) h = (os, d', ms) ->
-        (forall h', st' h' = update (nwState net) h d' h') ->
+        (forall h', st' h' = update name_eq_dec (nwState net) h d' h') ->
         (forall p, In p ps' -> In p (nwPackets net) \/
                          In p (send_packets h ms)) ->
         raft_intermediate_reachable (mkNetwork ps' st')
@@ -550,7 +550,7 @@ Section Raft.
       forall net st' ps' os d' ms h,
         raft_intermediate_reachable net ->
         doGenericServer h (nwState net h) = (os, d', ms) ->
-        (forall h', st' h' = update (nwState net) h d' h') ->
+        (forall h', st' h' = update name_eq_dec (nwState net) h d' h') ->
         (forall p, In p ps' -> In p (nwPackets net) \/
                          In p (send_packets h ms)) ->
         raft_intermediate_reachable (mkNetwork ps' st').
@@ -598,7 +598,7 @@ Section Raft.
       handleClientRequest h (nwState net h) client id c = (out, d, l) ->
       P net ->
       raft_intermediate_reachable net ->
-      (forall h', st' h' = update (nwState net) h d h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h d h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                          In p' (send_packets h l)) ->
       P (mkNetwork ps' st').
@@ -608,7 +608,7 @@ Section Raft.
       handleTimeout h (nwState net h) = (out, d, l) ->
       P net ->
       raft_intermediate_reachable net ->
-      (forall h', st' h' = update (nwState net) h d h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h d h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                                In p' (send_packets h l)) ->
       P (mkNetwork ps' st').
@@ -620,7 +620,7 @@ Section Raft.
       P net ->
       raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          p' = mkPacket (pDst p) (pSrc p) m) ->
       P (mkNetwork ps' st').
@@ -632,7 +632,7 @@ Section Raft.
       P net ->
       raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          In p' (send_packets (pDst p) m)) ->
       P (mkNetwork ps' st').
@@ -644,7 +644,7 @@ Section Raft.
       P net ->
       raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                          p' = mkPacket (pDst p) (pSrc p) m) ->
       P (mkNetwork ps' st').
@@ -656,7 +656,7 @@ Section Raft.
       P net ->
       raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys)) ->
       P (mkNetwork ps' st').
 
@@ -666,7 +666,7 @@ Section Raft.
       P net ->
       raft_intermediate_reachable net ->
       nwState net h = d ->
-      (forall h', st' h' = update (nwState net) h d' h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h d' h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
                              In p (send_packets h ms)) ->
       P (mkNetwork ps' st').
@@ -677,7 +677,7 @@ Section Raft.
       P net ->
       raft_intermediate_reachable net ->
       nwState net h = d ->
-      (forall h', st' h' = update (nwState net) h d' h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h d' h') ->
       (forall p, In p ps' -> In p (nwPackets net) \/
                              In p (send_packets h ms)) ->
       P (mkNetwork ps' st').
@@ -692,7 +692,7 @@ Section Raft.
       P net ->
       raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                              In p' (send_packets (pDst p) l)) ->
       P (mkNetwork ps' st').
@@ -714,7 +714,7 @@ Section Raft.
       handleInput h inp (nwState net h) = (out, d, l) ->
       P net ->
       raft_intermediate_reachable net ->
-      (forall h', st' h' = update (nwState net) h d h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h d h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                          In p' (send_packets h l)) ->
       P (mkNetwork ps' st').
@@ -741,7 +741,7 @@ Section Raft.
       P net ->
       raft_intermediate_reachable net ->
       nwState net h = d ->
-      (forall h', nwState net' h' = update (nwState net) h d' h') ->
+      (forall h', nwState net' h' = update name_eq_dec (nwState net) h d' h') ->
       nwPackets net = nwPackets net' ->
       P net'.
 
@@ -774,14 +774,14 @@ Section Raft.
            (raft_intermediate_reachable
               {|
                 nwPackets := (xs ++ ys) ++ (send_packets (pDst p) l0);
-                nwState := update (nwState net) (pDst p) r
+                nwState := update name_eq_dec (nwState net) (pDst p) r
               |}) by (eapply RIR_handleMessage; eauto; in_crush).
          assert
            (raft_intermediate_reachable
               {|
                 nwPackets := ((xs ++ ys) ++ (send_packets (pDst p) l0)) ++
                                 (send_packets (pDst p) l1) ;
-                nwState := (update (update (nwState net) (pDst p) r) (pDst p) r0)
+                nwState := (update name_eq_dec (update name_eq_dec (nwState net) (pDst p) r) (pDst p) r0)
               |}) by (eapply RIR_doLeader; eauto;
                       [simpl in *; break_if; try congruence; eauto| in_crush]).
          eapply_prop raft_net_invariant_do_generic_server. eauto. 
@@ -803,13 +803,13 @@ Section Raft.
            (raft_intermediate_reachable
               {|
                 nwPackets := nwPackets net ++ send_packets h l0;
-                nwState := update (nwState net) h r |})
+                nwState := update name_eq_dec (nwState net) h r |})
            by (eapply RIR_handleInput; eauto; in_crush).
          assert
            (raft_intermediate_reachable
               {|
                 nwPackets := ((nwPackets net ++ send_packets h l0) ++ send_packets h l2) ;
-                nwState := update (update (nwState net) h r) h r0
+                nwState := update name_eq_dec (update name_eq_dec (nwState net) h r) h r0
               |})  by (eapply RIR_doLeader; eauto;
                        [simpl in *; break_if; try congruence; eauto| in_crush]).
          eapply_prop raft_net_invariant_do_generic_server. eauto.

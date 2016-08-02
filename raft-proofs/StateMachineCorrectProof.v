@@ -1,7 +1,6 @@
 Require Import Raft.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import SpecLemmas.
 Require Import CommonTheorems.
@@ -25,12 +24,12 @@ Section StateMachineCorrect.
   
   Ltac update_destruct :=
     match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
     end.
 
   Ltac update_destruct_hyp :=
     match goal with
-      | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
+      | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
     end.
 
   Ltac destruct_update :=
@@ -270,167 +269,6 @@ Section StateMachineCorrect.
   Proof.
     intros. induction l; simpl in *; auto.
   Qed.
-
-  Section assoc.
-    Variable K V : Type.
-    Variable K_eq_dec : forall k k' : K, {k = k'} + {k <> k'}.
-
-    Lemma assoc_assoc_default:
-      forall l k (v : V) d,
-        assoc K_eq_dec l k = Some v ->
-        assoc_default K_eq_dec l k d = v.
-    Proof.
-      intros. unfold assoc_default.
-      break_match; congruence.
-    Qed.
-
-    Lemma assoc_assoc_default_missing:
-      forall (l : list (K * V)) k d,
-        assoc K_eq_dec l k = None ->
-        assoc_default K_eq_dec l k d = d.
-    Proof.
-      intros. unfold assoc_default.
-      break_match; congruence.
-    Qed.
-
-    Lemma assoc_set_same :
-      forall (l : list (K * V)) k v,
-        assoc K_eq_dec l k = Some v ->
-        assoc_set K_eq_dec l k v = l.
-    Proof.
-      intros. induction l; simpl in *; auto; try congruence.
-      repeat break_match; simpl in *; intuition.
-      - subst. find_inversion. auto.
-      - repeat find_rewrite. auto.
-    Qed.
-
-    Lemma assoc_default_assoc_set :
-      forall l (k : K) (v : V) d,
-        assoc_default K_eq_dec (assoc_set K_eq_dec l k v) k d = v.
-    Proof.
-      intros. unfold assoc_default.
-      rewrite get_set_same. auto.
-    Qed.
-
-    Lemma assoc_set_assoc_set_same :
-      forall l (k : K) (v : V) v',
-        assoc_set K_eq_dec (assoc_set K_eq_dec l k v) k v' = assoc_set K_eq_dec l k v'.
-    Proof.
-      induction l; intros; simpl in *; repeat break_match; simpl in *; subst; try congruence; eauto;
-      break_if; congruence.
-    Qed.
-
-    Definition a_equiv (l1 : list (K * V)) l2 :=
-      forall k,
-        assoc K_eq_dec l1 k = assoc K_eq_dec l2 k.
-
-    Lemma a_equiv_refl :
-      forall l,
-        a_equiv l l.
-    Proof.
-      intros. unfold a_equiv. auto.
-    Qed.
-
-    Lemma a_equiv_sym :
-      forall l l',
-        a_equiv l l' ->
-        a_equiv l' l.
-    Proof.
-      unfold a_equiv. intros. auto.
-    Qed.
-
-    Lemma a_equiv_trans :
-      forall l l' l'',
-        a_equiv l l' ->
-        a_equiv l' l'' ->
-        a_equiv l l''.
-    Proof.
-      unfold a_equiv in *.
-      intros. repeat find_higher_order_rewrite.
-      auto.
-    Qed.
-
-    Ltac assoc_destruct :=
-      match goal with
-      | [ |- context [assoc _ (assoc_set _ _ ?k0' _) ?k0 ] ] =>
-        destruct (K_eq_dec k0 k0'); [subst k0'; rewrite get_set_same with (k := k0)|
-                                      rewrite get_set_diff with (k' := k0) by auto]
-      end.
-
-    Ltac assoc_rewrite :=
-      match goal with
-      | [  |- context [assoc _ (assoc_set _ _ ?k0' _) ?k0 ] ] =>
-        first [rewrite get_set_same with (k := k0) by auto |
-               rewrite get_set_diff with (k' := k0) by auto ]
-      end.
-
-    Lemma assoc_set_assoc_set_diff :
-      forall l (k : K) (v : V) k' v',
-        k <> k' ->
-        a_equiv (assoc_set K_eq_dec (assoc_set K_eq_dec l k v) k' v')
-                (assoc_set K_eq_dec (assoc_set K_eq_dec l k' v') k v).
-    Proof.
-      unfold a_equiv.
-      intros.
-      assoc_destruct.
-      - now repeat assoc_rewrite.
-      - assoc_destruct.
-        + now repeat assoc_rewrite.
-        + now repeat assoc_rewrite.
-    Qed.
-
-    Lemma a_equiv_nil :
-      forall l,
-        a_equiv l [] ->
-        l = [].
-    Proof.
-      intros.
-      destruct l; auto.
-      unfold a_equiv in *. simpl in *.
-      destruct p.
-      specialize (H k).
-      break_if; try congruence.
-    Qed.
-
-    Lemma assoc_set_a_equiv :
-      forall l l' (k : K) (v : V),
-        a_equiv l l' ->
-        a_equiv (assoc_set K_eq_dec l k v) (assoc_set K_eq_dec l' k v).
-    Proof.
-      unfold a_equiv.
-      intros.
-      assoc_destruct; assoc_rewrite; auto.
-    Qed.
-
-    Lemma assoc_default_a_equiv :
-      forall l l' (k : K) (v : V),
-        a_equiv l l' ->
-        assoc_default K_eq_dec l k v = assoc_default K_eq_dec l' k v.
-    Proof.
-      intros. unfold a_equiv, assoc_default in *.
-      find_higher_order_rewrite.
-      auto.
-    Qed.
-
-    Lemma assoc_a_equiv :
-      forall l l' (k : K),
-        a_equiv l l' ->
-        assoc K_eq_dec l k = assoc K_eq_dec l' k.
-    Proof.
-      unfold a_equiv.
-      auto.
-    Qed.
-
-    Lemma assoc_default_assoc_set_diff :
-      forall (l : list (K * V)) k v k' d,
-        k <> k' ->
-        assoc_default K_eq_dec (assoc_set K_eq_dec l k' v) k d =
-        assoc_default K_eq_dec l k d.
-    Proof.
-      intros. unfold assoc_default. rewrite get_set_diff; auto.
-    Qed.
-  End assoc.
-  Arguments a_equiv {_} {_} _ _ _.
 
   Lemma filter_and :
     forall A (l : list A) f g,
@@ -834,7 +672,7 @@ Section StateMachineCorrect.
       (plt : term) (es : list entry) (ci : logIndex) xs ys ps' st' e,
       raft_intermediate_reachable net ->
       raft_intermediate_reachable {| nwPackets := ps'; nwState := st' |} ->
-      (forall h : name, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h : name, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p' : packet,
          In p' ps' ->
          In p' (xs ++ ys) \/
@@ -906,7 +744,7 @@ Section StateMachineCorrect.
       (plt : term) (es : list entry) (ci : logIndex) xs ys ps' st',
       raft_intermediate_reachable net ->
       raft_intermediate_reachable {| nwPackets := ps'; nwState := st' |} ->
-      (forall h : name, st' h = update (nwState net) (pDst p) d h) ->
+      (forall h : name, st' h = update name_eq_dec (nwState net) (pDst p) d h) ->
       (forall p' : packet,
          In p' ps' ->
          In p' (xs ++ ys) \/

@@ -6,8 +6,7 @@ Require Import RefinementCommonTheorems.
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import NoAppendEntriesToLeaderInterface.
 Require Import NoAppendEntriesToSelfInterface.
@@ -78,9 +77,9 @@ Section MatchIndexAllEntries.
 
   Ltac update_destruct :=
     match goal with
-      | [ H : context [ update _ ?x _ ?y ] |- _ ] =>
+      | [ H : context [ update _ _ ?x _ ?y ] |- _ ] =>
         destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-      | [ |- context [ update _ ?x _ ?y ] ] =>
+      | [ |- context [ update _ _ ?x _ ?y ] ] =>
         destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
     end.
 
@@ -238,7 +237,7 @@ Section MatchIndexAllEntries.
   Lemma allEntries_update_timeout :
     forall x h h' net d,
       In x (allEntries (fst (nwState net h))) ->
-      In x (allEntries (fst (update (nwState net) h'
+      In x (allEntries (fst (update name_eq_dec (nwState net) h'
                                     (update_elections_data_timeout h' (nwState net h'), d) h))).
   Proof.
     intros.
@@ -643,7 +642,7 @@ Section MatchIndexAllEntries.
 
   Lemma update_nop_fst :
     forall A B f x (v2 : B) y,
-      fst (update f x (fst (f x), v2) y) = fst (A := A) (f y).
+      fst (update name_eq_dec f x (fst (f x), v2) y) = fst (A := A) (f y).
   Proof.
     intros.
     update_destruct; auto.

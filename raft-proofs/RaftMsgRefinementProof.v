@@ -25,7 +25,7 @@ Section RaftMsgRefinement.
       P net ->
       msg_refined_raft_intermediate_reachable net ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                              In p' (send_packets (pDst p) (@add_ghost_msg _ _ _ ghost_log_params (pDst p) (gd, d) l))) ->
       P (mkNetwork ps' st').
@@ -48,7 +48,7 @@ Section RaftMsgRefinement.
       update_elections_data_input h inp (nwState net h) = gd ->
       P net ->
       msg_refined_raft_intermediate_reachable net ->
-      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                          In p' (send_packets h (@add_ghost_msg _ _ _ ghost_log_params h (gd, d) l))) ->
       P (mkNetwork ps' st').
@@ -94,7 +94,7 @@ Section RaftMsgRefinement.
                 nwPackets := (xs ++ ys) ++ send_packets (pDst p)
                                        (@add_ghost_msg _ _ _ ghost_log_params (pDst p)
                                                        (post_ghost_state, r0) l4);
-                nwState := update (nwState net) (pDst p)
+                nwState := update name_eq_dec (nwState net) (pDst p)
                                   (post_ghost_state, r0) |})
            by (subst; eapply MRRIR_handleMessage; eauto; in_crush).
          assert
@@ -108,7 +108,7 @@ Section RaftMsgRefinement.
                                        send_packets (pDst p)
                                        (@add_ghost_msg _ _ _ ghost_log_params (pDst p)
                                                        (post_ghost_state, r1) l5);
-                nwState := update (nwState net) (pDst p)
+                nwState := update name_eq_dec (nwState net) (pDst p)
                                   (post_ghost_state, r1) |}) by
              (eapply MRRIR_doLeader; eauto;
               try solve [in_crush];
@@ -182,7 +182,7 @@ Section RaftMsgRefinement.
                 nwPackets := (nwPackets net) ++ send_packets h
                                        (@add_ghost_msg _ _ _ ghost_log_params h
                                                        (post_ghost_state, r0) l4);
-                nwState := update (nwState net) h
+                nwState := update name_eq_dec (nwState net) h
                                   (post_ghost_state, r0) |})
            by (subst; eapply MRRIR_handleInput; eauto; in_crush).
          assert
@@ -196,7 +196,7 @@ Section RaftMsgRefinement.
                                        send_packets h
                                        (@add_ghost_msg _ _ _ ghost_log_params h
                                                        (post_ghost_state, r1) l6);
-                nwState := update (nwState net) h
+                nwState := update name_eq_dec (nwState net) h
                                   (post_ghost_state, r1) |}) by
              (eapply MRRIR_doLeader; eauto;
               try solve [in_crush];
@@ -291,7 +291,7 @@ Section RaftMsgRefinement.
       msg_refined_raft_intermediate_reachable net ->
       msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
       nwPackets net = xs ++ p :: ys ->
-      (forall h, st' h = update (nwState net) (pDst p) (gd, d) h) ->
+      (forall h, st' h = update name_eq_dec (nwState net) (pDst p) (gd, d) h) ->
       (forall p', In p' ps' -> In p' (xs ++ ys) \/
                              In p' (send_packets (pDst p) (@add_ghost_msg _ _ _ ghost_log_params (pDst p) (gd, d) l))) ->
       P (mkNetwork ps' st').
@@ -315,7 +315,7 @@ Section RaftMsgRefinement.
       P net ->
       msg_refined_raft_intermediate_reachable net ->
       msg_refined_raft_intermediate_reachable (mkNetwork ps' st') ->
-      (forall h', st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h', st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (forall p', In p' ps' -> In p' (nwPackets net) \/
                          In p' (send_packets h (@add_ghost_msg _ _ _ ghost_log_params h (gd, d) l))) ->
       P (mkNetwork ps' st').
@@ -372,7 +372,7 @@ Section RaftMsgRefinement.
                 nwPackets := (xs ++ ys) ++ send_packets (pDst p)
                                        (@add_ghost_msg _ _ _ ghost_log_params (pDst p)
                                                        (post_ghost_state, r0) l4);
-                nwState := update (nwState net) (pDst p)
+                nwState := update name_eq_dec (nwState net) (pDst p)
                                   (post_ghost_state, r0) |})
            by (subst; eapply MRRIR_handleMessage; eauto; in_crush).
          assert
@@ -386,7 +386,7 @@ Section RaftMsgRefinement.
                                        send_packets (pDst p)
                                        (@add_ghost_msg _ _ _ ghost_log_params (pDst p)
                                                        (post_ghost_state, r1) l5);
-                nwState := update (nwState net) (pDst p)
+                nwState := update name_eq_dec (nwState net) (pDst p)
                                   (post_ghost_state, r1) |}) by
              (eapply MRRIR_doLeader; eauto;
               try solve [in_crush];
@@ -461,7 +461,7 @@ Section RaftMsgRefinement.
                 nwPackets := (nwPackets net) ++ send_packets h
                                        (@add_ghost_msg _ _ _ ghost_log_params h
                                                        (post_ghost_state, r0) l4);
-                nwState := update (nwState net) h
+                nwState := update name_eq_dec (nwState net) h
                                   (post_ghost_state, r0) |})
            by (subst; eapply MRRIR_handleInput; eauto; in_crush).
          assert
@@ -475,7 +475,7 @@ Section RaftMsgRefinement.
                                        send_packets h
                                        (@add_ghost_msg _ _ _ ghost_log_params h
                                                        (post_ghost_state, r1) l6);
-                nwState := update (nwState net) h
+                nwState := update name_eq_dec (nwState net) h
                                   (post_ghost_state, r1) |}) by
              (eapply MRRIR_doLeader; eauto;
               try solve [in_crush];

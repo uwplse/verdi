@@ -6,8 +6,7 @@ Require Import CommonTheorems.
 
 Require Import SpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 
 Require Import LogsLeaderLogsInterface.
@@ -192,7 +191,7 @@ Section LogsLeaderLogs.
 
   Ltac update_destruct :=
     match goal with
-    | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
+    | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
     end.
 
   Lemma contiguous_log_property :

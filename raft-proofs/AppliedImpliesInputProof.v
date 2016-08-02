@@ -5,8 +5,7 @@ Require Import CommonTheorems.
 Require Import TraceUtil.
 Require Import OutputImpliesAppliedInterface.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import SpecLemmas.
 
@@ -34,7 +33,7 @@ Section AppliedImpliesInputProof.
 
     Lemma applied_implies_input_update_split :
       forall client id i net h d ps,
-        applied_implies_input_state client id i (mkNetwork ps (update (nwState net) h d)) ->
+        applied_implies_input_state client id i (mkNetwork ps (update name_eq_dec (nwState net) h d)) ->
         exists e,
           correct_entry client id i e /\
           (In e (log d) \/

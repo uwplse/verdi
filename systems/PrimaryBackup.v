@@ -1,8 +1,7 @@
 Require Import Verdi.
 Require Import HandlerMonad.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Class PrimaryBackupParams (base_params : BaseParams) :=
   {
@@ -845,9 +844,9 @@ Section PrimaryBackup.
              | [ H : _ ++ _ :: _ = [ _ ] |- _ ] => apply app_cons_singleton_inv in H
              | [ H : context [ let (_,_) := ?X in _ ] |- _ ] => destruct X eqn:?
              | [ |- context [ let (_,_) := ?X in _ ] ] => destruct X eqn:?
-             | [ |- context [ update (nwState ?net) ?x (nwState ?net ?x) _ ] ] => rewrite update_nop
-             | [ |- context [ update _ ?x _ ?x ] ] => rewrite update_eq by auto
-             | [ |- context [ update _ ?x _ ?y ] ] => rewrite update_diff by auto
+             | [ |- context [ update _ (nwState ?net) ?x (nwState ?net ?x) _ ] ] => rewrite update_nop
+             | [ |- context [ update _ _ ?x _ ?x ] ] => rewrite update_eq by auto
+             | [ |- context [ update _ _ ?x _ ?y ] ] => rewrite update_diff by auto
 
              | [ H : _ \/ _ |- _ ] => invc H
            end); prep.

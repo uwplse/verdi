@@ -2,10 +2,10 @@ Require Import List.
 Import ListNotations.
 
 Require Import StructTact.StructTactics.
-Require Import Net.
 Require Import StructTact.Util.
+Require Import Net.
 
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import FunctionalExtensionality.
 
@@ -94,8 +94,8 @@ mkNetwork (map tot_map_packet net.(nwPackets)) (fun n => tot_map_data (net.(nwSt
 
 Lemma tot_map_update_eq :
   forall f d h,
-    (fun n : name => tot_map_data (update f h d (tot_map_name_inv n))) =
-    update (fun n : name => tot_map_data (f (tot_map_name_inv n))) (tot_map_name h) (tot_map_data d).
+    (fun n : name => tot_map_data (update name_eq_dec f h d (tot_map_name_inv n))) =
+    update name_eq_dec (fun n : name => tot_map_data (f (tot_map_name_inv n))) (tot_map_name h) (tot_map_data d).
 Proof.
 move => net d h.
 apply functional_extensionality => n.
@@ -109,8 +109,8 @@ Qed.
 
 Corollary tot_map_update_packet_eq :
 forall f p d,
-  (fun n : name => tot_map_data (update f (pDst p) d (tot_map_name_inv n))) =
-  (update (fun n : name => tot_map_data (f (tot_map_name_inv n))) (pDst (tot_map_packet p)) (tot_map_data d)).
+  (fun n : name => tot_map_data (update name_eq_dec f (pDst p) d (tot_map_name_inv n))) =
+  (update name_eq_dec (fun n : name => tot_map_data (f (tot_map_name_inv n))) (pDst (tot_map_packet p)) (tot_map_data d)).
 Proof.
 move => f. 
 case => src dst m d.
@@ -268,7 +268,7 @@ invcs H_step.
   case H_hnd': (net_handlers (pDst p) (pSrc p) (pBody p) (sts (pDst p))) => [dout l'].
   case: dout H_hnd' => out' d' H_hnd'.
   rewrite -H_eq_pks1.
-  exists {| nwPackets := send_packets (pDst p) l' ++ pks1 ++ pks2 ; nwState := update sts (pDst p) d' |}.
+  exists {| nwPackets := send_packets (pDst p) l' ++ pks1 ++ pks2 ; nwState := update name_eq_dec sts (pDst p) d' |}.
   split.
   * have [n' [lo [H_eq_mout [H_eq_n H_eq_lo]]]] := tot_map_trace_occ_inv _ (eq_sym H4).
     rewrite H_eq_mout.
@@ -369,7 +369,7 @@ invcs H_step.
   inversion H_q.
   rewrite -H_eq_out in H0.
   rewrite H1 H2.
-  exists ({| nwPackets := send_packets h' l0 ++ pks ; nwState := update sts h' d0 |}).
+  exists ({| nwPackets := send_packets h' l0 ++ pks ; nwState := update name_eq_dec sts h' d0 |}).
   split.
   * rewrite H_eq_mout.
     apply (@SM_input _ _ _ _ _ _ _ d0 l0) => //.
@@ -382,7 +382,7 @@ invcs H_step.
     set nwP1 := map tot_map_packet _.
     set nwP2 := map (fun _ => _) l.
     set nwS1 := fun _ => _.
-    set nwS2 := update _ _ _.
+    set nwS2 := update _ _ _ _.
     have H_eq_nwp: nwP1 = nwP2.
       rewrite /nwP1 /nwP2 {Heqp H_q nwP1 nwP2}.
       rewrite -H2 {H2}.
@@ -596,7 +596,7 @@ invcs H_step.
   case H_hnd': (net_handlers (pDst p) (pSrc p) (pBody p) (sts (pDst p))) => [dout l'].
   case: dout H_hnd' => out' d' H_hnd'.
   rewrite -H_eq_pks1.
-  exists {| nwPackets := send_packets (pDst p) l' ++ pks1 ++ pks2 ; nwState := update sts (pDst p) d' |}.
+  exists {| nwPackets := send_packets (pDst p) l' ++ pks1 ++ pks2 ; nwState := update name_eq_dec sts (pDst p) d' |}.
   split.
   * have [n' [lo [H_eq_mout [H_eq_n H_eq_lo]]]] := tot_map_trace_occ_inv _ (eq_sym H5).
     rewrite H_eq_mout.
@@ -706,7 +706,7 @@ invcs H_step.
   apply map_eq_name_eq_eq in H1.
   rewrite -H1.
   rewrite -H1 in H3.
-  exists ({| nwPackets := send_packets h' l0 ++ pks ; nwState := update sts h' d0 |}).
+  exists ({| nwPackets := send_packets h' l0 ++ pks ; nwState := update name_eq_dec sts h' d0 |}).
   split.
   * rewrite H_eq_mout.
     apply (@SF_input _ _ _ _ _ _ _ _ _ d0 l0) => //.      
@@ -722,7 +722,7 @@ invcs H_step.
     set nwP1 := map tot_map_packet _.
     set nwP2 := map (fun _ => _) l.
     set nwS1 := fun _ => _.
-    set nwS2 := update _ _ _.
+    set nwS2 := update _ _ _ _.
     have H_eq_nwp: nwP1 = nwP2.
       rewrite /nwP1 /nwP2 {Heqp H_q nwP1 nwP2}.
       rewrite -H5 {H5}.
