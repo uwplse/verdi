@@ -1,6 +1,7 @@
 Require Import List.
 Require Import Arith.
 Require Import StructTact.StructTactics.
+Require Import StructTact.Update.
 Require Import InfSeqExt.infseq.
 Import ListNotations.
 

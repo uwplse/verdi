@@ -370,7 +370,14 @@ Section ChordProof.
           (In (dst, (src, msg)) (msgs gst) /\ request_payload msg) \/
           (In (src, (dst, msg)) (msgs gst) /\ response_payload msg) ->
           msg = qmsg.
+
+  (*
+  forall req res,
+    request_response_pair req res ->
+    exists q,
+      query_request
   
+*)
   Definition query_set_for_request (st : data) (dst : addr) (r : payload) :=
     exists q remove,
       cur_request st = Some (make_pointer dst, q, remove) /\

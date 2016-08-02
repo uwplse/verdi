@@ -354,6 +354,17 @@ Section LabeledChord.
     now invc_labeled_step.
   Qed.
 
+  Lemma failed_nodes_not_new :
+    forall gst gst' l h,
+      labeled_step_dynamic gst l gst' ->
+      In h (failed_nodes gst') ->
+      In h (failed_nodes gst).
+  Proof.
+    intuition.
+    now invc_labeled_step.
+  Qed.
+  
+
   Lemma nodes_never_removed :
     forall gst gst' l h,
       labeled_step_dynamic gst l gst' ->
@@ -854,6 +865,7 @@ Section LabeledChord.
       res_clears_timeout (recv_handler src h st p) t ->
       clears_timeout h t o.
 
+  (*
   Lemma constrained_Request_conditions :
     forall gst h dst p st,
       In h (nodes gst) ->
@@ -864,7 +876,9 @@ Section LabeledChord.
       exists m : payload,
         request_response_pair p m /\ In (dst, (h, m)) (msgs gst).
   Admitted.
+  *)
 
+  (*
   Lemma response_clears_timeout :
     forall s p m h dst,
       lb_execution s ->
@@ -872,6 +886,174 @@ Section LabeledChord.
       eventually (now (occurred (RecvMsg dst h m))) s ->
       eventually (now (clears_timeout h (Request dst p))) s.
   Admitted.
+   *)
+
+  Lemma queries_are_closed_by_recvmsg :
+    forall o src dst p m,
+      request_response_pair p m ->
+      In (Request dst p) (timeouts (occ_gst o) src) ->
+      occ_label o = RecvMsg dst src m ->
+      clears_timeout src (Request dst p) o.
+  Admitted.
+
+  Lemma timeout_enabled_until_cleared :
+    forall src dst p s,
+      lb_execution s ->
+      weak_until (now (l_enabled (Timeout src (Request dst p))))
+                 (now (clears_timeout src (Request dst p)))
+                 s.
+  Abort.
+  
+  Lemma request_stays_in :
+    forall o s src dst p,
+      lb_execution (Cons o s) ->
+      ~ timeout_constraint (occ_gst o) src (Request dst p) ->
+      In (Request dst p) (timeouts (occ_gst o) src) ->
+      In (Request dst p) (timeouts (occ_gst (hd s)) src) \/
+      (now (clears_timeout src (Request dst p)) s).
+  Admitted.
+
+  Lemma not_timeout_constraint_inv :
+    forall gst src dst p,
+      ~ timeout_constraint gst src (Request dst p) ->
+      ~ In dst (failed_nodes gst) \/
+      exists m,
+        request_response_pair p m /\ In (dst, (src, m)) (msgs gst).
+  Admitted.
+
+  Lemma msgs_remain_after_timeout :
+    forall gst h t gst' src dst p,
+      labeled_step_dynamic gst (Timeout h t) gst' ->
+      In (src, (dst, p)) (msgs gst) ->
+      In (src, (dst, p)) (msgs gst').
+  Admitted.
+
+  Definition Request_payload_has_response (gst : global_state) : Prop :=
+    forall src dst p,
+      In (Request dst p) (timeouts gst src) ->
+      exists m,
+        request_response_pair p m.
+
+  Definition responses_are_unique (gst : global_state) : Prop :=
+    forall src dst p m m',
+      In (src, (dst, m)) (msgs gst) ->
+      request_response_pair p m ->
+      In (src, (dst, m')) (msgs gst) ->
+      request_response_pair p m' ->
+      m = m'.
+
+  Lemma timeout_constraint_lifted_by_clearing :
+    forall o o' src dst p,
+      responses_are_unique (occ_gst o) ->
+      Request_payload_has_response (occ_gst o) ->
+      In (Request dst p) (timeouts (occ_gst o) src) ->
+      labeled_step_dynamic (occ_gst o) (occ_label o) (occ_gst o') ->
+      ~ timeout_constraint (occ_gst o) src (Request dst p) ->
+      ~ timeout_constraint (occ_gst o') src (Request dst p) \/
+      clears_timeout src (Request dst p) o.
+  Proof.
+    move => o o' src dst p H_uniqr H_res H_req H_step H_nt.
+    inv_labeled_step.
+    - left.
+      destruct (addr_eq_dec h src);
+        destruct (timeout_eq_dec t (Request dst p));
+        subst_max.
+      + by exfalso.
+      + move => H_t.
+        inv H_t.
+        find_eapply_lem_hyp not_timeout_constraint_inv.
+        break_or_hyp.
+        * by find_eapply_lem_hyp failed_nodes_not_new; eauto.
+        * break_exists.
+          break_and.
+          unfold timeout_handler_l, not in *; tuple_inversion.
+          repeat find_reverse_rewrite.
+          find_copy_eapply_lem_hyp msgs_remain_after_timeout; eauto.
+      + move => H_t.
+        inv H_t.
+        find_eapply_lem_hyp not_timeout_constraint_inv.
+        break_or_hyp.
+        * by find_eapply_lem_hyp failed_nodes_not_new; eauto.
+        * break_exists.
+          break_and.
+          intuition.
+          unfold timeout_handler_l in *; tuple_inversion.
+          repeat find_reverse_rewrite.
+          find_eapply_lem_hyp msgs_remain_after_timeout; eauto.
+      + move => H_t.
+        inv H_t.
+        find_eapply_lem_hyp not_timeout_constraint_inv.
+        break_or_hyp.
+        * by find_eapply_lem_hyp failed_nodes_not_new; eauto.
+        * break_exists.
+          break_and.
+          intuition.
+          unfold timeout_handler_l in *; tuple_inversion.
+          repeat find_reverse_rewrite.
+          find_eapply_lem_hyp msgs_remain_after_timeout; eauto.
+    - copy_apply H_res H_req.
+      break_exists_name m'.
+      (* should really be: request_response_pair p m is decidable *)
+      assert (H_eqdec: {(dst, (src, m')) = m} + {(dst, (src, m')) <> m}).
+      decide equality;
+        decide equality;
+        auto using payload_eq_dec, addr_eq_dec.
+      destruct H_eqdec.
+      * right.
+        subst_max.
+        simpl in *.
+        unfold recv_handler_l in *; tuple_inversion.
+        eapply queries_are_closed_by_recvmsg; eauto.
+      * left.
+        move => H_t.
+        inv H_t.
+        find_eapply_lem_hyp not_timeout_constraint_inv.
+        break_or_hyp.
+        + by find_eapply_lem_hyp failed_nodes_not_new; eauto.
+        + break_exists_name m''.
+          break_and.
+          apply H11 in H6.
+          apply H6.
+  Abort.
+
+  Lemma queries_now_closed :
+    forall s p m dst src,
+      lb_execution s ->
+      request_response_pair p m ->
+      In (Request dst p) (timeouts (occ_gst (hd s)) src) ->
+      ~ timeout_constraint (occ_gst (hd s)) src (Request dst p) ->
+      eventually (now (occurred (RecvMsg dst src m))) s ->
+      eventually (now (clears_timeout src (Request dst p))) s.
+  Proof.
+    move => p m dst src s H_exec H_pair H_t H_const H_recv.
+    induction H_recv as [ | o s'].
+    - apply E0.
+      unfold now in *.
+      break_match.
+      eapply queries_are_closed_by_recvmsg; eauto.
+    - simpl in *.
+      find_copy_eapply_lem_hyp request_stays_in; eauto.
+      break_or_hyp; try eauto using E_next, E0.
+      inv H_exec.
+      find_copy_eapply_lem_hyp timeout_constraint_lifted_by_clearing; eauto.
+      break_or_hyp.
+      + apply E_next.
+        apply IHH_recv.
+        * easy.
+        * inv H_exec.
+          apply not_timeout_constraint_inv in H_const.
+          now inv H_const.
+        * easy.
+      + exact: E0.
+  Qed.
+
+  Definition Request_has_unique_message (gst : global_state) : Prop :=
+    forall src dst p m,
+      In (Request dst p) (timeouts gst src) ->
+      request_response_pair p m ->
+      (~ In dst (failed_nodes gst) /\
+       In (src, (dst, p)) (msgs gst)) \/
+      In (dst, (src, m)) (msgs gst).
 
   Lemma requests_eventually_get_responses :
     forall s,
@@ -888,30 +1070,6 @@ Section LabeledChord.
         In (Request dst p) (timeouts (occ_gst (hd s)) src) ->
         eventually (now (occurred (RecvMsg dst src m))) s.
   Admitted.
-
-  Lemma queries_are_closed_by_recvmsg :
-    forall o src dst p m,
-      request_response_pair p m ->
-      In (Request dst p) (timeouts (occ_gst o) src) ->
-      occ_label o = RecvMsg dst src m ->
-      clears_timeout src (Request dst p) o.
-  Admitted.
-
-  Lemma queries_now_closed :
-    forall p m dst src s,
-      request_response_pair p m ->
-      In (Request dst p) (timeouts (occ_gst (hd s)) src) ->
-      eventually (now (occurred (RecvMsg dst src m))) s ->
-      eventually (now (clears_timeout src (Request dst p))) s.
-  Admitted.
-
-  Definition Request_has_unique_message (gst : global_state) : Prop :=
-    forall src dst p m,
-      In (Request dst p) (timeouts gst src) ->
-      request_response_pair p m ->
-      (~ In dst (failed_nodes gst) /\
-       In (src, (dst, p)) (msgs gst)) \/
-      In (dst, (src, m)) (msgs gst).
 
   Lemma requests_eventually_complete :
     forall s,
@@ -932,20 +1090,6 @@ Section LabeledChord.
     find_copy_eapply_lem_hyp requests_eventually_get_responses; eauto.
     eapply queries_now_closed; eauto.
   Qed.
-
-  Lemma not_timeout_constraint_inv :
-    forall gst src dst p,
-      ~ timeout_constraint gst src (Request dst p) ->
-      ~ In dst (failed_nodes gst) \/
-      exists m,
-        request_response_pair p m /\ In (dst, (src, m)) (msgs gst).
-  Admitted.
-
-  Definition Request_payload_has_response (gst : global_state) : Prop :=
-    forall src dst p,
-      In (Request dst p) (timeouts gst src) ->
-      exists m,
-        request_response_pair p m.
 
   Lemma constrained_timeout_eventually_cleared :
     forall s,
