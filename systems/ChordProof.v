@@ -1,10 +1,10 @@
+Require Import StructTact.StructTactics.
+Require Import StructTact.Util.
 Require Import DynamicNet.
 Require Import Chord.
 Require Import List.
 Import ListNotations.
 Require Import Arith.
-Require Import StructTact.StructTactics.
-Require Import StructTact.Util.
 
 Section ChordProof.
   Variable SUCC_LIST_LEN : nat.
