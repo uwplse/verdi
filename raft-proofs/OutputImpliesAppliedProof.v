@@ -77,11 +77,6 @@ Section OutputImpliesApplied.
     unfold key_in_output_list in *; break_exists; simpl in *; intuition; congruence.
   Qed.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma applyEntries_In :
     forall l h st os st' o,
       applyEntries h st l = (os, st') ->

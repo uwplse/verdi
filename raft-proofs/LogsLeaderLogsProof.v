@@ -189,11 +189,6 @@ Section LogsLeaderLogs.
         assert (In p (nwPackets net)) by (repeat find_rewrite; intuition)
     end.
 
-  Ltac update_destruct :=
-    match goal with
-    | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma contiguous_log_property :
     log_property (fun l => contiguous_range_exact_lo l 0).
   Proof.

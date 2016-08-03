@@ -17,12 +17,6 @@ Section CurrentTermGtZero.
     intros. simpl in *. congruence.
   Qed.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma current_term_gt_zero_client_request :
     raft_net_invariant_client_request current_term_gt_zero.
   Proof.

@@ -26,14 +26,6 @@ Section MatchIndexSanity.
     intuition.
   Qed.
 
-  Ltac update_destruct :=
-    match goal with
-    | [ H : context [ update _ _ ?x _ ?y ] |- _ ] =>
-      destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-    | [ |- context [ update _ _ ?x _ ?y ] ] =>
-      destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-    end.
-
   Lemma match_index_sanity_client_request :
     raft_net_invariant_client_request match_index_sanity.
   Proof.
@@ -41,7 +33,7 @@ Section MatchIndexSanity.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - find_copy_apply_lem_hyp handleClientRequest_type.
       find_copy_apply_lem_hyp handleClientRequest_matchIndex.
       intuition.
@@ -79,7 +71,7 @@ Section MatchIndexSanity.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - find_apply_lem_hyp handleTimeout_matchIndex_preserved.
       eauto using match_index_sanity_preserved.
     - auto.
@@ -92,7 +84,7 @@ Section MatchIndexSanity.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - find_apply_lem_hyp handleAppendEntries_matchIndex_preserved.
       eauto using match_index_sanity_preserved.
     - auto.
@@ -122,7 +114,7 @@ Section MatchIndexSanity.
     unfold raft_net_invariant_append_entries_reply, match_index_sanity.
     simpl. intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - erewrite handleAppendEntriesReply_log by eauto.
       find_copy_apply_lem_hyp handleAppendEntriesReply_matchIndex; auto.
       intuition.
@@ -151,7 +143,7 @@ Section MatchIndexSanity.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - find_apply_lem_hyp handleRequestVote_matchIndex_preserved.
       eauto using match_index_sanity_preserved.
     - auto.
@@ -179,7 +171,7 @@ Section MatchIndexSanity.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - pose proof handleRequestVoteReply_matchIndex (pDst p) (nwState net (pDst p)) (pSrc p) t v.
       erewrite handleRequestVoteReply_log by eauto.
       intuition.
@@ -199,7 +191,7 @@ Section MatchIndexSanity.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - find_apply_lem_hyp doLeader_matchIndex_preserved.
       eauto using match_index_sanity_preserved.
     - auto.
@@ -212,7 +204,7 @@ Section MatchIndexSanity.
     simpl.
     intros.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - find_apply_lem_hyp doGenericServer_matchIndex_preserved.
       eauto using match_index_sanity_preserved.
     - auto.
@@ -235,7 +227,7 @@ Section MatchIndexSanity.
     intros.
     subst.
     repeat find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - unfold assoc_default. simpl. omega.
     - auto.
   Qed.

@@ -67,14 +67,6 @@ Section LeaderLogsLogMatching.
     intuition.
   Qed.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ H : context [ update _ _ ?x _ ?y ] |- _ ] =>
-        destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-      | [ |- context [ update _ _ ?x _ ?y ] ] =>
-        destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-    end.
-
   Lemma entries_match_cons_gt_maxTerm :
     forall x xs ys,
       sorted xs ->
@@ -214,7 +206,7 @@ Section LeaderLogsLogMatching.
     split.
     - { unfold leaderLogs_entries_match_host.
         simpl. intuition. subst. repeat find_higher_order_rewrite.
-        repeat update_destruct.
+        repeat update_destruct_simplify.
         - find_rewrite_lem update_elections_data_client_request_leaderLogs.
           destruct (log d) using (handleClientRequest_log_ind ltac:(eauto)).
           + eauto.
@@ -230,8 +222,6 @@ Section LeaderLogsLogMatching.
                   eapply_prop_hyp In In; simpl; eauto. repeat find_rewrite.
                   simpl in *. omega.
               }
-        - find_rewrite_lem update_elections_data_client_request_leaderLogs.
-          eauto.
         - destruct (log d) using (handleClientRequest_log_ind ltac:(eauto)).
           + eauto.
           + apply entries_match_cons_sublog; eauto.
@@ -241,6 +231,8 @@ Section LeaderLogsLogMatching.
             * intros.
               eapply leaderLogs_sublog_invariant; eauto.
               simpl in *. congruence.
+        - find_rewrite_lem update_elections_data_client_request_leaderLogs.
+          eauto.
         - eauto.
       }
     - eapply leaderLogs_entries_match_nw_packet_set with (net:=net); intuition.
@@ -261,7 +253,7 @@ Section LeaderLogsLogMatching.
     intuition.
     - eapply leaderLogs_entries_match_host_state_same; eauto;
       simpl; intros; subst; find_higher_order_rewrite;
-      repeat update_destruct; rewrite_update; auto;
+      repeat update_destruct_simplify; rewrite_update; auto;
       try rewrite update_elections_data_timeout_leaderLogs;
       try erewrite handleTimeout_log_same by eauto; eauto.
     - eapply leaderLogs_entries_match_nw_packet_set with (net:=net); intuition.
@@ -388,7 +380,7 @@ Section LeaderLogsLogMatching.
         find_rewrite_lem update_fun_comm.
         find_rewrite_lem update_elections_data_appendEntries_leaderLogs.
         find_erewrite_lem update_nop_ext'.
-        update_destruct; rewrite_update;
+        update_destruct_simplify; rewrite_update;
         try rewrite update_elections_data_appendEntries_leaderLogs in *; eauto.
         destruct (log d) using (handleAppendEntries_log_ind ltac:(eauto)); eauto.
         + subst. eapply entries_match_scratch with (plt0 := plt).
@@ -434,12 +426,12 @@ Section LeaderLogsLogMatching.
     unfold refined_raft_net_invariant_append_entries_reply, leaderLogs_entries_match.
     intuition.
     - eapply leaderLogs_entries_match_host_state_same; eauto; simpl; intros;
-      repeat find_higher_order_rewrite; update_destruct; rewrite_update; auto.
+      repeat find_higher_order_rewrite; update_destruct_simplify; rewrite_update; auto.
       erewrite handleAppendEntriesReply_same_log by eauto. auto.
     - eapply leaderLogs_entries_match_nw_packet_set; eauto; simpl.
       + intros. find_apply_hyp_hyp. repeat find_rewrite. intuition; [eauto with *|].
         find_apply_lem_hyp handleAppendEntriesReply_packets. subst. simpl in *. intuition.
-      + intros. repeat find_higher_order_rewrite; update_destruct; rewrite_update; auto; find_rewrite; auto.
+      + intros. repeat find_higher_order_rewrite; update_destruct_simplify; rewrite_update; auto; find_rewrite; auto.
   Qed.
 
   Lemma handleRequestVote_packets :
@@ -458,13 +450,13 @@ Section LeaderLogsLogMatching.
     unfold refined_raft_net_invariant_request_vote, leaderLogs_entries_match.
     intuition.
     - eapply leaderLogs_entries_match_host_state_same; eauto; simpl; intros;
-      repeat find_higher_order_rewrite; update_destruct; rewrite_update; auto.
+      repeat find_higher_order_rewrite; update_destruct_simplify; rewrite_update; auto.
       + now rewrite leaderLogs_update_elections_data_requestVote.
       + erewrite handleRequestVote_log; eauto.
     - eapply leaderLogs_entries_match_nw_packet_set; eauto; simpl.
       + intros. find_apply_hyp_hyp. repeat find_rewrite. intuition; [eauto with *|].
         find_apply_lem_hyp handleRequestVote_packets. subst. simpl in *. intuition.
-      + intros. repeat find_higher_order_rewrite; update_destruct; rewrite_update; auto.
+      + intros. repeat find_higher_order_rewrite; update_destruct_simplify; rewrite_update; auto.
         now rewrite leaderLogs_update_elections_data_requestVote.
   Qed.
 
@@ -480,7 +472,7 @@ Section LeaderLogsLogMatching.
       rewrite update_fun_comm. simpl.
       rewrite update_nop_ext' by now rewrite handleRequestVoteReply_same_log.
       find_rewrite_lem update_fun_comm. simpl in *.
-      update_destruct; rewrite_update; eauto.
+      update_destruct_simplify; rewrite_update; eauto.
       find_eapply_lem_hyp leaderLogs_update_elections_data_RVR; eauto.
       intuition eauto.
       subst.
@@ -491,7 +483,7 @@ Section LeaderLogsLogMatching.
       repeat find_higher_order_rewrite.
       find_rewrite_lem update_fun_comm. simpl in *.
       find_rewrite_lem update_fun_comm.
-      update_destruct; rewrite_update.
+      update_destruct_simplify; rewrite_update.
       + find_eapply_lem_hyp leaderLogs_update_elections_data_RVR; eauto.
         break_or_hyp.
         * repeat find_reverse_rewrite. eauto.
@@ -526,7 +518,7 @@ Section LeaderLogsLogMatching.
     unfold refined_raft_net_invariant_do_leader, leaderLogs_entries_match.
     intuition.
     - eapply leaderLogs_entries_match_host_state_same; eauto; simpl; intros;
-      find_higher_order_rewrite; update_destruct; rewrite_update; auto.
+      find_higher_order_rewrite; update_destruct_simplify; rewrite_update; auto.
       + find_rewrite. auto.
       + erewrite doLeader_same_log by eauto. find_rewrite. auto.
     - unfold leaderLogs_entries_match_nw in *. intros. simpl in *.
@@ -602,13 +594,13 @@ Section LeaderLogsLogMatching.
     unfold refined_raft_net_invariant_do_generic_server, leaderLogs_entries_match.
     intuition.
     - eapply leaderLogs_entries_match_host_state_same; eauto; simpl; intros;
-      find_higher_order_rewrite; update_destruct; rewrite_update; auto.
+      find_higher_order_rewrite; update_destruct_simplify; rewrite_update; auto.
       + find_rewrite. auto.
       + erewrite doGenericServer_log by eauto. find_rewrite. auto.
     - eapply leaderLogs_entries_match_nw_packet_set; eauto; simpl.
       + intros. find_apply_hyp_hyp. intuition.
         find_apply_lem_hyp doGenericServer_packets. subst. simpl in *. intuition.
-      + intros. find_higher_order_rewrite; update_destruct; rewrite_update; auto; find_rewrite; auto.
+      + intros. find_higher_order_rewrite; update_destruct_simplify; rewrite_update; auto; find_rewrite; auto.
   Qed.
 
   Lemma leaderLogs_entries_match_state_same_packet_subset :
@@ -626,9 +618,9 @@ Section LeaderLogsLogMatching.
     unfold refined_raft_net_invariant_reboot, leaderLogs_entries_match, reboot.
     intuition.
     - eapply leaderLogs_entries_match_host_state_same; eauto; intros; find_higher_order_rewrite;
-      update_destruct; rewrite_update; auto; find_rewrite; auto.
+      update_destruct_simplify; rewrite_update; auto; find_rewrite; auto.
     - eapply leaderLogs_entries_match_nw_packet_set; eauto; try find_rewrite; intuition.
-      find_higher_order_rewrite; update_destruct; rewrite_update; try find_rewrite; auto.
+      find_higher_order_rewrite; update_destruct_simplify; rewrite_update; try find_rewrite; auto.
   Qed.
 
   Lemma leaderLogs_entries_match_invariant :

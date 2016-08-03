@@ -24,12 +24,6 @@ Section TermsAndIndicesFromOneLog.
     - unfold terms_and_indices_from_one_log_nw, terms_and_indices_from_one. simpl. contradiction.
   Qed.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma taifol_no_append_entries :
     forall ps' net ms p t leaderId prevLogIndex prevLogTerm entries leaderCommit h,
       (forall (p : packet), In p ps' -> In p (nwPackets net) \/ In p (send_packets h ms)) ->

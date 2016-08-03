@@ -27,12 +27,6 @@ Section CandidateEntriesInterface.
   Context {cei : candidate_entries_interface}.
   Context {lltsi : leaderLogs_term_sanity_interface}.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
   Ltac start :=
     red; unfold leaderLogs_candidateEntries; simpl; intros.
 

@@ -20,26 +20,12 @@ Section VotedForMoreUpToDate.
   Context {rvmimti : requestVote_maxIndex_maxTerm_interface}.
   Context {vftsi : votedFor_term_sanity_interface}.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac update_destruct_hyp :=
-    match goal with
-      | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac destruct_update :=
-    repeat (first [update_destruct_hyp|update_destruct]; subst; rewrite_update).
-  
-  
   Lemma votedFor_moreUpToDate_append_entries :
     refined_raft_net_invariant_append_entries votedFor_moreUpToDate.
   Proof.
     red. unfold votedFor_moreUpToDate. intros. simpl in *.
     subst. repeat find_higher_order_rewrite.
-    destruct_update; simpl in *; eauto;
+    destruct_update_hyp; simpl in *; eauto;
     try rewrite votesWithLog_same_append_entries; eauto.
     - find_copy_eapply_lem_hyp handleAppendEntries_term_votedFor; eauto.
       find_apply_lem_hyp handleAppendEntries_log_term_type.
@@ -56,7 +42,7 @@ Section VotedForMoreUpToDate.
     red. unfold votedFor_moreUpToDate. intros. simpl in *.
     find_copy_apply_lem_hyp handleAppendEntriesReply_log_term_type.
     subst. repeat find_higher_order_rewrite.
-    destruct_update; simpl in *; eauto;
+    destruct_update_hyp; simpl in *; eauto;
     intuition; try congruence; repeat find_rewrite; eauto;
     find_copy_eapply_lem_hyp handleAppendEntriesReply_term_votedFor; eauto;
     intuition; repeat find_rewrite; eauto.
@@ -68,7 +54,7 @@ Section VotedForMoreUpToDate.
     red. unfold votedFor_moreUpToDate. intros. simpl in *.
     find_copy_apply_lem_hyp handleRequestVote_log_term_type.
     subst. repeat find_higher_order_rewrite.
-    destruct_update; simpl in *; eauto;
+    destruct_update_hyp; simpl in *; eauto;
     intuition; try congruence; repeat find_rewrite; eauto.
     - find_eapply_lem_hyp update_elections_data_request_vote_votedFor; eauto.
       intuition; repeat find_rewrite.
@@ -105,7 +91,7 @@ Section VotedForMoreUpToDate.
   Proof.
     red. unfold votedFor_moreUpToDate. intros. simpl in *.
     subst. repeat find_higher_order_rewrite.
-    destruct_update; simpl in *;
+    destruct_update_hyp; simpl in *;
     try rewrite update_elections_data_request_vote_reply_votesWithLog;
     eauto.
     - erewrite handleRequestVoteReply_log; eauto.
@@ -124,7 +110,7 @@ Section VotedForMoreUpToDate.
   Proof.
     red. unfold votedFor_moreUpToDate. intros. simpl in *.
     subst. repeat find_higher_order_rewrite.
-    destruct_update; simpl in *; eauto.
+    destruct_update_hyp; simpl in *; eauto.
     - find_copy_apply_lem_hyp handleTimeout_log_same.
       find_copy_eapply_lem_hyp update_elections_data_timeout_votedFor; eauto.
       intuition; repeat find_rewrite; eauto.
@@ -148,7 +134,7 @@ Section VotedForMoreUpToDate.
     subst. repeat find_higher_order_rewrite.
     find_copy_apply_lem_hyp handleClientRequest_type; intuition.
     find_copy_apply_lem_hyp handleClientRequest_term_votedFor; intuition.
-    destruct_update; simpl in *; eauto; repeat find_rewrite;
+    destruct_update_hyp; simpl in *; eauto; repeat find_rewrite;
     try rewrite votesWithLog_same_client_request;
     find_apply_lem_hyp handleClientRequest_log;
     intuition; repeat find_rewrite; eauto;
@@ -166,7 +152,7 @@ Section VotedForMoreUpToDate.
           clear H
     end.
     subst. repeat find_higher_order_rewrite.
-    destruct_update; simpl in *; eauto;
+    destruct_update_hyp; simpl in *; eauto;
     try solve [find_apply_lem_hyp doLeader_candidate; subst; eauto].
     find_apply_lem_hyp doLeader_term_votedFor.
     intuition; repeat find_rewrite; eauto.
@@ -183,7 +169,7 @@ Section VotedForMoreUpToDate.
           clear H
     end.
     subst. repeat find_higher_order_rewrite.
-    destruct_update; simpl in *; eauto;
+    destruct_update_hyp; simpl in *; eauto;
     find_apply_lem_hyp doGenericServer_log_type_term_votesReceived;
     intuition; repeat find_rewrite; eauto.
   Qed.
@@ -199,7 +185,7 @@ Section VotedForMoreUpToDate.
           clear H
     end.
     subst. repeat find_higher_order_rewrite.
-    destruct_update; simpl in *; eauto; congruence.
+    destruct_update_hyp; simpl in *; eauto; congruence.
   Qed.
 
   Lemma votedFor_moreUpToDate_state_same_packet_subset :

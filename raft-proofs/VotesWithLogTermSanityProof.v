@@ -14,12 +14,6 @@ Section VotesWithLogTermSanity.
   Context {raft_params : RaftParams orig_base_params}.
   Context {rri : raft_refinement_interface}.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
   Ltac start :=
     red; unfold votesWithLog_term_sanity; simpl; intros.
 

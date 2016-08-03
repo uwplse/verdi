@@ -49,7 +49,6 @@ Section MatchIndexAllEntries.
   Context {vci : votes_correct_interface}.
   Context {cci : cronies_correct_interface}.
 
-
   Definition match_index_all_entries_nw (net : network) : Prop :=
     forall p t es e,
       In p (nwPackets net) ->
@@ -74,14 +73,6 @@ Section MatchIndexAllEntries.
     simpl. intros.
     intuition.
   Qed.
-
-  Ltac update_destruct :=
-    match goal with
-      | [ H : context [ update _ _ ?x _ ?y ] |- _ ] =>
-        destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-      | [ |- context [ update _ _ ?x _ ?y ] ] =>
-        destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-    end.
 
   Theorem handleClientRequest_matchIndex_log :
     forall h st client id c out st' ps,
@@ -151,17 +142,17 @@ Section MatchIndexAllEntries.
     unfold refined_raft_net_invariant_client_request, match_index_all_entries_inv.
     simpl. intros. break_and. split.
     - unfold match_index_all_entries in *. simpl in *. intros.
-      repeat find_higher_order_rewrite. update_destruct.
+      repeat find_higher_order_rewrite. update_destruct_simplify_hyp.
       + find_copy_apply_lem_hyp handleClientRequest_type.
         find_copy_apply_lem_hyp handleClientRequest_matchIndex_log. intuition.
         * repeat find_rewrite.
-          { update_destruct.
+          { update_destruct_simplify_hyp.
             - apply update_elections_data_clientRequest_allEntries_old'.
               find_apply_hyp_hyp. repeat find_rewrite. auto.
             - find_apply_hyp_hyp. repeat find_rewrite. auto.
           }
         * break_exists. break_and. repeat find_rewrite.
-          { update_destruct.
+          { update_destruct_simplify_hyp.
             - unfold update_elections_data_client_request. find_rewrite.
               break_if.
               + repeat find_rewrite. simpl. break_or_hyp.
@@ -177,20 +168,20 @@ Section MatchIndexAllEntries.
               + simpl in *. omega.
               + find_apply_hyp_hyp. repeat find_rewrite. auto.
           }
-      + find_apply_hyp_hyp. update_destruct.
+      + find_apply_hyp_hyp. update_destruct_simplify_hyp.
         * apply update_elections_data_clientRequest_allEntries_old'.
           repeat find_rewrite. auto.
         * repeat find_rewrite. auto.
     - unfold match_index_all_entries_nw in *.
       simpl. intros.
       find_apply_hyp_hyp. break_or_hyp.
-      + repeat find_higher_order_rewrite. update_destruct.
+      + repeat find_higher_order_rewrite. update_destruct_simplify_hyp.
         * find_copy_apply_lem_hyp handleClientRequest_type. break_and. repeat find_rewrite.
           find_copy_apply_lem_hyp handleClientRequest_log.
           { intuition.
             - repeat find_rewrite.
               eapply_prop_hyp In In; eauto.
-              update_destruct.
+              update_destruct_simplify_hyp.
               + apply update_elections_data_clientRequest_allEntries_old'.
                 repeat find_rewrite. auto.
               + repeat find_rewrite. auto.
@@ -210,13 +201,13 @@ Section MatchIndexAllEntries.
               + find_apply_lem_hyp maxIndex_is_max; [|solve[apply entries_sorted_invariant; auto]].
                 omega.
               + eapply_prop_hyp In In; eauto; [|solve[repeat find_rewrite; auto]].
-                update_destruct.
+                update_destruct_simplify_hyp.
                 * apply update_elections_data_clientRequest_allEntries_old'.
                   repeat find_rewrite. auto.
                 * repeat find_rewrite. auto.
           }
         * eapply_prop_hyp In In; eauto.
-          { update_destruct.
+          { update_destruct_simplify_hyp.
             - apply update_elections_data_clientRequest_allEntries_old'.
               repeat find_rewrite. auto.
             - repeat find_rewrite. auto.
@@ -241,7 +232,7 @@ Section MatchIndexAllEntries.
                                     (update_elections_data_timeout h' (nwState net h'), d) h))).
   Proof.
     intros.
-    update_destruct.
+    update_destruct_simplify_hyp.
     - unfold update_elections_data_timeout. repeat break_match; auto.
     - auto.
   Qed.
@@ -269,7 +260,7 @@ Section MatchIndexAllEntries.
     - unfold match_index_all_entries in *. simpl. intros.
       repeat find_higher_order_rewrite.
       apply allEntries_update_timeout.
-      update_destruct.
+      update_destruct_simplify_hyp.
       + find_erewrite_lem handleTimeout_log_same.
         find_copy_apply_lem_hyp handleTimeout_type. intuition; try congruence.
         find_erewrite_lem handleTimeout_matchIndex.
@@ -281,7 +272,7 @@ Section MatchIndexAllEntries.
       find_apply_hyp_hyp. break_or_hyp.
       + repeat find_higher_order_rewrite.
         apply allEntries_update_timeout.
-        update_destruct.
+        update_destruct_simplify_hyp.
         * find_erewrite_lem handleTimeout_log_same.
           find_copy_apply_lem_hyp handleTimeout_type.
           intuition; try congruence.
@@ -516,7 +507,7 @@ Section MatchIndexAllEntries.
     split.
     - unfold match_index_all_entries in *. simpl. intros.
       repeat find_higher_order_rewrite.
-      update_destruct.
+      update_destruct_simplify_hyp.
       + assert (currentTerm (snd (nwState net (pDst p))) <> t).
         { intro.
           match goal with
@@ -528,14 +519,14 @@ Section MatchIndexAllEntries.
         find_apply_lem_hyp handleAppendEntries_post_leader_nop; auto.
         subst. eapply_prop_hyp In In; eauto.
         repeat find_rewrite.
-        update_destruct; auto using update_elections_data_appendEntries_preserves_allEntries.
+        update_destruct_simplify_hyp; auto using update_elections_data_appendEntries_preserves_allEntries.
       + eapply_prop_hyp In In; eauto. repeat find_rewrite.
-        update_destruct; auto using update_elections_data_appendEntries_preserves_allEntries.
+        update_destruct_simplify_hyp; auto using update_elections_data_appendEntries_preserves_allEntries.
     - unfold match_index_all_entries_nw. simpl.  intros.
       find_apply_hyp_hyp. break_or_hyp.
       + unfold match_index_all_entries_nw in *.
         repeat find_higher_order_rewrite.
-        update_destruct.
+        update_destruct_simplify_hyp.
         * assert (currentTerm (snd (nwState net (pDst p))) <> t).
           { intro.
             match goal with
@@ -553,7 +544,7 @@ Section MatchIndexAllEntries.
           | [ H : In _ (_ ++ _), H' : forall _ _ _ _, In _ _ -> _ |- _ ] =>
             eapply in_middle_insert in H; eapply H' in H; eauto; try congruence
           end.
-          { update_destruct.
+          { update_destruct_simplify_hyp.
             - apply update_elections_data_appendEntries_preserves_allEntries.
               repeat find_rewrite. auto.
             - auto.
@@ -562,7 +553,7 @@ Section MatchIndexAllEntries.
           | [ H : forall _ _ _ _, In _ _ -> _, H' : pBody _ = AppendEntriesReply _ _ _ |- _ ] =>
             eapply H in H'; eauto
           end.
-          { update_destruct.
+          { update_destruct_simplify_hyp.
             - apply update_elections_data_appendEntries_preserves_allEntries.
               repeat find_rewrite. auto.
             - auto.
@@ -571,7 +562,7 @@ Section MatchIndexAllEntries.
         find_copy_apply_lem_hyp handleAppendEntries_message. break_exists.
         subst. find_inversion.
         repeat find_higher_order_rewrite.
-        update_destruct.
+        update_destruct_simplify_hyp.
         * exfalso. eapply lifted_no_AE_to_self with (net := net); eauto.
         * unfold update_elections_data_appendEntries. repeat find_rewrite. simpl.
           { find_copy_apply_lem_hyp handleAppendEntries_success_allEntries.
@@ -645,7 +636,7 @@ Section MatchIndexAllEntries.
       fst (update name_eq_dec f x (fst (f x), v2) y) = fst (A := A) (f y).
   Proof.
     intros.
-    update_destruct; auto.
+    update_destruct_simplify_hyp; auto.
   Qed.
 
   Lemma match_index_all_entries_append_entries_reply :
@@ -656,7 +647,7 @@ Section MatchIndexAllEntries.
     - { unfold match_index_all_entries in *. simpl. intros. break_and.
         repeat find_higher_order_rewrite.
         rewrite update_nop_fst.
-        update_destruct.
+        update_destruct_simplify_hyp.
         - find_copy_apply_lem_hyp handleAppendEntriesReply_spec.
           intuition.
           + match goal with
@@ -696,7 +687,7 @@ Section MatchIndexAllEntries.
       repeat find_higher_order_rewrite. rewrite update_nop_fst.
       find_apply_hyp_hyp.
       break_or_hyp.
-      + update_destruct.
+      + update_destruct_simplify_hyp.
         * find_erewrite_lem handleAppendEntriesReply_log.
           find_copy_apply_lem_hyp handleAppendEntriesReply_spec.
           { repeat break_or_hyp; break_and.
@@ -726,12 +717,12 @@ Section MatchIndexAllEntries.
     simpl. intros. split.
     - unfold match_index_all_entries in *. simpl. intros. break_and.
       repeat find_higher_order_rewrite.
-      update_destruct.
+      update_destruct_simplify_hyp.
       + find_copy_apply_lem_hyp handleRequestVote_type.
         intuition; try congruence.
         find_copy_apply_lem_hyp handleRequestVote_matchIndex_preserved.
         unfold matchIndex_preserved in *. intuition.
-        update_destruct.
+        update_destruct_simplify_hyp.
         * rewrite update_elections_data_requestVote_allEntries.
           repeat find_reverse_rewrite.
           match goal with
@@ -745,7 +736,7 @@ Section MatchIndexAllEntries.
             apply H with (leader := pDst p)
           end; auto;
             repeat find_rewrite; auto.
-      + update_destruct.
+      + update_destruct_simplify_hyp.
         * rewrite update_elections_data_requestVote_allEntries.
           repeat find_reverse_rewrite.
           match goal with
@@ -762,12 +753,12 @@ Section MatchIndexAllEntries.
       simpl. intros.
       find_apply_hyp_hyp. break_or_hyp.
       + repeat find_higher_order_rewrite.
-        update_destruct.
+        update_destruct_simplify_hyp.
         * { find_copy_apply_lem_hyp handleRequestVote_type.
             intuition; try congruence.
             find_copy_apply_lem_hyp handleRequestVote_matchIndex_preserved.
             unfold matchIndex_preserved in *. intuition.
-            update_destruct.
+            update_destruct_simplify_hyp.
             - rewrite update_elections_data_requestVote_allEntries.
               repeat find_rewrite.
               match goal with
@@ -779,7 +770,7 @@ Section MatchIndexAllEntries.
                 apply H with (es := es); auto using in_middle_insert; try congruence
               end.
           }
-        * { update_destruct.
+        * { update_destruct_simplify_hyp.
             - rewrite update_elections_data_requestVote_allEntries.
               repeat find_rewrite.
               match goal with
@@ -839,10 +830,10 @@ Section MatchIndexAllEntries.
     - unfold match_index_all_entries in *. simpl. intros. break_and.
       find_apply_lem_hyp handleRequestVoteReply_spec.
       repeat find_higher_order_rewrite.
-      update_destruct.
+      update_destruct_simplify_hyp.
       + intuition; try congruence.
         * subst.
-          { update_destruct.
+          { update_destruct_simplify_hyp.
             - rewrite update_elections_data_requestVoteReply_allEntries.
               repeat find_reverse_rewrite. eauto.
             - repeat find_reverse_rewrite. eauto.
@@ -864,7 +855,7 @@ Section MatchIndexAllEntries.
             - find_apply_lem_hyp lifted_terms_and_indices_from_one_log; auto.
               intuition. omega.
           }
-      + update_destruct.
+      + update_destruct_simplify_hyp.
         * rewrite update_elections_data_requestVoteReply_allEntries.
           repeat find_reverse_rewrite. eauto.
         * repeat find_reverse_rewrite. eauto.
@@ -874,10 +865,10 @@ Section MatchIndexAllEntries.
       find_apply_lem_hyp handleRequestVoteReply_spec'.
       repeat find_higher_order_rewrite.
       find_apply_hyp_hyp.
-      update_destruct.
+      update_destruct_simplify_hyp.
       + intuition; try congruence.
         * subst.
-          { update_destruct.
+          { update_destruct_simplify_hyp.
             - rewrite update_elections_data_requestVoteReply_allEntries.
               repeat find_rewrite.
               match goal with
@@ -908,7 +899,7 @@ Section MatchIndexAllEntries.
               unfold raft_data in *.
               congruence.
           }
-      + { update_destruct.
+      + { update_destruct_simplify_hyp.
             - rewrite update_elections_data_requestVoteReply_allEntries.
               repeat find_rewrite.
               match goal with
@@ -953,7 +944,7 @@ Section MatchIndexAllEntries.
         clear H
       end.
       rewrite update_nop_fst.
-      update_destruct.
+      update_destruct_simplify_hyp.
       + repeat find_reverse_rewrite.
         find_copy_apply_lem_hyp doLeader_type. intuition.
         find_copy_apply_lem_hyp doLeader_matchIndex_preserved.
@@ -981,7 +972,7 @@ Section MatchIndexAllEntries.
         end.
         rewrite update_nop_fst in *.
         find_copy_apply_lem_hyp doLeader_type. intuition.
-        update_destruct.
+        update_destruct_simplify_hyp.
         * find_copy_apply_lem_hyp doLeader_matchIndex_preserved.
           unfold matchIndex_preserved in *. intuition.
           match goal with
@@ -1013,7 +1004,7 @@ Section MatchIndexAllEntries.
         clear H
       end.
       rewrite update_nop_fst.
-      update_destruct.
+      update_destruct_simplify_hyp.
       + repeat find_reverse_rewrite.
         find_copy_apply_lem_hyp doGenericServer_type. intuition.
         find_copy_apply_lem_hyp doGenericServer_matchIndex_preserved.
@@ -1041,7 +1032,7 @@ Section MatchIndexAllEntries.
         end.
         rewrite update_nop_fst in *.
         find_copy_apply_lem_hyp doGenericServer_type. intuition.
-        update_destruct.
+        update_destruct_simplify_hyp.
         * find_copy_apply_lem_hyp doGenericServer_matchIndex_preserved.
           unfold matchIndex_preserved in *. intuition.
           match goal with
@@ -1089,7 +1080,7 @@ Section MatchIndexAllEntries.
           clear H
       end.
       rewrite update_nop_fst.
-      update_destruct.
+      update_destruct_simplify_hyp.
       + discriminate.
       + repeat find_reverse_rewrite.
         eauto.
@@ -1103,7 +1094,7 @@ Section MatchIndexAllEntries.
           clear H
       end.
       rewrite update_nop_fst.
-      update_destruct.
+      update_destruct_simplify_hyp.
       + discriminate.
       + repeat find_reverse_rewrite.
         eauto.

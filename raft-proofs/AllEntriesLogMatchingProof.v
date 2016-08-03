@@ -23,12 +23,6 @@ Section AllEntriesLogMatching.
   Context {lsi : leader_sublog_interface}.
   Context {rlmli : refined_log_matching_lemmas_interface}.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
   Definition allEntries_log_matching_nw net :=
     forall (e e' : entry) (h : name) (p : packet)
       t leaderId prevLogIndex prevLogTerm entries leaderCommit,

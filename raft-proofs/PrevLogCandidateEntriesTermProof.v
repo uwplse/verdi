@@ -54,14 +54,6 @@ Section PrevLogCandidateEntriesTerm.
     intuition.
   Qed.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ H : context [ update _ _ ?x _ ?y ] |- _ ] =>
-        destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-      | [  |- context [ update _ _ ?x _ ?y ] ] =>
-        destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-    end.
-
   Lemma prevLog_candidateEntriesTerm_client_request :
     refined_raft_net_invariant_client_request prevLog_candidateEntriesTerm.
   Proof.
@@ -70,7 +62,7 @@ Section PrevLogCandidateEntriesTerm.
     find_apply_hyp_hyp. break_or_hyp.
     - eapply candidateEntriesTerm_ext; eauto.
       eapply candidateEntriesTerm_same; eauto; intros;
-      update_destruct; auto.
+      update_destruct_simplify; auto.
       + now erewrite update_elections_data_client_request_cronies by eauto.
       + find_apply_lem_hyp handleClientRequest_type. intuition.
       + find_apply_lem_hyp handleClientRequest_type. intuition.
@@ -109,7 +101,7 @@ Section PrevLogCandidateEntriesTerm.
       pose proof H;
         eapply update_elections_data_timeout_cronies with (t := t) in H
     end. break_or_hyp.
-    - update_destruct; auto.
+    - update_destruct_simplify; auto.
       find_copy_apply_lem_hyp handleTimeout_type_strong.
       intuition; repeat find_rewrite; auto.
       find_apply_lem_hyp wonElection_exists_voter.
@@ -118,7 +110,7 @@ Section PrevLogCandidateEntriesTerm.
       find_copy_apply_lem_hyp cronies_term_invariant; auto.
       simpl in *.
       omega.
-    - update_destruct; auto.
+    - update_destruct_simplify; auto.
       find_copy_apply_lem_hyp handleTimeout_type_strong.
       find_apply_lem_hyp wonElection_exists_voter.
       break_exists.
@@ -155,7 +147,7 @@ Section PrevLogCandidateEntriesTerm.
     unfold candidateEntriesTerm.
     intros.
     break_exists_exists. break_and.
-    update_destruct.
+    update_destruct_simplify.
     - rewrite update_elections_data_appendEntries_cronies.
       find_apply_lem_hyp handleAppendEntries_type.
       intuition; subst; repeat find_rewrite; auto.
@@ -186,7 +178,7 @@ Section PrevLogCandidateEntriesTerm.
     unfold candidateEntriesTerm.
     intros. break_exists_exists.
     find_apply_lem_hyp handleAppendEntriesReply_type.
-    update_destruct.
+    update_destruct_simplify.
     - intuition; repeat find_rewrite; auto. discriminate.
     - auto.
   Qed.
@@ -235,7 +227,7 @@ Section PrevLogCandidateEntriesTerm.
     unfold candidateEntriesTerm.
     intros.
     break_exists_exists.
-    update_destruct; intuition.
+    update_destruct_simplify; intuition.
     - now rewrite update_elections_data_requestVote_cronies_same.
     - intros.
       match goal with
@@ -258,7 +250,7 @@ Section PrevLogCandidateEntriesTerm.
     unfold candidateEntriesTerm.
     intros.
     break_exists_exists.
-    update_destruct; intuition.
+    update_destruct_simplify; intuition.
     - now rewrite update_elections_data_requestVote_cronies_same.
     - unfold handleRequestVote, advanceCurrentTerm in *.
       repeat break_match; do_bool; repeat find_inversion; simpl in *; break_and; try discriminate; auto.
@@ -289,7 +281,7 @@ Section PrevLogCandidateEntriesTerm.
     unfold candidateEntriesTerm.
     intros.
     break_exists_exists.
-    update_destruct; auto.
+    update_destruct_simplify; auto.
     break_and.
     unfold raft_data in *. simpl in *.
     unfold update_elections_data_requestVoteReply.
@@ -336,7 +328,7 @@ Section PrevLogCandidateEntriesTerm.
     unfold candidateEntriesTerm.
     intros. break_exists_exists.
     break_and.
-    update_destruct; auto.
+    update_destruct_simplify; auto.
     split.
     - match goal with
       | [ H : nwState ?net ?h = (?x, _) |- _ ] =>
@@ -413,7 +405,7 @@ Section PrevLogCandidateEntriesTerm.
 
         unfold candidateEntries in *. break_exists_exists.
         find_higher_order_rewrite.
-        update_destruct; auto.
+        update_destruct_simplify; auto.
   Qed.
 
   Lemma doGenericServer_preserves_candidateEntriesTerm :
@@ -426,11 +418,11 @@ Section PrevLogCandidateEntriesTerm.
     intros.
     find_apply_lem_hyp doGenericServer_type. break_and.
     eapply candidateEntriesTerm_same; eauto.
-    - intros. update_destruct; auto.
+    - intros. update_destruct_simplify; auto.
       find_rewrite. simpl. auto.
-    - intros. update_destruct; auto.
+    - intros. update_destruct_simplify; auto.
       repeat find_rewrite.  auto.
-    - intros. update_destruct; auto.
+    - intros. update_destruct_simplify; auto.
       repeat find_rewrite.  auto.
   Qed.
 
@@ -468,7 +460,7 @@ Section PrevLogCandidateEntriesTerm.
     find_apply_hyp_hyp.
     unfold candidateEntriesTerm in *.
     break_exists_exists.
-    update_destruct; auto.
+    update_destruct_simplify; auto.
     repeat find_rewrite.
     simpl in *. intuition.
     discriminate.

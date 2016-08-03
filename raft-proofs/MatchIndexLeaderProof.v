@@ -14,19 +14,6 @@ Section MatchIndexLeader.
   Context {raft_params : RaftParams orig_base_params}.
 
   Context {naertsi : no_append_entries_replies_to_self_interface}.
-
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac update_destruct_hyp :=
-    match goal with
-      | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac destruct_update :=
-    repeat (first [update_destruct_hyp|update_destruct]; subst; rewrite_update).
   
   Lemma match_index_leader_append_entries_reply :
     raft_net_invariant_append_entries_reply match_index_leader.

@@ -70,11 +70,6 @@ Section InputBeforeOutput.
       break_exists; intuition; do_bool; subst; eauto.
   Qed.
 
-  Ltac update_destruct_hyp :=
-    match goal with
-    | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma doGenericServer_applied_entries :
     forall ps h sigma os st' ms,
       raft_intermediate_reachable (mkNetwork ps sigma) ->
@@ -109,7 +104,7 @@ Section InputBeforeOutput.
         specialize (H h'); conclude H ltac:(eauto using all_fin_all)
     end.
     rewrite_update. simpl in *.
-    update_destruct_hyp; subst; rewrite_update; simpl in *.
+    update_destruct; subst; rewrite_update; simpl in *.
     + match goal with
         | h : name |- _ =>
           pose proof removeAfterIndex_partition (removeAfterIndex (log (sigma h)) (commitIndex (sigma h))) (lastApplied (sigma h))
@@ -409,12 +404,12 @@ Section InputBeforeOutput.
     intros.
     unfold handleMessage in *. break_match; repeat break_let; repeat find_inversion.
     - find_apply_lem_hyp handleRequestVote_same_log.
-      update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
+      update_destruct; subst; rewrite_update; repeat find_rewrite;
       unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
-    - update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
+    - update_destruct; subst; rewrite_update; repeat find_rewrite;
       try find_rewrite_lem handleRequestVoteReply_same_log;
       unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
-    - update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
+    - update_destruct; subst; rewrite_update; repeat find_rewrite;
       try solve [unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto].
       find_apply_lem_hyp handleAppendEntries_log. intuition.
       + repeat find_rewrite. unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
@@ -427,7 +422,7 @@ Section InputBeforeOutput.
         * find_apply_lem_hyp removeAfterIndex_in.
           unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
     - find_apply_lem_hyp handleAppendEntriesReply_log.
-      update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
+      update_destruct; subst; rewrite_update; repeat find_rewrite;
       unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
   Qed.
   
@@ -468,14 +463,14 @@ Section InputBeforeOutput.
     unfold handleInput in *. break_match; repeat break_let; repeat find_inversion.
     - left.
       find_apply_lem_hyp handleTimeout_log_same.
-      update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
+      update_destruct; subst; rewrite_update; repeat find_rewrite;
       unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
     - find_apply_lem_hyp handleClientRequest_log. intuition.
       + left.
-        update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
+        update_destruct; subst; rewrite_update; repeat find_rewrite;
         unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
       + break_exists. intuition.
-        update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
+        update_destruct; subst; rewrite_update; repeat find_rewrite;
         try solve [left; unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto].
         simpl in *. intuition; subst; intuition.
         left; unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
@@ -523,7 +518,7 @@ Section InputBeforeOutput.
       + find_apply_hyp_hyp. break_exists. intuition.
         eapply handleMessage_log with (h'' := x1); eauto;
         [destruct p; simpl in *; repeat find_rewrite; intuition|].
-        update_destruct_hyp; subst; rewrite_update; eauto.
+        update_destruct; subst; rewrite_update; eauto.
         find_apply_lem_hyp doLeader_log. repeat find_rewrite. auto.
     - unfold RaftInputHandler in *. repeat break_let. subst.
       unfold in_applied_entries in *.
@@ -559,7 +554,7 @@ Section InputBeforeOutput.
           | H : _ |- _ =>
             eapply handleInput_log with (h' := x1) in H
         end; eauto;
-        [|update_destruct_hyp; subst; eauto; rewrite_update; repeat find_rewrite; eauto].
+        [|update_destruct; subst; eauto; rewrite_update; repeat find_rewrite; eauto].
         intuition; subst;
         repeat find_rewrite; eauto.
     - find_false.

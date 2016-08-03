@@ -18,12 +18,6 @@ Section LeaderLogsTermSanity.
   Context {rri : raft_refinement_interface}.
   Context {ctgli : candidate_term_gt_log_interface}.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma candidate_term_gt_log_lifted :
     forall net,
       refined_raft_intermediate_reachable net ->

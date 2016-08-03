@@ -14,11 +14,6 @@ Section CroniesTermProof.
 
   Context {rri : raft_refinement_interface}.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (@name_eq_dec _ _ y x)
-    end.
-
   Lemma handleClientRequest_spec :
     forall h st client id c out st' l,
       handleClientRequest h st client id c = (out, st', l) ->

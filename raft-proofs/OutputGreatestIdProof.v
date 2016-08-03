@@ -81,11 +81,6 @@ Section OutputGreatestId.
     unfold key_in_output_list in *; break_exists; simpl in *; intuition; congruence.
   Qed.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma has_key_own_key :
     forall e,
       has_key (eClient e) (eId e) e = true.

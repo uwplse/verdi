@@ -1029,17 +1029,6 @@ Section CommonTheorems.
         specialize (H3 a1). intuition. omega.
   Qed.
 
-  Ltac update_destruct :=
-    match goal with
-    | [ |- context [ update _ _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac update_destruct_hyp :=
-    match goal with
-    | [ _ : context [ update _ _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
-
   Lemma applied_entries_update :
     forall sigma h st,
       lastApplied st >= lastApplied (sigma h) ->
