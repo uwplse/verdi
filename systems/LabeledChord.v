@@ -860,45 +860,6 @@ Section LabeledChord.
       res_clears_timeout (recv_handler src h st p) t ->
       clears_timeout h t o.
 
-  (*
-  Lemma constrained_Request_conditions :
-    forall gst h dst p st,
-      In h (nodes gst) ->
-      ~ In h (failed_nodes gst) ->
-      sigma gst h = st ->
-      ~ timeout_constraint gst h (Request dst p) ->
-      ~ In dst (failed_nodes gst) \/
-      exists m : payload,
-        request_response_pair p m /\ In (dst, (h, m)) (msgs gst).
-  Admitted.
-  *)
-
-  (*
-  Lemma response_clears_timeout :
-    forall s p m h dst,
-      lb_execution s ->
-      request_response_pair p m ->
-      eventually (now (occurred (RecvMsg dst h m))) s ->
-      eventually (now (clears_timeout h (Request dst p))) s.
-  Admitted.
-   *)
-
-  Lemma queries_are_closed_by_recvmsg :
-    forall o src dst p m,
-      request_response_pair p m ->
-      In (Request dst p) (timeouts (occ_gst o) src) ->
-      occ_label o = RecvMsg dst src m ->
-      clears_timeout src (Request dst p) o.
-  Admitted.
-
-  Lemma timeout_enabled_until_cleared :
-    forall src dst p s,
-      lb_execution s ->
-      weak_until (now (l_enabled (Timeout src (Request dst p))))
-                 (now (clears_timeout src (Request dst p)))
-                 s.
-  Abort.
-
   Lemma request_stays_in :
     forall o s src dst p,
       lb_execution (Cons o s) ->
@@ -998,53 +959,84 @@ Section LabeledChord.
         subst_max.
         simpl in *.
         unfold recv_handler_l in *; tuple_inversion.
-        eapply queries_are_closed_by_recvmsg; eauto.
+        admit.
       * left.
         move => H_t.
         inv H_t.
         find_eapply_lem_hyp not_timeout_constraint_inv.
         break_or_hyp.
         + by find_eapply_lem_hyp failed_nodes_not_new; eauto.
-        + break_exists_name m''.
-          break_and.
-          apply H11 in H6.
-          apply H6.
-  Abort.
+        + admit.
+  Admitted.
+
+  Definition satisfies_invariant (s : infseq occurrence) :=
+    match s with
+    | Cons o s => inductive_invariant hash base (occ_gst o)
+    end.
+
+  Lemma satisfies_invariant_inv :
+    forall s,
+      satisfies_invariant s ->
+      inductive_invariant hash base (occ_gst (hd s)).
+  Proof.
+    intuition.
+    now destruct s.
+  Qed.
+
+  Lemma always_satisfies_inv_means_hd_satisfies_inv :
+    forall o s,
+      always satisfies_invariant (Cons o s) ->
+      inductive_invariant hash base (occ_gst o).
+  Proof.
+    intuition.
+    find_eapply_lem_hyp always_now.
+    now find_eapply_lem_hyp satisfies_invariant_inv.
+  Qed.
+
+  Lemma queries_are_closed_by_recvmsg_occ :
+      forall o src dst m p,
+        inductive_invariant hash base (occ_gst o) ->
+        request_response_pair m p ->
+        In (Request dst m) (timeouts (occ_gst o) src) ->
+        occ_label o = RecvMsg dst src p ->
+        clears_timeout src (Request dst m) o.
+  Admitted.
 
   Lemma queries_now_closed :
     forall s p m dst src,
       lb_execution s ->
+      always satisfies_invariant s ->
       request_response_pair p m ->
       In (Request dst p) (timeouts (occ_gst (hd s)) src) ->
       ~ timeout_constraint (occ_gst (hd s)) src (Request dst p) ->
       eventually (now (occurred (RecvMsg dst src m))) s ->
       eventually (now (clears_timeout src (Request dst p))) s.
   Proof.
-    move => p m dst src s H_exec H_pair H_t H_const H_recv.
+    move => s p m dst src H_exec H_inv H_pair H_t H_const H_recv.
     induction H_recv as [ | o s'].
     - apply E0.
       unfold now in *.
       break_match.
-      eapply queries_are_closed_by_recvmsg; eauto.
+      eapply queries_are_closed_by_recvmsg_occ; eauto.
+      by find_eapply_lem_hyp always_satisfies_inv_means_hd_satisfies_inv.
     - simpl in *.
       find_copy_eapply_lem_hyp request_stays_in; eauto.
       break_or_hyp; try eauto using E_next, E0.
       inv H_exec.
-  Admitted.
-  (*
       find_copy_eapply_lem_hyp timeout_constraint_lifted_by_clearing; eauto.
       break_or_hyp.
       + apply E_next.
-        apply IHH_recv.
-        * easy.
-        * inv H_exec.
-          apply not_timeout_constraint_inv in H_const.
-          now inv H_const.
-        * easy.
-      + exact: E0.
-  Qed. *)
+        apply IHH_recv; eauto.
+        by find_apply_lem_hyp always_invar.
+      + admit.
+      + admit.
+      + admit.
 
-  Definition Request_has_unique_message (gst : global_state) : Prop :=
+      + admit.
+      + admit.
+  Admitted.
+
+  Definition Request_has_message (gst : global_state) : Prop :=
     forall src dst p m,
       In (Request dst p) (timeouts gst src) ->
       request_response_pair p m ->
@@ -1052,26 +1044,46 @@ Section LabeledChord.
        In (src, (dst, p)) (msgs gst)) \/
       In (dst, (src, m)) (msgs gst).
 
+  Definition Request_messages_unique (gst : global_state) : Prop :=
+    forall src dst p m m',
+      In (Request dst p) (timeouts gst src) ->
+      request_response_pair p m ->
+      In (dst, (src, m)) (msgs gst) ->
+      In (dst, (src, m')) (msgs gst) ->
+      m = m'.
+
   Lemma requests_eventually_get_responses :
     forall s,
       lb_execution s ->
       weak_local_fairness s ->
-      forall src dst m p,
+      always satisfies_invariant s ->
+      forall src dst p,
         In src (nodes (occ_gst (hd s))) ->
         ~ In src (failed_nodes (occ_gst (hd s))) ->
         In dst (nodes (occ_gst (hd s))) ->
-        request_response_pair p m ->
-        (~ In dst (failed_nodes (occ_gst (hd s))) /\
-         In (src, (dst, p)) (msgs (occ_gst (hd s)))) \/
-        In (dst, (src, m)) (msgs (occ_gst (hd s))) ->
         In (Request dst p) (timeouts (occ_gst (hd s)) src) ->
-        eventually (now (occurred (RecvMsg dst src m))) s.
+        exists m,
+          request_response_pair p m /\
+          eventually (now (occurred (RecvMsg dst src m))) s.
+  Admitted.
+
+  Ltac inv_timeout_constraint :=
+    match goal with
+    | H : timeout_constraint _ _ _ |- _ =>
+      inv H
+    end.
+
+  Lemma inv_responses_are_unique :
+    forall gst,
+      inductive_invariant hash base gst ->
+      responses_are_unique gst.
   Admitted.
 
   Lemma requests_eventually_complete :
     forall s,
       lb_execution s ->
       weak_local_fairness s ->
+      always satisfies_invariant s ->
       forall src dst p m,
         In src (nodes (occ_gst (hd s))) ->
         ~ In src (failed_nodes (occ_gst (hd s))) ->
@@ -1083,20 +1095,31 @@ Section LabeledChord.
         In (Request dst p) (timeouts (occ_gst (hd s)) src) ->
         eventually (now (clears_timeout src (Request dst p))) s.
   Proof.
-    intros.
+    move => s H_exec H_fair H_inv src dst p m H_ins H_nins H_ind H_pair H_msg H_t.
     find_copy_eapply_lem_hyp requests_eventually_get_responses; eauto.
+    break_exists_name m'.
+    break_and.
     eapply queries_now_closed; eauto.
-  Admitted.
+    intuition.
+    - by inv_timeout_constraint.
+    - inv_timeout_constraint.
+      match goal with
+        [ H: forall _, _ _ _ -> ~ _
+          |- _ ] => apply H in H_pair
+      end.
+      by apply H_pair.
+  Qed.
 
   Lemma constrained_timeout_eventually_cleared :
     forall s,
       lb_execution s ->
       weak_local_fairness s ->
-      (* this is an inductive invariant conjunct *)
+      always satisfies_invariant s ->
+      (* these should all follow from satisfies_invariant. *)
       timeouts_match_msg (occ_gst (hd s)) ->
       Request_goes_to_real_node (occ_gst (hd s)) ->
       Request_payload_has_response (occ_gst (hd s)) ->
-      Request_has_unique_message (occ_gst (hd s)) ->
+      Request_has_message (occ_gst (hd s)) ->
       forall h st t,
         In t (timeouts (occ_gst (hd s)) h) ->
         In h (nodes (occ_gst (hd s))) ->
@@ -1105,7 +1128,7 @@ Section LabeledChord.
         ~ timeout_constraint (occ_gst (hd s)) h t ->
         eventually (now (clears_timeout h t)) s.
   Proof.
-    move => s H_exec H_fair H_inv H_reqnode H_res H_uniqm h st t H_t H_node H_live H_st H_constraint.
+    move => s H_exec H_fair H_inv H_tmsg H_reqnode H_res H_uniqm h st t H_t H_node H_live H_st H_constraint.
     destruct t.
     - (* Tick case is.. impossible *)
       exfalso.
