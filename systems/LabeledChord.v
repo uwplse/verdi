@@ -861,12 +861,12 @@ Section LabeledChord.
       clears_timeout h t o.
 
   Lemma request_stays_in :
-    forall o s src dst p,
-      lb_execution (Cons o s) ->
+    forall o o' s src dst p,
+      lb_execution (Cons o (Cons o' s)) ->
       ~ timeout_constraint (occ_gst o) src (Request dst p) ->
       In (Request dst p) (timeouts (occ_gst o) src) ->
-      In (Request dst p) (timeouts (occ_gst (hd s)) src) \/
-      (now (clears_timeout src (Request dst p)) s).
+      In (Request dst p) (timeouts (occ_gst o') src) \/
+      clears_timeout src (Request dst p) o.
   Admitted.
 
   Lemma not_timeout_constraint_inv :
@@ -1002,6 +1002,35 @@ Section LabeledChord.
         clears_timeout src (Request dst m) o.
   Admitted.
 
+  Lemma inv_responses_are_unique :
+    forall gst,
+      inductive_invariant hash base gst ->
+      responses_are_unique gst.
+  Admitted.
+
+  Lemma inv_Request_payload_has_response :
+    forall gst,
+      inductive_invariant hash base gst ->
+      Request_payload_has_response gst.
+  Admitted.
+
+  Lemma now_recvmsg_now_clears_timeout :
+    forall s p m dst src,
+      lb_execution s ->
+      always satisfies_invariant s ->
+      request_response_pair p m ->
+      In (Request dst p) (timeouts (occ_gst (hd s)) src) ->
+      ~ timeout_constraint (occ_gst (hd s)) src (Request dst p) ->
+      (now (occurred (RecvMsg dst src m))) s ->
+      (now (clears_timeout src (Request dst p))) s.
+  Admitted.
+
+  Ltac inv_timeout_constraint :=
+    match goal with
+    | H : timeout_constraint _ _ _ |- _ =>
+      inv H
+    end.
+
   Lemma queries_now_closed :
     forall s p m dst src,
       lb_execution s ->
@@ -1019,22 +1048,18 @@ Section LabeledChord.
       break_match.
       eapply queries_are_closed_by_recvmsg_occ; eauto.
       by find_eapply_lem_hyp always_satisfies_inv_means_hd_satisfies_inv.
-    - simpl in *.
-      find_copy_eapply_lem_hyp request_stays_in; eauto.
-      break_or_hyp; try eauto using E_next, E0.
+    - destruct s' as [o' s']. simpl in *.
       inv H_exec.
-      find_copy_eapply_lem_hyp timeout_constraint_lifted_by_clearing; eauto.
-      break_or_hyp.
-      + apply E_next.
-        apply IHH_recv; eauto.
-        by find_apply_lem_hyp always_invar.
-      + admit.
-      + admit.
-      + admit.
-
-      + admit.
-      + admit.
-  Admitted.
+      copy_apply always_satisfies_inv_means_hd_satisfies_inv H_inv.
+      find_eapply_lem_hyp timeout_constraint_lifted_by_clearing;
+        eauto using inv_Request_payload_has_response, inv_responses_are_unique.
+      break_or_hyp; [| by apply E0].
+      copy_eapply request_stays_in H_exec; eauto.
+      break_or_hyp; [| by apply E0].
+      apply E_next.
+      apply always_invar in H_inv.
+      now apply IHH_recv.
+  Qed.
 
   Definition Request_has_message (gst : global_state) : Prop :=
     forall src dst p m,
@@ -1065,18 +1090,6 @@ Section LabeledChord.
         exists m,
           request_response_pair p m /\
           eventually (now (occurred (RecvMsg dst src m))) s.
-  Admitted.
-
-  Ltac inv_timeout_constraint :=
-    match goal with
-    | H : timeout_constraint _ _ _ |- _ =>
-      inv H
-    end.
-
-  Lemma inv_responses_are_unique :
-    forall gst,
-      inductive_invariant hash base gst ->
-      responses_are_unique gst.
   Admitted.
 
   Lemma requests_eventually_complete :
