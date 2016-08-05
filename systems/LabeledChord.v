@@ -681,6 +681,8 @@ Section LabeledChord.
     request_response_pair p q ->
     ~ In (dst, (h, q)) (msgs gst) ->
     ~ In (dst, (h, q)) (msgs gst').
+  Proof.
+    move => gst from to m gst' h dst p gst'' q.
   Admitted.
 
   Lemma labeled_step_dynamic_recv_timeout_enabled :
@@ -1189,119 +1191,6 @@ rewrite /=.
 apply: c; first by [].
 rewrite /=.
 by apply: failed_nodes_never_added; eauto.
-Qed.
-
-Lemma failed_successors_le_monotonic :
-  forall gst gst' l h d d' k,
-    sigma gst h = Some d ->
-    length (failed_successors gst d) <= k ->
-    labeled_step_dynamic gst l gst' ->
-    sigma gst' h = Some d' ->
-    length (failed_successors gst' d') <= k.
-Proof.
-Admitted.
-
-Lemma lb_execution_failed_successors_le_monotonic :
-  forall s, lb_execution s ->
-       forall h d, sigma (occ_gst (hd s)) h = Some d ->
-       forall k, length (failed_successors (occ_gst (hd s)) d) <= k ->
-       always (now (fun o => forall d', sigma (occ_gst o) h = Some d' -> length (failed_successors (occ_gst o) d') <= k)) s.
-Proof.
-cofix c.
-case => o; case => o' s H_exec h d H_eq k H_len.
-inversion H_exec; subst.
-apply Always => /=; first by move => d' H_eq'; rewrite H_eq in H_eq'; find_injection.
-simpl in *.
-have [d' H_d'] := labeled_step_preserves_state_existing _ _ _ _ _ H_eq H1.
-have H_k := failed_successors_le_monotonic _ _ _ _ _ _ _ H_eq H_len H1 H_d'.
-by apply: c; eauto.
-Qed.
-
-Lemma eventually_fewer_failed_successors :
-  forall s, lb_execution s ->
-       weak_local_fairness s ->
-       forall h, In h (nodes (occ_gst (hd s))) ->
-            ~ In h (failed_nodes (occ_gst (hd s))) ->
-       forall d, sigma (occ_gst (hd s)) h = Some d ->
-       forall k, length (failed_successors (occ_gst (hd s)) d) = S k ->
-       eventually (now (fun o => forall d', sigma (occ_gst o) h = Some d' -> length (failed_successors (occ_gst o) d') = k)) s.
-Proof.
-Admitted.
-
-Lemma eventually_zero_failed_successors :
-  forall s, lb_execution s ->
-       weak_local_fairness s ->
-       forall h, In h (nodes (occ_gst (hd s))) ->
-            ~ In h (failed_nodes (occ_gst (hd s))) ->
-            forall d, sigma (occ_gst (hd s)) h = Some d ->
-       eventually (now (fun o => forall d', sigma (occ_gst o) h = Some d' -> length (failed_successors (occ_gst o) d') = 0)) s.
-Proof.
-move => s H_exec H_fair h H_in H_in_f d H_eq.
-have H_ex: exists k, length (failed_successors (occ_gst (hd s)) d) = k.
-  case length; first by exists 0.
-  move => k.
-  by exists (S k).
-break_exists.
-elim/(well_founded_ind lt_wf): x s H_exec H_fair H_in H_in_f d H_eq H.
-case => [|k] IH s H_exec H_fair H_in H_in_f d H_eq H_len.
-  apply: E0.
-  destruct s.
-  simpl in *.
-  move => d' H_eq'.
-  rewrite H_eq in H_eq'.
-  by find_injection.
-have H_k: k < S k by auto.
-have IH' := IH _ H_k.
-have H_ev := eventually_fewer_failed_successors _ H_exec H_fair _ H_in H_in_f _ H_eq _ H_len.
-move {H_len}.
-elim: H_ev H_exec H_fair H_in H_in_f d H_eq.
-  move => s0 H_now H_exec H_fair H_in H_in_f d H_eq.
-  apply: IH' => //; eauto.
-  destruct s0.
-  simpl in *.
-  exact: H_now.
-move => o s0 H_ev H_ev' H_exec H_fair H_in H_in_f d H_eq.
-apply: E_next.
-inversion H_exec; subst.
-simpl in *.
-have [d' H_d'] := labeled_step_preserves_state_existing _ _ _ _ _ H_eq H1.
-apply: H_ev'; eauto.
-- by apply weak_local_fairness_invar in H_fair.
-- by apply: nodes_never_removed; eauto.
-- by apply: failed_nodes_never_added; eauto.
-Qed.
-
-Lemma continuously_live_successors :
-  forall s, lb_execution s ->
-       weak_local_fairness s ->
-       forall h, In h (nodes (occ_gst (hd s))) ->
-            ~ In h (failed_nodes (occ_gst (hd s))) ->
-       forall d, sigma (occ_gst (hd s)) h = Some d ->
-       continuously (now (fun o => forall d', sigma (occ_gst o) h = Some d' -> length (failed_successors (occ_gst o) d') = 0)) s.
-Proof.
-move => s H_exec H_fair h H_in H_in_f d H_eq.
-have H_ev := eventually_zero_failed_successors _ H_exec H_fair _ H_in H_in_f _ H_eq.
-move: H_exec H_fair {H_in H_in_f}.
-elim: H_ev d H_eq.
-  move => s0 H_now d H_eq H_exec H_fair.
-  apply: E0.
-  inversion H_exec; subst.
-  simpl in *.
-  have H_len := H_now _ H_eq.
-  have H_le : length (failed_successors (occ_gst o) d) <= 0 by rewrite H_len.
-  have H_mon := lb_execution_failed_successors_le_monotonic _ H_exec _ _ H_eq _ H_le.
-  move: H_mon.
-  apply: always_monotonic.
-  case => /= o0 s0 H_le' d' H_eq'.
-  apply H_le' in H_eq'.
-  by auto with arith.
-move => o0 s0 H_ev IH d H_eq H_exec H_fair.
-apply: E_next.
-inversion H_exec; subst.
-simpl in *.
-have [d' H_d'] := labeled_step_preserves_state_existing _ _ _ _ _ H_eq H1.
-apply: IH; eauto.
-by apply weak_local_fairness_invar in H_fair.
 Qed.
 
 Definition is_best_succ (gst : global_state) (h s : pointer) : Prop :=

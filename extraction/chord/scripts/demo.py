@@ -95,7 +95,7 @@ def random_action(nodes):
         pass # do nothing
 
 def main():
-    nodes = ideal_ring(8000, 10)
+    nodes = ideal_ring(8000, 5)
     print nodes
     for node in nodes:
         node.spawn()
@@ -112,7 +112,7 @@ def main():
         for (ts, line) in lines:
             print line
         if time.time() > tick:
-            random_action(nodes)
+            #random_action(nodes)
             tick = time.time() + 20.0
 
 if __name__ == "__main__":

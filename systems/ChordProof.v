@@ -27,7 +27,7 @@ Section ChordProof.
   Notation timeout_handler := (timeout_handler hash).
   Notation tick_handler := (tick_handler hash).
 
-  Notation handle_query := (handle_query SUCC_LIST_LEN hash).
+  Notation handle_query_res := (handle_query_res SUCC_LIST_LEN hash).
   Notation handle_query_timeout := (handle_query_timeout hash).
   Notation send := (send addr payload).
 
@@ -144,19 +144,36 @@ Section ChordProof.
     - now request_payload_inversion.
   Qed.
 
+
+  Lemma busy_response_exists :
+    forall msg st' sends nts cts src dst st,
+      request_payload msg ->
+      (st', sends, nts, cts) = handle_query_req_busy src dst st msg ->
+      In (src, Busy) sends.
+  Proof.
+    unfold handle_query_req_busy.
+    intuition.
+    tuple_inversion.
+    now apply in_eq.
+  Qed.
+
   Lemma requests_are_always_responded_to : forall src dst msg st sends nts cts,
       request_payload msg ->
       (st, sends, nts, cts) = recv_handler src dst st msg ->
       exists res, In (src, res) sends.
   Proof.
-    unfold recv_handler, handle_query, handle_stabilize.
     intuition.
-    destruct msg;
-      repeat break_match;
-      request_payload_inversion;
-      try tuple_inversion;
-      discriminate || eexists; intuition.
-  Qed.
+    unfold recv_handler in *.
+    find_copy_apply_lem_hyp is_request_same_as_request_payload.
+    find_rewrite.
+    break_match.
+    - (* a request is open *)
+      repeat break_let.
+      exists Busy.
+      eapply busy_response_exists; eauto.
+    - (* no request is open *)
+      admit.
+  Admitted.
 
   Definition init_sigma (h : addr) : option data.
   Admitted. (* TODO should map base addresses to data for an ideal ring of just the base nodes *)
@@ -701,11 +718,11 @@ Section ChordProof.
 
   (* not as strong as the other ones since handle_query for a Join query can change joined st from false to true *)
   Lemma joined_preserved_by_handle_query : forall src h st p q m st' ms nts cts,
-        handle_query src h st p q m = (st', ms, nts, cts) ->
+        handle_query_res src h st p q m = (st', ms, nts, cts) ->
         joined st = true ->
         joined st' = true.
   Proof.
-    unfold handle_query.
+    unfold handle_query_res.
     unfold update_for_join.
     unfold add_tick.
     intuition.
@@ -742,7 +759,7 @@ Section ChordProof.
     intuition.
     repeat break_match;
       try tuple_inversion;
-      eauto using joined_preserved_by_handle_query.
+      eauto using joined_preserved_by_handle_query_res.
   Qed.
 
   Lemma joined_preserved_by_tick_handler : forall h st st' ms nts cts,

@@ -25,6 +25,7 @@ Section Chord.
   Definition make_pointer (a : addr) : pointer := (hash a, a).
 
   Inductive payload :=
+  | Busy : payload
   | GetBestPredecessor : pointer -> payload
   | GotBestPredecessor : pointer -> payload
   | GetSuccList : payload
@@ -72,11 +73,10 @@ Section Chord.
                         known : pointer ;
                         joined : bool ;
                         rectify_with : option pointer ;
-                        cur_request : option (pointer * query * payload) }.
+                        cur_request : option (pointer * query * payload) ;
+                        delayed_queries : list (addr * payload) }.
 
   Definition res := (data * list (addr * payload) * list timeout * list timeout)%type.
-
-  Definition client_payload msg := exists (p : pointer), msg = GetBestPredecessor p.
 
   Definition is_request (p : payload) : bool :=
     match p with
@@ -115,19 +115,28 @@ Section Chord.
   Definition can_be_client (a : addr) := True.
   Definition can_be_node (a : addr) := True.
 
-  Definition update_pred (st : data) (p : pointer) := Data (ptr st) (Some p) (succ_list st) (known st) (joined st) (rectify_with st) (cur_request st).
+  Definition update_pred (st : data) (p : pointer) : data := Data (ptr st) (Some p) (succ_list st) (known st) (joined st) (rectify_with st) (cur_request st) (delayed_queries st).
 
-  Definition update_succ_list (st : data) (succs : list pointer) := Data (ptr st) (pred st) succs (known st) (joined st) (rectify_with st) (cur_request st).
+  Definition update_succ_list (st : data) (succs : list pointer) : data := Data (ptr st) (pred st) succs (known st) (joined st) (rectify_with st) (cur_request st) (delayed_queries st).
 
-  Definition update_query (st : data) (dst : pointer) (q : query) (m : payload) := Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) (Some (dst, q, m)).
+  Definition update_query (st : data) (dst : pointer) (q : query) (m : payload) : data := Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) (Some (dst, q, m)) (delayed_queries st).
 
-  Definition update_for_join (st : data) (succs : list pointer) := Data (ptr st) None succs (known st) true (rectify_with st) (cur_request st).
+  Definition update_for_join (st : data) (succs : list pointer) : data := Data (ptr st) None succs (known st) true (rectify_with st) (cur_request st) (delayed_queries st).
 
-  Definition set_rectify_with (st : data) (rw : pointer) :=
-    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (Some rw) (cur_request st).
+  Definition set_rectify_with (st : data) (rw : pointer) : data :=
+    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (Some rw) (cur_request st) (delayed_queries st).
 
-  Definition clear_rectify_with (st : data) :=
-    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) None (cur_request st).
+  Definition clear_rectify_with (st : data) : data :=
+    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) None (cur_request st) (delayed_queries st).
+
+  Definition clear_query (st : data) : data :=
+    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) None (delayed_queries st).
+
+  Definition delay_query (st : data) (src : addr) (msg : payload) : data :=
+    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) (cur_request st) ((src, msg) :: delayed_queries st).
+
+  Definition clear_delayed_queries (st : data) : data :=
+    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) (cur_request st) [].
 
   Definition make_request (h : addr) (st : data) (k : query) : option (pointer * payload) :=
     match k with
@@ -176,17 +185,6 @@ Section Chord.
   Definition request_in (msgs : list (addr * payload)) :=
     existsb is_request (map snd msgs).
 
-  Definition end_query (h : addr) (r : res) : res :=
-    let '(st, outs, nts, cts) := r in
-    let st' := Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) None in
-    let clearreq := timeouts_in st in
-    if request_in outs
-    then (st', outs, nts, cts ++ clearreq)
-    else try_rectify h (st', outs, nts, cts).
-
-  Definition ptrs_to_addrs : list (pointer * payload) -> list (addr * payload) :=
-    map (fun p => (addr_of (fst p), (snd p))).
-
   (* true iff n in (a, b) on some sufficiently large "circle" *)
   Definition between_bool (a : id) (x : id) (b : id) : bool :=
     if lt_dec a b
@@ -202,18 +200,49 @@ Section Chord.
            then true
            else false.
 
-  Definition chop_succs (succs : list pointer) : list pointer :=
-    firstn SUCC_LIST_LEN succs.
-
-  Definition make_succs (head : pointer) (rest : list pointer) : list pointer :=
-    chop_succs (head :: rest).
-
   Definition best_predecessor (h : pointer) (succs : list pointer) (id : id) : pointer :=
     let splits (s : pointer) : bool := between_bool (id_of h) (id_of s) id
     in match head (filter splits (rev succs)) with
          | Some succ => succ
          | None => h
        end.
+
+  Definition handle_query_req (st : data) (msg : payload) : option payload :=
+    match msg with
+    | GetSuccList => Some (GotSuccList (succ_list st))
+    | GetPredAndSuccs => Some (GotPredAndSuccs (pred st) (succ_list st))
+    | GetBestPredecessor p => Some (GotBestPredecessor (best_predecessor (ptr st) (succ_list st) (id_of p)))
+    | Ping => Some Pong
+    | _ => None (* shouldn't happen *)
+    end.
+
+  Definition handle_delayed_query (h : addr) (st : data) (q : addr * payload) : list (addr * payload) :=
+    let (src, msg) := q in
+    match handle_query_req st msg with
+      | Some p => [(src, p)]
+      | None => []
+    end.
+
+  Definition handle_delayed_queries (h : addr) (st : data) : data * list (addr * payload) :=
+    let sends := map (handle_delayed_query h st) (delayed_queries st) in
+    (clear_delayed_queries st, concat sends).
+
+  (* need to prove that this never gets called with requests in the sends of r *)
+  Definition end_query (h : addr) (r : res) : res :=
+    let '(st, outs, nts, cts) := r in
+    let st' := clear_query st in
+    let (st'', delayed_sends) := handle_delayed_queries h st' in
+    let clearreq := timeouts_in st in
+    try_rectify h (st'', delayed_sends ++ outs, nts, cts).
+
+  Definition ptrs_to_addrs : list (pointer * payload) -> list (addr * payload) :=
+    map (fun p => (addr_of (fst p), (snd p))).
+
+  Definition chop_succs (succs : list pointer) : list pointer :=
+    firstn SUCC_LIST_LEN succs.
+
+  Definition make_succs (head : pointer) (rest : list pointer) : list pointer :=
+    chop_succs (head :: rest).
 
   Definition handle_rectify (h : addr) (st : data) (my_pred : pointer) (q : query) (notifier : pointer) : res :=
     if between_bool (id_of my_pred) (id_of notifier) (id_of (ptr st))
@@ -226,66 +255,81 @@ Section Chord.
     then start_query h new_st (Stabilize2 new_succ)
     else end_query h (new_st, [(addr_of src, Notify)], [], []).
 
-  Definition handle_query (src : addr) (h : addr) (st : data) (qdst : pointer) (q : query) (msg : payload) : res :=
-    match q with
-      | Rectify notifier =>
-        match msg with
-          | Pong => match (pred st) with
-                      | Some p => end_query h (handle_rectify h st p q notifier)
-                      | None => end_query h (update_pred st notifier, [], [], [])
-                    end
-          | _ => (st, [], [], [])
-        end
-      | Stabilize =>
-        match msg with
-          | GotPredAndSuccs new_succ succs =>
-            match new_succ with
-              | Some ns => (handle_stabilize h (make_pointer src) st q ns succs)
-              | None => end_query h (st, [], [], [])
-            end
-          | _ => (st, [], [], [])
-        end
-      | Stabilize2 new_succ =>
-        match msg with
-          | GotSuccList succs => end_query h (update_succ_list st (make_succs new_succ succs),
-                                              [(addr_of new_succ, Notify)], [], [])
-          | _ => (st, [], [], [])
-        end
-      | Join known =>
-        match msg with
-          | GotBestPredecessor p => let a := addr_of p in
-                                    let self := make_pointer h in
-                                    let gbp := GetBestPredecessor self in
-                                    let oldt := Request src gbp in
-                                    if addr_eq_dec a src
-                                    then (st, [(src, GetSuccList)], [Request src GetSuccList], [oldt])
-                                    else (st, [(a, gbp)], [Request a gbp], [oldt])
-          | GotSuccList l =>
-            match l with
-              | [] => end_query h (st, [], [], []) (* this is bad *)
-              | (new_succ :: _) => start_query (addr_of new_succ) st (Join2 new_succ)
-            end
-          | _ => (st, [], [], [])
-        end
-      | Join2 new_succ =>
-        match msg with
-          | GotSuccList l => let succs := make_succs new_succ l in
-                             add_tick (end_query h (update_for_join st succs, [], [], []))
-          | _ => (st, [], [], [])
-        end
-    end.
+  Definition handle_query_res (src : addr) (h : addr) (st : data) (qdst : pointer) (q : query) (msg : payload) : res :=
+    if payload_eq_dec msg Busy
+    then (* refresh the timeout *)
+      (st, [], timeouts_in st, timeouts_in st)
+    else match q with
+         | Rectify notifier =>
+           match msg with
+           | Pong => match (pred st) with
+                     | Some p => end_query h (handle_rectify h st p q notifier)
+                     | None => end_query h (update_pred st notifier, [], [], [])
+                     end
+           | _ => (st, [], [], [])
+           end
+         | Stabilize =>
+           match msg with
+           | GotPredAndSuccs new_succ succs =>
+             match new_succ with
+             | Some ns => (handle_stabilize h (make_pointer src) st q ns succs)
+             | None => end_query h (st, [], [], [])
+             end
+           | _ => (st, [], [], [])
+           end
+         | Stabilize2 new_succ =>
+           match msg with
+           | GotSuccList succs => end_query h (update_succ_list st (make_succs new_succ succs),
+                                               [(addr_of new_succ, Notify)], [], [])
+           | _ => (st, [], [], [])
+           end
+         | Join known =>
+           match msg with
+           | GotBestPredecessor p => let a := addr_of p in
+                                     let self := make_pointer h in
+                                     let gbp := GetBestPredecessor self in
+                                     let oldt := Request src gbp in
+                                     if addr_eq_dec a src
+                                     then (st, [(src, GetSuccList)], [Request src GetSuccList], [oldt])
+                                     else (st, [(a, gbp)], [Request a gbp], [oldt])
+           | GotSuccList l =>
+             match l with
+             | [] => end_query h (st, [], [], []) (* this is bad *)
+             | (new_succ :: _) => start_query (addr_of new_succ) st (Join2 new_succ)
+             end
+           | _ => (st, [], [], [])
+           end
+         | Join2 new_succ =>
+           match msg with
+           | GotSuccList l => let succs := make_succs new_succ l in
+                              add_tick (end_query h (update_for_join st succs, [], [], []))
+           | _ => (st, [], [], [])
+           end
+         end.
+
+  Definition handle_notify (src dst : addr) (st : data) : res :=
+    (set_rectify_with st (make_pointer src), [], [], []).
+
+  Definition handle_query_req_busy (src dst : addr) (st : data) (msg : payload) : res :=
+    (delay_query st src msg, [(src, Busy)], [], []).
 
   Definition recv_handler (src : addr) (dst : addr) (st : data) (msg : payload) : res :=
-    match msg with
-      | Ping => (st, [(src, Pong)], [], [])
-      | GetSuccList => (st, [(src, GotSuccList (succ_list st))], [], [])
-      | GetPredAndSuccs => (st, [(src, GotPredAndSuccs (pred st) (succ_list st))], [], [])
-      | GetBestPredecessor p => (st, [(src, GotBestPredecessor (best_predecessor (ptr st) (succ_list st) (id_of p)))], [], [])
-      | Notify => (set_rectify_with st (make_pointer src), [], [], [])
-      | _ => match cur_request st with
-               | Some (query_dst, q, _) => handle_query src dst st query_dst q msg
-               | None => (st, [], [], [])
-             end
+    match cur_request st with
+    | Some (query_dst, q, _) =>
+      if is_request msg
+      then handle_query_req_busy src dst st msg
+      else if payload_eq_dec msg Notify
+           then handle_notify src dst st
+           else handle_query_res src dst st query_dst q msg
+    | None =>
+      if is_request msg
+      then match handle_query_req st msg with
+           | Some p => (st, [(src, p)], [], [])
+           | None => (st, [], [], [])
+           end
+      else if payload_eq_dec msg Notify
+           then handle_notify src dst st
+           else (st, [], [], [])
     end.
 
   Definition pi {A B C D : Type} (t : A * B * C * D) : A * B * C :=
@@ -295,15 +339,15 @@ Section Chord.
     match knowns with
       | k :: [] =>
         let known := make_pointer k in
-        let st := Data (make_pointer h) None [] known false None None in
+        let st := Data (make_pointer h) None [] known false None None [] in
         pi (start_query h st (Join known))
       | k :: nowns =>
         let p := make_pointer k in
         let succs := chop_succs (map make_pointer nowns) in
-        let st := Data (make_pointer h) (Some p) succs p true None None in
+        let st := Data (make_pointer h) (Some p) succs p true None None [] in
         (st, [], [Tick])
       (* garbage data, shouldn't happen *)
-      | [] => (Data (make_pointer h) None [] (make_pointer h) false None None, [], [])
+      | [] => (Data (make_pointer h) None [] (make_pointer h) false None None [], [], [])
     end.
 
   Definition tick_handler (h : addr) (st : data) : res :=
@@ -311,7 +355,7 @@ Section Chord.
       | Some _ => (st, [], [], [])
       | None => if joined st
                 then start_query h st Stabilize
-                else (st, [], [], []) (*start_query h st (Join (known st))*)
+                else (st, [], [], [])
     end).
 
   Definition handle_query_timeout (h : addr) (st : data) (dead : pointer) (q : query) : res :=
