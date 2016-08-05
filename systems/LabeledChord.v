@@ -875,7 +875,20 @@ Section LabeledChord.
       ~ In dst (failed_nodes gst) \/
       exists m,
         request_response_pair p m /\ In (dst, (src, m)) (msgs gst).
-  Admitted.
+  Proof.
+    move => gst src dst p H_ntc.
+    destruct (In_dec addr_eq_dec dst (failed_nodes gst)).
+    - right.
+      (* might be able to avoid using this? *)
+      apply Classical_Pred_Type.not_all_not_ex.
+      move => H_notall.
+      apply H_ntc.
+      apply Request_needs_dst_dead_and_no_msgs; [ easy |].
+      move => m H_pair H_in.
+      eapply H_notall; eauto.
+    - left.
+      easy.
+  Qed.
 
   Lemma msgs_remain_after_timeout :
     forall gst h t gst' src dst p,
@@ -1087,6 +1100,7 @@ Section LabeledChord.
         ~ In src (failed_nodes (occ_gst (hd s))) ->
         In dst (nodes (occ_gst (hd s))) ->
         In (Request dst p) (timeouts (occ_gst (hd s)) src) ->
+        ~ timeout_constraint (occ_gst (hd s)) src (Request dst p) ->
         exists m,
           request_response_pair p m /\
           eventually (now (occurred (RecvMsg dst src m))) s.
@@ -1102,25 +1116,14 @@ Section LabeledChord.
         ~ In src (failed_nodes (occ_gst (hd s))) ->
         In dst (nodes (occ_gst (hd s))) ->
         request_response_pair p m ->
-        (~ In dst (failed_nodes (occ_gst (hd s))) /\
-         In (src, (dst, p)) (msgs (occ_gst (hd s)))) \/
-        In (dst, (src, m)) (msgs (occ_gst (hd s))) ->
+        ~ timeout_constraint (occ_gst (hd s)) src (Request dst p) ->
         In (Request dst p) (timeouts (occ_gst (hd s)) src) ->
         eventually (now (clears_timeout src (Request dst p))) s.
   Proof.
-    move => s H_exec H_fair H_inv src dst p m H_ins H_nins H_ind H_pair H_msg H_t.
+    intuition.
     find_copy_eapply_lem_hyp requests_eventually_get_responses; eauto.
     break_exists_name m'.
-    break_and.
-    eapply queries_now_closed; eauto.
-    intuition.
-    - by inv_timeout_constraint.
-    - inv_timeout_constraint.
-      match goal with
-        [ H: forall _, _ _ _ -> ~ _
-          |- _ ] => apply H in H_pair
-      end.
-      by apply H_pair.
+    now eapply queries_now_closed with (m:=m').
   Qed.
 
   Lemma constrained_timeout_eventually_cleared :
