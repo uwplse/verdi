@@ -42,6 +42,7 @@ clean:
 	rm -f Makefile.coq
 	find . -name '*.buildtime' -delete
 	$(MAKE) -C proofalytics clean
+	$(MAKE) -C extraction/chord clean
 
 vard:
 	@echo "To build everything (including vard) use the default target."
@@ -52,6 +53,10 @@ vard-quick: Makefile.coq
 	$(MAKE) -f Makefile.coq raft/Raft.vo
 	$(MAKE) -f Makefile.coq extraction/vard/coq/ExtractVarDRaft.vo
 	cd extraction/vard; make
+
+chord: Makefile.coq
+	$(MAKE) -f Makefile.coq extraction/chord/coq/ExtractChord.vo
+	cd extraction/chord; make
 
 lint:
 	@echo "Possible use of hypothesis names:"

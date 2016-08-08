@@ -38,9 +38,10 @@ class Node(object):
         self.buffer = ""
 
     def spawn(self):
-        args = [str(a) for a in [self.addr] + self.knowns]
+        args = [CHORD] + [str(a) for a in [self.addr] + self.knowns]
+        print "# running", " ".join(args)
         p = subprocess.Popen(
-                [CHORD] + args,
+                args,
                 stdin=open(os.devnull, "r"),
                 stdout=subprocess.PIPE)
         q = Queue.Queue()
@@ -52,7 +53,7 @@ class Node(object):
 
     def readlines(self):
         lines = []
-        while len(lines) < 100:
+        while len(lines) < 10:
             try:
                 lines.append(self.output_queue.get_nowait())
             except Queue.Empty:
@@ -69,7 +70,7 @@ class Node(object):
 
 def ideal_ring(start, n):
     nodes = []
-    addrs = sorted([Addr("127.0.0.1", start + i) for i in range(n)],
+    addrs = sorted([Addr("127.0.0.{}".format(start + i), 8000) for i in range(n)],
                    key=lambda a: a.chordhash())
     for i, a in enumerate(addrs):
         pred = addrs[i - 1]
@@ -95,7 +96,7 @@ def random_action(nodes):
         pass # do nothing
 
 def main():
-    nodes = ideal_ring(8000, 5)
+    nodes = ideal_ring(1, 4)
     print nodes
     for node in nodes:
         node.spawn()
@@ -105,12 +106,14 @@ def main():
         for node in nodes:
             for l in node.readlines():
                 if " - " not in l:
+                    print "# " + l
                     continue
                 timestamp, line = l.split(" - ", 1)
                 lines.append((float(timestamp), line))
         lines.sort(key=lambda (ts, _): ts)
         for (ts, line) in lines:
             print line
+        sys.stdout.flush()
         if time.time() > tick:
             #random_action(nodes)
             tick = time.time() + 20.0

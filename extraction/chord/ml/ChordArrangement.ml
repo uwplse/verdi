@@ -1,5 +1,8 @@
 open ExtractedChord
 open Printf
+(* open Random *)
+
+let chord_port=8000
 
 let log level s =
   let now = Unix.gettimeofday () in
@@ -43,6 +46,7 @@ let show_msg = function
   | Notify -> "Notify"
   | Ping -> "Ping"
   | Pong -> "Pong"
+  | Busy -> "Busy"
 
 let show_query = function
   | Rectify p -> "Rectify " ^ show_pointer p
@@ -70,11 +74,15 @@ let log_st st =
   log ("rectify_with := " ^ show_opt_pointer (rectify_with st));
   log ("cur_request := " ^ show_st_cur_request st)
 
-let log_recv src msg =
-  dbg ("recv from " ^ show_addr src ^ ": " ^ show_msg msg)
+let log_recv st src msg =
+  let prefix = "node(" ^ show_st_ptr st ^ "):" in
+  let log msg = dbg (prefix ^ msg) in
+  log ("recv from " ^ show_addr src ^ ": " ^ show_msg msg)
 
-let log_send dst msg =
-  dbg ("send to " ^ show_addr dst ^ ":" ^ show_msg msg)
+let log_send st dst msg =
+  let prefix = "node(" ^ show_st_ptr st ^ "):" in
+  let log msg = dbg (prefix ^ msg) in
+  log ("send to " ^ show_addr dst ^ ":" ^ show_msg msg)
 
 let log_timeout st = function
   | Tick -> dbg ("ticked")
@@ -84,8 +92,8 @@ let log_timeout st = function
         ^ " to " ^ show_addr dead ^ " timed out")
 
 let set_timeout = function
-  | Tick -> 5.0
-  | Request (a, b) -> 10.0
+  | Tick -> 15.0 +. Random.float 10.0
+  | Request (a, b) -> 30.0
 
 let rebracket4 (((a, b), c), d) = (a, b, c, d)
 let rebracket3 ((a, b), c) = (a, b, c)
@@ -98,9 +106,9 @@ module ChordDebugArrangement = struct
   type res = state * (name * msg) list * (timeout list) * (timeout list)
   (* should put these two in coq so i can prove (name_of_addr (addr_of_name n)) = n *)
   let addr_of_name n =
-      ("127.0.0.1", n)
+      ("127.0.0." ^ (string_of_int n), chord_port)
   let name_of_addr (s, p) =
-      p
+      int_of_string (List.nth (Str.split (Str.regexp "\\.") s) 3)
   let init n ks =
     rebracket3 (init n ks)
   let handleNet s d m st =
@@ -110,8 +118,8 @@ module ChordDebugArrangement = struct
   let setTimeout = set_timeout
   let default_timeout = 5.0
   let debug = true
-  let debugRecv st (src, msg) = log_st st; log_recv src msg
-  let debugSend st (dst, msg) = log_st st; log_send dst msg
+  let debugRecv st (src, msg) = log_st st; log_recv st src msg
+  let debugSend st (dst, msg) = log_st st; log_send st dst msg
   let debugTimeout st t = log_timeout st t
   let showTimeout = function
       | Tick -> "Tick"

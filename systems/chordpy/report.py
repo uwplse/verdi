@@ -218,7 +218,7 @@ parser.add_argument("--succ-list-len", "-l",
                     default=data.SUCC_LIST_LEN)
 args = parser.parse_args()
 
-print "Running with SUCC_LIST_LEN := {}".format(data.SUCC_LIST_LEN)
+print "Running with SUCC_LIST_LEN := {}".format(args.succ_list_len)
 
 for i, invariant in enumerate(invariants):
     print "| " * i + invariant

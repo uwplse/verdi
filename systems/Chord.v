@@ -1,6 +1,7 @@
 Require Import Arith.
 Require Import List.
 Import ListNotations.
+Require Import StructTact.Dedup.
 
 Section Chord.
   Variable SUCC_LIST_LEN : nat.
@@ -132,8 +133,17 @@ Section Chord.
   Definition clear_query (st : data) : data :=
     Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) None (delayed_queries st).
 
+  Definition send_dec :
+    forall x y : addr * payload,
+      {x = y} + {x <> y}.
+  Proof.
+    decide equality.
+    - now apply payload_eq_dec.
+    - now apply addr_eq_dec.
+  Defined.
+
   Definition delay_query (st : data) (src : addr) (msg : payload) : data :=
-    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) (cur_request st) ((src, msg) :: delayed_queries st).
+    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) (cur_request st) (dedup send_dec ((src, msg) :: delayed_queries st)).
 
   Definition clear_delayed_queries (st : data) : data :=
     Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) (cur_request st) [].
@@ -212,7 +222,6 @@ Section Chord.
     | GetSuccList => Some (GotSuccList (succ_list st))
     | GetPredAndSuccs => Some (GotPredAndSuccs (pred st) (succ_list st))
     | GetBestPredecessor p => Some (GotBestPredecessor (best_predecessor (ptr st) (succ_list st) (id_of p)))
-    | Ping => Some Pong
     | _ => None (* shouldn't happen *)
     end.
 
@@ -233,7 +242,7 @@ Section Chord.
     let st' := clear_query st in
     let (st'', delayed_sends) := handle_delayed_queries h st' in
     let clearreq := timeouts_in st in
-    try_rectify h (st'', delayed_sends ++ outs, nts, cts).
+    try_rectify h (st'', delayed_sends ++ outs, nts, clearreq ++ cts).
 
   Definition ptrs_to_addrs : list (pointer * payload) -> list (addr * payload) :=
     map (fun p => (addr_of (fst p), (snd p))).
@@ -313,24 +322,36 @@ Section Chord.
   Definition handle_query_req_busy (src dst : addr) (st : data) (msg : payload) : res :=
     (delay_query st src msg, [(src, Busy)], [], []).
 
-  Definition recv_handler (src : addr) (dst : addr) (st : data) (msg : payload) : res :=
-    match cur_request st with
-    | Some (query_dst, q, _) =>
-      if is_request msg
-      then handle_query_req_busy src dst st msg
-      else if payload_eq_dec msg Notify
-           then handle_notify src dst st
-           else handle_query_res src dst st query_dst q msg
-    | None =>
-      if is_request msg
-      then match handle_query_req st msg with
-           | Some p => (st, [(src, p)], [], [])
-           | None => (st, [], [], [])
-           end
-      else if payload_eq_dec msg Notify
-           then handle_notify src dst st
-           else (st, [], [], [])
+  Definition is_safe (msg : payload) :=
+    match msg with
+    | Notify => true
+    | Ping => true
+    | _ => false
     end.
+
+  Definition handle_safe_msg (src dst : addr) (st : data) (msg : payload) : res :=
+    match msg with
+    | Notify => handle_notify src dst st
+    | Ping => (st, [(src, Pong)], [], [])
+    | _ => (st, [], [], [])
+    end.
+
+  Definition recv_handler (src : addr) (dst : addr) (st : data) (msg : payload) : res :=
+    if is_safe msg
+    then handle_safe_msg src dst st msg
+    else match cur_request st with
+         | Some (query_dst, q, _) =>
+           if is_request msg
+           then handle_query_req_busy src dst st msg
+           else handle_query_res src dst st query_dst q msg
+         | None =>
+           if is_request msg
+           then match handle_query_req st msg with
+                | Some p => (st, [(src, p)], [], [])
+                | None => (st, [], [], [])
+                end
+           else (st, [], [], [])
+         end.
 
   Definition pi {A B C D : Type} (t : A * B * C * D) : A * B * C :=
     let '(a, b, c, d) := t in (a, b, c).

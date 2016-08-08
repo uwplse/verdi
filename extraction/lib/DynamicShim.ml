@@ -33,14 +33,14 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
 
   let setup nm =
     Random.self_init ();
-    let port = snd (A.addr_of_name nm) in
+    let ip, port = A.addr_of_name nm in
     let env =
       { usock = socket PF_INET SOCK_DGRAM 0;
         last_tick = Unix.gettimeofday ()
       }
     in
     setsockopt env.usock SO_REUSEADDR true;
-    bind env.usock (ADDR_INET (inet_addr_any, port));
+    bind env.usock (ADDR_INET ((inet_addr_of_string ip), port));
     env
 
   let sendto sock buf addr =

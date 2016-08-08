@@ -22,4 +22,4 @@ Definition handleTick : addr -> data -> res :=
 Definition handleTimeout : addr -> data -> timeout -> res :=
   timeout_handler hash.
 
-Extraction "ExtractedChord.ml" init handleNet handleTick handleTimeout is_request closes_request.
+Extraction "extraction/chord/coq/ExtractedChord.ml" init handleNet handleTick handleTimeout is_request closes_request.
