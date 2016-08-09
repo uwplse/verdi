@@ -7,6 +7,7 @@ Import List.
 Require Import Wf_nat.
 Require Import InfSeqExt.infseq.
 Require Import InfSeqExt.classical.
+Require Import FunctionalExtensionality.
 Require Import mathcomp.ssreflect.ssreflect.
 Require Import mathcomp.ssreflect.ssrbool.
 
@@ -1482,6 +1483,252 @@ elim: H_ev H_exec H_live.
   concludes.
   apply: IH.
   eapply live_node_labeled_step_dynamic; eauto.
+Qed.
+
+Lemma live_node_labeled_step_dynamic_inverse :
+  forall gst gst' l h,
+    labeled_step_dynamic gst l gst' ->
+    live_node gst' h ->
+    live_node gst h.
+Proof.
+Admitted.
+
+Lemma always_no_global_error : 
+  forall s, lb_execution s ->
+       (forall h, live_node (occ_gst (hd s)) h -> local_error (occ_gst (hd s)) h = 0) ->
+       always (now (fun o => forall h, live_node (occ_gst o) h -> local_error (occ_gst o) h = 0)) s.
+Proof.
+cofix c.
+case => o; case => /= o' s H_exec.
+inversion H_exec; subst.
+move => H_err.
+apply: Always => /=; first by [].
+apply: c => //=.
+move => h H_live.
+have H_live': live_node (occ_gst o) h by eapply live_node_labeled_step_dynamic_inverse; eauto.
+have H_err' := H_err _ H_live'.
+have H_le: local_error (occ_gst o) h <= 0 by rewrite H_err.
+suff H_suff: local_error (occ_gst o') h <= 0 by auto with arith.
+by eapply local_error_le_monotonic_labeled_step_dynamic; eauto.
+Qed.
+
+Lemma nodes_labeled_step_dynamic_eq :
+  forall gst gst' l,
+    labeled_step_dynamic gst l gst' ->
+    nodes gst = nodes gst'.
+Proof.
+  intuition.
+  match goal with
+  | H: labeled_step_dynamic _ _ _ |- _ => destruct H eqn:?H
+  end;
+    now invc_labeled_step.
+Qed.
+
+Lemma always_eq_nodes :
+  forall s, lb_execution s ->
+       always (now (fun o => nodes (occ_gst o) = nodes (occ_gst (hd s)))) s.
+Proof.
+cofix c.
+case => o; case => /= o' s H_exec.
+inversion H_exec; subst.
+apply: Always => /=; first by [].
+have H_c := c _ H3.
+simpl in H_c.
+have H_eq := nodes_labeled_step_dynamic_eq _ _ _ H1.
+rewrite H_eq.
+exact: H_c.
+Qed.
+
+Lemma live_nodes_labeled_step_dynamic_eq :
+  forall gst gst' l,
+    labeled_step_dynamic gst l gst' ->
+    live_nodes gst = live_nodes gst'.
+Proof.
+move => gst gst' l H_st.
+rewrite /live_nodes.
+rewrite -(nodes_labeled_step_dynamic_eq _ _ _ H_st).
+have H_in := live_node_labeled_step_dynamic _ _ _ _ H_st.
+have H_in' := live_node_labeled_step_dynamic_inverse _ _ _ _ H_st.
+elim: (nodes gst) => [|a ns IH] //=.
+repeat break_if.
+- by rewrite IH.
+- find_apply_lem_hyp live_node_dec_equiv_live_node.
+  find_apply_hyp_hyp.  
+  find_apply_lem_hyp live_node_dec_equiv_live_node.
+  by find_rewrite.
+- find_apply_lem_hyp live_node_dec_equiv_live_node.
+  find_apply_hyp_hyp.  
+  find_apply_lem_hyp live_node_dec_equiv_live_node.
+  by find_rewrite.
+- by rewrite IH.
+Qed.
+
+Lemma live_node_dec_labeled_step_dynamic_eq :
+  forall gst gst' l,
+    labeled_step_dynamic gst l gst' ->
+    live_node_dec gst = live_node_dec gst'.
+Proof.
+move => gst gst' l H_st.
+apply functional_extensionality => h.
+have H_in := live_node_labeled_step_dynamic _ _ _ _ H_st.
+have H_in' := live_node_labeled_step_dynamic_inverse _ _ _ _ H_st.
+case H_eq: live_node_dec; case H_eq': live_node_dec => //.
+- find_apply_lem_hyp live_node_dec_equiv_live_node.
+  find_apply_hyp_hyp.
+  find_apply_lem_hyp live_node_dec_equiv_live_node.
+  by find_rewrite.
+- find_apply_lem_hyp live_node_dec_equiv_live_node.
+  find_apply_hyp_hyp.
+  find_apply_lem_hyp live_node_dec_equiv_live_node.
+  by find_rewrite.
+Qed.
+
+Lemma always_eq_live_nodes :
+  forall s, lb_execution s ->
+       always (now (fun o => live_nodes (occ_gst (hd s)) = live_nodes (occ_gst o))) s.
+Proof.
+cofix c.
+case => o; case => /= o' s H_exec.
+inversion H_exec; subst.
+apply: Always => /=; first by [].
+have H_c := c _ H3.
+simpl in H_c.
+have H_eq := live_nodes_labeled_step_dynamic_eq _ _ _ H1.
+rewrite H_eq.
+exact: H_c.
+Qed.
+
+Lemma continuously_in_live_eq :
+  forall s, lb_execution s ->
+       continuously (now (fun o => forall h, In h (live_nodes (occ_gst (hd s))) -> local_error (occ_gst o) h = 0)) s ->
+       continuously (now (fun o => forall h, In h (live_nodes (occ_gst o)) -> local_error (occ_gst o) h = 0)) s.
+Proof.
+move => s H_exec H_ev.
+have H_al := always_eq_live_nodes _ H_exec.
+have H_ev' := eventually_always_cumul H_ev H_al.
+move {H_ev H_al}.
+move: H_ev'.
+apply eventually_monotonic_simple.
+unfold and_tl; simpl.
+move => s0 [H_al H_al'].
+move: s0 H_al H_al'.
+cofix c.
+case => o s' H_al H_al'.
+apply always_Cons in H_al.
+break_and.
+apply always_Cons in H_al'.
+break_and.
+simpl in *.
+apply Always.
+- simpl.
+  by find_reverse_rewrite.
+- simpl.
+  exact: c.
+Qed.
+
+Lemma always_eq_live_node_dec :
+  forall s, lb_execution s ->
+       always (now (fun o => live_node_dec (occ_gst (hd s)) = live_node_dec (occ_gst o))) s.
+Proof.
+cofix c.
+case => o; case => /= o' s H_exec.
+inversion H_exec; subst.
+apply: Always => /=; first by [].
+have H_c := c _ H3.
+simpl in H_c.
+have H_eq := live_node_dec_labeled_step_dynamic_eq _ _ _ H1.
+rewrite H_eq.
+exact: H_c.
+Qed.
+
+Lemma continuously_all_no_local_error :
+  forall s, lb_execution s ->
+       weak_local_fairness s ->
+       continuously (now (fun o => forall h, In h (live_nodes (occ_gst o)) -> local_error (occ_gst o) h = 0)) s.
+Proof.
+move => s H_exec H_fair.
+apply: continuously_in_live_eq => //.
+rewrite /live_nodes.
+have H_ex: exists ns, filter (live_node_dec (occ_gst (hd s))) (nodes (occ_gst (hd s))) = ns by case filter; eauto.
+break_exists_name ns.
+move: ns H_ex.
+elim: (nodes (occ_gst (hd s))) => [|h ns' IH] /=.
+- move => /= ns H_eq.
+  apply: E0.
+  move {H_exec H_fair}.
+  move: s.
+  cofix c.
+  move => [o s].
+  apply Always.
+  * by [].
+  * exact: c.
+- move => ns.
+  break_if => H_eq.
+  * destruct ns => //.
+    have H_eq': filter (live_node_dec (occ_gst (hd s))) ns' = ns by find_injection.
+    have IH' := IH _ H_eq'.
+    find_apply_lem_hyp live_node_dec_equiv_live_node.
+    have H_cn := continuously_no_local_error _ H_exec H_fair h Heqb.
+    simpl in *.
+    move {IH H_eq H_eq' Heqb}.
+    elim: H_cn H_exec IH'.
+    + move => s0 H_al H_exec H_cn.
+      have H_cumul := eventually_always_cumul H_cn H_al.
+      move: H_cumul.
+      apply eventually_monotonic_simple.
+      unfold and_tl.
+      move => s1 [H_al' H_al''].
+      move: s1 H_al' H_al''.
+      cofix c.
+      move => [o s1] H_al' H_al''.
+      apply always_Cons in H_al'.
+      apply always_Cons in H_al''.
+      repeat break_and.
+      simpl in *.
+      apply Always.
+      -- move => h0 H_in.
+         case: H_in => H_in; first by rewrite -H_in.
+         exact: H1.
+      -- exact: c.
+    + move => o s0 H_ev IH H_exec H_ev'.
+      simpl in *.
+      have H_exec': lb_execution s0 by inversion H_exec.
+      concludes.
+      have H_al := always_eq_live_node_dec _ H_exec.
+      destruct s0 as [o' s0].
+      apply always_Cons in H_al.
+      break_and.
+      simpl in *.
+      apply always_Cons in H0.
+      break_and.
+      simpl in *.
+      rewrite H0.
+      apply E_next.
+      apply: IH.
+      rewrite -H0.
+      by apply continuously_invar in H_ev'.
+   * exact: IH.
+Qed.
+
+Lemma continuously_no_global_error :
+  forall s, lb_execution s ->
+       weak_local_fairness s ->
+       continuously (now (fun o => global_error (occ_gst o) = 0)) s.
+Proof.
+move => s H_exec H_fair.
+have H_cn := continuously_all_no_local_error _ H_exec H_fair.
+move: H_cn.
+apply continuously_monotonic.
+move => [o s0].
+rewrite /=.
+rewrite /global_error.
+elim: (live_nodes _) => //=.
+move => h ns IH H_l.
+rewrite H_l /=; last by left.
+rewrite IH //.
+move => h0 H_in'.
+apply: H_l.
+by right.
 Qed.
 
 End LabeledChord.
