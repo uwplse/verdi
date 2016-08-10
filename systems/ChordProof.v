@@ -5,6 +5,12 @@ Require Import Chord.
 Require Import List.
 Import ListNotations.
 Require Import Arith.
+Require Import mathcomp.ssreflect.ssreflect.
+
+Set Bullet Behavior "Strict Subproofs".
+
+Close Scope boolean_if_scope.
+Open Scope general_if_scope.
 
 Section ChordProof.
   Variable SUCC_LIST_LEN : nat.
@@ -157,6 +163,69 @@ Section ChordProof.
     now apply in_eq.
   Qed.
 
+  Lemma safe_msgs :
+    forall msg,
+      is_safe msg = true ->
+      msg = Ping \/ msg = Notify.
+  Proof.
+    unfold is_safe.
+    intuition.
+    break_match; auto || discriminate.
+  Qed.
+
+  Lemma unsafe_msgs_not_safe_ones :
+    forall msg,
+      is_safe msg = false ->
+      msg <> Notify /\ msg <> Ping.
+  Proof.
+    unfold is_safe.
+    intuition;
+      break_match;
+      easy.
+  Qed.
+
+  Lemma only_safe_request_is_Ping :
+    forall msg,
+      request_payload msg ->
+      is_safe msg = true ->
+      msg = Ping.
+  Proof.
+    intuition.
+    request_payload_inversion;
+      find_apply_lem_hyp safe_msgs;
+      break_or_hyp;
+      auto || discriminate.
+  Qed.
+
+  Lemma handle_query_req_busy_sends_busy :
+    forall src dst st msg st' ms nts cts,
+      handle_query_req_busy src dst st msg = (st', ms, nts, cts) ->
+      In (src, Busy) ms.
+  Proof.
+    unfold handle_query_req_busy.
+    intuition.
+    tuple_inversion.
+    exact: in_eq.
+  Qed.
+
+  Lemma handle_query_req_gives_response :
+    forall st m,
+      is_safe m = false ->
+      request_payload m ->
+      exists p,
+        handle_query_req st m = Some p.
+  Proof.
+    unfold handle_query_req.
+    intuition.
+    find_copy_apply_lem_hyp unsafe_msgs_not_safe_ones.
+    break_and.
+    request_payload_inversion.
+    - eexists; eauto.
+    - eexists; eauto.
+    - eexists; eauto.
+    - exfalso; eauto.
+  Qed.
+
   Lemma requests_are_always_responded_to : forall src dst msg st sends nts cts,
       request_payload msg ->
       (st, sends, nts, cts) = recv_handler src dst st msg ->
@@ -167,13 +236,29 @@ Section ChordProof.
     find_copy_apply_lem_hyp is_request_same_as_request_payload.
     find_rewrite.
     break_match.
-    - (* a request is open *)
-      repeat break_let.
-      exists Busy.
-      eapply busy_response_exists; eauto.
-    - (* no request is open *)
-      admit.
-  Admitted.
+    - (* req is safe *)
+      find_copy_apply_lem_hyp only_safe_request_is_Ping; auto.
+      subst.
+      simpl in *.
+      tuple_inversion.
+      eexists.
+      exact: in_eq.
+    - (* req is not safe *)
+      break_match.
+      * (* busy *)
+        repeat break_let.
+        exists Busy.
+        eapply handle_query_req_busy_sends_busy; eauto.
+      * (* not busy *)
+        break_match.
+        + tuple_inversion.
+          eexists.
+          exact: in_eq.
+        + assert (exists p, handle_query_req st msg = Some p)
+            by exact: handle_query_req_gives_response.
+          break_exists.
+          find_contradiction.
+  Qed.
 
   Definition init_sigma (h : addr) : option data.
   Admitted. (* TODO should map base addresses to data for an ideal ring of just the base nodes *)
@@ -678,15 +763,23 @@ Section ChordProof.
     - find_inversion; auto.
   Qed.
 
+  Lemma joined_preserved_by_handle_delayed_queries :
+    forall h st st' ms,
+      handle_delayed_queries h st = (st', ms) ->
+      joined st = joined st'.
+  Admitted.
+
   Lemma joined_preserved_by_end_query : forall h st st' ms ms' cts cts' nts nts',
       end_query h (st, ms, cts, nts)  = (st', ms', cts', nts') ->
       joined st = joined st'.
   Proof.
     unfold end_query.
     intuition.
-    break_match.
-    - tuple_inversion; auto.
-    - find_apply_lem_hyp joined_preserved_by_try_rectify; auto.
+    break_let.
+    find_apply_lem_hyp joined_preserved_by_try_rectify.
+    find_apply_lem_hyp joined_preserved_by_handle_delayed_queries.
+    simpl in *. (* simpl-ing through clear_query *)
+    now find_rewrite.
   Qed.
 
   Lemma joined_preserved_by_handle_stabilize : forall h src st q new_succ succ st' ms nts cts,
@@ -705,15 +798,11 @@ Section ChordProof.
       end_query h (handle_rectify h st p q n) = (st', ms, nts, cts) ->
       joined st = joined st'.
   Proof.
-    unfold end_query.
     unfold handle_rectify.
-    unfold update_pred.
-    unfold update_query.
     intuition.
     repeat break_match;
-      tuple_inversion;
-      find_inversion || find_apply_lem_hyp joined_preserved_by_try_rectify;
-      auto.
+      find_apply_lem_hyp joined_preserved_by_end_query;
+      now simpl in *.
   Qed.
 
   (* not as strong as the other ones since handle_query for a Join query can change joined st from false to true *)
@@ -721,34 +810,7 @@ Section ChordProof.
         handle_query_res src h st p q m = (st', ms, nts, cts) ->
         joined st = true ->
         joined st' = true.
-  Proof.
-    unfold handle_query_res.
-    unfold update_for_join.
-    unfold add_tick.
-    intuition.
-    repeat break_match;
-      try congruence;
-      repeat find_reverse_rewrite.
-    - find_apply_lem_hyp joined_preserved_by_end_query_handle_rectify; auto.
-    - find_apply_lem_hyp joined_preserved_by_end_query; auto.
-    - find_apply_lem_hyp joined_preserved_by_handle_stabilize; auto.
-    - find_apply_lem_hyp joined_preserved_by_end_query; auto.
-    - simpl in *.
-      unfold clear_rectify_with in *.
-      repeat break_match;
-        try find_apply_lem_hyp joined_preserved_by_start_query;
-        tuple_inversion; auto.
-    - find_apply_lem_hyp joined_preserved_by_end_query; auto.
-    - find_apply_lem_hyp joined_preserved_by_start_query; auto.
-    - simpl in *.
-      unfold clear_rectify_with in *.
-      repeat break_match;
-        try discriminate;
-        find_injection;
-        intuition;
-        repeat tuple_inversion;
-        auto.
-  Qed.
+  Admitted.
 
   Lemma joined_preserved_by_recv_handler : forall src h st msg st' ms nts cts,
       recv_handler src h st msg = (st', ms, nts, cts) ->
@@ -757,10 +819,7 @@ Section ChordProof.
   Proof.
     unfold recv_handler.
     intuition.
-    repeat break_match;
-      try tuple_inversion;
-      eauto using joined_preserved_by_handle_query_res.
-  Qed.
+  Admitted.
 
   Lemma joined_preserved_by_tick_handler : forall h st st' ms nts cts,
     tick_handler h st = (st', ms, nts, cts) ->
