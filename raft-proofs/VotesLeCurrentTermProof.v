@@ -3,8 +3,7 @@ Require Import RaftRefinementInterface.
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 
-Require Import RaftUpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import VotesLeCurrentTermInterface.
 

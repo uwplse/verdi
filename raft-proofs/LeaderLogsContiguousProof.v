@@ -2,8 +2,7 @@ Require Import GhostSimulations.
 Require Import Raft.
 Require Import RaftRefinementInterface.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import CommonTheorems.
 
@@ -17,13 +16,7 @@ Section LeaderLogsContiguous.
   Context {raft_params : RaftParams orig_base_params}.
 
   Context {rri : raft_refinement_interface}.
-  Context {lmi : log_matching_interface}.
-
-  Ltac update_destruct_hyp :=
-    match goal with
-    | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-  
+  Context {lmi : log_matching_interface}.  
 
   Lemma update_elections_data_client_request_leaderLogs :
     forall h st client id c,
@@ -135,7 +128,7 @@ Section LeaderLogsContiguous.
   Ltac start :=
     red; unfold leaderLogs_contiguous; intros;
     subst; simpl in *; find_higher_order_rewrite;
-    update_destruct_hyp; subst; rewrite_update; eauto; simpl in *.
+    update_destruct; subst; rewrite_update; eauto; simpl in *.
 
   Lemma leaderLogs_contiguous_init :
     refined_raft_net_invariant_init leaderLogs_contiguous.

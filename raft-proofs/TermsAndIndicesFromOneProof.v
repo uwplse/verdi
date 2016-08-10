@@ -4,8 +4,7 @@ Require Import CommonDefinitions.
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import TermsAndIndicesFromOneInterface.
 Require Import TermsAndIndicesFromOneLogInterface.
@@ -16,12 +15,6 @@ Section TermsAndIndicesFromOne.
   Context {raft_params : RaftParams orig_base_params}.
   Context {rri : raft_refinement_interface}.
   Context {taifoli : terms_and_indices_from_one_log_interface}.
-
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
 
   Lemma terms_and_indices_from_one_vwl_init :
     refined_raft_net_invariant_init terms_and_indices_from_one_vwl.

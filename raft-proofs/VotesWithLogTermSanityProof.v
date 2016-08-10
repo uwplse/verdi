@@ -3,8 +3,7 @@ Require Import RaftRefinementInterface.
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import VotesWithLogTermSanityInterface.
 
@@ -14,12 +13,6 @@ Section VotesWithLogTermSanity.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
   Context {rri : raft_refinement_interface}.
-
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
 
   Ltac start :=
     red; unfold votesWithLog_term_sanity; simpl; intros.
@@ -32,7 +25,7 @@ Section VotesWithLogTermSanity.
   Lemma votesWithLog_term_sanity_cases :
     forall net st' ps' h gd d,
       votesWithLog_term_sanity net ->
-      (forall h' : Net.name, st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h' : Net.name, st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (forall t' h' l',
         In (t', h', l') (votesWithLog gd) ->
         In (t', h', l') (votesWithLog (fst (nwState net h))) \/

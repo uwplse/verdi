@@ -1,8 +1,7 @@
 Require Import GhostSimulations.
 Require Import Raft.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import RaftRefinementInterface.
 Require Import CommonTheorems.
@@ -41,20 +40,6 @@ Section AllEntriesLog.
 
   (* strategy : prove allEntries_log as inductive invariant, then
      prove allEntries_leaderLogs inductive from that *)
-
-
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac update_destruct_hyp :=
-    match goal with
-      | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac destruct_update :=
-    repeat (first [update_destruct_hyp|update_destruct]; subst; rewrite_update).
 
   Definition no_entries_past_current_term_host_lifted net :=
     forall (h : name) e,

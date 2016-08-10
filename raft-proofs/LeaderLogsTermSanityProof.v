@@ -5,8 +5,7 @@ Require Import RaftRefinementInterface.
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import CandidateTermGtLogInterface.
 Require Import LeaderLogsTermSanityInterface.
@@ -18,12 +17,6 @@ Section LeaderLogsTermSanity.
   Context {raft_params : RaftParams orig_base_params}.
   Context {rri : raft_refinement_interface}.
   Context {ctgli : candidate_term_gt_log_interface}.
-
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
 
   Lemma candidate_term_gt_log_lifted :
     forall net,
@@ -43,7 +36,7 @@ Section LeaderLogsTermSanity.
   Lemma leaderLogs_term_sanity_unchanged :
     forall net st' h gd d ps',
       leaderLogs_term_sanity net ->
-      (forall h' : Net.name, st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h' : Net.name, st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       leaderLogs gd = leaderLogs (fst (nwState net h)) ->
       leaderLogs_term_sanity {| nwPackets := ps'; nwState := st' |}.
   Proof.
@@ -111,7 +104,7 @@ Section LeaderLogsTermSanity.
   Lemma leaderLogs_currentTerm_sanity_unchanged :
     forall net st' h gd d ps',
       leaderLogs_currentTerm_sanity net ->
-      (forall h' : Net.name, st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h' : Net.name, st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       leaderLogs gd = leaderLogs (fst (nwState net h)) ->
       currentTerm d >= currentTerm (snd (nwState net h)) ->
       leaderLogs_currentTerm_sanity {| nwPackets := ps'; nwState := st' |}.
@@ -254,7 +247,7 @@ Section LeaderLogsTermSanity.
   Lemma leaderLogs_currentTerm_sanity_candidate_unchanged :
     forall net st' h gd d ps',
       leaderLogs_currentTerm_sanity_candidate net ->
-      (forall h' : Net.name, st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h' : Net.name, st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       leaderLogs gd = leaderLogs (fst (nwState net h)) ->
       currentTerm d >= currentTerm (snd (nwState net h)) ->
       (type d = type (snd (nwState net h)) \/ type d <> Candidate) ->

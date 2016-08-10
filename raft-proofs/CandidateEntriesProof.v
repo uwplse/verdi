@@ -11,8 +11,7 @@ Require Import RefinementCommonTheorems.
 
 Require Import SpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import CandidateEntriesInterface.
 
@@ -26,12 +25,6 @@ Section CandidateEntriesProof.
   Context {tsi : term_sanity_interface}.
   Context {vci : votes_correct_interface}.
   Context {cci : cronies_correct_interface}.
-
-  Ltac my_update_destruct :=
-    match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
 
   Lemma handleClientRequest_spec :
     forall h d client id c out d' l,
@@ -115,11 +108,6 @@ Section CandidateEntriesProof.
     congruence.
   Qed.
 
-  Ltac update_destruct :=
-    match goal with
-    | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma handleTimeout_only_sends_RequestVotes :
     forall h d out d' l p,
       handleTimeout h d = (out, d', l) ->
@@ -162,7 +150,7 @@ Section CandidateEntriesProof.
       refined_raft_intermediate_reachable net ->
       handleTimeout h (snd (nwState net h)) = (out, d, l) ->
       candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h (update_elections_data_timeout h (nwState net h), d)).
+      candidateEntries e (update name_eq_dec (nwState net) h (update_elections_data_timeout h (nwState net h), d)).
   Proof.
     intros.
     destruct (serverType_eq_dec (type (snd (A:=electionsData) (B:=raft_data) (nwState net h))) Leader).
@@ -284,7 +272,7 @@ Section CandidateEntriesProof.
       handleAppendEntries h (snd (nwState net h)) t n pli plt es ci = (d, m) ->
       refined_raft_intermediate_reachable net ->
       candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h
+      candidateEntries e (update name_eq_dec (nwState net) h
                                  (update_elections_data_appendEntries
                                     h
                                     (nwState net h) t n pli plt es ci, d)).
@@ -325,7 +313,7 @@ Section CandidateEntriesProof.
       eapply candidateEntries_ext; eauto.
       repeat find_higher_order_rewrite.
       find_rewrite_lem update_fun_comm. simpl in *.
-      my_update_destruct; subst; rewrite_update;
+      update_destruct; subst; rewrite_update;
       eapply handleAppendEntries_preserves_candidate_entries; eauto.
       find_copy_apply_lem_hyp handleAppendEntries_spec. break_and.
       find_apply_hyp_hyp. intuition eauto.
@@ -362,7 +350,7 @@ Section CandidateEntriesProof.
       handleAppendEntriesReply h (snd (nwState net h)) h' t es r = (st', ms) ->
       refined_raft_intermediate_reachable net ->
       candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h (fst (nwState net h), st')).
+      candidateEntries e (update name_eq_dec (nwState net) h (fst (nwState net h), st')).
   Proof.
     unfold candidateEntries.
     intros. break_exists. break_and.
@@ -370,8 +358,8 @@ Section CandidateEntriesProof.
     split.
     - rewrite update_fun_comm. simpl.
       rewrite update_fun_comm. simpl.
-      my_update_destruct; subst; rewrite_update; auto.
-    - intros. my_update_destruct; subst; rewrite_update; auto.
+      update_destruct; subst; rewrite_update; auto.
+    - intros. update_destruct; subst; rewrite_update; auto.
       simpl in *.
       find_apply_lem_hyp handleAppendEntriesReply_spec.
       intuition; repeat find_rewrite; intuition.
@@ -397,14 +385,14 @@ Section CandidateEntriesProof.
       intros. simpl in *. eapply candidateEntries_ext; eauto.
       repeat find_higher_order_rewrite.
       find_rewrite_lem update_fun_comm. simpl in *.
-      my_update_destruct.
+      update_destruct.
       + subst. rewrite_update.
         unfold candidateEntries in *.
         find_apply_lem_hyp handleAppendEntriesReply_spec. break_and.
         repeat find_rewrite.
         find_apply_hyp_hyp.
         break_exists; exists x; eauto.
-        my_update_destruct; intuition; subst; rewrite_update; simpl in *; auto;
+        update_destruct; intuition; subst; rewrite_update; simpl in *; auto;
         repeat find_rewrite; intuition; congruence.
       + rewrite_update. find_apply_hyp_hyp.
         eauto using handleAppendEntriesReply_preserves_candidate_entries.
@@ -448,7 +436,7 @@ Section CandidateEntriesProof.
     forall net h h' t lli llt e,
       candidateEntries e (nwState net) ->
       candidateEntries e
-                       (update (nwState net) h
+                       (update name_eq_dec (nwState net) h
                                (update_elections_data_requestVote h h' t h' lli llt (nwState net h),
                                 advanceCurrentTerm (snd (nwState net h)) t)).
   Proof.
@@ -471,7 +459,7 @@ Section CandidateEntriesProof.
     forall net h h' t lli llt d e m,
       handleRequestVote h (snd (nwState net h)) t h' lli llt = (d, m) ->
       candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h
+      candidateEntries e (update name_eq_dec (nwState net) h
                                  (update_elections_data_requestVote
                                     h h' t h' lli llt (nwState net h), d)).
   Proof.
@@ -525,7 +513,7 @@ Section CandidateEntriesProof.
       eapply candidateEntries_ext; eauto.
       repeat find_higher_order_rewrite.
       find_rewrite_lem update_fun_comm. simpl in *.
-      my_update_destruct; subst; rewrite_update; simpl in *;
+      update_destruct; subst; rewrite_update; simpl in *;
       try find_erewrite_lem handleRequestVote_same_log;
       eapply handleRequestVote_preserves_candidateEntries; eauto.
     - unfold candidateEntries_nw_invariant in *.
@@ -545,7 +533,7 @@ Section CandidateEntriesProof.
       intros. simpl in *. eapply candidateEntries_ext; eauto.
       repeat find_higher_order_rewrite.
       find_rewrite_lem update_fun_comm. simpl in *.
-      my_update_destruct.
+      update_destruct.
       + subst. rewrite_update.
         match goal with
           | |- context [handleRequestVoteReply ?h ?st ?h' ?t ?r] =>
@@ -593,7 +581,7 @@ Section CandidateEntriesProof.
       intros.
       eapply candidateEntries_ext; eauto.
       repeat find_higher_order_rewrite.
-      my_update_destruct; subst; rewrite_update.
+      update_destruct; subst; rewrite_update.
       + simpl in *.
         find_erewrite_lem doLeader_same_log.
         repeat match goal with
@@ -646,7 +634,7 @@ Section CandidateEntriesProof.
       nwState net h = (gd, d) ->
       doGenericServer h d = (os, d', ms) ->
       candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h (gd, d')).
+      candidateEntries e (update name_eq_dec (nwState net) h (gd, d')).
   Proof.
     intros.
     eapply candidateEntries_same; eauto;
@@ -668,7 +656,7 @@ Section CandidateEntriesProof.
       intros.
       eapply candidateEntries_ext; eauto.
       repeat find_higher_order_rewrite.
-      my_update_destruct; subst; rewrite_update.
+      update_destruct; subst; rewrite_update.
       + simpl in *.
         find_copy_apply_lem_hyp doGenericServer_spec. break_and.
         find_rewrite.
@@ -721,7 +709,7 @@ Section CandidateEntriesProof.
     forall net h d gd e,
       nwState net h = (gd, d) ->
       candidateEntries e (nwState net) ->
-      candidateEntries e (update (nwState net) h (gd, reboot d)).
+      candidateEntries e (update name_eq_dec (nwState net) h (gd, reboot d)).
   Proof.
     unfold reboot, candidateEntries.
     intros.
@@ -729,7 +717,7 @@ Section CandidateEntriesProof.
     exists x.
     break_and.
     rewrite update_fun_comm. simpl in *.
-    my_update_destruct; subst; rewrite_update; auto.
+    update_destruct; subst; rewrite_update; auto.
     repeat find_rewrite. simpl in *. intuition. discriminate.
   Qed.
 
@@ -746,7 +734,7 @@ Section CandidateEntriesProof.
       subst.
       find_rewrite_lem update_fun_comm. simpl in *.
       find_rewrite_lem update_fun_comm. simpl in *.
-      my_update_destruct; subst; rewrite_update.
+      update_destruct; subst; rewrite_update.
       + repeat match goal with
         | [ H : nwState ?net ?h = (_, ?d), H' : context [ log ?d ] |- _ ] =>
           replace (log d) with (log (snd (nwState net h))) in H' by (repeat find_rewrite; auto)

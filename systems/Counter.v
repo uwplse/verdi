@@ -1,8 +1,7 @@
 Require Import Verdi.
 Require Import HandlerMonad.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Set Implicit Arguments.
 

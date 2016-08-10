@@ -3,8 +3,7 @@ Require Import RaftRefinementInterface.
 
 Require Import CommonTheorems.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import CroniesTermInterface.
 
@@ -14,11 +13,6 @@ Section CroniesTermProof.
   Context {raft_params : RaftParams orig_base_params}.
 
   Context {rri : raft_refinement_interface}.
-
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (@name_eq_dec _ _ y x)
-    end.
 
   Lemma handleClientRequest_spec :
     forall h st client id c out st' l,

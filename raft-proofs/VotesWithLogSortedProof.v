@@ -6,8 +6,7 @@ Require Import CommonDefinitions.
 
 Require Import SpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import VotesWithLogSortedInterface.
 Require Import SortedInterface.
@@ -19,12 +18,6 @@ Section VotesWithLogSorted.
 
   Context {rri : raft_refinement_interface}.
   Context {si : sorted_interface}.
-
-  Ltac update_destruct :=
-    match goal with
-      | [ H : context [ update _ ?x _ ?y ] |- _ ] =>
-        destruct (name_eq_dec x y); subst; rewrite_update; simpl in *
-    end.
 
   Lemma votesWithLog_sorted_init :
     refined_raft_net_invariant_init votesWithLog_sorted.
@@ -48,7 +41,7 @@ Section VotesWithLogSorted.
   Proof.
     unfold refined_raft_net_invariant_client_request, votesWithLog_sorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
-    update_destruct; simpl in *.
+    update_destruct_simplify; simpl in *.
     - rewrite votesWithLog_update_elections_data_client_request in *.
       eauto.
     - eauto.
@@ -84,7 +77,7 @@ Section VotesWithLogSorted.
   Proof.
     unfold refined_raft_net_invariant_timeout, votesWithLog_sorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
-    update_destruct; simpl in *.
+    update_destruct_simplify; simpl in *.
     - destruct (votesWithLog (update_elections_data_timeout h0 (nwState net h0)))
                using (votesWithLog_update_elections_data_timeout ltac:(eauto)).
       + simpl in *. intuition.
@@ -110,7 +103,7 @@ Section VotesWithLogSorted.
   Proof.
     unfold refined_raft_net_invariant_append_entries, votesWithLog_sorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
-    update_destruct; simpl in *.
+    update_destruct_simplify; simpl in *.
     - rewrite votesWithLog_update_elections_data_AE in *.
       eauto.
     - eauto.
@@ -121,7 +114,7 @@ Section VotesWithLogSorted.
   Proof.
     unfold refined_raft_net_invariant_append_entries_reply, votesWithLog_sorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
-    update_destruct; simpl in *; eauto.
+    update_destruct_simplify; simpl in *; eauto.
   Qed.
 
   Lemma votesWithLog_sorted_request_vote :
@@ -130,7 +123,7 @@ Section VotesWithLogSorted.
     unfold refined_raft_net_invariant_request_vote, votesWithLog_sorted.
     intros.
     subst. simpl in *. find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - unfold update_elections_data_requestVote in *.
       repeat break_match; simpl in *; intuition; repeat find_inversion; eauto;
       erewrite handleRequestVote_log; eauto using sorted_host_lifted.
@@ -152,7 +145,7 @@ Section VotesWithLogSorted.
   Proof.
     unfold refined_raft_net_invariant_request_vote_reply, votesWithLog_sorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - rewrite votesWithLog_update_elections_data_RVR in *.
       eauto.
     - eauto.
@@ -163,7 +156,7 @@ Section VotesWithLogSorted.
   Proof.
     unfold refined_raft_net_invariant_do_leader, votesWithLog_sorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - match goal with
         | [ H : _, H' : _ |- _ ] =>
           eapply H; rewrite H'; simpl; eauto
@@ -176,7 +169,7 @@ Section VotesWithLogSorted.
   Proof.
     unfold refined_raft_net_invariant_do_generic_server, votesWithLog_sorted.
     intros. subst. simpl in *. find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - match goal with
         | [ H : _, H' : _ |- _ ] =>
           eapply H; rewrite H'; simpl; eauto
@@ -198,7 +191,7 @@ Section VotesWithLogSorted.
     unfold refined_raft_net_invariant_reboot, votesWithLog_sorted.
     intros.
     find_higher_order_rewrite.
-    update_destruct.
+    update_destruct_simplify.
     - match goal with
         | [ H : _, H' : _ |- _ ] =>
           eapply H; rewrite H'; simpl; eauto

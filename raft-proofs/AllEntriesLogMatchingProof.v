@@ -5,8 +5,7 @@ Require Import RefinementCommonTheorems.
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import AllEntriesLeaderSublogInterface.
 Require Import LeaderSublogInterface.
@@ -23,12 +22,6 @@ Section AllEntriesLogMatching.
   Context {aelsi : allEntries_leader_sublog_interface}.
   Context {lsi : leader_sublog_interface}.
   Context {rlmli : refined_log_matching_lemmas_interface}.
-
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
 
   Definition allEntries_log_matching_nw net :=
     forall (e e' : entry) (h : name) (p : packet)
@@ -171,7 +164,7 @@ Section AllEntriesLogMatching.
   Lemma allEntries_log_matching_unchanged :
     forall net st' h gd d ps',
       allEntries_log_matching net ->
-      (forall h' : Net.name, st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h' : Net.name, st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       log d = log (snd (nwState net h)) ->
       allEntries gd = allEntries (fst (nwState net h)) ->
       allEntries_log_matching {| nwPackets := ps'; nwState := st' |}.

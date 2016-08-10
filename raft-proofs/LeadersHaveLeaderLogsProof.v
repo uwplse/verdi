@@ -3,8 +3,7 @@ Require Import RaftRefinementInterface.
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import LeadersHaveLeaderLogsInterface.
 
@@ -26,16 +25,11 @@ Section LeadersHaveLeaderLogs.
     unfold handleRequestVoteReply, advanceCurrentTerm in *.
     repeat break_match; try find_inversion; subst; simpl in *; intuition.
   Qed.
-  
-  Ltac update_destruct_hyp :=
-    match goal with
-    | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
 
   Ltac start :=
     red; unfold leaders_have_leaderLogs; intros;
     subst; simpl in *; find_higher_order_rewrite;
-    update_destruct_hyp; subst; rewrite_update; eauto; simpl in *.
+    update_destruct; subst; rewrite_update; eauto; simpl in *.
 
   Lemma leaders_have_leaderLogs_appendEntries :
     refined_raft_net_invariant_append_entries leaders_have_leaderLogs.

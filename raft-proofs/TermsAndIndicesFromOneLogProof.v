@@ -2,8 +2,7 @@ Require Import Raft.
 Require Import CommonTheorems.
 Require Import SpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import TermsAndIndicesFromOneLogInterface.
 Require Import CurrentTermGtZeroInterface.
@@ -24,12 +23,6 @@ Section TermsAndIndicesFromOneLog.
     - unfold terms_and_indices_from_one_log, terms_and_indices_from_one. simpl. contradiction.
     - unfold terms_and_indices_from_one_log_nw, terms_and_indices_from_one. simpl. contradiction.
   Qed.
-
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
 
   Lemma taifol_no_append_entries :
     forall ps' net ms p t leaderId prevLogIndex prevLogTerm entries leaderCommit h,

@@ -1,8 +1,7 @@
 Require Import Raft.
 Require Import SpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import TermSanityInterface.
 Require Import CandidateTermGtLogInterface.
@@ -12,12 +11,6 @@ Section CandidateTermGtLog.
   Context {one_node_params : OneNodeParams orig_base_params}.
   Context {raft_params : RaftParams orig_base_params}.
   Context {tsi : term_sanity_interface}.
-
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
 
   Lemma candidate_term_gt_log_init :
     raft_net_invariant_init candidate_term_gt_log.

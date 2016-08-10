@@ -2,8 +2,7 @@ Require Import Verdi.
 Require Import HandlerMonad.
 Require Import StructTact.Fin.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import StatePacketPacketDecomposition.
 
@@ -254,7 +253,7 @@ Section LockServ.
     forall sigma st' x,
       locks_correct sigma ->
       held st' = false ->
-      locks_correct (update sigma (Client x) st').
+      locks_correct (update name_eq_dec sigma (Client x) st').
   Proof.
     unfold locks_correct.
     intuition.
@@ -278,7 +277,7 @@ Section LockServ.
     forall h i sigma u st' out ms,
       InputHandler h i (sigma h) = (u, out, st', ms) ->
       locks_correct sigma ->
-      locks_correct (update sigma h st').
+      locks_correct (update name_eq_dec sigma h st').
   Proof.
     set_up_input_handlers;
     auto using locks_correct_update_false.
@@ -341,7 +340,7 @@ Section LockServ.
       held st' = true ->
       at_head_of_queue sigma c ->
       locks_correct sigma ->
-      locks_correct (update sigma (Client c) st').
+      locks_correct (update name_eq_dec sigma (Client c) st').
   Proof.
     unfold locks_correct.
     intros.
@@ -364,7 +363,7 @@ Section LockServ.
   Lemma all_clients_false_locks_correct_server_update :
     forall sigma st,
       (forall c, held (sigma (Client c)) = false) ->
-      locks_correct (update sigma Server st).
+      locks_correct (update name_eq_dec sigma Server st).
   Proof.
     unfold locks_correct.
     intros.
@@ -424,8 +423,8 @@ Section LockServ.
   Lemma locks_correct_at_head_preserved :
     forall sigma st',
       locks_correct sigma ->
-      (forall c, at_head_of_queue sigma c -> at_head_of_queue (update sigma Server st') c) ->
-      locks_correct (update sigma Server st').
+      (forall c, at_head_of_queue sigma c -> at_head_of_queue (update name_eq_dec sigma Server st') c) ->
+      locks_correct (update name_eq_dec sigma Server st').
   Proof.
     unfold locks_correct, at_head_of_queue.
     firstorder.
@@ -436,7 +435,7 @@ Section LockServ.
   Lemma snoc_at_head_of_queue_preserved :
     forall sigma st' x,
       queue st' = queue (sigma Server) ++ [x] ->
-      (forall c, at_head_of_queue sigma c -> at_head_of_queue (update sigma Server st') c).
+      (forall c, at_head_of_queue sigma c -> at_head_of_queue (update name_eq_dec sigma Server st') c).
   Proof.
     unfold at_head_of_queue.
     intuition. break_exists.
@@ -467,7 +466,7 @@ Section LockServ.
       locks_correct sigma ->
       locks_correct_unlock sigma p ->
       locks_correct_locked sigma p ->
-      locks_correct (update sigma (pDst p) st').
+      locks_correct (update name_eq_dec sigma (pDst p) st').
   Proof.
     set_up_net_handlers;
     eauto using
@@ -500,7 +499,7 @@ Section LockServ.
       InputHandler h i (sigma h) = (u, out, st', ms) ->
       locks_correct sigma ->
       locks_correct_unlock sigma p ->
-      locks_correct_unlock (update sigma h st') p.
+      locks_correct_unlock (update name_eq_dec sigma h st') p.
   Proof.
     set_up_input_handlers.
     destruct (pBody p) eqn:?.
@@ -547,7 +546,7 @@ Section LockServ.
       InputHandler h i (sigma h) = (u, out, st', ms) ->
       locks_correct sigma ->
       locks_correct_locked sigma p ->
-      locks_correct_locked (update sigma h st') p.
+      locks_correct_locked (update name_eq_dec sigma h st') p.
   Proof.
     set_up_input_handlers.
     destruct (pBody p) eqn:?.
@@ -561,7 +560,7 @@ Section LockServ.
       at_head_of_queue sigma x ->
       held st' = false ->
       pSrc p = Client x ->
-      locks_correct_unlock (update sigma (Client x) st') p.
+      locks_correct_unlock (update name_eq_dec sigma (Client x) st') p.
   Proof.
     unfold locks_correct_unlock, valid_unlock.
     intros.
@@ -575,7 +574,7 @@ Section LockServ.
       locks_correct sigma ->
       In (pDst p, pBody p) ms ->
       pSrc p = h ->
-      locks_correct_unlock (update sigma h st') p.
+      locks_correct_unlock (update name_eq_dec sigma h st') p.
   Proof.
     set_up_input_handlers;
 
@@ -588,7 +587,7 @@ Section LockServ.
     forall h i sigma u st' out ms p,
       InputHandler h i (sigma h) = (u, out, st', ms) ->
       In (pDst p, pBody p) ms ->
-      locks_correct_locked (update sigma h st') p.
+      locks_correct_locked (update name_eq_dec sigma h st') p.
   Proof.
     set_up_input_handlers;
     auto using locks_correct_locked_sent_lock, locks_correct_locked_sent_unlock.
@@ -636,8 +635,8 @@ Section LockServ.
   Lemma locks_correct_unlock_at_head_preserved :
     forall sigma st' p,
       locks_correct_unlock sigma p ->
-      (forall c, at_head_of_queue sigma c -> at_head_of_queue (update sigma Server st') c) ->
-      locks_correct_unlock (update sigma Server st') p.
+      (forall c, at_head_of_queue sigma c -> at_head_of_queue (update name_eq_dec sigma Server st') c) ->
+      locks_correct_unlock (update name_eq_dec sigma Server st') p.
   Proof.
     unfold locks_correct_unlock, valid_unlock.
     intuition.
@@ -665,7 +664,7 @@ Section LockServ.
       locks_correct sigma ->
       locks_correct_unlock sigma q ->
       LockServ_network_network_invariant p q ->
-      locks_correct_unlock (update sigma (pDst p) st') q.
+      locks_correct_unlock (update name_eq_dec sigma (pDst p) st') q.
   Proof.
     set_up_net_handlers;
     eauto using locks_correct_unlock_sent_lock, nwnw_locked_lock,
@@ -676,8 +675,8 @@ Section LockServ.
   Lemma locks_correct_locked_at_head_preserved :
     forall sigma st' p,
       locks_correct_locked sigma p ->
-      (forall c, at_head_of_queue sigma c -> at_head_of_queue (update sigma Server st') c) ->
-      locks_correct_locked (update sigma Server st') p.
+      (forall c, at_head_of_queue sigma c -> at_head_of_queue (update name_eq_dec sigma Server st') c) ->
+      locks_correct_locked (update name_eq_dec sigma Server st') p.
   Proof.
     unfold locks_correct_locked, valid_locked.
     intuition.
@@ -694,7 +693,7 @@ Section LockServ.
       locks_correct sigma ->
       locks_correct_locked sigma q ->
       LockServ_network_network_invariant p q ->
-      locks_correct_locked (update sigma (pDst p) st') q.
+      locks_correct_locked (update name_eq_dec sigma (pDst p) st') q.
   Proof.
     set_up_net_handlers;
     eauto using locks_correct_locked_sent_lock, nwnw_locked_lock,
@@ -707,7 +706,7 @@ Section LockServ.
       NetHandler (pDst p) (pSrc p) (pBody p) (sigma (pDst p)) = (u, out, st', ms) ->
       locks_correct sigma ->
       In (pDst q, pBody q) ms ->
-      locks_correct_unlock (update sigma (pDst p) st') q.
+      locks_correct_unlock (update name_eq_dec sigma (pDst p) st') q.
   Proof.
     set_up_net_handlers;
     auto using locks_correct_unlock_sent_locked.
@@ -718,7 +717,7 @@ Section LockServ.
       pDst p = Client c ->
       held (sigma (Client c)) = false ->
       queue st' = c :: t ->
-      locks_correct_locked (update sigma Server st') p.
+      locks_correct_locked (update name_eq_dec sigma Server st') p.
   Proof.
     unfold locks_correct_locked, valid_locked.
     intros.
@@ -734,7 +733,7 @@ Section LockServ.
       locks_correct sigma ->
       locks_correct_unlock sigma p ->
       In (pDst q, pBody q) ms ->
-      locks_correct_locked (update sigma (pDst p) st') q.
+      locks_correct_locked (update name_eq_dec sigma (pDst p) st') q.
   Proof.
     set_up_net_handlers;
     eauto using locks_correct_locked_intro,
@@ -1021,8 +1020,8 @@ Section LockServ.
 
   Ltac my_update_destruct :=
     match goal with
-      | [H : context [ update _ ?x _ ?y ] |- _ ] => destruct (Name_eq_dec x y)
-      | [ |- context [ update _ ?x _ ?y ] ] => destruct (Name_eq_dec x y)
+      | [H : context [ update _ _ ?x _ ?y ] |- _ ] => destruct (Name_eq_dec x y)
+      | [ |- context [ update _ _ ?x _ ?y ] ] => destruct (Name_eq_dec x y)
     end.
 
   Lemma last_holder'_server_extend :

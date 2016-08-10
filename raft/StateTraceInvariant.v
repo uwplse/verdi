@@ -21,7 +21,7 @@ Section ST.
       nwPackets net = xs ++ p :: ys ->
       net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
       R (mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
-                   (update (nwState net) (pDst p) d))
+                   (update name_eq_dec (nwState net) (pDst p) d))
         (tr ++ [(pDst p, inr out)]).
 
   Hypothesis H_RT_deliver : RT_deliver.
@@ -33,7 +33,7 @@ Section ST.
       R net tr ->
       input_handlers h i (nwState net h) = (out, d, l) ->
       R (mkNetwork (send_packets h l ++ nwPackets net)
-                   (update (nwState net) h d))
+                   (update name_eq_dec (nwState net) h d))
         (tr ++ [(h, inl i); (h, inr out)]).
 
   Hypothesis H_RT_input : RT_input.
@@ -65,7 +65,7 @@ Section ST.
       step_f_star step_f_init (failed, net) tr ->
       T tr ->
       R net tr ->
-      R (mkNetwork (nwPackets net) (update (nwState net) h (reboot (nwState net h))))
+      R (mkNetwork (nwPackets net) (update name_eq_dec (nwState net) h (reboot (nwState net h))))
         tr.
 
   Hypothesis H_RT_reboot : RT_reboot.

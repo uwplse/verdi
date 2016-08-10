@@ -1,8 +1,7 @@
 Require Import Raft.
 Require Import RaftRefinementInterface.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import VotesVotesWithLogCorrespondInterface.
 
@@ -12,16 +11,10 @@ Section VotesVotesWithLogCorrespond.
   Context {raft_params : RaftParams orig_base_params}.
   Context {rri : raft_refinement_interface}.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-      | [ H : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma votes_votesWithLog_correspond_cases :
     forall net h gd d ps' st',
       votes_votesWithLog_correspond net ->
-      (forall h' : Net.name, st' h' = update (nwState net) h (gd, d) h') ->
+      (forall h' : Net.name, st' h' = update name_eq_dec (nwState net) h (gd, d) h') ->
       (votes gd = votes (fst (nwState net h)) /\  (* unchanged *)
        votesWithLog gd = votesWithLog (fst (nwState net h))) \/
       (exists t n l,  (* add entry *)
@@ -80,7 +73,7 @@ Section VotesVotesWithLogCorrespond.
       unfold reboot in *; simpl in *;
       (eapply equates_1; [
           match goal with
-          | H : _ |- _ => solve [ eapply H; aggresive_rewrite_goal; eauto ]
+          | H : _ |- _ => solve [ eapply H; aggressive_rewrite_goal; eauto ]
           end |]);
       find_rewrite; auto.
   Qed.

@@ -374,7 +374,7 @@ Section SeqNumCorrect.
                          (fun m : name * seq_num_msg =>
                             {| pSrc := pDst p; pDst := fst m; pBody := snd m |})
                          l' ++ xs ++ ys)
-                      (update (nwState st) (pDst p)
+                      (update name_eq_dec (nwState st) (pDst p)
                               (@mkseq_num_data _ orig_multi_params
                                                n
                                                (fun nm : name =>
@@ -386,7 +386,7 @@ Section SeqNumCorrect.
                                                d)))
         = {|
           nwPackets := (@send_packets _ orig_multi_params (pDst p) l) ++ xs' ++ ys';
-          nwState := update (nwState (revertNetwork st)) (pDst p) d
+          nwState := update name_eq_dec (nwState (revertNetwork st)) (pDst p) d
         |}.
   Proof.
     intros.
@@ -468,14 +468,14 @@ Section SeqNumCorrect.
       revertNetwork
         (@mkNetwork _ multi_params
                     (send_packets h l' ++ nwPackets st)
-                    (update (nwState st) h
+                    (update name_eq_dec (nwState st) h
                             (@mkseq_num_data _ orig_multi_params
                                              n
                                              (tdSeen (nwState st h))
                                              d)))
         = {|
           nwPackets := (@send_packets _ orig_multi_params h l) ++ (nwPackets (revertNetwork st));
-          nwState := update (nwState (revertNetwork st)) h d
+          nwState := update name_eq_dec (nwState (revertNetwork st)) h d
         |}.
   Proof.
     intros.

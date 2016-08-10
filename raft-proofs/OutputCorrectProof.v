@@ -11,8 +11,7 @@ Require Import SortedInterface.
 Require Import LastAppliedCommitIndexMatchingInterface.
 Require Import LogMatchingInterface.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Section OutputCorrect.
   Context {orig_base_params : BaseParams}.
@@ -109,11 +108,6 @@ Section OutputCorrect.
     repeat break_match; find_inversion; intuition eauto using in_output_list_empty;
     unfold in_output_list in *; break_exists; simpl in *; intuition; congruence.
   Qed.
-
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
 
   Lemma deduplicate_log'_app :
     forall l l' ks,
@@ -737,7 +731,7 @@ Section OutputCorrect.
       raft_intermediate_reachable (mkNetwork ps sigma) ->
       doGenericServer h (sigma h) = (os, st', ms) ->
       in_output_list client id out os ->
-      output_correct client id out (applied_entries (update sigma h st')).
+      output_correct client id out (applied_entries (update name_eq_dec sigma h st')).
   Proof.
     intros.
     find_copy_apply_lem_hyp logs_sorted_invariant.
@@ -761,7 +755,7 @@ Section OutputCorrect.
       + do_bool.
         erewrite findGtIndex_removeAfterIndex_i_lt_i' in *; eauto.
         match goal with
-          | |- context [applied_entries (update ?sigma ?h ?st)] =>
+          | |- context [applied_entries (update _ ?sigma ?h ?st)] =>
             pose proof applied_entries_update sigma h st
         end. conclude_using intuition.
         intuition; simpl in *;
@@ -783,7 +777,7 @@ Section OutputCorrect.
       + do_bool.
         erewrite findGtIndex_removeAfterIndex_i'_le_i in *; eauto.
         match goal with
-          | |- context [applied_entries (update ?sigma ?h ?st)] =>
+          | |- context [applied_entries (update _ ?sigma ?h ?st)] =>
             pose proof applied_entries_update sigma h st
         end. conclude_using intuition.
         intuition; simpl in *;
@@ -817,12 +811,12 @@ Section OutputCorrect.
   Ltac intermediate_networks :=
     match goal with
       | Hdgs : doGenericServer ?h ?st' = _,
-               Hdl : doLeader ?st ?h = _ |- context [update (nwState ?net) ?h ?st''] =>
-        replace st with (update (nwState net) h st h) in Hdl by eauto using update_eq;
-          replace st' with (update (update (nwState net) h st) h st' h) in Hdgs by eauto using update_eq;
+               Hdl : doLeader ?st ?h = _ |- context [update _ (nwState ?net) ?h ?st''] =>
+        replace st with (update name_eq_dec (nwState net) h st h) in Hdl by eauto using update_eq;
+          replace st' with (update name_eq_dec (update name_eq_dec (nwState net) h st) h st' h) in Hdgs by eauto using update_eq;
           let H := fresh "H" in
-          assert (update (nwState net) h st'' =
-                  update (update (update (nwState net) h st) h st') h st'') by (repeat rewrite update_overwrite; auto); unfold data in *; simpl in *; rewrite H; clear H
+          assert (update name_eq_dec (nwState net) h st'' =
+                  update name_eq_dec (update name_eq_dec (update name_eq_dec (nwState net) h st) h st') h st'') by (repeat rewrite update_overwrite; auto); unfold data in *; simpl in *; rewrite H; clear H
     end.
 
   Lemma in_output_trace_step_output_correct :

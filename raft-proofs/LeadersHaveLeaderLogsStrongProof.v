@@ -2,8 +2,7 @@ Require Import Raft.
 Require Import RaftRefinementInterface.
 Require Import CommonTheorems.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import LeadersHaveLeaderLogsStrongInterface.
 
@@ -25,16 +24,11 @@ Section LeadersHaveLeaderLogsStrong.
     unfold handleRequestVoteReply, advanceCurrentTerm in *.
     repeat break_match; try find_inversion; subst; simpl in *; intuition.
   Qed.
-  
-  Ltac update_destruct_hyp :=
-    match goal with
-    | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
 
   Ltac start :=
     red; unfold leaders_have_leaderLogs_strong; intros;
     subst; simpl in *; find_higher_order_rewrite;
-    update_destruct_hyp; subst; rewrite_update; eauto; simpl in *.
+    update_destruct; subst; rewrite_update; eauto; simpl in *.
 
   Lemma handleAppendEntries_type :
     forall h st t n pli plt es ci st' ps,

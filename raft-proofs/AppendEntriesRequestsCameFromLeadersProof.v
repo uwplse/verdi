@@ -3,8 +3,7 @@ Require Import RaftRefinementInterface.
 Require Import SpecLemmas.
 Require Import RefinementSpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import LeadersHaveLeaderLogsInterface.
 Require Import AppendEntriesRequestsCameFromLeadersInterface.
@@ -16,17 +15,6 @@ Section AppendEntriesRequestsCameFromLeaders.
 
   Context {lhlli : leaders_have_leaderLogs_interface}.
   Context {rri : raft_refinement_interface}.
-
-  Ltac update_destruct_hyp :=
-    match goal with
-    | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
-  Ltac update_destruct :=
-    match goal with
-    | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
 
   Ltac start :=
     red; unfold append_entries_came_from_leaders; intros;

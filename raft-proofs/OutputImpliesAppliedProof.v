@@ -8,8 +8,7 @@ Require Import AppliedEntriesMonotonicInterface.
 Require Import MaxIndexSanityInterface.
 Require Import TraceUtil.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Require Import SortedInterface.
 
@@ -78,11 +77,6 @@ Section OutputImpliesApplied.
     unfold key_in_output_list in *; break_exists; simpl in *; intuition; congruence.
   Qed.
 
-  Ltac update_destruct :=
-    match goal with
-      | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma applyEntries_In :
     forall l h st os st' o,
       applyEntries h st l = (os, st') ->
@@ -110,7 +104,7 @@ Section OutputImpliesApplied.
       key_in_output_list client id os ->
       exists e : entry,
         eClient e = client /\
-        eId e = id /\ In e (applied_entries (update (nwState net) h st')).
+        eId e = id /\ In e (applied_entries (update name_eq_dec (nwState net) h st')).
   Proof.
     intros. unfold key_in_output_list in *.
     match goal with | H : exists _, _ |- _ => destruct H as [o] end.
@@ -123,7 +117,7 @@ Section OutputImpliesApplied.
     intuition. repeat (do_bool; intuition).
     break_if; simpl in *; do_bool; [|try omega].
     match goal with
-      | |- context [update ?st ?h ?st'] =>
+      | |- context [update _ ?st ?h ?st'] =>
         pose proof applied_entries_update st h st'
     end. forwards; [simpl in *; intuition|]. concludes.
     intuition.
@@ -188,15 +182,15 @@ Section OutputImpliesApplied.
       intuition.
       match goal with
         | H : doLeader ?st ?h = _ |- _ =>
-          replace st with ((update (nwState net) h st) h) in H;
+          replace st with ((update name_eq_dec (nwState net) h st) h) in H;
             [|rewrite_update; auto]
       end.
       find_eapply_lem_hyp RIR_doLeader; eauto.
       simpl in *.
       match goal with
-        | _ : raft_intermediate_reachable ?net' |- context [update (nwState net) ?h ?d] =>
+        | _ : raft_intermediate_reachable ?net' |- context [update _ (nwState net) ?h ?d] =>
           remember net' as n;
-            assert ((update (nwState net) h d) = (update (nwState n) h d)) by
+            assert ((update name_eq_dec (nwState net) h d) = (update name_eq_dec (nwState n) h d)) by
               (subst; simpl in *; repeat rewrite update_overwrite; auto)
       end.
       unfold raft_data in *. simpl in *.
@@ -217,15 +211,15 @@ Section OutputImpliesApplied.
       intuition; [exfalso; eapply doLeader_key_in_output_list; eauto|].
       match goal with
         | H : doLeader ?st ?h = _ |- _ =>
-          replace st with ((update (nwState net) h st) h) in H;
+          replace st with ((update name_eq_dec (nwState net) h st) h) in H;
             [|rewrite_update; auto]
       end.
       find_eapply_lem_hyp RIR_doLeader; eauto.
       simpl in *.
       match goal with
-        | _ : raft_intermediate_reachable ?net' |- context [update (nwState net) ?h ?d] =>
+        | _ : raft_intermediate_reachable ?net' |- context [update _ (nwState net) ?h ?d] =>
           remember net' as n;
-            assert ((update (nwState net) h d) = (update (nwState n) h d)) by
+            assert ((update name_eq_dec (nwState net) h d) = (update name_eq_dec (nwState n) h d)) by
               (subst; simpl in *; repeat rewrite update_overwrite; auto)
       end.
       unfold raft_data in *. simpl in *.

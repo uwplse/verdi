@@ -6,8 +6,7 @@ Require Import CommonTheorems.
 
 Require Import SpecLemmas.
 
-Require Import UpdateLemmas.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 
 Require Import LogsLeaderLogsInterface.
@@ -188,11 +187,6 @@ Section LogsLeaderLogs.
       | [ _ : nwPackets ?net = _,
               _ : pBody ?p = _ |- _] =>
         assert (In p (nwPackets net)) by (repeat find_rewrite; intuition)
-    end.
-
-  Ltac update_destruct :=
-    match goal with
-    | [ |- context [ update _ ?y _ ?x ] ] => destruct (name_eq_dec y x)
     end.
 
   Lemma contiguous_log_property :

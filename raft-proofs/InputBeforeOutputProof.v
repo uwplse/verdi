@@ -1,6 +1,5 @@
 Require Import GhostSimulations.
 Require Import InverseTraceRelations.
-Require Import UpdateLemmas.
 
 Require Import Raft.
 Require Import CommonTheorems.
@@ -17,7 +16,7 @@ Require Import LogMatchingInterface.
 Require Import StateMachineSafetyInterface.
 Require Import MaxIndexSanityInterface.
 Require Import UniqueIndicesInterface.
-Local Arguments update {_} {_} {_} _ _ _ _ : simpl never.
+Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
 Section InputBeforeOutput.
   Context {orig_base_params : BaseParams}.
@@ -71,16 +70,11 @@ Section InputBeforeOutput.
       break_exists; intuition; do_bool; subst; eauto.
   Qed.
 
-  Ltac update_destruct_hyp :=
-    match goal with
-    | [ _ : context [ update _ ?y _ ?x ] |- _ ] => destruct (name_eq_dec y x)
-    end.
-
   Lemma doGenericServer_applied_entries :
     forall ps h sigma os st' ms,
       raft_intermediate_reachable (mkNetwork ps sigma) ->
       doGenericServer h (sigma h) = (os, st', ms) ->
-      exists es, applied_entries (update sigma h st') = (applied_entries sigma) ++ es /\
+      exists es, applied_entries (update name_eq_dec sigma h st') = (applied_entries sigma) ++ es /\
             (forall e, In e es -> exists h, In e (log (sigma h)) /\ eIndex e <= commitIndex (sigma h)).
   Proof.
     intros.
@@ -93,7 +87,7 @@ Section InputBeforeOutput.
                 exists nil; simpl in *; intuition].
     do_bool.
     match goal with
-      | |- context [update ?sigma ?h ?st] => pose proof applied_entries_update sigma h st
+      | |- context [update _ ?sigma ?h ?st] => pose proof applied_entries_update sigma h st
     end.
     simpl in *. concludes. intuition; [find_rewrite; exists nil; simpl in *; intuition|].
     pose proof applied_entries_cases sigma.
@@ -110,7 +104,7 @@ Section InputBeforeOutput.
         specialize (H h'); conclude H ltac:(eauto using all_fin_all)
     end.
     rewrite_update. simpl in *.
-    update_destruct_hyp; subst; rewrite_update; simpl in *.
+    update_destruct; subst; rewrite_update; simpl in *.
     + match goal with
         | h : name |- _ =>
           pose proof removeAfterIndex_partition (removeAfterIndex (log (sigma h)) (commitIndex (sigma h))) (lastApplied (sigma h))
@@ -249,7 +243,7 @@ Section InputBeforeOutput.
       raft_intermediate_reachable net ->
       In {| pBody := m; pDst := h; pSrc := h' |} (nwPackets net) ->
       handleMessage h' h m (nwState net h) = (st', ms) ->
-      applied_entries (nwState net) = applied_entries (update (nwState net) h st').
+      applied_entries (nwState net) = applied_entries (update name_eq_dec (nwState net) h st').
   Proof.
     intros. symmetry.
     unfold handleMessage in *. break_match; repeat break_let; repeat find_inversion.
@@ -404,18 +398,18 @@ Section InputBeforeOutput.
       raft_intermediate_reachable net ->
       In {| pBody := m; pDst := h; pSrc := h' |} (nwPackets net) ->
       handleMessage h' h m (nwState net h) = (st', ms) ->
-      In e (log (update (nwState net) h st' h'')) ->
+      In e (log (update name_eq_dec (nwState net) h st' h'')) ->
       applied_implies_input_state (eClient e) (eId e) (eInput e) net.
   Proof.
     intros.
     unfold handleMessage in *. break_match; repeat break_let; repeat find_inversion.
     - find_apply_lem_hyp handleRequestVote_same_log.
-      update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
+      update_destruct; subst; rewrite_update; repeat find_rewrite;
       unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
-    - update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
+    - update_destruct; subst; rewrite_update; repeat find_rewrite;
       try find_rewrite_lem handleRequestVoteReply_same_log;
       unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
-    - update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
+    - update_destruct; subst; rewrite_update; repeat find_rewrite;
       try solve [unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto].
       find_apply_lem_hyp handleAppendEntries_log. intuition.
       + repeat find_rewrite. unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
@@ -428,7 +422,7 @@ Section InputBeforeOutput.
         * find_apply_lem_hyp removeAfterIndex_in.
           unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
     - find_apply_lem_hyp handleAppendEntriesReply_log.
-      update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
+      update_destruct; subst; rewrite_update; repeat find_rewrite;
       unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
   Qed.
   
@@ -436,7 +430,7 @@ Section InputBeforeOutput.
     forall net h inp os st' ms,
       raft_intermediate_reachable net ->
       handleInput h inp (nwState net h) = (os, st', ms) ->
-      applied_entries (nwState net) = applied_entries (update (nwState net) h st').
+      applied_entries (nwState net) = applied_entries (update name_eq_dec (nwState net) h st').
   Proof.
     intros. symmetry.
     unfold handleInput in *. break_match; repeat break_let; repeat find_inversion.
@@ -461,7 +455,7 @@ Section InputBeforeOutput.
     forall net h inp os st' ms h' e,
       raft_intermediate_reachable net ->
       handleInput h inp (nwState net h) = (os, st', ms) ->
-      In e (log (update (nwState net) h st' h')) ->
+      In e (log (update name_eq_dec (nwState net) h st' h')) ->
       (applied_implies_input_state (eClient e) (eId e) (eInput e) net \/
        inp = ClientRequest (eClient e) (eId e) (eInput e)).
   Proof.
@@ -469,14 +463,14 @@ Section InputBeforeOutput.
     unfold handleInput in *. break_match; repeat break_let; repeat find_inversion.
     - left.
       find_apply_lem_hyp handleTimeout_log_same.
-      update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
+      update_destruct; subst; rewrite_update; repeat find_rewrite;
       unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
     - find_apply_lem_hyp handleClientRequest_log. intuition.
       + left.
-        update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
+        update_destruct; subst; rewrite_update; repeat find_rewrite;
         unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
       + break_exists. intuition.
-        update_destruct_hyp; subst; rewrite_update; repeat find_rewrite;
+        update_destruct; subst; rewrite_update; repeat find_rewrite;
         try solve [left; unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto].
         simpl in *. intuition; subst; intuition.
         left; unfold applied_implies_input_state, correct_entry; eexists; intuition; eauto.
@@ -502,12 +496,12 @@ Section InputBeforeOutput.
       find_inversion.
       match goal with
         | Hdgs : doGenericServer ?h ?st' = _,
-          Hdl : doLeader ?st ?h = _, _ :context [update (nwState ?net) ?h ?st''] |- _ =>
-          replace st with (update (nwState net) h st h) in Hdl by eauto using update_eq;
-            replace st' with (update (update (nwState net) h st) h st' h) in Hdgs by eauto using update_eq;
+          Hdl : doLeader ?st ?h = _, _ :context [update _ (nwState ?net) ?h ?st''] |- _ =>
+          replace st with (update name_eq_dec (nwState net) h st h) in Hdl by eauto using update_eq;
+            replace st' with (update name_eq_dec (update name_eq_dec (nwState net) h st) h st' h) in Hdgs by eauto using update_eq;
             let H := fresh "H" in
-            assert (update (nwState net) h st'' =
-                    update (update (update (nwState net) h st) h st') h st'') as H by (repeat rewrite update_overwrite; auto); unfold data in *; simpl in *; rewrite H in *; clear H
+            assert (update name_eq_dec (nwState net) h st'' =
+                    update name_eq_dec (update name_eq_dec (update name_eq_dec (nwState net) h st) h st') h st'') as H by (repeat rewrite update_overwrite; auto); unfold data in *; simpl in *; rewrite H in *; clear H
       end.
       find_copy_eapply_lem_hyp RIR_handleMessage; eauto.
       find_eapply_lem_hyp RIR_doLeader; simpl in *; eauto.
@@ -524,7 +518,7 @@ Section InputBeforeOutput.
       + find_apply_hyp_hyp. break_exists. intuition.
         eapply handleMessage_log with (h'' := x1); eauto;
         [destruct p; simpl in *; repeat find_rewrite; intuition|].
-        update_destruct_hyp; subst; rewrite_update; eauto.
+        update_destruct; subst; rewrite_update; eauto.
         find_apply_lem_hyp doLeader_log. repeat find_rewrite. auto.
     - unfold RaftInputHandler in *. repeat break_let. subst.
       unfold in_applied_entries in *.
@@ -532,12 +526,12 @@ Section InputBeforeOutput.
       find_inversion.
       match goal with
         | Hdgs : doGenericServer ?h ?st' = _,
-          Hdl : doLeader ?st ?h = _, _ :context [update (nwState ?net) ?h ?st''] |- _ =>
-          replace st with (update (nwState net) h st h) in Hdl by eauto using update_eq;
-            replace st' with (update (update (nwState net) h st) h st' h) in Hdgs by eauto using update_eq;
+          Hdl : doLeader ?st ?h = _, _ :context [update _ (nwState ?net) ?h ?st''] |- _ =>
+          replace st with (update name_eq_dec (nwState net) h st h) in Hdl by eauto using update_eq;
+            replace st' with (update name_eq_dec (update name_eq_dec (nwState net) h st) h st' h) in Hdgs by eauto using update_eq;
             let H := fresh "H" in
-            assert (update (nwState net) h st'' =
-                    update (update (update (nwState net) h st) h st') h st'') as H by (repeat rewrite update_overwrite; auto); unfold data in *; simpl in *; rewrite H in *; clear H
+            assert (update name_eq_dec (nwState net) h st'' =
+                    update name_eq_dec (update name_eq_dec (update name_eq_dec (nwState net) h st) h st') h st'') as H by (repeat rewrite update_overwrite; auto); unfold data in *; simpl in *; rewrite H in *; clear H
       end.
       find_copy_eapply_lem_hyp RIR_handleInput; eauto.
       find_eapply_lem_hyp RIR_doLeader; simpl in *; eauto.
@@ -560,7 +554,7 @@ Section InputBeforeOutput.
           | H : _ |- _ =>
             eapply handleInput_log with (h' := x1) in H
         end; eauto;
-        [|update_destruct_hyp; subst; eauto; rewrite_update; repeat find_rewrite; eauto].
+        [|update_destruct; subst; eauto; rewrite_update; repeat find_rewrite; eauto].
         intuition; subst;
         repeat find_rewrite; eauto.
     - find_false.
