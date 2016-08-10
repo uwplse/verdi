@@ -82,18 +82,27 @@ def ideal_ring(start, n):
         nodes.append(Node(a, [pred] + succs))
     return nodes
 
+def add_node(nodes):
+    known = random.choice(nodes)
+    num = max(n.addr.port for n in nodes) + 1
+    addr = Addr("127.0.0.{}".format(num), port)
+    new_node = Node(addr, [known.addr])
+    print "adding node {} at {}".format(addr.chordhash(), addr)
+    new_node.spawn()
+    nodes.append(new_node)
+
+def kill_random_node(nodes):
+    if len(nodes) > 3 * SUCC_LIST_LEN:
+        condemned = random.choice(nodes)
+        print "killing node {}".format(node.addr.chordhash())
+        node.kill()
+
 def random_action(nodes):
     r = random.random()
     if r < 0.4:
-        known = random.choice(nodes)
-        port = max([n.addr.port for n in nodes]) + 1
-        addr = Addr("127.0.0.1", port)
-        joiner = Node(addr, [known.addr])
-        print "adding node {} at {}".format(addr.chordhash(), addr)
-        joiner.spawn()
-        nodes.append(joiner)
-    else:
-        pass # do nothing
+        add_node(nodes)
+    if 0.5 < r < 0.1:
+        kill_random_node(nodes)
 
 def main():
     nodes = ideal_ring(1, 4)
