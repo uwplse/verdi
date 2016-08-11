@@ -9,13 +9,16 @@ WEB_MACH="uwplse.org"
 WEB_PATH="/var/www/verdi/dash/"
 RDASH="${WEB_MACH}:${WEB_PATH}"
 LDASH="${PADIR}/dash/"
+HOST="$([ "$TRAVIS_BRANCH" != "" ] && \
+          echo "travis" || \
+          hostname -s)"
 BRANCH="$([ "$TRAVIS_BRANCH" != "" ] && \
             echo "$TRAVIS_BRANCH" || \
             git rev-parse --abbrev-ref HEAD)"
 NONCE=$(printf "PA-%s-%s-%s-%s" \
-               $(date "+%y%m%d") \
-               $(date "+%H%M%S") \
-               $(hostname -s) \
+               $(TZ="America/Los_Angeles" date "+%y%m%d") \
+               $(TZ="America/Los_Angeles" date "+%H%M%S") \
+               "$HOST" \
                "$BRANCH")
 REPDIR="${LDASH}${NONCE}"
 
@@ -74,6 +77,12 @@ function mkindex {
       padding-bottom: 10px;
       line-height: 150%;
     }
+    .pa-link {
+      text-decoration: none;
+    }
+    .pa-link:hover {
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -83,23 +92,39 @@ EOF
   for rep in $(ls -r | grep 'PA-*'); do
     echo "<li>"
 
-    printf "<a href='%s'>%s</a>\n" "$rep" "$rep"
+    d=$(echo $rep \
+        | sed 's|^...\([0-9][0-9]\)\([0-9][0-9]\)\([0-9][0-9]\).*$|20\1-\2-\3|')
+    t=$(echo $rep \
+        | sed 's|^..........\([0-9][0-9]\)\([0-9][0-9]\)\([0-9][0-9]\).*$|\1:\2:\3|')
+    h=$(echo $rep \
+        | awk -W lint=fatal -F "-" \
+            '{printf("%s", $4); \
+              for(i=5; i<NF-1; i++) { \
+                printf("-%s", $i)}}')
+    b=$(echo $rep \
+        | awk -W lint=fatal -F "-" '{print $NF}')
+    printf "<a class='pa-link' href='%s'>%s \
+              &nbsp;at&nbsp; %s \
+              &nbsp;on&nbsp; %s \
+              &nbsp;in&nbsp; %s</a>\n" \
+           "$rep" "$d" "$t" "$h" "$b"
 
     echo "<br> &nbsp;"
     echo "<span class='it'>max ltac:</span> &nbsp;"
     cat "${rep}/proof-times.csv" \
-      | awk -v key=2 -f "${PADIR}/csv-sort.awk" \
-      | awk -F "," 'NR == 2 {print $1 " (" $2 " ms)"}'
+      | awk -W lint=fatal -v key=2 -f "${PADIR}/csv-sort.awk" \
+      | awk -W lint=fatal -F "," 'NR == 2 {print $1 " (" $2 " ms)"}'
 
     echo "<br> &nbsp;"
     echo "<span class='it'>max qed:</span> &nbsp;"
     cat "${rep}/proof-times.csv" \
-      | awk -v key=3 -f "${PADIR}/csv-sort.awk" \
-      | awk -F "," 'NR == 2 {print $1 " (" $2 " ms)"}'
+      | awk -W lint=fatal -v key=3 -f "${PADIR}/csv-sort.awk" \
+      | awk -W lint=fatal -F "," 'NR == 2 {print $1 " (" $2 " ms)"}'
 
     echo "<br> &nbsp;"
     echo "<span class='it'>build time:</span> &nbsp;"
-    awk 'BEGIN { FS = ","; tot = 0 }  \
+    awk -W lint=fatal \
+        'BEGIN { FS = ","; tot = 0 }  \
          { tot += $2 }      \
          END { print tot " s"}' \
         "${rep}/build-times.csv"

@@ -30,6 +30,7 @@ BEGIN {
   } else {
     print "proof-times-csv.awk: ERROR!" > "/dev/stderr"
     print "bad state in " FILENAME " line " FNR > "/dev/stderr"
+    close("/dev/stderr")
     exit 1
   }
 }
