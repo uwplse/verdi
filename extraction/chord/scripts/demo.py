@@ -20,7 +20,10 @@ class Addr(object):
         return "{}:{}".format(self.ip, self.port)
 
     def chordhash(self):
-        return self.port % N
+        return self.last_ip_byte() % N
+
+    def last_ip_byte(self):
+        return int(self.ip.split(".")[-1])
 
 def read_to_queue(f, queue):
     while True:
@@ -84,8 +87,8 @@ def ideal_ring(start, n):
 
 def add_node(nodes):
     known = random.choice(nodes)
-    num = max(n.addr.port for n in nodes) + 1
-    addr = Addr("127.0.0.{}".format(num), port)
+    num = max(n.addr.last_ip_byte() for n in nodes) + 1
+    addr = Addr("127.0.0.{}".format(num), 8000)
     new_node = Node(addr, [known.addr])
     print "adding node {} at {}".format(addr.chordhash(), addr)
     new_node.spawn()
@@ -124,7 +127,7 @@ def main():
             print line
         sys.stdout.flush()
         if time.time() > tick:
-            #random_action(nodes)
+            random_action(nodes)
             tick = time.time() + 20.0
 
 if __name__ == "__main__":
