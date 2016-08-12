@@ -68,6 +68,8 @@ Section ChordProof.
   Inductive timeout_constraint : global_state -> addr -> timeout -> Prop :=
   | Tick_unconstrained : forall gst h,
       timeout_constraint gst h Tick
+  | KeepaliveTick_unconstrained : forall gst h,
+      timeout_constraint gst h KeepaliveTick
   | Request_needs_dst_dead_and_no_msgs : forall gst dst h p,
       In dst (failed_nodes gst) ->
       (forall m, request_response_pair p m -> ~ In (dst, (h, m)) (msgs gst)) ->
@@ -764,18 +766,18 @@ Section ChordProof.
   Qed.
 
   Lemma joined_preserved_by_handle_delayed_queries :
-    forall h st st' ms,
-      handle_delayed_queries h st = (st', ms) ->
+    forall h st st' ms nts cts,
+      handle_delayed_queries h st = (st', ms, nts, cts) ->
       joined st = joined st'.
   Admitted.
 
   Lemma joined_preserved_by_end_query : forall h st st' ms ms' cts cts' nts nts',
-      end_query h (st, ms, cts, nts)  = (st', ms', cts', nts') ->
+      end_query h (st, ms, cts, nts) = (st', ms', cts', nts') ->
       joined st = joined st'.
   Proof.
     unfold end_query.
     intuition.
-    break_let.
+    repeat break_let.
     find_apply_lem_hyp joined_preserved_by_try_rectify.
     find_apply_lem_hyp joined_preserved_by_handle_delayed_queries.
     simpl in *. (* simpl-ing through clear_query *)

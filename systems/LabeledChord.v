@@ -715,6 +715,7 @@ Section LabeledChord.
       | H: timeout_constraint _ _ _ |- _ => invc H
       end.
       * apply Tick_unconstrained.
+      * apply KeepaliveTick_unconstrained.
       * apply Request_needs_dst_dead_and_no_msgs.
         + eapply failed_nodes_never_removed; eauto.
         + move => q H_pair.
@@ -1152,6 +1153,9 @@ Section LabeledChord.
       exfalso.
       apply: H_constraint.
       exact: Tick_unconstrained.
+    - exfalso.
+      apply: H_constraint.
+      exact: KeepaliveTick_unconstrained.
     - find_copy_eapply_lem_hyp not_timeout_constraint_inv.
       break_or_hyp.
       * copy_apply H_reqnode H_t.
