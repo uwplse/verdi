@@ -50,6 +50,7 @@ Section Chord.
 
   Inductive timeout :=
   | Tick : timeout
+  | KeepaliveTick : timeout
   | Request : addr -> payload -> timeout.
   Definition timeout_eq_dec : forall x y : timeout,
       {x = y} + {x <> y}.
@@ -232,17 +233,17 @@ Section Chord.
       | None => []
     end.
 
-  Definition handle_delayed_queries (h : addr) (st : data) : data * list (addr * payload) :=
+  Definition handle_delayed_queries (h : addr) (st : data) : res :=
     let sends := map (handle_delayed_query h st) (delayed_queries st) in
-    (clear_delayed_queries st, concat sends).
+    (clear_delayed_queries st, concat sends, [], [KeepaliveTick]).
 
   (* need to prove that this never gets called with requests in the sends of r *)
   Definition end_query (h : addr) (r : res) : res :=
     let '(st, outs, nts, cts) := r in
     let st' := clear_query st in
-    let (st'', delayed_sends) := handle_delayed_queries h st' in
+    let '(st'', delayed_sends, nts', cts') := handle_delayed_queries h st' in
     let clearreq := timeouts_in st in
-    try_rectify h (st'', delayed_sends ++ outs, nts, clearreq ++ cts).
+    try_rectify h (st'', delayed_sends ++ outs, nts' ++ nts, clearreq ++ cts' ++ cts).
 
   Definition ptrs_to_addrs : list (pointer * payload) -> list (addr * payload) :=
     map (fun p => (addr_of (fst p), (snd p))).
@@ -320,7 +321,7 @@ Section Chord.
     (set_rectify_with st (make_pointer src), [], [], []).
 
   Definition handle_query_req_busy (src dst : addr) (st : data) (msg : payload) : res :=
-    (delay_query st src msg, [(src, Busy)], [], []).
+    (delay_query st src msg, [(src, Busy)], [KeepaliveTick], []).
 
   Definition is_safe (msg : payload) :=
     match msg with
@@ -396,6 +397,9 @@ Section Chord.
       | Join2 new_succ => end_query h (st, [], [], [])
     end.
 
+  Definition send_keepalives (st : data) : list (addr * payload) :=
+    map (fun q => (fst q, Busy)) (delayed_queries st).
+
   Definition timeout_handler (h : addr) (st : data) (t : timeout) : res :=
     match t with
       | Request dst msg =>
@@ -406,5 +410,6 @@ Section Chord.
           | None => (st, [], [], []) (* shouldn't happen (TODO prove this) *)
         end
       | Tick => tick_handler h st
+      | KeepaliveTick => (st, send_keepalives st, [KeepaliveTick], [])
     end.
 End Chord.

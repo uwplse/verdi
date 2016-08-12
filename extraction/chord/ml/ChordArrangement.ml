@@ -86,6 +86,7 @@ let log_send st dst msg =
 
 let log_timeout st = function
   | Tick -> dbg ("ticked")
+  | KeepaliveTick -> dbg ("ticked for keepalive")
   | Request (dead, msg) ->
     dbg ("request " ^ show_msg msg
         ^ " from " ^ show_pointer (ptr st)
@@ -93,6 +94,8 @@ let log_timeout st = function
 
 let set_timeout = function
   | Tick -> 15.0 +. Random.float 10.0
+  (* must be less than the request timeout *)
+  | KeepaliveTick -> 10.0 +. Random.float 10.0
   | Request (a, b) -> 30.0
 
 let rebracket4 (((a, b), c), d) = (a, b, c, d)
@@ -123,6 +126,7 @@ module ChordDebugArrangement = struct
   let debugTimeout st t = log_timeout st t
   let showTimeout = function
       | Tick -> "Tick"
+      | KeepaliveTick -> "KeepaliveTick"
       | Request (dead, msg) ->
         "Request(" ^ show_addr dead ^ ", " ^ show_msg msg ^ ")"
 end
