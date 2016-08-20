@@ -3,7 +3,8 @@ Require Import StructTact.Util.
 Require Import DynamicNet.
 Require Import Chord.
 Require Import ChordProof.
-Import List.
+Require Import List.
+Import ListNotations.
 Require Import Wf_nat.
 Require Import InfSeqExt.infseq.
 Require Import InfSeqExt.classical.
@@ -46,6 +47,22 @@ Section LabeledChord.
   Definition recv_handler_l (src : addr) (dst : addr) (st : data) (msg : payload) :=
     (recv_handler src dst st msg, RecvMsg src dst msg).
 
+  Lemma recv_handler_labeling :
+    forall src dst st p r,
+      (recv_handler src dst st p = r ->
+       exists l,
+         recv_handler_l src dst st p = (r, l)) /\
+      (forall l,
+          recv_handler_l src dst st p = (r, l) ->
+          recv_handler src dst st p = r).
+  Proof.
+    unfold recv_handler_l.
+    intuition.
+    - find_rewrite.
+      now eexists.
+    - by tuple_inversion.
+  Qed.
+
   Notation labeled_step_dynamic := (labeled_step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
   Notation lb_execution := (lb_execution addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
   Notation strong_local_fairness := (strong_local_fairness addr addr_eq_dec payload data timeout timeout_eq_dec label recv_handler_l timeout_handler_l timeout_constraint).
@@ -61,6 +78,7 @@ Section LabeledChord.
   Notation apply_handler_result := (apply_handler_result addr addr_eq_dec payload data timeout timeout_eq_dec).
   Notation update_msgs := (update_msgs addr payload data timeout).
   Notation occ_label := (occ_label addr payload data timeout label).
+  Notation clear_timeouts := (clear_timeouts timeout timeout_eq_dec).
 
   (* assuming sigma gst h = Some st *)
   Definition failed_successors (gst : global_state) (st : data) : list pointer :=
@@ -108,6 +126,12 @@ Section LabeledChord.
     match goal with
       | H : labeled_step_dynamic _ _ _ |- _ =>
         invc H; try now (unfold recv_handler_l, timeout_handler_l in *; tuple_inversion)
+    end.
+
+  Ltac inv_timeout_constraint :=
+    match goal with
+    | H : timeout_constraint _ _ _ |- _ =>
+      inv H
     end.
 
   Lemma sigma_ahr_updates :
@@ -666,13 +690,323 @@ Section LabeledChord.
     invc_labeled_step.
   Qed.
 
+  Lemma handle_notify_doesnt_affect_timeouts :
+    forall src dst st st' ms cts nts,
+      handle_notify hash src dst st = (st', ms, cts, nts) ->
+      nts = nil /\ cts = nil.
+  Proof.
+    unfold handle_notify.
+    intuition;
+      tuple_inversion;
+      reflexivity.
+  Qed.
+
+  Lemma handle_safe_msg_doesnt_affect_timeouts :
+    forall src dst st p st' ms nts cts,
+      handle_safe_msg hash src dst st p = (st', ms, nts, cts) ->
+      nts = nil /\ cts = nil.
+  Proof.
+    unfold handle_safe_msg.
+    intuition;
+      break_match;
+      tuple_inversion || find_apply_lem_hyp handle_notify_doesnt_affect_timeouts;
+      easy.
+  Qed.
+
+  Lemma handle_query_req_busy_never_clears :
+    forall src dst st p st' ms nts cts,
+      handle_query_req_busy src dst st p = (st', ms, nts, cts) ->
+      cts = nil.
+  Proof.
+    unfold handle_query_req_busy.
+    intuition.
+    repeat break_match;
+      by tuple_inversion.
+  Qed.
+
+  Lemma timeouts_in_never_has_Tick :
+    forall st,
+      ~ In Tick (timeouts_in st).
+  Proof.
+    unfold timeouts_in.
+    intuition.
+    repeat break_match.
+    - find_apply_lem_hyp in_inv.
+      by break_or_hyp.
+    - easy.
+  Qed.
+
+  Lemma handle_query_res_never_clears_Tick :
+    forall src dst st p q o st' ms nts cts,
+      handle_query_res SUCC_LIST_LEN hash src dst st o q p = (st', ms, nts, cts) ->
+      ~ In Tick cts.
+  Proof.
+    unfold handle_query_res.
+    intuition.
+    (* takes care of nil cases *)
+    repeat break_match;
+      try tuple_inversion;
+      try easy.
+    - by find_apply_lem_hyp timeouts_in_never_has_Tick.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - find_apply_lem_hyp in_inv.
+      by break_or_hyp.
+    - find_apply_lem_hyp in_inv.
+      by break_or_hyp.
+    - admit.
+    - admit.
+    - admit.
+  Admitted.
+
+  Lemma recv_handler_never_clears_Tick :
+    forall src dst st p ms st' nts cts,
+      recv_handler src dst st p = (st', ms, nts, cts) ->
+      ~ In Tick cts.
+  Proof.
+    unfold recv_handler.
+    intuition.
+    repeat break_match.
+    - find_apply_lem_hyp handle_safe_msg_doesnt_affect_timeouts.
+      break_and.
+      subst.
+      easy.
+    - find_apply_lem_hyp handle_query_req_busy_never_clears.
+      subst.
+      easy.
+    - by find_apply_lem_hyp handle_query_res_never_clears_Tick.
+    - by tuple_inversion.
+    - by tuple_inversion.
+    - by tuple_inversion.
+  Qed.
+
+  Lemma clear_timeouts_characterization :
+    forall t ts cts,
+      (In t cts ->
+      ~ In t (clear_timeouts ts cts)) /\
+      (~ In t cts ->
+       In t ts ->
+       In t (clear_timeouts ts cts)).
+  Admitted. (* change clear_timeouts to use remove_all before proving this *)
+
+  Definition valid_pointer (p : pointer) :=
+    id_of p = hash (addr_of p).
+
+  Definition valid_pointers_in_query (q : query) :=
+    forall p,
+      q = Rectify p \/ q = Stabilize2 p \/ q = Join p \/ q = Join2 p ->
+      valid_pointer p.
+
+  Definition valid_pointers_in_msg (m : payload) :=
+    forall p l s,
+      m = GetBestPredecessor p \/
+      m = GotBestPredecessor p \/
+      (m = GotSuccList l /\ In p l) \/
+      m = GotPredAndSuccs (Some p) l \/
+      (m = GotPredAndSuccs s l /\ In p l) ->
+      valid_pointer p.
+
+  Definition valid_pointers_in (gst : global_state) :=
+    forall h st,
+      sigma gst h = Some st ->
+      valid_pointer (ptr st) /\
+      (forall p, Chord.pred st = Some p -> valid_pointer p) /\
+      Forall valid_pointer (succ_list st) /\
+      valid_pointer (known st) /\
+      (forall p, rectify_with st = Some p -> valid_pointer p) /\
+      (forall p q m, cur_request st = Some (p, q, m) ->
+                     valid_pointer p /\ valid_pointers_in_query q) /\
+      (forall src dst m, In (src, (dst, m)) (msgs gst) ->
+                         valid_pointers_in_msg m).
+
+  Lemma timeouts_in_Request :
+    forall st dst q m a,
+      cur_request st = Some (dst, q, m) ->
+      a = addr_of dst ->
+      In (Request a m) (timeouts_in st).
+  Proof.
+    unfold timeouts_in.
+    intuition.
+    repeat find_rewrite.
+    exact: in_eq.
+  Qed.
+
+  Ltac inv_query_request :=
+    match goal with
+    | H : query_request _ _ |- _ => inv H
+    end.
+
+  Lemma pointers_exist :
+    forall a,
+    exists p,
+      addr_of p = a.
+  Proof.
+    move => a.
+    by exists (make_pointer a).
+  Qed.
+
+  Ltac inv_request_response_pair :=
+    match goal with
+      | H: request_response_pair _ _ |- _ =>
+        inv H
+    end.
+
+  Lemma handle_query_res_doesnt_remove_constrained_requests :
+    forall h dst gst req st p q o st' ms nts cts,
+      timeouts_match_query gst ->
+      (* handle_query_res is only called on responses, so this should hold *)
+      request_response_pair req p ->
+      In h (nodes gst) ->
+      sigma gst h = Some st ->
+      In (Request dst req) (timeouts gst h) ->
+      timeout_constraint gst h (Request dst req) ->
+      In (dst, (h, p)) (msgs gst) ->
+      handle_query_res SUCC_LIST_LEN hash dst h st o q p = (st', ms, nts, cts) ->
+      In (Request dst req) nts \/ ~ In (Request dst req) cts.
+  Proof.
+    unfold handle_query_res.
+    intuition.
+    assert (exists q,
+               cur_request st = Some (make_pointer dst, q, req) /\
+               query_request q req)
+      by eauto.
+    break_exists.
+    break_and.
+    inv_request_response_pair;
+      break_match;
+      inv_timeout_constraint;
+      inv_query_request;
+      intuition eauto using pair_GetSuccList, pair_GetBestPredecessor, pair_GetPredAndSuccs, pair_Ping.
+  Qed.
+
+  Definition request_response_pair_dec :
+    forall p q,
+      {request_response_pair p q} + {~ request_response_pair p q}.
+  Proof.
+    destruct p;
+    destruct q;
+    now eauto using pair_GetSuccList, pair_GetBestPredecessor, pair_GetPredAndSuccs, pair_Ping || right; intro H; inv H.
+  Defined.
+
+  Lemma unsafe_not_req_payload_is_response :
+    forall p,
+      is_safe p = false ->
+      is_request p = false ->
+      response_payload p.
+  Proof.
+    intuition.
+    destruct p;
+      try (simpl in *; discriminate);
+      auto using res_GotBestPredecessor, res_GotSuccList, res_GotPredAndSuccs, res_Pong, res_Busy.
+  Qed.
+
+  Lemma responses_come_from_dst_of_timeout :
+    forall gst dst req h src p,
+      inductive_invariant hash base gst ->
+      In (Request dst req) (timeouts gst h) ->
+      In (src, (h, p)) (msgs gst) ->
+      response_payload p ->
+      src = dst.
+  Admitted.
+
+  Lemma responses_are_paired_to_requests :
+    forall gst req dst h p,
+      inductive_invariant hash base gst ->
+      In (Request dst req) (timeouts gst h) ->
+      In (dst, (h, p)) (msgs gst) ->
+      response_payload p ->
+      request_response_pair req p.
+  Admitted.
+
+  Lemma invariant_implies_timeouts_match_query :
+    forall gst,
+      inductive_invariant hash base gst ->
+      timeouts_match_query gst.
+  Admitted.
+
+  Lemma constrained_Request_not_cleared_by_recv_handler :
+    forall gst h dst req p src st st' ms nts cts,
+      inductive_invariant hash base gst ->
+      timeout_constraint gst h (Request dst req) ->
+      In h (nodes gst) ->
+      sigma gst h = Some st ->
+      In (Request dst req) (timeouts gst h) ->
+      In (src, (h, p)) (msgs gst) ->
+      recv_handler src h st p = (st', ms, nts, cts) ->
+      In (Request dst req) nts \/ ~ In (Request dst req) cts.
+  Proof.
+    unfold recv_handler.
+    intuition.
+    repeat break_match.
+    - right.
+      find_apply_lem_hyp handle_safe_msg_doesnt_affect_timeouts.
+      break_and.
+      now subst.
+    - right.
+      find_apply_lem_hyp handle_query_req_busy_never_clears.
+      now subst.
+    - find_copy_apply_lem_hyp invariant_implies_timeouts_match_query.
+      find_copy_apply_lem_hyp unsafe_not_req_payload_is_response; auto.
+      find_copy_eapply_lem_hyp responses_come_from_dst_of_timeout; eauto.
+      subst.
+      eapply handle_query_res_doesnt_remove_constrained_requests; eauto.
+      eapply responses_are_paired_to_requests; eauto.
+    - right.
+      now tuple_inversion.
+    - right.
+      now tuple_inversion.
+    - right.
+      now tuple_inversion.
+  Qed.
+
+  Lemma reassembled_msg_still_eq :
+    forall (m : msg),
+      (fst m, (fst (snd m), snd (snd m))) = m.
+  Proof.
+    move => m.
+    destruct m as [a [b c]].
+    easy.
+  Qed.
+
   Lemma recv_handler_keeps_timeouts_satisfying_constraint :
    forall gst src dst p gst' t h,
+     inductive_invariant hash base gst ->
      labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
      In t (timeouts gst h) ->
      timeout_constraint gst h t ->
+     t <> KeepaliveTick ->
      In t (timeouts gst' h).
-  Admitted.
+  Proof.
+    intuition.
+    inv_labeled_step.
+    simpl.
+    destruct (addr_eq_dec (fst (snd m)) h).
+    - subst.
+      rewrite update_same.
+      destruct t.
+      * apply in_or_app.
+        right.
+        find_apply_lem_hyp recv_handler_labeling.
+        find_apply_lem_hyp recv_handler_never_clears_Tick.
+        now apply clear_timeouts_characterization.
+      * apply in_or_app.
+        right.
+        now find_false.
+      * find_apply_lem_hyp recv_handler_labeling.
+        find_eapply_lem_hyp constrained_Request_not_cleared_by_recv_handler;
+          repeat find_rewrite;
+          try rewrite reassembled_msg_still_eq;
+          eauto using in_or_app, in_eq.
+        apply in_or_app.
+        break_or_hyp.
+        + by left.
+        + right.
+          now apply clear_timeouts_characterization.
+    - by rewrite update_diff.
+  Qed.
 
   Lemma request_constraint_prevents_recv_adding_msgs :
     forall gst from to m gst' h dst p gst'' q,
@@ -687,11 +1021,13 @@ Section LabeledChord.
 
   Lemma labeled_step_dynamic_recv_timeout_enabled :
     forall gst gst' gst'' a b m h t,
+      inductive_invariant hash base gst ->
+      t <> KeepaliveTick ->
       labeled_step_dynamic gst (RecvMsg a b m) gst' ->
       labeled_step_dynamic gst (Timeout h t) gst'' ->
       enabled (Timeout h t) gst'.
   Proof.
-    move => gst gst' gst'' a b m h t H_recv H_timeout.
+    move => gst gst' gst'' a b m h t H_inv H_notkeepalive H_recv H_timeout.
     find_copy_apply_lem_hyp timeout_step_satisfies_constraint.
     find_copy_apply_lem_hyp timeout_implies_state_exists.
     break_exists_name st.
@@ -711,9 +1047,7 @@ Section LabeledChord.
       (* TODO make this a lemma/tactic like recover_msg_from_... *)
       unfold timeout_handler_l in *.
       now tuple_inversion.
-    - match goal with
-      | H: timeout_constraint _ _ _ |- _ => invc H
-      end.
+    - inv_timeout_constraint.
       * apply Tick_unconstrained.
       * apply KeepaliveTick_unconstrained.
       * apply Request_needs_dst_dead_and_no_msgs.
@@ -738,8 +1072,34 @@ Section LabeledChord.
       enabled (Timeout h' t') gst'.
   Admitted.
 
+  Definition satisfies_invariant (s : infseq occurrence) :=
+    match s with
+    | Cons o s => inductive_invariant hash base (occ_gst o)
+    end.
+
+  Lemma satisfies_invariant_inv :
+    forall s,
+      satisfies_invariant s ->
+      inductive_invariant hash base (occ_gst (hd s)).
+  Proof.
+    intuition.
+    now destruct s.
+  Qed.
+
+  Lemma always_satisfies_inv_means_hd_satisfies_inv :
+    forall o s,
+      always satisfies_invariant (Cons o s) ->
+      inductive_invariant hash base (occ_gst o).
+  Proof.
+    intuition.
+    find_eapply_lem_hyp always_now.
+    now find_eapply_lem_hyp satisfies_invariant_inv.
+  Qed.
+
   Lemma Timeout_enabled_until_occurred :
     forall s h t,
+      t <> KeepaliveTick ->
+      always satisfies_invariant s ->
       lb_execution s ->
       l_enabled (Timeout h t) (hd s) ->
       weak_until (now (l_enabled (Timeout h t)))
@@ -751,28 +1111,29 @@ Section LabeledChord.
     case => /= gst.
     case => [from to p|h t].
     - case.
-      case => /= gst' lb' s h t H_exec H_en.
+      case => /= gst' lb' s h t H_notkt H_inv H_exec H_en.
       inversion H_exec as [o o' s' H_step_recv H_exec' H_oeq]; subst_max.
       simpl in *.
       case (addr_eq_dec h to) => H_dec_h.
       * subst_max.
         apply: W_tl => //.
-        apply: c => //=.
+        apply c; auto using always_tl.
         unfold l_enabled in *.
         unfold enabled in H_en.
         break_exists_name gst''.
         move: H_step_recv H_en.
-        simpl in *.
+        find_copy_apply_lem_hyp always_satisfies_inv_means_hd_satisfies_inv.
         exact: labeled_step_dynamic_recv_timeout_enabled.
       * apply: W_tl => //.
-        apply: c => //=.
+        apply c; auto using always_tl.
         unfold l_enabled in *.
         unfold enabled in H_en.
         break_exists_name gst''.
         move: H_step_recv H_en.
+        find_copy_apply_lem_hyp always_satisfies_inv_means_hd_satisfies_inv.
         exact: labeled_step_dynamic_recv_timeout_enabled.
     - case.
-      case => /= gst' l s h' t' H_exec H_en.
+      case => /= gst' l s h' t' H_notkt H_inv H_exec H_en.
       inversion H_exec as [o o' s' H_step_timeout H_exec' H_oeq]; subst_max.
       simpl in *.
       case (addr_eq_dec h h') => H_dec_h.
@@ -781,7 +1142,7 @@ Section LabeledChord.
         + subst_max.
           exact: W0.
         + apply W_tl; first by [].
-          apply: c => //=.
+          apply c; auto using always_tl.
           unfold l_enabled in *.
           unfold enabled in H_en.
           break_exists_name gst''.
@@ -789,7 +1150,7 @@ Section LabeledChord.
           move: H_step_timeout H_en H_dec_t.
           exact: labeled_step_dynamic_timeout_neq_timeout_enabled.
       * apply W_tl; first by [].
-        apply: c => //=.
+        apply c; auto using always_tl.
         unfold l_enabled in *.
         unfold enabled in H_en.
         break_exists_name gst''.
@@ -826,7 +1187,9 @@ Section LabeledChord.
     forall s,
       lb_execution s ->
       weak_local_fairness s ->
+      always satisfies_invariant s ->
       forall h st t,
+        t <> KeepaliveTick ->
         In t (timeouts (occ_gst (hd s)) h) ->
         In h (nodes (occ_gst (hd s))) ->
         ~ In h (failed_nodes (occ_gst (hd s))) ->
@@ -834,8 +1197,8 @@ Section LabeledChord.
         timeout_constraint (occ_gst (hd s)) h t ->
         eventually (now (occurred (Timeout h t))) s.
   Proof.
-    move => s H_exec H_fair h st t H_in_n H_in_f H_in_m H_s H_constraint.
-    have H_un := Timeout_enabled_until_occurred _ h t H_exec.
+    move => s H_exec H_fair H_inv h st t H_nkt H_in_n H_in_f H_in_m H_s H_constraint.
+    have H_un := Timeout_enabled_until_occurred _ h t H_nkt H_inv H_exec.
     apply weak_until_until_or_always in H_un;
       last by eapply l_enabled_Timeout_In_timeouts; eauto.
     case: H_un; first exact: until_eventually.
@@ -985,30 +1348,6 @@ Section LabeledChord.
         + admit.
   Admitted.
 
-  Definition satisfies_invariant (s : infseq occurrence) :=
-    match s with
-    | Cons o s => inductive_invariant hash base (occ_gst o)
-    end.
-
-  Lemma satisfies_invariant_inv :
-    forall s,
-      satisfies_invariant s ->
-      inductive_invariant hash base (occ_gst (hd s)).
-  Proof.
-    intuition.
-    now destruct s.
-  Qed.
-
-  Lemma always_satisfies_inv_means_hd_satisfies_inv :
-    forall o s,
-      always satisfies_invariant (Cons o s) ->
-      inductive_invariant hash base (occ_gst o).
-  Proof.
-    intuition.
-    find_eapply_lem_hyp always_now.
-    now find_eapply_lem_hyp satisfies_invariant_inv.
-  Qed.
-
   Lemma queries_are_closed_by_recvmsg_occ :
       forall o src dst m p,
         inductive_invariant hash base (occ_gst o) ->
@@ -1040,12 +1379,6 @@ Section LabeledChord.
       (now (occurred (RecvMsg dst src m))) s ->
       (now (clears_timeout src (Request dst p))) s.
   Admitted.
-
-  Ltac inv_timeout_constraint :=
-    match goal with
-    | H : timeout_constraint _ _ _ |- _ =>
-      inv H
-    end.
 
   Lemma queries_now_closed :
     forall s p m dst src,

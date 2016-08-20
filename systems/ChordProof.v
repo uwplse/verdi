@@ -134,7 +134,8 @@ Section ChordProof.
   | res_GotBestPredecessor : forall p, response_payload (GotBestPredecessor p)
   | res_GotSuccList : forall l, response_payload (GotSuccList l)
   | res_GotPredAndSuccs : forall p l, response_payload (GotPredAndSuccs p l)
-  | res_Pong : response_payload Pong.
+  | res_Pong : response_payload Pong
+  | res_Busy : response_payload Busy.
 
   Ltac request_payload_inversion :=
     match goal with
@@ -152,7 +153,6 @@ Section ChordProof.
     - now request_payload_inversion.
   Qed.
 
-
   Lemma busy_response_exists :
     forall msg st' sends nts cts src dst st,
       request_payload msg ->
@@ -161,7 +161,8 @@ Section ChordProof.
   Proof.
     unfold handle_query_req_busy.
     intuition.
-    tuple_inversion.
+    break_if;
+    tuple_inversion;
     now apply in_eq.
   Qed.
 
@@ -206,7 +207,8 @@ Section ChordProof.
   Proof.
     unfold handle_query_req_busy.
     intuition.
-    tuple_inversion.
+    break_if;
+    tuple_inversion;
     exact: in_eq.
   Qed.
 
@@ -504,13 +506,14 @@ Section ChordProof.
         In (dst, (src, p)) (msgs gst).
 
   Definition timeouts_match_query (gst : global_state) : Prop :=
-    forall src dst st m p q,
+    forall src dst st m p,
       In (Request dst m) (timeouts gst src) ->
       In src (nodes gst) ->
       sigma gst src = Some st ->
-      query_request q m ->
       addr_of p = dst ->
-      cur_request st = Some (p, q, m).
+      exists q,
+        cur_request st = Some (p, q, m) /\
+        query_request q m.
 
   Definition responses_have_queries (gst : global_state) : Prop :=
     forall src dst r st,

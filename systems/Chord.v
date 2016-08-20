@@ -134,7 +134,7 @@ Section Chord.
   Definition clear_query (st : data) : data :=
     Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) None (delayed_queries st).
 
-  Definition send_dec :
+  Definition send_eq_dec :
     forall x y : addr * payload,
       {x = y} + {x <> y}.
   Proof.
@@ -144,7 +144,7 @@ Section Chord.
   Defined.
 
   Definition delay_query (st : data) (src : addr) (msg : payload) : data :=
-    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) (cur_request st) (dedup send_dec ((src, msg) :: delayed_queries st)).
+    Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) (cur_request st) (dedup send_eq_dec ((src, msg) :: delayed_queries st)).
 
   Definition clear_delayed_queries (st : data) : data :=
     Data (ptr st) (pred st) (succ_list st) (known st) (joined st) (rectify_with st) (cur_request st) [].
@@ -321,7 +321,9 @@ Section Chord.
     (set_rectify_with st (make_pointer src), [], [], []).
 
   Definition handle_query_req_busy (src dst : addr) (st : data) (msg : payload) : res :=
-    (delay_query st src msg, [(src, Busy)], [KeepaliveTick], []).
+    if list_eq_dec send_eq_dec (delayed_queries st) nil
+    then (delay_query st src msg, [(src, Busy)], [KeepaliveTick], [])
+    else (delay_query st src msg, [(src, Busy)], [], []).
 
   Definition is_safe (msg : payload) :=
     match msg with
