@@ -479,7 +479,7 @@ Section InputBeforeOutput.
   Lemma in_applied_entries_step_applied_implies_input_state' :
     forall (failed : list name) net failed' net' o,
       raft_intermediate_reachable net ->
-      step_f (failed, net) (failed', net') o ->
+      step_failure (failed, net) (failed', net') o ->
       ~ in_applied_entries client id net ->
       in_applied_entries client id net' ->
       (exists e,
@@ -489,7 +489,7 @@ Section InputBeforeOutput.
       exists h o' inp,
         o = (h, inl (ClientRequest client id inp)) :: o'.
   Proof.
-    intros. match goal with H : step_f _ _ _ |- _ => invcs H end; intuition.
+    intros. match goal with H : step_failure _ _ _ |- _ => invcs H end; intuition.
     - left. unfold RaftNetHandler in *. repeat break_let. subst.
       unfold in_applied_entries in *.
       break_exists_exists. intuition.
@@ -569,9 +569,9 @@ Section InputBeforeOutput.
   
   Lemma in_applied_entries_step_applied_implies_input_state :
     forall (s : list name * network) s' tr o,
-      refl_trans_1n_trace step_f step_f_init s tr ->
+      refl_trans_1n_trace step_failure step_failure_init s tr ->
       ~ in_applied_entries client id (snd s) ->
-      step_f s s' o ->
+      step_failure s s' o ->
       in_applied_entries client id (snd s') ->
       (exists e,
         eClient e = client /\
@@ -583,7 +583,7 @@ Section InputBeforeOutput.
     intros.
     destruct s as (failed, net).
     destruct s' as (failed', net'). simpl in *.
-    find_apply_lem_hyp step_f_star_raft_intermediate_reachable.
+    find_apply_lem_hyp step_failure_star_raft_intermediate_reachable.
     eauto using in_applied_entries_step_applied_implies_input_state'.
   Qed.
 
@@ -633,9 +633,9 @@ Section InputBeforeOutput.
         eauto.
   Qed.
 
-  Instance TR : InverseTraceRelation step_f :=
+  Instance TR : InverseTraceRelation step_failure :=
     {
-      init := step_f_init;
+      init := step_failure_init;
       T := input_before_output client id;
       R := fun s => in_applied_entries client id (snd s) 
     }.
@@ -669,7 +669,7 @@ Section InputBeforeOutput.
 
   Theorem output_implies_input_before_output :
     forall failed net tr,
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       key_in_output_trace client id tr ->
       input_before_output client id tr.
   Proof.

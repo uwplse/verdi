@@ -515,11 +515,11 @@ Section Raft.
     }.
 
   Inductive raft_intermediate_reachable : network -> Prop :=
-  | RIR_init : raft_intermediate_reachable step_m_init
-  | RIR_step_f :
+  | RIR_init : raft_intermediate_reachable step_async_init
+  | RIR_step_failure :
       forall failed net failed' net' out,
         raft_intermediate_reachable net ->
-        step_f (failed, net) (failed', net') out ->
+        step_failure (failed, net) (failed', net') out ->
         raft_intermediate_reachable net'
   | RIR_handleInput :
       forall net h inp out d l ps' st',
@@ -555,32 +555,32 @@ Section Raft.
                          In p (send_packets h ms)) ->
         raft_intermediate_reachable (mkNetwork ps' st').
 
-  Lemma step_f_star_raft_intermediate_reachable' :
+  Lemma step_failure_star_raft_intermediate_reachable' :
     forall n' tr,
-      step_f_star step_f_init n' tr ->
+      step_failure_star step_failure_init n' tr ->
       raft_intermediate_reachable (snd n').
   Proof.
     intros. find_apply_lem_hyp refl_trans_1n_n1_trace.
-    remember step_f_init as net1.
+    remember step_failure_init as net1.
     induction H.
     - subst. simpl. constructor.
     - destruct x'; destruct x''. simpl in *.
       econstructor; eauto.
   Qed.
 
-  Lemma step_f_star_raft_intermediate_reachable :
+  Lemma step_failure_star_raft_intermediate_reachable :
     forall failed net tr,
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       raft_intermediate_reachable net.
   Proof.
     intros.
     replace net with (snd (failed, net)); [|simpl; auto].
-    eapply step_f_star_raft_intermediate_reachable'; eauto.
+    eapply step_failure_star_raft_intermediate_reachable'; eauto.
   Qed.
 
-  Lemma step_f_star_raft_intermediate_reachable_extend :
+  Lemma step_failure_star_raft_intermediate_reachable_extend :
     forall f net f' net' tr,
-      step_f_star (f, net) (f', net') tr ->
+      step_failure_star (f, net) (f', net') tr ->
       raft_intermediate_reachable net ->
       raft_intermediate_reachable net'.
   Proof.
@@ -589,7 +589,7 @@ Section Raft.
     induction H using refl_trans_1n_trace_n1_ind; intros; subst.
     - find_inversion. auto.
     - destruct x'. simpl in *.
-      eapply RIR_step_f; [|eauto].
+      eapply RIR_step_failure; [|eauto].
       eauto.
   Qed.
 
@@ -746,7 +746,7 @@ Section Raft.
       P net'.
 
   Definition raft_net_invariant_init (P : network -> Prop) :=
-    P step_m_init.
+    P step_async_init.
   
   Theorem raft_net_invariant :
     forall P net,
@@ -767,7 +767,7 @@ Section Raft.
     intros.
     induction H10.
     - intuition.
-    -  match goal with [H : step_f _ _ _ |- _ ] => invcs H end.
+    -  match goal with [H : step_failure _ _ _ |- _ ] => invcs H end.
        + unfold RaftNetHandler in *. repeat break_let.
          repeat find_inversion.
          assert

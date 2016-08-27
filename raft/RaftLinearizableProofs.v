@@ -745,7 +745,7 @@ Section RaftLinearizableProofs.
 
   Lemma entries_ordered_before_log_to_IR :
     forall k k' net failed tr,
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       In (O k) (import tr) ->
       k <> k' ->
       entries_ordered (fst k) (snd k) (fst k') (snd k') net ->
@@ -828,7 +828,7 @@ Section RaftLinearizableProofs.
 
   Lemma I_before_O :
     forall failed net tr k,
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       In (O k) (import tr) ->
       before (I k) (O k) (import tr).
   Proof.
@@ -1107,7 +1107,7 @@ Section RaftLinearizableProofs.
   Theorem raft_linearizable' :
     forall failed net tr,
       input_correct tr ->
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       exists l tr1 st,
         equivalent _ (import tr) l /\
         exported (get_input tr) (get_output tr) l tr1 /\

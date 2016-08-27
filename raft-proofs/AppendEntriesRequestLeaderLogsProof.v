@@ -570,7 +570,7 @@ Section AppendEntriesRequestLeaderLogs.
   Lemma append_entries_leaderLogs_init :
     refined_raft_net_invariant_init append_entries_leaderLogs.
   Proof.
-    red. unfold append_entries_leaderLogs, step_m_init.
+    red. unfold append_entries_leaderLogs, step_async_init.
     intros. simpl in *. intuition.
   Qed.
 

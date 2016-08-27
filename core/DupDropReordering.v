@@ -213,13 +213,13 @@ Section dup_drop_reorder.
   Qed.
 End dup_drop_reorder.
 
-Section step_f_dup_drop_step.
+Section step_failure_dup_drop_step.
   Context `{params : FailureParams}.
 
-  Theorem step_f_dup_drop_step :
+  Theorem step_failure_dup_drop_step :
     forall ps ps' Sigma f,
       dup_drop_step_star _ ps ps' ->
-      step_f_star (f, mkNetwork ps Sigma) (f, mkNetwork ps' Sigma) [].
+      step_failure_star (f, mkNetwork ps Sigma) (f, mkNetwork ps' Sigma) [].
   Proof.
     induction 1.
     - constructor.
@@ -231,11 +231,11 @@ Section step_f_dup_drop_step.
         eapply RTn1TStep with (cs := []).
         * apply refl_trans_1n_n1_trace.
           apply IHclos_refl_trans_n1.
-        * eapply SF_dup; [simpl; eauto|]. auto.
+        * eapply StepFailure_dup; [simpl; eauto|]. auto.
       + apply refl_trans_n1_1n_trace.
         eapply RTn1TStep with (cs := []).
         * apply refl_trans_1n_n1_trace.
           apply IHclos_refl_trans_n1.
-        * eapply SF_drop; [simpl; eauto|]. auto.
+        * eapply StepFailure_drop; [simpl; eauto|]. auto.
   Qed.
-End step_f_dup_drop_step.
+End step_failure_dup_drop_step.

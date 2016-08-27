@@ -245,14 +245,14 @@ Section AppliedImpliesInputProof.
     Lemma applied_implies_input_in_input_trace :
       forall net failed net' failed' tr,
         raft_intermediate_reachable net ->
-        @step_f _ _ failure_params (failed, net) (failed', net') tr ->
+        @step_failure _ _ failure_params (failed, net) (failed', net') tr ->
         ~ applied_implies_input_state client id i net ->
         applied_implies_input_state client id i net' ->
         in_input_trace client id i tr.
     Proof.
       intros.
       match goal with
-        | [ H : context [step_f _ _ _ ] |- _ ] => invcs H
+        | [ H : context [step_failure _ _ _ ] |- _ ] => invcs H
       end.
       - unfold RaftNetHandler in *. repeat break_let. subst. find_inversion.
         find_apply_lem_hyp applied_implies_input_update_split.
@@ -397,8 +397,8 @@ Section AppliedImpliesInputProof.
           right. intro. repeat (break_exists; intuition); eauto 10.
     Defined.
 
-    Instance ITR : InverseTraceRelation step_f :=
-      { init := step_f_init;
+    Instance ITR : InverseTraceRelation step_failure :=
+      { init := step_failure_init;
         R := fun s => applied_implies_input_state client id i (snd s);
         T := in_input_trace client id i
       }.
@@ -412,21 +412,21 @@ Section AppliedImpliesInputProof.
       apply in_input_trace_or_app. right.
       destruct s, s'. simpl in *.
       eapply applied_implies_input_in_input_trace; eauto.
-      eapply step_f_star_raft_intermediate_reachable; eauto.
+      eapply step_failure_star_raft_intermediate_reachable; eauto.
     Defined.
   End inner.
 
   Lemma applied_implies_input :
     forall client id failed net tr e,
-      @step_f_star _ _ failure_params step_f_init (failed, net) tr ->
+      @step_failure_star _ _ failure_params step_failure_init (failed, net) tr ->
       eClient e = client ->
       eId e = id ->
       applied_implies_input_state client id (eInput e) net ->
       in_input_trace client id (eInput e) tr.
   Proof.
     intros.
-    pose proof @inverse_trace_relations_work _ _ step_f (ITR client id (eInput e)) (failed, net) tr.
-    unfold step_f_star in *. simpl in *.
+    pose proof @inverse_trace_relations_work _ _ step_failure (ITR client id (eInput e)) (failed, net) tr.
+    unfold step_failure_star in *. simpl in *.
     auto.
   Qed.
 

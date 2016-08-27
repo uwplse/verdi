@@ -21,7 +21,7 @@ Section CausalOrderPreserved.
     {
       causal_order_preserved :
         forall client id client' id' failed net tr,
-          step_f_star step_f_init (failed, net) tr ->
+          step_failure_star step_failure_init (failed, net) tr ->
           output_before_input client id client' id' tr ->
           entries_ordered client id client' id' net
     }.

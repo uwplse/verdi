@@ -188,17 +188,17 @@ rewrite H2.
 by exists h; exists inp; exists out.
 Qed.
 
-Theorem step_m_tot_mapped_simulation_1 :
+Theorem step_async_tot_mapped_simulation_1 :
   forall net net' tr,
-    @step_m _ multi_fst net net' tr ->
-    @step_m _ multi_snd (tot_map_net net) (tot_map_net net') (map tot_map_trace_occ tr).
+    @step_async _ multi_fst net net' tr ->
+    @step_async _ multi_snd (tot_map_net net) (tot_map_net net') (map tot_map_trace_occ tr).
 Proof.
 move => net net' tr.
 case => {net net' tr}.
 - move => net net' p ms ms' out d l H_eq H_hnd H_eq'.
   rewrite /tot_map_trace_occ /=.
   have ->: tot_map_name (pDst p) = pDst (tot_map_packet p) by case: p H_eq H_hnd H_eq' => src dst m H_eq H_hnd H_eq'.
-  apply (@SM_deliver _ _ _ _ _ (map tot_map_packet ms) (map tot_map_packet ms') (map tot_map_output out) (tot_map_data d) (tot_map_name_msgs l)).
+  apply (@StepAsync_deliver _ _ _ _ _ (map tot_map_packet ms) (map tot_map_packet ms') (map tot_map_output out) (tot_map_data d) (tot_map_name_msgs l)).
   * by rewrite /tot_map_net /= H_eq /= map_app.
   * rewrite /=.
     case: p H_eq H_hnd H_eq' => /= src dst m H_eq H_hnd H_eq'.
@@ -211,7 +211,7 @@ case => {net net' tr}.
     rewrite -tot_map_update_packet_eq.
     by rewrite tot_map_packet_app_eq.
 - move => h net net' out inp d l H_hnd H_eq.
-  apply (@SM_input _ _ _ _ _ _ _ (tot_map_data d) (tot_map_name_msgs l)).
+  apply (@StepAsync_input _ _ _ _ _ _ _ (tot_map_data d) (tot_map_name_msgs l)).
     rewrite /=.
     have H_q := tot_input_handlers_eq h inp (nwState net h).
     rewrite /tot_mapped_input_handlers /= in H_q.
@@ -223,22 +223,22 @@ case => {net net' tr}.
   by rewrite tot_map_packet_eq.
 Qed.
 
-Corollary step_m_tot_mapped_simulation_star_1 :
+Corollary step_async_tot_mapped_simulation_star_1 :
   forall net tr,
-    @step_m_star _ multi_fst step_m_init net tr ->
-    @step_m_star _ multi_snd step_m_init (tot_map_net net) (map tot_map_trace_occ tr).
+    @step_async_star _ multi_fst step_async_init net tr ->
+    @step_async_star _ multi_snd step_async_init (tot_map_net net) (map tot_map_trace_occ tr).
 Proof.
 move => net tr H_step.
-remember step_m_init as y in *.
+remember step_async_init as y in *.
 move: Heqy.
 induction H_step using refl_trans_1n_trace_n1_ind => H_init /=.
   rewrite H_init.
-  rewrite /step_m_init /= /tot_map_net /=.
+  rewrite /step_async_init /= /tot_map_net /=.
   rewrite tot_init_handlers_fun_eq.
   exact: RT1nTBase.
 concludes.
 rewrite H_init in H_step2 H_step1.
-apply step_m_tot_mapped_simulation_1 in H.
+apply step_async_tot_mapped_simulation_1 in H.
 rewrite map_app.
 have H_trans := refl_trans_1n_trace_trans IHH_step1.
 apply: H_trans.
@@ -247,13 +247,13 @@ apply: (@RT1nTStep _ _ _ _ (tot_map_net x'')) => //.
 exact: RT1nTBase.
 Qed.
 
-Theorem step_m_tot_mapped_simulation_2 :
+Theorem step_async_tot_mapped_simulation_2 :
   forall net net' out mnet mout,
-      @step_m _ multi_snd net net' out ->
+      @step_async _ multi_snd net net' out ->
       tot_map_net mnet = net ->
       map tot_map_trace_occ mout = out ->
       exists mnet',
-        @step_m _ multi_fst mnet mnet' mout /\
+        @step_async _ multi_fst mnet mnet' mout /\
         tot_map_net mnet' = net'.
 Proof.
 move => net net' out mnet mout H_step H_eq H_eq'.
@@ -281,7 +281,7 @@ invcs H_step.
       inversion H0.
       by rewrite tot_map_name_inv_inverse.
     rewrite H_eq_dst.
-    apply (@SM_deliver _ _ _ _ _ pks1 pks2 _ d' l') => //=.
+    apply (@StepAsync_deliver _ _ _ _ _ pks1 pks2 _ d' l') => //=.
     suff H_suff: lo = out' by rewrite H_suff.
     have H_eq_hnd := tot_net_handlers_eq (pDst p) (pSrc p) (pBody p) (sts (pDst p)).
     rewrite /tot_mapped_net_handlers /= in H_eq_hnd.
@@ -372,7 +372,7 @@ invcs H_step.
   exists ({| nwPackets := send_packets h' l0 ++ pks ; nwState := update name_eq_dec sts h' d0 |}).
   split.
   * rewrite H_eq_mout.
-    apply (@SM_input _ _ _ _ _ _ _ d0 l0) => //.
+    apply (@StepAsync_input _ _ _ _ _ _ _ d0 l0) => //.
     rewrite /= Heqp.
     suff H_suff: l1 = out' by rewrite H_suff.
     move: H0.
@@ -482,15 +482,15 @@ case (name_eq_dec _ _) => H_dec; case (name_eq_dec _ _) => H_dec' //.
   by rewrite tot_map_name_inv_inverse in H_dec.
 Qed.
 
-Theorem step_f_tot_mapped_simulation_1 :
+Theorem step_failure_tot_mapped_simulation_1 :
   forall net net' failed failed' tr,
-    @step_f _ _ fail_fst (failed, net) (failed', net') tr ->
-    @step_f _ _ fail_snd (map tot_map_name failed, tot_map_net net) (map tot_map_name failed', tot_map_net net') (map tot_map_trace_occ tr).
+    @step_failure _ _ fail_fst (failed, net) (failed', net') tr ->
+    @step_failure _ _ fail_snd (map tot_map_name failed, tot_map_net net) (map tot_map_name failed', tot_map_net net') (map tot_map_trace_occ tr).
 Proof.
 move => net net' failed failed' tr H_step.
 invcs H_step.
 - have ->: tot_map_name (pDst p) = pDst (tot_map_packet p) by case: p H3 H4 H6 => src dst m.
-  apply (@SF_deliver _ _ _ _ _ _ _ (map tot_map_packet xs) (map tot_map_packet ys) _ (tot_map_data d) (tot_map_name_msgs l)).
+  apply (@StepFailure_deliver _ _ _ _ _ _ _ (map tot_map_packet xs) (map tot_map_packet ys) _ (tot_map_data d) (tot_map_name_msgs l)).
   * by rewrite /tot_map_net /= H3 /= map_app.
   * case: p H3 H4 H6 => /= src dst m H3 H4 H6.
     exact: not_in_failed_not_in.
@@ -503,7 +503,7 @@ invcs H_step.
   * rewrite /= -tot_map_update_packet_eq /=.
     rewrite /tot_map_net /=.
     by rewrite tot_map_packet_app_eq.
-- apply (@SF_input _ _ _ _ _ _ _ _ _ (tot_map_data d) (tot_map_name_msgs l)).
+- apply (@StepFailure_input _ _ _ _ _ _ _ _ _ (tot_map_data d) (tot_map_name_msgs l)).
   * exact: not_in_failed_not_in.
   * rewrite /=.
     have H_q := tot_input_handlers_eq h inp (nwState net h).
@@ -514,27 +514,27 @@ invcs H_step.
   * rewrite /= /tot_map_net /=.
     rewrite -tot_map_update_eq.
     by rewrite tot_map_packet_eq.
-- apply (@SF_drop _ _ _ _ _ _ (tot_map_packet p) (map tot_map_packet xs) (map tot_map_packet ys)).
+- apply (@StepFailure_drop _ _ _ _ _ _ (tot_map_packet p) (map tot_map_packet xs) (map tot_map_packet ys)).
   * by rewrite /tot_map_net /= H4 map_app.
   * by rewrite /tot_map_net /= map_app.
-- apply (@SF_dup _ _ _ _ _ _ (tot_map_packet p) (map tot_map_packet xs) (map tot_map_packet ys)).
+- apply (@StepFailure_dup _ _ _ _ _ _ (tot_map_packet p) (map tot_map_packet xs) (map tot_map_packet ys)).
   * by rewrite /tot_map_net /= H4 map_app.
   * by rewrite /tot_map_net /= map_app.
-- exact: SF_fail.
-- apply: (SF_reboot (tot_map_name h)).
+- exact: StepFailure_fail.
+- apply: (StepFailure_reboot (tot_map_name h)).
   * exact: in_failed_in.
   * by rewrite remove_tot_map_eq.
   * rewrite /tot_map_net /=.
     by rewrite tot_map_reboot_eq.
 Qed.
 
-Corollary step_f_tot_mapped_simulation_star_1 :
+Corollary step_failure_tot_mapped_simulation_star_1 :
   forall net failed tr,
-    @step_f_star _ _ fail_fst step_f_init (failed, net) tr ->
-    @step_f_star _ _ fail_snd step_f_init (map tot_map_name failed, tot_map_net net) (map tot_map_trace_occ tr).
+    @step_failure_star _ _ fail_fst step_failure_init (failed, net) tr ->
+    @step_failure_star _ _ fail_snd step_failure_init (map tot_map_name failed, tot_map_net net) (map tot_map_trace_occ tr).
 Proof.
 move => net failed tr H_step.
-remember step_f_init as y in *.
+remember step_failure_init as y in *.
 have H_eq_f: failed = fst (failed, net) by [].
 have H_eq_n: net = snd (failed, net) by [].
 rewrite H_eq_f {H_eq_f}.
@@ -542,7 +542,7 @@ rewrite {2}H_eq_n {H_eq_n}.
 move: Heqy.
 induction H_step using refl_trans_1n_trace_n1_ind => H_init /=.
   rewrite H_init.
-  rewrite /step_f_init /= /step_m_init /tot_map_net /=.
+  rewrite /step_failure_init /= /step_async_init /tot_map_net /=.
   rewrite tot_init_handlers_fun_eq.
   exact: RT1nTBase.
 concludes.
@@ -551,7 +551,7 @@ case: x' H IHH_step1 H_step1 => failed' net'.
 case: x'' H_step2 => failed'' net''.
 rewrite /=.
 move => H_step2 H IHH_step1 H_step1.
-apply step_f_tot_mapped_simulation_1 in H.
+apply step_failure_tot_mapped_simulation_1 in H.
 rewrite map_app.
 have H_trans := refl_trans_1n_trace_trans IHH_step1.
 apply: H_trans.
@@ -573,15 +573,15 @@ apply tot_map_name_injective in H0.
 by rewrite H0 (IH l').
 Qed.
 
-Theorem step_f_tot_mapped_simulation_2 :
+Theorem step_failure_tot_mapped_simulation_2 :
   forall net net' failed failed' out mnet mfailed mfailed' mout,
-      @step_f _ _ fail_snd (failed, net) (failed', net') out ->
+      @step_failure _ _ fail_snd (failed, net) (failed', net') out ->
       tot_map_net mnet = net ->
       map tot_map_name mfailed = failed ->
       map tot_map_name mfailed' = failed' ->
       map tot_map_trace_occ mout = out ->
       exists mnet',
-        @step_f _ _ fail_fst (mfailed, mnet) (mfailed', mnet') mout /\
+        @step_failure _ _ fail_fst (mfailed, mnet) (mfailed', mnet') mout /\
         tot_map_net mnet' = net'.
 Proof.
 move => net net' failed failed' out mnet mfailed mfailed' mout H_step H_eq_net H_eq_f H_eq_f' H_eq_out.
@@ -611,7 +611,7 @@ invcs H_step.
     rewrite H_eq_dst.
     apply map_eq_name_eq_eq in H1.
     rewrite H1.    
-    apply (@SF_deliver _ _ _ _ _ _ _ pks1 pks2 _ d' l') => //=.
+    apply (@StepFailure_deliver _ _ _ _ _ _ _ pks1 pks2 _ d' l') => //=.
       rewrite -H_eq_dst.
       rewrite -H_eq_n in H4.
       move => H_in.
@@ -709,7 +709,7 @@ invcs H_step.
   exists ({| nwPackets := send_packets h' l0 ++ pks ; nwState := update name_eq_dec sts h' d0 |}).
   split.
   * rewrite H_eq_mout.
-    apply (@SF_input _ _ _ _ _ _ _ _ _ d0 l0) => //.      
+    apply (@StepFailure_input _ _ _ _ _ _ _ _ _ d0 l0) => //.      
       rewrite -H_eq_n in H3.
       move => H_in.
       by apply in_failed_in in H_in.
@@ -748,7 +748,7 @@ invcs H_step.
   inversion H_eq_pks2.
   rewrite -H_eq_pks1.
   exists {| nwPackets := pks1 ++ pks2 ; nwState := nwState mnet |}.
-  split; first exact: (@SF_drop _ _ _ _ _ _ p' pks1 pks2).
+  split; first exact: (@StepFailure_drop _ _ _ _ _ _ p' pks1 pks2).
   by rewrite /tot_map_net /= map_app.
 - case: mout H2 => // H_eq_mout {H_eq_mout}.
   apply map_eq_name_eq_eq in H1.
@@ -758,7 +758,7 @@ invcs H_step.
   inversion H_eq_pks2.
   rewrite -H_eq_pks1.
   exists {| nwPackets := p' :: pks1 ++ p' :: pks2 ; nwState := nwState mnet |}.
-  split; first exact: (@SF_dup _ _ _ _ _ _ p' pks1 pks2).
+  split; first exact: (@StepFailure_dup _ _ _ _ _ _ p' pks1 pks2).
   by rewrite /tot_map_net /= map_app.
 - case: mout H2 => // H_eq_mout {H_eq_mout}.
   case: mfailed' H => //= h' mfailed' H_eq.
@@ -767,7 +767,7 @@ invcs H_step.
   rewrite -H1.
   exists mnet.
   split => //.
-  exact: SF_fail.
+  exact: StepFailure_fail.
 - case: mout H4 => // H_eq_mout {H_eq_mout}.
   have H_in := H3.
   apply in_split in H_in.
@@ -780,7 +780,7 @@ invcs H_step.
                            | right _ => (nwState mnet nm) 
                            end) |}.
   split.
-  * apply (@SF_reboot _ _ _ h') => //.
+  * apply (@StepFailure_reboot _ _ _ h') => //.
     + rewrite H_eq_mns.
       apply in_or_app.
       by right; left.

@@ -103,7 +103,7 @@ Section CandidatesVoteForSelvesProof.
   Theorem candidates_vote_for_selves_init :
     raft_net_invariant_init candidates_vote_for_selves.
   Proof.
-    unfold raft_net_invariant_init, candidates_vote_for_selves, step_m_init.
+    unfold raft_net_invariant_init, candidates_vote_for_selves, step_async_init.
     simpl in *. intros; discriminate.
   Qed.
 

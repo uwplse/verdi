@@ -170,7 +170,7 @@ Section AppendEntriesRequestReplyCorrespondence.
     exists (mkN ((nwPackets net) ++ [mkP (pDst p) (pSrc p) (AppendEntries t n pli plt es ci)]) (nwState net')).
     subst.
     exists pli,plt,ci,n. simpl in *; repeat find_rewrite; intuition.
-    eapply RIR_step_f with (net0 := net''); [|eapply SF_reboot with (h0 := h) (failed := [h])]; eauto;
+    eapply RIR_step_failure with (net0 := net''); [|eapply StepFailure_reboot with (h0 := h) (failed := [h])]; eauto;
     simpl; repeat find_rewrite; eauto.
     f_equal.
     apply functional_extensionality.
@@ -191,9 +191,9 @@ Section AppendEntriesRequestReplyCorrespondence.
     pose proof dup_drop_reorder _ packet_eq_dec _ _ ltac:(eauto).
     match goal with
     | [ H : dup_drop_step_star _ _ _ |- _ ] =>
-      eapply step_f_dup_drop_step with (f := []) (Sigma := nwState net) in H
+      eapply step_failure_dup_drop_step with (f := []) (Sigma := nwState net) in H
     end.
-    eapply step_f_star_raft_intermediate_reachable_extend with (f := []) (f' := []) (tr := []); [|eauto].
+    eapply step_failure_star_raft_intermediate_reachable_extend with (f := []) (f' := []) (tr := []); [|eauto].
     destruct net, net'. simpl in *. subst.
     auto.
   Qed.
@@ -273,7 +273,7 @@ Section AppendEntriesRequestReplyCorrespondence.
       intros. do_in_app. simpl in *.
       intuition; try find_apply_hyp_hyp; intuition; in_crush.
     - subst. simpl in *. subst. unfold exists_equivalent_network_with_aer.
-      find_eapply_lem_hyp RIR_step_f; [|eapply SF_dup with (failed := [])]; eauto.
+      find_eapply_lem_hyp RIR_step_failure; [|eapply StepFailure_dup with (failed := [])]; eauto.
       remember mkNetwork as mkN.
       remember mkPacket as mkP.
       unfold Net.name in *. simpl in *.

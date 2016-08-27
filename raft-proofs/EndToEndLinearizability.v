@@ -379,7 +379,7 @@ Section EndToEndProof.
   Theorem raft_linearizable :
     forall failed net tr,
       input_correct tr ->
-      step_f_star (params := failure_params) step_f_init (failed, net) tr ->
+      step_failure_star (params := failure_params) step_failure_init (failed, net) tr ->
       exists l tr1 st,
         equivalent _ (import tr) l /\
         exported (get_input tr) (get_output tr) l tr1 /\

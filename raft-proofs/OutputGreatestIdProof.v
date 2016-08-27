@@ -315,7 +315,7 @@ Section OutputGreatestId.
   Lemma output_implies_greatest :
     forall failed net failed' net' o client id id',
       raft_intermediate_reachable net ->
-      @step_f _ _ failure_params (failed, net) (failed', net') o ->
+      @step_failure _ _ failure_params (failed, net) (failed', net') o ->
       key_in_output_trace client id o ->
       id < id' ->
       before_func (has_key client id) (has_key client id') (applied_entries (nwState net')).
@@ -383,9 +383,9 @@ Section OutputGreatestId.
     Variable id_lt_id' : id < id'.
     
   
-    Instance TR : TraceRelation step_f :=
+    Instance TR : TraceRelation step_failure :=
       {
-        init := step_f_init;
+        init := step_failure_init;
         T := key_in_output_trace client id ;
         T_dec := key_in_output_trace_dec client id ;
         R := fun s => before_func (has_key client id) (has_key client id') (applied_entries (nwState (snd s)))
@@ -394,7 +394,7 @@ Section OutputGreatestId.
       - intros.
         destruct s as (failed, net).
         destruct s' as (failed', net'). simpl in *.
-        find_apply_lem_hyp step_f_star_raft_intermediate_reachable.
+        find_apply_lem_hyp step_failure_star_raft_intermediate_reachable.
         find_eapply_lem_hyp applied_entries_monotonic'; eauto.
         break_exists; repeat find_rewrite.
         eauto using before_func_app.
@@ -403,14 +403,14 @@ Section OutputGreatestId.
       - intros.
         destruct s as [failed net].
         destruct s' as [failed' net']. simpl in *.
-        find_apply_lem_hyp step_f_star_raft_intermediate_reachable.
+        find_apply_lem_hyp step_failure_star_raft_intermediate_reachable.
         find_apply_lem_hyp in_output_changed; auto.
         eauto using output_implies_greatest.
     Defined.
 
   Theorem output_greatest_id :
     forall failed net tr,
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       key_in_output_trace client id tr ->
       before_func (has_key client id) (has_key client id') (applied_entries (nwState net)).
   Proof.

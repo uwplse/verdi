@@ -164,11 +164,11 @@ Section RaftRefinementInterface.
   Hint Extern 4 (@FailureParams _ _) => apply raft_refined_failure_params : typeclass_instances.
 
   Inductive refined_raft_intermediate_reachable : network -> Prop :=
-  | RRIR_init : refined_raft_intermediate_reachable step_m_init
-  | RRIR_step_f :
+  | RRIR_init : refined_raft_intermediate_reachable step_async_init
+  | RRIR_step_failure :
       forall failed net failed' net' out,
         refined_raft_intermediate_reachable net ->
-        step_f (failed, net) (failed', net') out ->
+        step_failure (failed, net) (failed', net') out ->
         refined_raft_intermediate_reachable net'
   | RRIR_handleInput :
       forall net h inp gd out d l ps' st',
@@ -322,7 +322,7 @@ Section RaftRefinementInterface.
       P net'.
 
   Definition refined_raft_net_invariant_init (P : network -> Prop) :=
-    P step_m_init.
+    P step_async_init.
 
   Definition refined_raft_net_invariant_client_request' (P : network -> Prop) :=
     forall h net st' ps' gd out d l client id c,
