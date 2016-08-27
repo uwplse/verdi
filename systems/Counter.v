@@ -219,17 +219,17 @@ Section Counter.
 
   Lemma backup_plus_network_eq_primary :
     forall net tr,
-      step_m_star (params := Counter_MultiParams) step_m_init net tr ->
+      step_async_star (params := Counter_MultiParams) step_async_init net tr ->
       nwState net backup + inc_in_flight_to_backup (nwPackets net) = nwState net primary.
   Proof.
     intros.
-    remember step_m_init as y in *.
+    remember step_async_init as y in *.
     revert Heqy.
     induction H using refl_trans_1n_trace_n1_ind; intros; subst.
     - reflexivity.
     - concludes.
       match goal with
-      | [ H : step_m _ _ _ |- _ ] => invc H
+      | [ H : step_async _ _ _ |- _ ] => invc H
       end; simpl.
       + find_apply_lem_hyp net_handlers_NetHandler.
         find_copy_apply_lem_hyp NetHandler_inc_in_flight_to_backup_preserved.
@@ -258,7 +258,7 @@ Section Counter.
 
   Theorem primary_ge_backup :
     forall net tr,
-      step_m_star (params := Counter_MultiParams) step_m_init net tr ->
+      step_async_star (params := Counter_MultiParams) step_async_init net tr ->
       nwState net backup <= nwState net primary.
   Proof.
     intros.
@@ -387,19 +387,19 @@ Section Counter.
 
   Lemma inputs_eq_outputs_plus_inc_plus_ack :
     forall net tr,
-      step_m_star (params := Counter_MultiParams) step_m_init net tr ->
+      step_async_star (params := Counter_MultiParams) step_async_init net tr ->
       trace_inputs tr = trace_outputs tr +
                         inc_in_flight_to_backup (nwPackets net) +
                         ack_in_flight_to_primary (nwPackets net).
   Proof.
     intros.
-    remember step_m_init as y in *.
+    remember step_async_init as y in *.
     revert Heqy.
     induction H using refl_trans_1n_trace_n1_ind; intros; subst.
     - reflexivity.
     - concludes.
       match goal with
-      | [ H : step_m _ _ _ |- _ ] => invc H
+      | [ H : step_async _ _ _ |- _ ] => invc H
       end; simpl.
       + find_apply_lem_hyp net_handlers_NetHandler.
         repeat find_rewrite.
@@ -429,7 +429,7 @@ Section Counter.
 
   Theorem inputs_ge_outputs :
     forall net tr,
-      step_m_star (params := Counter_MultiParams) step_m_init net tr ->
+      step_async_star (params := Counter_MultiParams) step_async_init net tr ->
       trace_outputs tr <= trace_inputs tr.
   Proof.
     intros.

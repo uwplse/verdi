@@ -35,7 +35,7 @@ Section CausalOrderPreserved.
   Lemma output_before_input_not_key_in_input_trace :
     forall tr tr' s s',
       ~ output_before_input client id client' id' tr ->
-      step_f s s' tr' ->
+      step_failure s s' tr' ->
       output_before_input client id client' id' (tr ++ tr') ->
       ~ exists i, in_input_trace client' id' i (tr ++ tr').
   Proof.
@@ -106,9 +106,9 @@ Section CausalOrderPreserved.
       + simpl in *. intuition.
   Qed.
   
-  Instance TR : TraceRelation step_f :=
+  Instance TR : TraceRelation step_failure :=
     {
-      init := step_f_init;
+      init := step_failure_init;
       T := output_before_input client id client' id';
       R := fun s => entries_ordered client id client' id' (snd s)
     }.
@@ -120,7 +120,7 @@ Section CausalOrderPreserved.
       destruct s as (failed, net).
       destruct s' as (failed', net'). simpl in *.
       unfold entries_ordered in *.
-      find_apply_lem_hyp step_f_star_raft_intermediate_reachable.
+      find_apply_lem_hyp step_failure_star_raft_intermediate_reachable.
       find_eapply_lem_hyp applied_entries_monotonic'; eauto.
       break_exists; repeat find_rewrite.
       eauto using before_func_app.
@@ -143,7 +143,7 @@ Section CausalOrderPreserved.
 
   Theorem causal_order_preserved :
     forall failed net tr,
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       output_before_input client id client' id' tr ->
       entries_ordered client id client' id' net.
   Proof.

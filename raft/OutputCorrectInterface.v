@@ -11,7 +11,7 @@ Section OutputCorrect.
     {
       output_correct_invariant :
         forall client id out failed net tr,
-          step_f_star step_f_init (failed, net) tr ->
+          step_failure_star step_failure_init (failed, net) tr ->
           in_output_trace client id out tr ->
           output_correct client id out (applied_entries (nwState net))
     }.

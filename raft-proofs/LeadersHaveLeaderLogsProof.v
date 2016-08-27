@@ -120,7 +120,7 @@ Section LeadersHaveLeaderLogs.
   Lemma leaders_have_leaderLogs_init :
     refined_raft_net_invariant_init leaders_have_leaderLogs.
   Proof.
-    red. unfold leaders_have_leaderLogs, step_m_init.
+    red. unfold leaders_have_leaderLogs, step_async_init.
     intros. simpl in *. congruence.
   Qed.
 

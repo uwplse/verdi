@@ -77,7 +77,7 @@ Section RaftRefinementProof.
     intros.
     induction H10.
     - intuition.
-    -  match goal with [H : step_f _ _ _ |- _ ] => invcs H end.
+    -  match goal with [H : step_failure _ _ _ |- _ ] => invcs H end.
        + unfold refined_net_handlers in *. simpl in *.
          unfold RaftNetHandler, update_elections_data_net in *.
          repeat break_let.
@@ -264,11 +264,11 @@ Section RaftRefinementProof.
     intros.
     induction H10.
     - intuition.
-    -  match goal with [H : step_f _ _ _ |- _ ] => invcs H end.
+    -  match goal with [H : step_failure _ _ _ |- _ ] => invcs H end.
        + match goal with 
          | [ H : refined_raft_intermediate_reachable _ |- _ ?x ] => 
            assert (refined_raft_intermediate_reachable x) as Hpost
-                  by (eapply RRIR_step_f; eauto; eapply SF_deliver; eauto)
+                  by (eapply RRIR_step_failure; eauto; eapply StepFailure_deliver; eauto)
          
          end.
          unfold refined_net_handlers in *. simpl in *.
@@ -329,7 +329,7 @@ Section RaftRefinementProof.
        + match goal with 
          | [ H : refined_raft_intermediate_reachable _ |- _ ?x ] => 
            assert (refined_raft_intermediate_reachable x) as Hpost
-               by (eapply RRIR_step_f; eauto; eapply SF_input; eauto)
+               by (eapply RRIR_step_failure; eauto; eapply StepFailure_input; eauto)
          end.
          unfold refined_input_handlers in *. simpl in *.
          unfold RaftInputHandler, update_elections_data_input in *. repeat break_let.
@@ -401,7 +401,7 @@ Section RaftRefinementProof.
        + auto.
        + eapply_prop refined_raft_net_invariant_reboot'; eauto;
          intros; simpl in *; repeat break_if; intuition; subst; intuition eauto.
-         * econstructor. eauto. eapply SF_reboot; eauto.
+         * econstructor. eauto. eapply StepFailure_reboot; eauto.
          * destruct (nwState net h); auto.
     - eapply refined_raft_invariant_handle_input'; eauto.
       eapply RRIR_handleInput; eauto.
@@ -438,7 +438,7 @@ Section RaftRefinementProof.
     induction H.
     - constructor.
     - simpl in *.
-      pose proof (RIR_step_f).
+      pose proof (RIR_step_failure).
       specialize (H1 failed (deghost net) failed' (deghost net') out).
       apply H1; auto.
       apply ghost_simulation_1; auto.
@@ -516,14 +516,14 @@ Section RaftRefinementProof.
   Proof.
     intros.
     induction H.
-    - exists (reghost step_m_init). intuition.
+    - exists (reghost step_async_init). intuition.
         unfold reghost. constructor.
     - break_exists. break_and.
       apply ghost_simulation_2 with (gnet := x) in H0; auto.
       repeat (break_exists; intuition).
       subst.
       exists x0. intuition.
-      eapply RRIR_step_f; eauto.
+      eapply RRIR_step_failure; eauto.
     - break_exists. break_and.
       subst.
       exists {| nwPackets := map ghost_packet ps' ;

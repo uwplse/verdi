@@ -18,7 +18,7 @@ Section LockServSeqNum.
 
   Theorem transformed_correctness :
     forall (net : transformed_network) tr,
-      step_d_star (params := transformed_multi_params) step_m_init net tr ->
+      step_dup_star (params := transformed_multi_params) step_async_init net tr ->
       @mutual_exclusion num_Clients (nwState (revertNetwork net)).
   Proof.
     intros.

@@ -17,7 +17,7 @@ Section InputBeforeOutputInterface.
     {
       output_implies_input_before_output :
         forall client id failed net tr,
-          step_f_star step_f_init (failed, net) tr ->
+          step_failure_star step_failure_init (failed, net) tr ->
           key_in_output_trace client id tr ->
           input_before_output client id tr
     }.

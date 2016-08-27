@@ -663,7 +663,7 @@ Section PrimaryBackup.
 
   Lemma correspond_reachable :
     forall net tr_m,
-      step_m_star step_m_init net tr_m ->
+      step_async_star step_async_init net tr_m ->
       forall st tr_1,
         step_1_star init st tr_1 ->
         inputs_1 tr_1 = inputs_m tr_m ->
@@ -726,7 +726,7 @@ Section PrimaryBackup.
 
   Lemma correspond_inductive :
     forall net net' tr_m',
-      step_m net net' tr_m' ->
+      step_async net net' tr_m' ->
       forall st st' tr_m tr_1 tr_1',
         correspond st (nwState net) tr_1 tr_m ->
         step_1_star st st' tr_1' ->
@@ -788,9 +788,9 @@ Section PrimaryBackup.
       eapply correspond_preserved_snoc; eauto; rewrite update_eq by auto; repeat find_rewrite; auto.
   Qed.
 
-  Lemma step_m_outputs_m :
+  Lemma step_async_outputs_m :
     forall net net' tr,
-      step_m net net' tr ->
+      step_async net net' tr ->
       (inputs_m tr = [] /\ (outputs_m tr = [] /\ nwState net Primary = nwState net' Primary)) \/
       (inputs_m tr = [] /\ exists os, outputs_m tr = [os]) \/
       (exists i, inputs_m tr = [i]).
@@ -853,7 +853,7 @@ Section PrimaryBackup.
 
   Lemma network_invariant_inductive :
     forall net net' tr,
-      step_m net net' tr ->
+      step_async net net' tr ->
       network_invariant net ->
       network_invariant net'.
   Proof.
@@ -868,7 +868,7 @@ Section PrimaryBackup.
   Qed.
 
   Lemma network_invariant_init :
-    network_invariant step_m_init.
+    network_invariant step_async_init.
   Proof.
     unfold network_invariant. simpl. auto.
   Qed.
@@ -907,7 +907,7 @@ Section PrimaryBackup.
 
   Lemma inductive_simulation :
     forall net net' tr,
-      step_m net net' tr ->
+      step_async net net' tr ->
       step_1_star (revert_state net) (revert_state net') (revert_trace tr).
   Proof.
     intros.
@@ -949,14 +949,14 @@ Section PrimaryBackup.
 
   Lemma simulation :
     forall net tr,
-      step_m_star step_m_init net tr ->
+      step_async_star step_async_init net tr ->
       step_1_star init (revert_state net) (revert_trace tr).
   Proof.
     intros.
     apply refl_trans_1n_n1_trace in H.
     prep_induction H.
     induction H; intros; subst.
-    - unfold step_m_init, revert_state. constructor.
+    - unfold step_async_init, revert_state. constructor.
     - repeat concludes. rewrite revert_trace_app.
       unfold step_1_star.
       find_apply_lem_hyp inductive_simulation.
@@ -971,7 +971,7 @@ Section PrimaryBackup.
          step_1_star init st tr ->
          P tr) ->
       (forall net tr,
-         step_m_star step_m_init net tr ->
+         step_async_star step_async_init net tr ->
          P (revert_trace tr)).
   Proof.
     intros.
@@ -1122,7 +1122,7 @@ Section PrimaryBackup.
 
   Theorem pbj_NOABT :
     forall net tr,
-      step_m_star (params:=PB_multi_params) step_m_init net tr ->
+      step_async_star (params:=PB_multi_params) step_async_init net tr ->
       no_output_at_backup_trace tr.
   Proof.
     intros.
@@ -1235,7 +1235,7 @@ Section PrimaryBackup.
 
   Theorem pbj_0_or_1 :
     forall net tr,
-      step_m_star (params:=PB_multi_params) step_m_init net tr ->
+      step_async_star (params:=PB_multi_params) step_async_init net tr ->
       zero_or_one_outputs_per_step_trace tr.
   Proof.
     intros.
@@ -1259,7 +1259,7 @@ Section PrimaryBackup.
 
   Lemma inputs_1_m_revert :
     forall net tr,
-      step_m_star (params := PB_multi_params) step_m_init net tr ->
+      step_async_star (params := PB_multi_params) step_async_init net tr ->
       inputs_m tr = inputs_1 (revert_trace tr) ++ queue (nwState net Primary).
   Proof.
     intros.

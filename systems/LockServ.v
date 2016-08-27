@@ -845,7 +845,7 @@ Section LockServ.
   Defined.
 
   Theorem true_in_reachable_mutual_exclusion :
-    true_in_reachable step_m step_m_init (fun net => mutual_exclusion (nwState net)).
+    true_in_reachable step_async step_async_init (fun net => mutual_exclusion (nwState net)).
   Proof.
     pose proof decomposition_invariant.
     find_apply_lem_hyp inductive_invariant_true_in_reachable.
@@ -898,14 +898,14 @@ Section LockServ.
 
   Lemma cross_relation :
     forall (P : network -> list (name * (input + list output)) -> Prop),
-      P step_m_init [] ->
+      P step_async_init [] ->
       (forall st st' tr ev,
-         step_m_star step_m_init st tr ->
+         step_async_star step_async_init st tr ->
          P st tr ->
-         step_m st st' ev ->
+         step_async st st' ev ->
          P st' (tr ++ ev)) ->
       forall st tr,
-        step_m_star step_m_init st tr ->
+        step_async_star step_async_init st tr ->
         P st tr.
   Proof.
     intros.
@@ -944,7 +944,7 @@ Section LockServ.
 
   Lemma decomposition_reachable_nw_invariant :
     forall st tr p,
-      step_m_star step_m_init st tr ->
+      step_async_star step_async_init st tr ->
       In p (nwPackets st) ->
       network_invariant (nwState st) p.
   Proof.
@@ -969,8 +969,8 @@ Section LockServ.
 
   Lemma reachable_intro :
     forall a tr,
-      step_m_star step_m_init a tr ->
-      reachable step_m step_m_init a.
+      step_async_star step_async_init a tr ->
+      reachable step_async step_async_init a.
   Proof.
     unfold reachable.
     intros. eauto.
@@ -978,7 +978,7 @@ Section LockServ.
 
   Lemma locks_correct_locked_invariant :
     forall st p,
-      reachable step_m step_m_init st ->
+      reachable step_async step_async_init st ->
       In p (nwPackets st) ->
       locks_correct_locked (nwState st) p.
   Proof.
@@ -990,7 +990,7 @@ Section LockServ.
 
   Lemma locks_correct_invariant :
     forall st,
-      reachable step_m step_m_init st ->
+      reachable step_async step_async_init st ->
       locks_correct (nwState st).
   Proof.
     intros.
@@ -1001,7 +1001,7 @@ Section LockServ.
 
   Lemma mutual_exclusion_invariant :
     forall st,
-      reachable step_m step_m_init st ->
+      reachable step_async step_async_init st ->
       mutual_exclusion (nwState st).
   Proof.
     intros.
@@ -1128,7 +1128,7 @@ Section LockServ.
 
   Lemma LockServ_mutual_exclusion_trace :
     forall st tr,
-      step_m_star step_m_init st tr ->
+      step_async_star step_async_init st tr ->
       trace_mutual_exclusion tr /\
       (forall n, last_holder tr = Some n -> held (nwState st (Client n)) = true) /\
       (forall n, held (nwState st (Client n)) = true -> last_holder tr = Some n).
@@ -1139,7 +1139,7 @@ Section LockServ.
       + unfold last_holder in *. simpl in *. discriminate.
       + unfold last_holder in *. simpl in *. discriminate.
     - match goal with
-        | [ H : step_m _ _ _ |- _ ] => invcs H
+        | [ H : step_async _ _ _ |- _ ] => invcs H
       end; monad_unfold; repeat break_let; repeat find_inversion.
       + unfold NetHandler in *. break_match.
         * find_apply_lem_hyp ClientNetHandler_cases.

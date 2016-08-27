@@ -689,7 +689,7 @@ Section CroniesCorrectProof.
   Lemma cronies_correct_init :
     refined_raft_net_invariant_init cronies_correct.
   Proof.
-    unfold refined_raft_net_invariant_init, cronies_correct, step_m_init.
+    unfold refined_raft_net_invariant_init, cronies_correct, step_async_init.
     unfold votes_received_cronies, cronies_votes, votes_nw, votes_received_leaders.
     simpl. intuition. discriminate.
   Qed.

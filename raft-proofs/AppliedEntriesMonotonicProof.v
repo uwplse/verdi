@@ -399,11 +399,11 @@ Section AppliedEntriesMonotonicProof.
   Theorem applied_entries_monotonic' :
     forall failed net failed' net' os,
       raft_intermediate_reachable net ->
-      (@step_f _ _ failure_params (failed, net) (failed', net') os) ->
+      (@step_failure _ _ failure_params (failed, net) (failed', net') os) ->
       exists es,
         applied_entries (nwState net') = applied_entries (nwState net) ++ es.
   Proof.
-    intros. match goal with H : step_f _ _ _ |- _ => invcs H end.
+    intros. match goal with H : step_failure _ _ _ |- _ => invcs H end.
     - unfold RaftNetHandler in *. repeat break_let. subst.
       find_inversion.
       match goal with
@@ -464,7 +464,7 @@ Section AppliedEntriesMonotonicProof.
   Theorem applied_entries_monotonic :
     forall e failed net failed' net' os,
       raft_intermediate_reachable net ->
-      (@step_f _ _ failure_params (failed, net) (failed', net') os) ->
+      (@step_failure _ _ failure_params (failed, net) (failed', net') os) ->
       In e (applied_entries (nwState net)) ->
       In e (applied_entries (nwState net')).
   Proof.

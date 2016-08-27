@@ -4,7 +4,7 @@ Filenames
 * CamlCase for Coq files, example: `StateMachineHandlerMonad.v`
 * CamlCase for OCaml files, example: `VarDArrangement.ml`
 * lowercase with dashes for scripts, example: `proof-linter.sh`
-* UPPERCASE with underscore for documentation, example: `PROOF_ENGINEERING.md`
+* UPPERCASE with underscores for documentation, example: `PROOF_ENGINEERING.md`
 
 Coq Files
 =========
@@ -44,6 +44,7 @@ Type Class Instances
 * field declaration with C-style naming on separate line indented by four spaces
 * one space between end of field declaration and semicolon
 
+Example:
 ```
 Instance base_params : BaseParams :=
   {
@@ -54,7 +55,7 @@ Instance base_params : BaseParams :=
 ```
 
 Theorems and Lemmas
-------
+-------------------
 
 * name uses underscore as separator
 * type declaration starts on a separate row
@@ -78,4 +79,28 @@ Proof.
     destruct (R_dec x');
       intuition eauto using T_monotonic, refl_trans_n1_1n_trace, R_implies_T.
 Qed.
+```
+
+Step Relation Definitions
+-------------------------
+
+* C-style name of (`Inductive`) type
+* each case starts with a bar
+* name of a case is the type name in CamelCase, followed by an underscore and a C-style identifier
+* body of a case is indented by four spaces
+
+Example:
+```
+Inductive step_async : step_relation network (name * (input + list output)) :=
+| StepAsync_deliver : forall net net' p xs ys out d l,
+    nwPackets net = xs ++ p :: ys ->
+    net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
+    net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
+                     (update name_eq_dec (nwState net) (pDst p) d) ->
+    step_async net net' [(pDst p, inr out)]
+| StepAsync_input : forall h net net' out inp d l,
+    input_handlers h inp (nwState net h) = (out, d, l) ->
+    net' = mkNetwork (send_packets h l ++ nwPackets net)
+                     (update name_eq_dec (nwState net) h d) ->
+    step_async net net' [(h, inl inp); (h, inr out)].
 ```

@@ -237,9 +237,9 @@ Section StepAsync.
 
   Context `{params : MultiParams}.
 
-  Record packet := mkPacket { pSrc  : name;
-                              pDst  : name;
-                              pBody : msg }.
+  Record packet := mkPacket { pSrc  : name ;
+                             pDst  : name ;
+                             pBody : msg }.
 
   Definition send_packets src ps := (map (fun m => mkPacket src (fst m) (snd m)) ps).
 
@@ -247,27 +247,27 @@ Section StepAsync.
     decide equality; auto using name_eq_dec, msg_eq_dec.
   Defined.
 
-  Record network := mkNetwork { nwPackets : list packet;
-                                nwState   : name -> data }.
+  Record network := mkNetwork { nwPackets : list packet ;
+                               nwState   : name -> data }.
 
-  Definition step_m_init : network :=
+  Definition step_async_init : network :=
     mkNetwork [] init_handlers.
 
-  Inductive step_m : step_relation network (name * (input + list output)) :=
-  | SM_deliver : forall net net' p xs ys out d l,
-                     nwPackets net = xs ++ p :: ys ->
-                     net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
-                     net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
-                                      (update name_eq_dec (nwState net) (pDst p) d) ->
-                     step_m net net' [(pDst p, inr out)]
+  Inductive step_async : step_relation network (name * (input + list output)) :=
+  | StepAsync_deliver : forall net net' p xs ys out d l,
+      nwPackets net = xs ++ p :: ys ->
+      net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
+      net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
+                       (update name_eq_dec (nwState net) (pDst p) d) ->
+      step_async net net' [(pDst p, inr out)]
   (* inject a message (f inp) into host h. analogous to step_1 *delivery* *)
-  | SM_input : forall h net net' out inp d l,
-                   input_handlers h inp (nwState net h) = (out, d, l) ->
-                   net' = mkNetwork (send_packets h l ++ nwPackets net)
-                                    (update name_eq_dec (nwState net) h d) ->
-                   step_m net net' [(h, inl inp); (h, inr out)].
+  | StepAsync_input : forall h net net' out inp d l,
+      input_handlers h inp (nwState net h) = (out, d, l) ->
+      net' = mkNetwork (send_packets h l ++ nwPackets net)
+                       (update name_eq_dec (nwState net) h d) ->
+      step_async net net' [(h, inl inp); (h, inr out)].
 
-  Definition step_m_star := refl_trans_1n_trace step_m.
+  Definition step_async_star := refl_trans_1n_trace step_async.
 End StepAsync.
 
 Arguments update _ _ _ _ _ _ / _.
@@ -292,27 +292,26 @@ Section StepDup.
   
   Context `{params : MultiParams}.
 
-  Inductive step_d : step_relation network (name * (input + list output)) :=
-  (* just like step_m *)
-  | SD_deliver : forall net net' p xs ys out d l,
-                     nwPackets net = xs ++ p :: ys ->
-                     net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
-                     net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
-                                      (update name_eq_dec (nwState net) (pDst p) d) ->
-                     step_d net net' [(pDst p, inr out)]
+  Inductive step_dup : step_relation network (name * (input + list output)) :=
+  (* just like step_async *)
+  | StepDup_deliver : forall net net' p xs ys out d l,
+      nwPackets net = xs ++ p :: ys ->
+      net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
+      net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
+                       (update name_eq_dec (nwState net) (pDst p) d) ->
+      step_dup net net' [(pDst p, inr out)]
   (* inject a message (f inp) into host h *)
-  | SD_input : forall h net net' out inp d l,
-                   input_handlers h inp (nwState net h) = (out, d, l) ->
-                   net' = mkNetwork (send_packets h l ++ nwPackets net)
-                                    (update name_eq_dec (nwState net) h d) ->
-                   step_d net net' [(h, inl inp); (h, inr out)]
-  | SD_dup : forall net net' p xs ys,
-               nwPackets net = xs ++ p :: ys ->
-               net' = mkNetwork (p :: xs ++ p :: ys)
-                                (nwState net) ->
-               step_d net net' [].
+  | StepDup_input : forall h net net' out inp d l,
+      input_handlers h inp (nwState net h) = (out, d, l) ->
+      net' = mkNetwork (send_packets h l ++ nwPackets net)
+                       (update name_eq_dec (nwState net) h d) ->
+      step_dup net net' [(h, inl inp); (h, inr out)]
+  | StepDup_dup : forall net net' p xs ys,
+      nwPackets net = xs ++ p :: ys ->
+      net' = mkNetwork (p :: xs ++ p :: ys) (nwState net) ->
+      step_dup net net' [].
 
-  Definition step_d_star := refl_trans_1n_trace step_d.
+  Definition step_dup_star := refl_trans_1n_trace step_dup.
 End StepDup.
 
 Section StepDrop.
@@ -320,21 +319,21 @@ Section StepDrop.
   Context `{params : MultiParams}.
 
   Inductive step_drop : step_relation network (name * (input + list output)) :=
-  | Sdrop_deliver : forall net net' p xs ys out d l,
-                     nwPackets net = xs ++ p :: ys ->
-                     net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
-                     net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
-                                      (update name_eq_dec (nwState net) (pDst p) d) ->
-                     step_drop net net' [(pDst p, inr out)]
-  | Sdrop_drop : forall net net' p xs ys,
-                  nwPackets net = xs ++ p :: ys ->
-                  net' = mkNetwork (xs ++ ys) (nwState net) ->
-                  step_drop net net' []
-  | Sdrop_input : forall h net net' out inp d l,
-                   input_handlers h inp (nwState net h) = (out, d, l) ->
-                   net' = mkNetwork (send_packets h l ++ nwPackets net)
-                                    (update name_eq_dec (nwState net) h d) ->
-                   step_drop net net' [(h, inl inp); (h, inr out)].
+  | StepDrop_deliver : forall net net' p xs ys out d l,
+      nwPackets net = xs ++ p :: ys ->
+      net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
+      net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
+                       (update name_eq_dec (nwState net) (pDst p) d) ->
+      step_drop net net' [(pDst p, inr out)]
+  | StepDrop_drop : forall net net' p xs ys,
+      nwPackets net = xs ++ p :: ys ->
+      net' = mkNetwork (xs ++ ys) (nwState net) ->
+      step_drop net net' []
+  | StepDrop_input : forall h net net' out inp d l,
+      input_handlers h inp (nwState net h) = (out, d, l) ->
+      net' = mkNetwork (send_packets h l ++ nwPackets net)
+                       (update name_eq_dec (nwState net) h d) ->
+      step_drop net net' [(h, inl inp); (h, inr out)].
 
   Definition step_drop_star := refl_trans_1n_trace step_drop.
 End StepDrop.
@@ -342,48 +341,48 @@ End StepDrop.
 Section StepFailure.
   Context `{params : FailureParams}.
 
-    (* this step relation transforms a list of failed hosts (list name * network), but does not transform handlers (H : hosts) *)
-  Inductive step_f : step_relation (list name * network) (name * (input + list output)) :=
-  (* like step_m, but only delivers to hosts that haven't failed yet *)
-  | SF_deliver : forall net net' failed p xs ys out d l,
-                nwPackets net = xs ++ p :: ys ->
-                ~ In (pDst p) failed ->
-                net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
-                net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
-                                 (update name_eq_dec (nwState net) (pDst p) d) ->
-                step_f (failed, net) (failed, net') [(pDst p, inr out)]
-  | SF_input : forall h net net' failed out inp d l,
-                 ~ In h failed ->
-                  input_handlers h inp (nwState net h) = (out, d, l) ->
-                  net' = mkNetwork (send_packets h l ++ nwPackets net)
-                                   (update name_eq_dec (nwState net) h d) ->
-                  step_f (failed, net) (failed, net') [(h, inl inp) ;  (h, inr out)]
+  (* this step relation transforms a list of failed hosts (list name * network), but does not transform handlers (H : hosts) *)
+  Inductive step_failure : step_relation (list name * network) (name * (input + list output)) :=
+  (* like step_async, but only delivers to hosts that haven't failed yet *)
+  | StepFailure_deliver : forall net net' failed p xs ys out d l,
+      nwPackets net = xs ++ p :: ys ->
+      ~ In (pDst p) failed ->
+      net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
+      net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
+                       (update name_eq_dec (nwState net) (pDst p) d) ->
+      step_failure (failed, net) (failed, net') [(pDst p, inr out)]
+  | StepFailure_input : forall h net net' failed out inp d l,
+      ~ In h failed ->
+      input_handlers h inp (nwState net h) = (out, d, l) ->
+      net' = mkNetwork (send_packets h l ++ nwPackets net)
+                       (update name_eq_dec (nwState net) h d) ->
+      step_failure (failed, net) (failed, net') [(h, inl inp) ;  (h, inr out)]
   (* drops a packet *)
-  | SF_drop : forall net net' failed p xs ys,
-                nwPackets net = xs ++ p :: ys ->
-                net' = (mkNetwork (xs ++ ys) (nwState net)) ->
-                step_f (failed, net) (failed, net') []
+  | StepFailure_drop : forall net net' failed p xs ys,
+      nwPackets net = xs ++ p :: ys ->
+      net' = (mkNetwork (xs ++ ys) (nwState net)) ->
+      step_failure (failed, net) (failed, net') []
   (* duplicates a packet *)
-  | SF_dup : forall net net' failed p xs ys,
-               nwPackets net = xs ++ p :: ys ->
-               net' = (mkNetwork (p :: xs ++ p :: ys) (nwState net)) ->
-               step_f (failed, net) (failed, net') []
+  | StepFailure_dup : forall net net' failed p xs ys,
+      nwPackets net = xs ++ p :: ys ->
+      net' = (mkNetwork (p :: xs ++ p :: ys) (nwState net)) ->
+      step_failure (failed, net) (failed, net') []
   (* a host fails (potentially again) *)
-  | SF_fail :  forall h net failed,
-                 step_f (failed, net) (h :: failed, net) []
+  | StepFailure_fail :  forall h net failed,
+      step_failure (failed, net) (h :: failed, net) []
   (* a host reboots (is not failing anymore). the new state is computed with the reboot function from the old state *)
-  | SF_reboot : forall h net net' failed failed',
-                  In h failed ->
-                  failed' = remove name_eq_dec h failed ->
-                  net' = mkNetwork (nwPackets net)
-                                   (fun nm => if name_eq_dec nm h then
-                                               (reboot (nwState net nm))
-                                             else
-                                               (nwState net nm)) ->
-                  step_f (failed, net) (failed', net') [].
+  | StepFailure_reboot : forall h net net' failed failed',
+      In h failed ->
+      failed' = remove name_eq_dec h failed ->
+      net' = mkNetwork (nwPackets net)
+                       (fun nm => if name_eq_dec nm h then
+                                   (reboot (nwState net nm))
+                                 else
+                                   (nwState net nm)) ->
+      step_failure (failed, net) (failed', net') [].
 
-  Definition step_f_star : step_relation (list name * network) (name * (input + list output)) :=
-    refl_trans_1n_trace step_f.
+  Definition step_failure_star : step_relation (list name * network) (name * (input + list output)) :=
+    refl_trans_1n_trace step_failure.
 
-  Definition step_f_init : list name * network := ([], step_m_init).
+  Definition step_failure_init : list name * network := ([], step_async_init).
 End StepFailure.

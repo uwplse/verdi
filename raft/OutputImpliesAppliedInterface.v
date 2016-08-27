@@ -25,7 +25,7 @@ Section OutputImpliesApplied.
     {
       output_implies_applied :
         forall client id failed net tr,
-          step_f_star step_f_init (failed, net) tr ->
+          step_failure_star step_failure_init (failed, net) tr ->
           key_in_output_trace client id tr ->
           in_applied_entries client id net
     }.

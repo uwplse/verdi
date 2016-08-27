@@ -176,13 +176,13 @@ Section Decomposition.
   Qed.
 
   Theorem decomposition_invariant :
-    inductive_invariant step_m step_m_init composed_invariant.
+    inductive_invariant step_async step_async_init composed_invariant.
   Proof.
     unfold inductive_invariant. intuition.
     - unfold composed_invariant. simpl.
       intuition auto using state_invariant_init.
     - unfold inductive, composed_invariant. intros.
-      match goal with H : step_m _ _ _ |- _ => invcs H end; intuition; simpl in *.
+      match goal with H : step_async _ _ _ |- _ => invcs H end; intuition; simpl in *.
       + eauto using state_invariant_maintained_deliver.
       + find_apply_lem_hyp post_net_analyze_sent_packet.
         intuition

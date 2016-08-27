@@ -11,11 +11,11 @@ Section ST.
   Variable T : list (name * (input + list output)) -> Prop.
 
   Hypothesis T_snoc_inv : forall ev tr, T (tr ++ [ev]) -> T tr.
-  Hypothesis RT_init : T [] -> R step_m_init [].
+  Hypothesis RT_init : T [] -> R step_async_init [].
 
   Definition RT_deliver : Prop :=
     forall net failed tr xs p ys out d l,
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       T tr ->
       R net tr ->
       nwPackets net = xs ++ p :: ys ->
@@ -28,7 +28,7 @@ Section ST.
 
   Definition RT_input : Prop :=
     forall net failed tr h i out d l,
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       T (tr ++ [(h, inl i)]) ->
       R net tr ->
       input_handlers h i (nwState net h) = (out, d, l) ->
@@ -40,7 +40,7 @@ Section ST.
 
   Definition RT_drop : Prop :=
     forall net failed tr xs p ys,
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       T tr ->
       R net tr ->
       nwPackets net = xs ++ p :: ys ->
@@ -51,7 +51,7 @@ Section ST.
 
   Definition RT_dup : Prop :=
     forall net failed tr xs p ys,
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       T tr ->
       R net tr ->
       nwPackets net = xs ++ p :: ys ->
@@ -62,7 +62,7 @@ Section ST.
 
   Definition RT_reboot : Prop :=
     forall net failed tr h,
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       T tr ->
       R net tr ->
       R (mkNetwork (nwPackets net) (update name_eq_dec (nwState net) h (reboot (nwState net h))))
@@ -72,18 +72,18 @@ Section ST.
 
   Lemma state_trace_invariant_invariant :
     forall failed net tr,
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       T tr ->
       R net tr.
   Proof.
     intros.
     remember (failed, net) as p. generalize dependent failed. revert net.
-    remember step_f_init as init. revert Heqinit. revert H0.
+    remember step_failure_init as init. revert Heqinit. revert H0.
     apply refl_trans_1n_n1_trace in H.
     induction H; intros; subst.
-    - unfold step_f_init in *. find_inversion. auto.
+    - unfold step_failure_init in *. find_inversion. auto.
     - match goal with
-        | [ H : step_f _ _ _ |- _ ] => invc H
+        | [ H : step_failure _ _ _ |- _ ] => invc H
       end.
       + eapply H_RT_deliver with (failed := failed); eauto.
         apply refl_trans_n1_1n_trace; auto.

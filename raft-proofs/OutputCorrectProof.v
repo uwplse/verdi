@@ -823,12 +823,12 @@ Section OutputCorrect.
     forall failed failed' (net net' : network (params := @multi_params _ _ raft_params)) os,
       in_output_trace client id out os ->
       @raft_intermediate_reachable _ _ raft_params net ->
-      step_f (failed, net) (failed', net') os ->
+      step_failure (failed, net) (failed', net') os ->
       output_correct client id out (applied_entries (nwState net')).
   Proof.
     intros.
     match goal with
-      | [ H : context [ step_f _ _ _ ] |- _ ] => invcs H
+      | [ H : context [ step_failure _ _ _ ] |- _ ] => invcs H
     end.
     - unfold RaftNetHandler in *. repeat break_let. repeat find_inversion.
       find_apply_lem_hyp in_output_trace_singleton_inv.
@@ -860,9 +860,9 @@ Section OutputCorrect.
     - exfalso. eauto using in_output_trace_not_nil.
   Qed.
 
-  Instance TR : TraceRelation step_f :=
+  Instance TR : TraceRelation step_failure :=
     {
-      init := step_f_init;
+      init := step_failure_init;
       T := in_output_trace client id out ;
       T_dec := in_output_trace_dec ;
       R := fun s => let (_, net) := s in
@@ -871,7 +871,7 @@ Section OutputCorrect.
   Proof.
     - intros. repeat break_let. subst.
       find_eapply_lem_hyp applied_entries_monotonic';
-        eauto using step_f_star_raft_intermediate_reachable.
+        eauto using step_failure_star_raft_intermediate_reachable.
       unfold output_correct in *.
       break_exists.
       repeat find_rewrite.
@@ -887,12 +887,12 @@ Section OutputCorrect.
     break_let. subst.
     find_apply_lem_hyp in_output_changed; auto.
     destruct s.
-    eauto using in_output_trace_step_output_correct, step_f_star_raft_intermediate_reachable.
+    eauto using in_output_trace_step_output_correct, step_failure_star_raft_intermediate_reachable.
   Defined.
 
   Theorem output_correct :
     forall  failed net tr,
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       in_output_trace client id out tr ->
       output_correct client id out (applied_entries (nwState net)).
   Proof.

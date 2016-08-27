@@ -30,7 +30,7 @@ Section AppliedImpliesInputInterface.
     {
       applied_implies_input :
         forall client id failed net tr e,
-          step_f_star step_f_init (failed, net) tr ->
+          step_failure_star step_failure_init (failed, net) tr ->
           eClient e = client ->
           eId e = id ->
           applied_implies_input_state client id (eInput e) net ->

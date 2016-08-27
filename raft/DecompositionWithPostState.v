@@ -182,7 +182,7 @@ Section DecompositionWithPostState.
     intros.
     induction H10.
     - intuition.
-    -  match goal with [H : step_f _ _ _ |- _ ] => invcs H end.
+    -  match goal with [H : step_failure _ _ _ |- _ ] => invcs H end.
        + unfold RaftNetHandler in *. repeat break_let.
          repeat find_inversion.
          assert
@@ -328,7 +328,7 @@ Section DecompositionWithPostState.
        + auto.
        + eapply_prop raft_net_invariant_reboot'; eauto;
          intros; simpl in *; repeat break_if; intuition; subst; intuition eauto.
-         eapply RIR_step_f; eauto.
+         eapply RIR_step_failure; eauto.
          now econstructor; eauto.
     - eapply raft_invariant_handle_input'; eauto using RIR_handleInput.
     - eapply raft_invariant_handle_message'; eauto using RIR_handleMessage.

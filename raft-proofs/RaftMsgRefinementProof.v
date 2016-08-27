@@ -79,7 +79,7 @@ Section RaftMsgRefinement.
     intros.
     induction H10.
     - intuition.
-    -  match goal with [H : step_f _ _ _ |- _ ] => invcs H end.
+    -  match goal with [H : step_failure _ _ _ |- _ ] => invcs H end.
        
        + unfold mgv_refined_net_handlers in *. simpl in *.
          unfold refined_net_handlers in *. simpl in *.
@@ -346,11 +346,11 @@ Section RaftMsgRefinement.
     intros.
     induction H10.
     - intuition.
-    -  match goal with [H : step_f _ _ _ |- _ ] => invcs H end.
+    -  match goal with [H : step_failure _ _ _ |- _ ] => invcs H end.
        + match goal with 
          | [ H : msg_refined_raft_intermediate_reachable _ |- _ ?x ] => 
            assert (msg_refined_raft_intermediate_reachable x) as Hpost
-                  by (eapply MRRIR_step_f; eauto; eapply SF_deliver; eauto)
+                  by (eapply MRRIR_step_failure; eauto; eapply StepFailure_deliver; eauto)
          
          end.
          unfold mgv_refined_net_handlers in *. simpl in *.
@@ -438,7 +438,7 @@ Section RaftMsgRefinement.
        + match goal with 
          | [ H : msg_refined_raft_intermediate_reachable _ |- _ ?x ] => 
            assert (msg_refined_raft_intermediate_reachable x) as Hpost
-                  by (eapply MRRIR_step_f; eauto; eapply SF_input; eauto)
+                  by (eapply MRRIR_step_failure; eauto; eapply StepFailure_input; eauto)
          
          end.
          unfold mgv_refined_input_handlers in *. simpl in *.
@@ -539,7 +539,7 @@ Section RaftMsgRefinement.
        + auto.
        + eapply_prop msg_refined_raft_net_invariant_reboot'; eauto;
          intros; simpl in *; repeat break_if; intuition; subst; intuition eauto.
-         * econstructor. eauto. eapply SF_reboot; eauto.
+         * econstructor. eauto. eapply StepFailure_reboot; eauto.
          * destruct (nwState net h); auto.
     - eapply msg_refined_raft_invariant_handle_input'; eauto.
       eapply MRRIR_handleInput; eauto.
@@ -578,7 +578,7 @@ Section RaftMsgRefinement.
     induction H.
     - constructor.
     - simpl in *.
-      pose proof (RRIR_step_f).
+      pose proof (RRIR_step_failure).
       specialize (H1 failed (mgv_deghost net) failed' (mgv_deghost net') out).
       apply H1; auto.
       apply (@mgv_ghost_simulation_1 _ _ _ ghost_log_params); auto.
@@ -658,9 +658,9 @@ Section RaftMsgRefinement.
     eauto using simulation_1.
   Qed.
 
-  Lemma step_f_star_raft_intermediate_reachable_extend :
+  Lemma step_failure_star_raft_intermediate_reachable_extend :
     forall f net f' net' tr,
-      @step_f_star _ _ raft_msg_refined_failure_params (f, net) (f', net') tr ->
+      @step_failure_star _ _ raft_msg_refined_failure_params (f, net) (f', net') tr ->
       msg_refined_raft_intermediate_reachable net ->
       msg_refined_raft_intermediate_reachable net'.
   Proof.
@@ -669,7 +669,7 @@ Section RaftMsgRefinement.
     induction H using refl_trans_1n_trace_n1_ind; intros; subst.
     - find_inversion. auto.
     - destruct x'. simpl in *.
-      eapply MRRIR_step_f; [|eauto].
+      eapply MRRIR_step_failure; [|eauto].
       eauto.
   Qed.
 
@@ -712,14 +712,14 @@ Section RaftMsgRefinement.
   Proof.
     intros.
     induction H.
-    - exists (mgv_reghost step_m_init). intuition.
+    - exists (mgv_reghost step_async_init). intuition.
         unfold mgv_reghost. constructor.
     - break_exists. break_and.
       apply mgv_ghost_simulation_2 with (gnet := x) in H0; auto.
       repeat (break_exists; intuition).
       subst.
       exists x0. intuition.
-      eapply MRRIR_step_f; eauto.
+      eapply MRRIR_step_failure; eauto.
     - break_exists. break_and.
       subst.
       assert (msg_refined_raft_intermediate_reachable ({| nwPackets := (nwPackets x) ++ (@send_packets _ raft_msg_refined_multi_params h (@add_ghost_msg _ _ _ ghost_log_params h (update_elections_data_input h inp (nwState (mgv_deghost x) h), d) l));
@@ -757,8 +757,8 @@ Section RaftMsgRefinement.
         rewrite map_ext with (g := id) in H7; eauto using mgv_deghost_packet_mgv_ghost_packet_partial_inverses.
         rewrite map_id in *. subst.
         unfold mgv_deghost. simpl. auto.
-      + eapply step_f_star_raft_intermediate_reachable_extend with (f := []); eauto using step_f_dup_drop_step.
-        eapply step_f_dup_drop_step.
+      + eapply step_failure_star_raft_intermediate_reachable_extend with (f := []); eauto using step_failure_dup_drop_step.
+        eapply step_failure_dup_drop_step.
         apply dup_drop_reorder; auto.
         auto using packet_eq_dec.
     - break_exists. break_and.
@@ -813,8 +813,8 @@ Section RaftMsgRefinement.
         rewrite map_ext with (g := id) in H7; eauto using mgv_deghost_packet_mgv_ghost_packet_partial_inverses.
         rewrite map_id in *. subst.
         unfold mgv_deghost. simpl. auto.
-      + eapply step_f_star_raft_intermediate_reachable_extend with (f := []); eauto using step_f_dup_drop_step.
-        eapply step_f_dup_drop_step.
+      + eapply step_failure_star_raft_intermediate_reachable_extend with (f := []); eauto using step_failure_dup_drop_step.
+        eapply step_failure_dup_drop_step.
         apply dup_drop_reorder; auto.
         auto using packet_eq_dec.
     - break_exists. break_and.
@@ -854,8 +854,8 @@ Section RaftMsgRefinement.
         rewrite map_ext with (g := id) in H8; eauto using mgv_deghost_packet_mgv_ghost_packet_partial_inverses.
         rewrite map_id in *. subst.
         unfold mgv_deghost. simpl. auto.
-      + eapply step_f_star_raft_intermediate_reachable_extend with (f := []); eauto using step_f_dup_drop_step.
-        eapply step_f_dup_drop_step.
+      + eapply step_failure_star_raft_intermediate_reachable_extend with (f := []); eauto using step_failure_dup_drop_step.
+        eapply step_failure_dup_drop_step.
         apply dup_drop_reorder; auto.
         auto using packet_eq_dec.
     - break_exists. break_and.
@@ -895,8 +895,8 @@ Section RaftMsgRefinement.
         rewrite map_ext with (g := id) in H8; eauto using mgv_deghost_packet_mgv_ghost_packet_partial_inverses.
         rewrite map_id in *. subst.
         unfold mgv_deghost. simpl. auto.
-      + eapply step_f_star_raft_intermediate_reachable_extend with (f := []); eauto using step_f_dup_drop_step.
-        eapply step_f_dup_drop_step.
+      + eapply step_failure_star_raft_intermediate_reachable_extend with (f := []); eauto using step_failure_dup_drop_step.
+        eapply step_failure_dup_drop_step.
         apply dup_drop_reorder; auto.
         auto using packet_eq_dec.
   Qed.

@@ -154,12 +154,12 @@ Section SeqNumCorrect.
        tmNum (pBody p) < (tdNum ((nwState net) (pSrc p)))).
 
   Lemma reachable_sane :
-    true_in_reachable step_d step_m_init sequence_sane.
+    true_in_reachable step_dup step_async_init sequence_sane.
   Proof.
     apply inductive_invariant_true_in_reachable. unfold inductive_invariant, inductive.
     unfold sequence_sane. simpl in *. intuition.
     match goal with
-      | [ H : step_d _ _ _ |- _ ] =>
+      | [ H : step_dup _ _ _ |- _ ] =>
         invcs H
     end; try find_inversion.
     - (* deliver case *)
@@ -199,13 +199,13 @@ Section SeqNumCorrect.
       n < (tdNum (nwState net h)).
 
   Lemma reachable_seen :
-    true_in_reachable step_d step_m_init sequence_seen.
+    true_in_reachable step_dup step_async_init sequence_seen.
   Proof.
     apply true_in_reachable_reqs; 
     unfold sequence_seen; simpl in *; intuition.
     find_apply_lem_hyp reachable_sane.
     unfold sequence_sane in *.
-    match goal with H : step_d _ _ _ |- _ => invcs H end.
+    match goal with H : step_dup _ _ _ |- _ => invcs H end.
     - (* step case *)
       unfold seq_num_net_handlers in *.
       repeat (break_match; try find_inversion; simpl in *; eauto);
@@ -236,7 +236,7 @@ Section SeqNumCorrect.
       p = p'.
 
   Theorem reachable_equality :
-    true_in_reachable step_d step_m_init sequence_equality.
+    true_in_reachable step_dup step_async_init sequence_equality.
   Proof.
     apply true_in_reachable_reqs; 
     unfold sequence_equality; simpl in *; intuition.
@@ -246,7 +246,7 @@ Section SeqNumCorrect.
     end.
     unfold sequence_sane, sequence_equality in *.
     intros.
-    match goal with H : step_d _ _ _ |- _ => invcs H end; simpl in *; find_inversion.
+    match goal with H : step_dup _ _ _ |- _ => invcs H end; simpl in *; find_inversion.
     - unfold seq_num_net_handlers in *.
       repeat do_in_app.
       repeat find_rewrite.
@@ -512,9 +512,9 @@ Section SeqNumCorrect.
   
   Lemma reachable_revert_step :
     forall st st' out,
-      reachable step_d step_m_init st ->
-      step_d st st' out ->
-      (exists out, step_m (revertNetwork st) (revertNetwork st') out)
+      reachable step_dup step_async_init st ->
+      step_dup st st' out ->
+      (exists out, step_async (revertNetwork st) (revertNetwork st') out)
       \/ revertNetwork st = revertNetwork st'.
   Proof.
     intros.
@@ -522,7 +522,7 @@ Section SeqNumCorrect.
     find_copy_apply_lem_hyp reachable_seen.
     find_copy_apply_lem_hyp reachable_equality.
     break_exists.
-    match goal with H : step_d _ _ _ |- _ => invcs H end.
+    match goal with H : step_dup _ _ _ |- _ => invcs H end.
     - unfold seq_num_net_handlers in *. break_if.
       + right. find_inversion. simpl in *.
         unfold revertNetwork. simpl in *. intuition.
@@ -556,9 +556,9 @@ Section SeqNumCorrect.
   Qed.
 
   Theorem reachable_revert :
-    true_in_reachable step_d step_m_init
+    true_in_reachable step_dup step_async_init
                       (fun st =>
-                         reachable step_m step_m_init (revertNetwork st)).
+                         reachable step_async step_async_init (revertNetwork st)).
   Proof.
     apply true_in_reachable_reqs.
     - unfold revertNetwork. simpl.
@@ -576,8 +576,8 @@ Section SeqNumCorrect.
 
   Theorem true_in_reachable_transform :
     forall P,
-      true_in_reachable step_m step_m_init P ->
-      true_in_reachable step_d step_m_init (fun net => P (revertNetwork net)).
+      true_in_reachable step_async step_async_init P ->
+      true_in_reachable step_dup step_async_init (fun net => P (revertNetwork net)).
   Proof.
     intros. find_apply_lem_hyp true_in_reachable_elim. intuition.
     apply true_in_reachable_reqs; eauto.

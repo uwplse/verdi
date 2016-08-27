@@ -160,7 +160,7 @@ Section OutputImpliesApplied.
   Lemma output_implies_in_applied_entries :
     forall failed net failed' net' o,
       raft_intermediate_reachable net ->
-      @step_f _ _ failure_params (failed, net) (failed', net') o ->
+      @step_failure _ _ failure_params (failed, net) (failed', net') o ->
       key_in_output_trace client id o ->
       in_applied_entries client id net'.
   Proof.
@@ -229,9 +229,9 @@ Section OutputImpliesApplied.
       simpl in *. rewrite_update; eauto.
   Qed.
 
-  Instance TR : TraceRelation step_f :=
+  Instance TR : TraceRelation step_failure :=
     {
-      init := step_f_init;
+      init := step_failure_init;
       T := key_in_output_trace client id ;
       T_dec := key_in_output_trace_dec client id ;
       R := fun s => in_applied_entries client id (snd s)
@@ -241,20 +241,20 @@ Section OutputImpliesApplied.
     unfold in_applied_entries in *.
     break_exists; eexists; intuition eauto.
     destruct s; destruct s'; eapply applied_entries_monotonic; eauto.
-    eauto using refl_trans_1n_n1_trace, step_f_star_raft_intermediate_reachable.
+    eauto using refl_trans_1n_n1_trace, step_failure_star_raft_intermediate_reachable.
   - unfold key_in_output_trace in *. intuition.
     break_exists; intuition.
   - intros.
     destruct s as [failed net].
     destruct s' as [failed' net']. simpl in *.
-    find_apply_lem_hyp step_f_star_raft_intermediate_reachable.
+    find_apply_lem_hyp step_failure_star_raft_intermediate_reachable.
     find_apply_lem_hyp in_output_changed; auto.
     eauto using output_implies_in_applied_entries.
   Defined.
 
   Theorem output_implies_applied :
     forall failed net tr,
-      step_f_star step_f_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, net) tr ->
       key_in_output_trace client id tr ->
       in_applied_entries client id net.
   Proof.
