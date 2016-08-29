@@ -122,7 +122,7 @@ Section ChordProof.
   Definition failure_constraint : global_state -> Prop :=
     live_node_in_succ_lists.
 
-  Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler can_be_node timeout_constraint failure_constraint).
+  Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler timeout_constraint failure_constraint).
 
   Inductive request_payload : payload -> Prop :=
   | req_GetBestPredecessor : forall p, request_payload (GetBestPredecessor p)
@@ -548,38 +548,35 @@ Section ChordProof.
       live_nodes_have_state gst'.
   Proof.
     unfold live_nodes_have_state.
-    intuition.
+    move => gst gst' H_st H_step n H_in.
     break_step.
-    - destruct (addr_eq_dec h0 h).
+    - destruct (addr_eq_dec h n).
       + subst_max.
-        exists st.
-        simpl.
+        eexists.
         now apply update_eq.
-      + simpl in *.
+      + simpl in H_in.
         break_or_hyp.
-        exfalso.
-        apply n.
-        reflexivity.
-        apply H in H7.
+        exfalso => //.
+        find_apply_lem_hyp H_st.
         break_exists_exists.
         find_reverse_rewrite.
         now apply update_diff.
     - eauto.
-    - simpl in *.
-      destruct (addr_eq_dec h0 h).
-      * exists st'.
+    - destruct (addr_eq_dec h n).
+      * eexists.
         now apply update_eq.
-      * apply H in H1.
+      * find_apply_lem_hyp H_st.
         break_exists_exists.
         find_reverse_rewrite.
         now apply update_diff.
-    - simpl in *.
-      destruct (addr_eq_dec (fst (snd m)) h).
-      * exists st.
+    - (*simpl in *.*)
+      destruct (addr_eq_dec (fst (snd m)) n).
+      * eexists.
         now apply update_eq.
-      * apply H in H1.
+      * simpl.
+        find_apply_lem_hyp H_st.
         break_exists_exists.
-        find_reverse_rewrite.
+        repeat find_reverse_rewrite.
         now apply update_diff.
   Qed.
 

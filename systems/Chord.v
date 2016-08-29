@@ -114,9 +114,6 @@ Section Chord.
     let '(st, sends, newts, cts) := r in
     (st, sends, Tick :: newts, cts).
 
-  Definition can_be_client (a : addr) := True.
-  Definition can_be_node (a : addr) := True.
-
   Definition update_pred (st : data) (p : pointer) : data := Data (ptr st) (Some p) (succ_list st) (known st) (joined st) (rectify_with st) (cur_request st) (delayed_queries st).
 
   Definition update_succ_list (st : data) (succs : list pointer) : data := Data (ptr st) (pred st) succs (known st) (joined st) (rectify_with st) (cur_request st) (delayed_queries st).

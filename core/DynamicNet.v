@@ -2,6 +2,7 @@ Require Import List.
 Require Import Arith.
 Require Import StructTact.StructTactics.
 Require Import StructTact.Update.
+Require Import StructTact.RemoveAll.
 Require Import InfSeqExt.infseq.
 Import ListNotations.
 
@@ -43,8 +44,6 @@ Section Dynamic.
           timeout_handler_l h st t = (r, l) ->
           timeout_handler h st t = r).
 
-  Variable can_be_node : addr -> Prop.
-
   (* msgs *)
   Definition msg := (addr * (addr * payload))%type.
   Definition msg_eq_dec : forall x y : msg, {x = y} + {x <> y}.
@@ -78,11 +77,8 @@ Section Dynamic.
   Definition init :=
     {| nodes := []; failed_nodes := []; timeouts := nil_timeouts; sigma := nil_state; msgs := []; trace := [] |}.
 
-  Definition list_minus {A : Type} (eq_dec : forall x y : A, {x = y} + {x <> y})  (a : list A) (b : list A) : list A :=
-    fold_left (fun acc b => remove eq_dec b acc) b a.
-
   Definition clear_timeouts (ts : list timeout) (cts : list timeout) : list timeout :=
-    list_minus timeout_eq_dec ts cts.
+    remove_all timeout_eq_dec ts cts.
 
   Notation "f [ a '=>' d ]" := (update addr_eq_dec f a (Some d)) (at level 0).
   Notation "f [ a '==>' d ]" := (update addr_eq_dec f a d) (at level 0).
@@ -111,7 +107,6 @@ Section Dynamic.
   Inductive step_dynamic : global_state -> global_state -> Prop :=
   | Start :
       forall h gst gst' ms st new_msgs known k newts,
-        can_be_node h ->
         ~ In h (nodes gst) ->
         (* hypotheses on the list of known nodes *)
         (In k known -> In k (nodes gst)) ->
