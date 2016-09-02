@@ -1,6 +1,6 @@
 OCAMLBUILD = ocamlbuild -lib str -lib unix -I lib -I ml -I coq
 
-default: chord.native
+default: chord.native chordshed.native
 
 coq/ExtractedChord.ml:
 	# there has to be a -B flag here becuase there's no way to explicitly
@@ -9,6 +9,9 @@ coq/ExtractedChord.ml:
 
 chord.native : coq/ExtractedChord.ml ml/*.ml lib/*.ml
 	$(OCAMLBUILD) chord.native
+
+chordshed.native : coq/ExtractedChord.ml ml/*.ml lib/*.ml
+	$(OCAMLBUILD) chordshed.native
 
 clean:
 	$(OCAMLBUILD) chord.native -clean

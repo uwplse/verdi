@@ -85,17 +85,17 @@ Section ChordProof.
 
   (* tip: treat this as opaque and use lemmas: it never gets stopped except by failure *)
   Definition live_node (gst : global_state) (h : addr) : Prop :=
+    In h (nodes gst) /\
+    ~ In h (failed_nodes gst) /\
     exists st,
       sigma gst h = Some st /\
-      joined st = true /\
-      In h (nodes gst) /\
-      ~ In h (failed_nodes gst).
+      joined st = true.
 
   Definition dead_node (gst : global_state) (h : addr) : Prop :=
+    In h (nodes gst) /\
+    In h (failed_nodes gst) /\
     exists st,
-      sigma gst h = Some st /\
-      In h (nodes gst) /\
-      In h (failed_nodes gst).
+      sigma gst h = Some st.
 
   Definition joining_node (gst : global_state) (h : addr) : Prop :=
     exists st,
@@ -295,8 +295,8 @@ Section ChordProof.
     end.
     intuition.
   Qed.
-
-  Definition live_node_dec (gst : global_state) (h : addr) :=
+      
+  Definition live_node_bool (gst : global_state) (h : addr) :=
     match sigma gst h with
       | Some st => if joined st
                    then if in_dec addr_eq_dec h (nodes gst)
@@ -317,25 +317,60 @@ Section ChordProof.
   Ltac break_live_node :=
     match goal with
       | H : live_node _ _ |- _ =>
-        unfold live_node in H; break_exists; repeat break_and
+        unfold live_node in H; repeat break_and; break_exists; repeat break_and
+    end.
+
+  Ltac break_live_node_name var :=
+    match goal with
+      | H : live_node _ _ |- _ =>
+        unfold live_node in H; repeat break_and; break_exists_name var; repeat break_and
     end.
 
   Ltac break_live_node_exists_exists :=
     match goal with
       | H : live_node _ _ |- _ =>
-        unfold live_node in H; break_exists_exists; repeat break_and
+        unfold live_node in H; repeat break_and; break_exists_exists; repeat break_and
     end.
 
   Ltac break_dead_node :=
     match goal with
       | H : dead_node _ _ |- _ =>
-        unfold dead_node in H; break_exists; repeat break_and
+        unfold dead_node in H; repeat break_and; break_exists; repeat break_and
     end.
 
-  Theorem live_node_dec_equiv_live_node : forall gst h,
-      live_node gst h <-> live_node_dec gst h = true.
+  Ltac break_dead_node_name var :=
+    match goal with
+      | H : dead_node _ _ |- _ =>
+        unfold dead_node in H; repeat break_and; break_exists_name var; repeat break_and
+    end.
+
+  Ltac break_dead_node_exists_exists :=
+    match goal with
+      | H : dead_node _ _ |- _ =>
+        unfold dead_node in H; repeat break_and; break_exists_exists; repeat break_and
+    end.
+
+  Definition live_node_dec (gst : global_state) :
+    forall h,
+      {live_node gst h} + {~ live_node gst h}.
   Proof.
-    unfold live_node_dec.
+    move => h.
+    destruct (sigma gst h) as [st |] eqn:H_st.
+    - destruct (joined st) eqn:H_joined;
+        destruct (In_dec addr_eq_dec h (nodes gst));
+        destruct (In_dec addr_eq_dec h (failed_nodes gst));
+        try (right; move => H_live; break_live_node; easy || congruence).
+      left; eapply live_node_characterization; eauto.
+    - right.
+      move => H_live.
+      break_live_node.
+      congruence.
+  Defined.
+
+  Theorem live_node_dec_equiv_live_node : forall gst h,
+      live_node gst h <-> live_node_bool gst h = true.
+  Proof.
+    unfold live_node_bool.
     intuition.
     - repeat break_match;
         break_live_node;
@@ -391,7 +426,7 @@ Section ChordProof.
 
   Definition best_succ_of (gst : global_state) (h : addr) : option addr :=
     match (sigma gst) h with
-      | Some st => head (filter (live_node_dec gst) (map addr_of (succ_list st)))
+      | Some st => head (filter (live_node_bool gst) (map addr_of (succ_list st)))
       | None => None
     end.
 
@@ -615,41 +650,32 @@ Section ChordProof.
         sigma gst h = Some st /\
         joined st = true.
   Proof.
-    unfold live_node.
     intuition.
-    break_exists_exists.
-    repeat break_and.
-    repeat split; auto.
+    by break_live_node_exists_exists.
   Qed.
 
   Lemma live_node_in_nodes : forall gst h,
       live_node gst h ->
       In h (nodes gst).
   Proof.
-    unfold live_node.
     intuition.
-    break_exists.
-    break_and.
-    auto.
+    by break_live_node.
   Qed.
 
   Lemma live_node_not_in_failed_nodes : forall gst h,
       live_node gst h ->
       ~ In h (failed_nodes gst).
   Proof.
-    unfold live_node.
     intuition.
-    break_exists.
-    break_and.
-    auto.
+    by break_live_node.
   Qed.
 
   Lemma live_node_equivalence : forall gst gst' h st st',
       live_node gst h ->
       nodes gst = nodes gst' ->
       failed_nodes gst = failed_nodes gst' ->
-      Some st = sigma gst h ->
-      Some st' = sigma gst' h ->
+      sigma gst h = Some st ->
+      sigma gst' h = Some st' ->
       joined st = joined st' ->
       live_node gst' h.
   Proof.
@@ -668,11 +694,10 @@ Section ChordProof.
       live_node gst h ->
       exists st, sigma gst h = Some st.
   Proof.
-    unfold live_node.
     intuition.
+    find_apply_lem_hyp live_node_joined.
     break_exists_exists.
-    break_and.
-    auto.
+    by break_and.
   Qed.
 
   Lemma coarse_live_node_characterization : forall gst gst' h,
@@ -926,26 +951,25 @@ Section ChordProof.
 
   Lemma adding_nodes_does_not_affect_live_node : forall gst gst' h n st,
       ~ In n (nodes gst) ->
-      sigma gst' = update addr_eq_dec (sigma gst) n st ->
+      sigma gst' = update addr_eq_dec (sigma gst) n (Some st) ->
       nodes gst' = n :: nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
       live_node gst h ->
       live_node gst' h.
   Proof.
     intuition.
-    unfold live_node.
-    break_live_node_exists_exists.
+    break_live_node_name d.
     repeat split.
-    * repeat find_reverse_rewrite.
+    * repeat find_rewrite.
+      now apply in_cons.
+    * by find_rewrite.
+    * exists d.
+      split => //.
+      repeat find_reverse_rewrite.
       find_rewrite.
       find_rewrite.
       apply update_diff.
       congruence.
-    * auto.
-    * find_rewrite.
-      eauto using in_cons.
-    * find_rewrite.
-      auto.
   Qed.
 
   (* reverse of the above, with additional hypothesis that h <> n. *)
@@ -960,21 +984,22 @@ Section ChordProof.
   Proof.
     intuition.
     unfold live_node.
-    break_live_node_exists_exists.
+    break_live_node_name d.
     repeat split.
-    * repeat find_reverse_rewrite.
+    * repeat find_rewrite.
+      find_apply_lem_hyp in_inv.
+      break_or_hyp; congruence.
+    * repeat find_rewrite.
+      auto.
+    * exists d.
+      split => //.
+      repeat find_reverse_rewrite.
       find_rewrite.
       find_rewrite.
       find_rewrite.
       find_rewrite.
       symmetry.
-      apply update_diff.
-      auto.
-    * auto.
-    * repeat find_rewrite.
-      find_apply_lem_hyp in_inv.
-      break_or_hyp; congruence.
-    * find_rewrite; auto.
+      apply update_diff; auto.
   Qed.
 
   Lemma adding_nodes_does_not_affect_dead_node : forall gst gst' h n st,
@@ -986,18 +1011,17 @@ Section ChordProof.
       dead_node gst' h.
   Proof.
     intuition.
-    unfold dead_node in *.
-    break_exists_exists.
-    break_and.
+    break_dead_node_name d.
     repeat split.
-    - repeat find_reverse_rewrite.
+    - find_rewrite.
+      eauto using in_cons.
+    - find_rewrite; auto.
+    - exists d.
+      repeat find_reverse_rewrite.
       find_rewrite.
       find_rewrite.
       eapply update_diff.
       congruence.
-    - find_rewrite.
-      eauto using in_cons.
-    - find_rewrite; auto.
   Qed.
 
   Lemma adding_nodes_did_not_affect_dead_node : forall gst gst' h n st,
@@ -1010,17 +1034,17 @@ Section ChordProof.
       dead_node gst h.
   Proof.
     intuition.
-    break_dead_node.
+    break_dead_node_name d.
     unfold dead_node.
-    eexists.
     repeat split.
-    - eapply update_determined_by_f.
+    - find_rewrite.
+      eauto using in_cons.
+    - now repeat find_rewrite.
+    - eexists.
+      eapply update_determined_by_f.
       * instantiate (1 := n).
         eauto using In_notIn_implies_neq.
       * repeat find_rewrite; eauto.
-    - find_rewrite.
-      eauto using in_cons.
-    - find_rewrite; auto.
   Qed.
 
   Lemma coarse_dead_node_characterization : forall gst gst' h,
@@ -1030,11 +1054,10 @@ Section ChordProof.
       failed_nodes gst' = failed_nodes gst ->
       dead_node gst' h.
   Proof.
-    unfold dead_node.
     intuition.
-    break_exists_exists.
-    break_and.
-    repeat split; repeat find_rewrite; auto.
+    break_dead_node_name d.
+    repeat split; try (find_rewrite; auto).
+    now exists d.
   Qed.
 
   Lemma coarse_best_succ_characterization : forall gst gst' h s,
@@ -1044,26 +1067,25 @@ Section ChordProof.
       failed_nodes gst' = failed_nodes gst ->
       best_succ gst' h s.
   Proof.
-    unfold best_succ.
+    unfold best_succ in *.
     intuition.
     break_exists_exists.
-    repeat split; break_and.
-    - match goal with
-        | H : live_node gst h |- _ => unfold live_node in H
-      end.
-      break_exists_exists.
-      break_and.
-      repeat split; repeat find_rewrite; auto.
-    - repeat find_rewrite; auto.
-    - repeat find_rewrite; auto.
-    - eauto using coarse_dead_node_characterization.
-    - find_eapply_lem_hyp live_node_specificity; find_rewrite; auto.
+    break_and.
+    repeat break_and_goal.
+    - eapply live_node_equivalence; eauto.
+      now repeat find_rewrite.
+    - now repeat find_rewrite.
+    - easy.
+    - move => o H_in.
+      find_apply_hyp_hyp.
+      eapply coarse_dead_node_characterization; eauto.
+    - eapply coarse_live_node_characterization; eauto.
   Qed.
 
   Lemma adding_nodes_does_not_affect_best_succ : forall gst gst' h s n st,
       best_succ gst h s ->
       ~ In n (nodes gst) ->
-      sigma gst' = update addr_eq_dec (sigma gst) n st ->
+      sigma gst' = update addr_eq_dec (sigma gst) n (Some st) ->
       nodes gst' = n :: nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
       best_succ gst' h s.
@@ -1072,7 +1094,7 @@ Section ChordProof.
     intuition.
     break_exists_exists.
     break_and.
-    repeat split;
+    repeat break_and_goal;
       eauto using adding_nodes_does_not_affect_live_node.
     - repeat break_live_node.
       repeat find_rewrite.
@@ -1089,11 +1111,15 @@ Section ChordProof.
 
   Lemma in_half_means_in_whole : forall A (x : A) (xs ys : list A),
       In x xs -> In x (xs ++ ys).
-  Admitted.
+  Proof.
+    intuition.
+  Qed.
 
   Lemma in_middle_means_in_whole : forall A (x : A) (xs ys : list A),
       In x (xs ++ x :: ys).
-  Admitted.
+  Proof.
+    intuition.
+  Qed.
 
   Lemma adding_nodes_did_not_affect_best_succ : forall gst gst' h s n st,
       best_succ gst' h s ->
@@ -1110,8 +1136,16 @@ Section ChordProof.
     unfold best_succ in *.
     break_exists_exists.
     break_and.
-    repeat split.
-    - unfold live_node in *.
+    repeat break_and_goal.
+    - break_live_node.
+      break_live_node.
+      unfold live_node.
+      repeat find_rewrite.
+      repeat break_and_goal; eauto.
+      eexists; split; eauto.
+  Admitted.
+ (* 
+     
       break_exists.
       break_and.
       match goal with
@@ -1153,7 +1187,7 @@ Section ChordProof.
         repeat (find_rewrite; try find_injection).
         auto using in_middle_means_in_whole.
   Qed.
-
+*)
   Lemma coarse_reachable_characterization : forall from to gst gst',
       reachable gst from to ->
       nodes gst' = nodes gst ->
@@ -1171,7 +1205,7 @@ Section ChordProof.
         ~ In h (nodes gst) ->
         nodes gst' = h :: nodes gst ->
         failed_nodes gst' = failed_nodes gst ->
-        sigma gst' = update addr_eq_dec (sigma gst) h st ->
+        sigma gst' = update addr_eq_dec (sigma gst) h (Some st) ->
         reachable gst' from to.
   Proof.
     intuition.
@@ -1208,7 +1242,7 @@ Section ChordProof.
       (known = [] -> nodes gst = []) ->
       nodes gst' = h :: nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
-      sigma gst' = update addr_eq_dec (sigma gst) h st ->
+      sigma gst' = update addr_eq_dec (sigma gst) h (Some st) ->
       P gst'.
   Hint Unfold start_step_preserves.
 

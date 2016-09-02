@@ -92,6 +92,15 @@ Section Dynamic.
        trace := trace gst
     |}.
 
+  Definition fail_node (gst : global_state) (h : addr) : global_state :=
+    {| nodes := nodes gst;
+       failed_nodes := h :: failed_nodes gst;
+       timeouts := timeouts gst;
+       sigma := sigma gst;
+       msgs := msgs gst;
+       trace := trace gst
+    |}.
+
   Definition apply_handler_result (h : addr) (r : res) (e : event) (gst : global_state) : global_state :=
     let '(st, ms, nts, cts) := r in
     let sends := map (send h) ms in
@@ -127,13 +136,7 @@ Section Dynamic.
       forall h gst gst',
         In h (nodes gst) ->
         ~ In h (failed_nodes gst) ->
-        gst' = {| nodes := nodes gst;
-                  failed_nodes := h :: (failed_nodes gst);
-                  timeouts := timeouts gst;
-                  sigma := sigma gst;
-                  msgs := msgs gst;
-                  trace := trace gst ++ [e_fail h]
-               |} ->
+        gst' = fail_node gst h ->
         failure_constraint gst' ->
         step_dynamic gst gst'
   | Timeout :
@@ -327,6 +330,7 @@ Section Dynamic.
           eauto.
       * eauto using join_churn, list_neq_cons.
     - right.
+      unfold fail_node.
       split.
       * intuition.
         break_exists.
