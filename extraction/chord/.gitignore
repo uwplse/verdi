@@ -2,3 +2,4 @@ coq/*.ml
 coq/*.mli
 _build
 chord.native
+chordshed.native

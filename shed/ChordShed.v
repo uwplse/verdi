@@ -16,12 +16,12 @@ Section ChordShed.
   Variable SUCC_LIST_LEN : nat.
   Variable hash : addr -> id.
 
-  Notation global_state := (global_state addr payload data timeout).
+  Definition net := (global_state addr payload data timeout).
   Notation start_handler := (start_handler SUCC_LIST_LEN hash).
   Notation recv_handler := (recv_handler SUCC_LIST_LEN hash).
   Notation timeout_handler := (timeout_handler hash).
   Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler timeout_constraint failure_constraint).
-  Notation operation := (operation addr payload timeout).
+  Definition operation := (operation addr payload timeout).
   Notation msg_eq_dec := (msg_eq_dec addr addr_eq_dec payload payload_eq_dec).
   Notation sigma := (sigma addr payload data timeout).
   Notation nodes := (nodes addr payload data timeout).
@@ -153,7 +153,7 @@ Section ChordShed.
       auto.
   Defined.
 
-  Definition has_state (gst : global_state) (h : addr) : Prop :=
+  Definition has_state (gst : net) (h : addr) : Prop :=
     exists st, sigma gst h = Some st.
 
   Definition has_state_dec :
@@ -190,7 +190,7 @@ Section ChordShed.
           congruence. }
   Admitted.
 
-  Definition all_nodes_live (gst : global_state) : Prop :=
+  Definition all_nodes_live (gst : net) : Prop :=
     Forall (live_node gst) (nodes gst).
     
   Definition all_nodes_live_dec :
@@ -202,12 +202,28 @@ Section ChordShed.
     exact: live_node_dec.
   Qed.
 
-  Definition all_nodes_live_netpred : netpred global_state :=
+  Definition run := run addr payload data timeout addr_eq_dec payload_eq_dec timeout_eq_dec start_handler recv_handler timeout_handler timeout_constraint timeout_constraint_dec.
+
+  Definition netpred : Type :=
+    netpred net.
+
+  Definition tracepred : Type :=
+    tracepred net operation run.
+
+  Definition all_nodes_live_netpred : netpred :=
     {| np_prop := all_nodes_live;
        np_dec := all_nodes_live_dec;
        np_name := "all_nodes_live" |}.
 
-  Notation run := (run addr payload data timeout addr_eq_dec payload_eq_dec timeout_eq_dec start_handler recv_handler timeout_handler timeout_constraint timeout_constraint_dec).
-  Definition chord_test := random_test global_state operation run.
+  Definition tp_const_true : tracepred :=
+    tp_const_true net operation run.
 
+  Definition test_state : Type :=
+    test_state net operation run.
+
+  Definition advance_test : test_state -> operation -> test_state :=
+    advance_test net operation run.
+
+  Definition mk_init_state : net -> list netpred -> list tracepred -> test_state :=
+    make_initial_state net operation run.
 End ChordShed.

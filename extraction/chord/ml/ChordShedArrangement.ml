@@ -38,7 +38,7 @@ let show_timeout = function
   | Request (a, p) -> sprintf "Request %d %s" a (show_payload p)
 
 (* just deliver a message *)
-let next gst n =
+let plan_deliver_only gst _ n =
   let n' = n mod (List.length (msgs gst)) in
   Op_deliver (n', (List.nth (msgs gst) n'))
 
@@ -80,13 +80,46 @@ let init =
     ; msgs = []
     ; trace = [] }
 
+let implode l =
+  String.init (List.length l) (List.nth l)
+
 module ChordArrangement = struct
-  type net = (addr, payload, data, timeout) global_state
-  type operation = (addr, payload, timeout) ExtractedChordShed.operation
-  let run = run 
-  let next = next
-  let inits = [("hardcoded", init)]
-  let netpreds = [all_nodes_live_netpred, np_const_true]
+  type net = chord_net
+  type operation = chord_operation
+  type netpred = chord_netpred
+  type tracepred = chord_tracepred
+  let show_net n = ""
+  let show_operation o = ""
+  let inits =
+    [("hardcoded", init)]
+  let np_name np = implode np.np_name
+  let tp_name tp = implode tp.tp_name
+  let netpreds =
+    [all_nodes_live_netpred]
+  let tracepreds =
+    [const_true_tracepred]
+  let plans =
+    [("deliver_only", plan_deliver_only)]
+  type test_state = chord_test_state
+  let ts_latest ts = (ts.ts_latest)
+  let ts_trace ts = (ts.ts_trace)
+  let ts_netpreds ts = (ts.ts_netpreds)
+  let ts_tracepreds ts = (ts.ts_tracepreds)
+  let mk_init_state = chord_mk_init_state
+  let show_state ts = ""
+  let advance_test ts op = chord_advance_test ts op
+end
+(*
+  let inits =
+    [("hardcoded", init)]
+  let tracepreds =
+    [tp_const_true run]
+  let run = run
+  let plans =
+    [{ np_name = "deliver_only",
+       np_dec = plan_deliver_only}]
+  let netpreds list =
+    [ExtractedChordShed.all_nodes_live_netpred]
   let show_operation = function
   | Op_start (a, ks) -> 
       sprintf "op_start %d %s" a (show_addr_list ks)
@@ -98,3 +131,4 @@ module ChordArrangement = struct
       sprintf "op_deliver %d %d %d %s" n src dst (show_payload p)
   let show_net gst = "there should be a network here."
 end
+ *)

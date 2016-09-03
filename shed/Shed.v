@@ -2,8 +2,6 @@ Require Import List.
 Import ListNotations.
 Require Import PeanoNat.
 Require Import String.
-Require Import ExtrOcamlString.
-Require Import ExtrOcamlBasic.
 
 Require Import Coqlib.
 Require Import InfSeqExt.infseq.
@@ -71,22 +69,6 @@ Section Shed.
                                  np_dec := const_true_net_dec;
                                  np_name := "np_const_true" |}.
 
-  (* Trace predicates are properties of infinite sequences, so we
-     can't actually test them. Instead we define a sort of decidable
-     version of a trace predicate that maps a finite list of
-     occurrences into the tp_result type. *)
-  Inductive tp_result : Set :=
-  | tp_True   (* I know for sure that it's true *)
-  | tp_False  (* I know for sure that it's false *)
-  | tp_Maybe. (* I need more information. *)
-
-  Definition tp_result_eq_dec :
-    forall (p q : tp_result),
-      {p = q} + {p <> q}.
-  Proof.
-    decide equality.
-  Defined.
-
   (* prefix l s holds when s starts with the elements of l. *)
   Inductive prefix {A} : list A -> infseq A -> Prop :=
   | prefix_nil : forall s,
@@ -95,8 +77,10 @@ Section Shed.
       prefix l s ->
       prefix (x :: l) (Cons x s).
 
-  Record occurrence := { occ_net : net;
-                         occ_op : operation }.
+  Definition occurrence : Type := net * operation.
+  Definition occ_net : occurrence -> net := fst.
+  Definition occ_op : occurrence -> operation := snd.
+
   Definition occ_step (o o' : occurrence) : Prop :=
     run (occ_net o) (occ_op o) = Some (occ_net o').
 
@@ -116,42 +100,42 @@ Section Shed.
       execution (Cons o' s) ->
       execution (Cons o (Cons o' s)).
 
-  Definition tp_True_correct (tp_prop : infseq occurrence -> Prop) (tp_dec : list occurrence -> tp_result) (l : list occurrence) : Prop :=
-    tp_dec l = tp_True ->
+  Definition tp_true_correct (tp_prop : infseq occurrence -> Prop) (tp_dec : list occurrence -> option bool) (l : list occurrence) : Prop :=
+    tp_dec l = Some true ->
     forall s,
       execution s ->
       prefix l s ->
       tp_prop s.
 
-  Definition tp_False_correct (tp_prop : infseq occurrence -> Prop) (tp_dec : list occurrence -> tp_result) (l : list occurrence) : Prop :=
-    tp_dec l = tp_False ->
+  Definition tp_false_correct (tp_prop : infseq occurrence -> Prop) (tp_dec : list occurrence -> option bool) (l : list occurrence) : Prop :=
+    tp_dec l = Some false ->
     forall s,
       execution s ->
       prefix l s ->
       ~ tp_prop s.
 
-  Definition tp_Maybe_correct (tp_prop : infseq occurrence -> Prop) (tp_dec : list occurrence -> tp_result) (l : list occurrence) : Prop :=
-    tp_dec l = tp_Maybe ->
+  Definition tp_None_correct (tp_prop : infseq occurrence -> Prop) (tp_dec : list occurrence -> option bool) (l : list occurrence) : Prop :=
+    tp_dec l = None ->
     exists s s',
       execution s /\ prefix l s /\ tp_prop s /\
       execution s' /\ prefix l s /\ ~ tp_prop s'.
 
   (* What it means for a tp_dec to do something *)
-  Definition tracepred_correct (tp_prop : infseq occurrence -> Prop) (tp_dec : list occurrence -> tp_result) : Prop :=
+  Definition tracepred_correct (tp_prop : infseq occurrence -> Prop) (tp_dec : list occurrence -> option bool) : Prop :=
     forall l,
-      tp_True_correct tp_prop tp_dec l \/
-      tp_False_correct tp_prop tp_dec l \/
-      tp_Maybe_correct tp_prop tp_dec l.
+      tp_true_correct tp_prop tp_dec l \/
+      tp_false_correct tp_prop tp_dec l \/
+      tp_None_correct tp_prop tp_dec l.
 
   (* A tracepred is a predicate on infinite executions with a
      decidable analogue defined on finite executions and a name. *)
   Record tracepred := { tp_prop : infseq occurrence -> Prop;
-                        tp_dec : list occurrence -> tp_result;
+                        tp_dec : list occurrence -> option bool;
                         tp_correct : tracepred_correct tp_prop tp_dec;
                         tp_name : string }.
 
-  Definition const_true_tp_dec (t : list occurrence) : tp_result :=
-    tp_True.
+  Definition const_true_tp_dec (t : list occurrence) : option bool :=
+    Some true.
 
   Definition const_true_tp_dec_correct :
     tracepred_correct const_true const_true_tp_dec.
@@ -165,11 +149,12 @@ Section Shed.
                                  tp_correct := const_true_tp_dec_correct;
                                  tp_name := "tp_const_true" |}.
 
-  Definition is_tp_false (p : tp_result) : bool :=
-    if tp_result_eq_dec p tp_False
-    then true
-    else false.
-  
+  Definition is_tp_false (p : option bool) : bool :=
+    match p with
+    | Some b => eqb b false
+    | None => false
+    end.
+
   Definition any_tracepreds_false (preds : list tracepred) (l : list occurrence) : bool :=
     existsb is_tp_false (map (fun p => tp_dec p l) preds).
 
@@ -181,12 +166,11 @@ Section Shed.
                          (* latest state, since occurrences have a sort of fencepost issue *)
                          ts_latest : net;
                          ts_netpreds : list (netpred * list bool); 
-                         ts_tracepreds : list (tracepred * list tp_result);
+                         ts_tracepreds : list (tracepred * list (option bool));
                          ts_error : option string }.
 
   Definition extend_by (st : test_state) (gst : net) (op : operation) : test_state :=
-    {| ts_trace := ts_trace st ++ [{| occ_net := ts_latest st;
-                                      occ_op := op |}];
+    {| ts_trace := ts_trace st ++ [(ts_latest st, op)];
        ts_latest := gst;
        ts_netpreds := ts_netpreds st;
        ts_tracepreds := ts_tracepreds st;
@@ -205,11 +189,11 @@ Section Shed.
   Definition update_netpreds_results (st : test_state) : list (netpred * list bool) :=
     map (update_netpred_result st) (ts_netpreds st).
 
-  Definition update_tracepred_result (st : test_state) (tpres : tracepred * list tp_result) : tracepred * list tp_result :=
+  Definition update_tracepred_result (st : test_state) (tpres : tracepred * list (option bool)) : tracepred * list (option bool) :=
     let (tp, results) := tpres in
     (tp, (tp_dec tp (ts_trace st)) :: results).
 
-  Definition update_tracepreds_results (st : test_state) : list (tracepred * list tp_result) :=
+  Definition update_tracepreds_results (st : test_state) : list (tracepred * list (option bool)) :=
     map (update_tracepred_result st) (ts_tracepreds st).
 
   Definition add_checks_for_latest (st : test_state) : test_state :=
@@ -226,15 +210,10 @@ Section Shed.
        ts_tracepreds := ts_tracepreds st;
        ts_error := Some s |}.
 
-  Fixpoint random_test_body (st : test_state) (next : net -> nat -> operation) (n : nat) : test_state :=
-    let st_checked := add_checks_for_latest st in
-    match n with
-    | O => st
-    | S n' =>
-      match try_step_test st_checked (next (ts_latest st_checked) n) with
-      | Some st' => random_test_body st' next n'
-      | None => set_error st "planned an invalid operation"
-      end
+  Fixpoint advance_test (st : test_state) (op : operation) : test_state :=
+    match try_step_test st op with
+    | Some st' => add_checks_for_latest st'
+    | None => set_error st "planned an invalid operation"
     end.
 
   Definition pair_to_nil {A B: Type} (x : A) : A * (list B) :=
@@ -246,9 +225,4 @@ Section Shed.
        ts_netpreds := map pair_to_nil netpreds;
        ts_tracepreds := map pair_to_nil tracepreds;
        ts_error := None |}.
-
-  Definition random_test (netpreds : list netpred) (tracepreds : list tracepred) (init : net) (next : net -> nat -> operation) (n : nat) : test_state :=
-    random_test_body (make_initial_state init netpreds tracepreds) next n.
 End Shed.
-
-Extraction "extraction/lib/ExtractedShed.ml" random_test np_const_true tp_const_true netpred.
