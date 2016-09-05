@@ -78,7 +78,7 @@ Section Dynamic.
     {| nodes := []; failed_nodes := []; timeouts := nil_timeouts; sigma := nil_state; msgs := []; trace := [] |}.
 
   Definition clear_timeouts (ts : list timeout) (cts : list timeout) : list timeout :=
-    remove_all timeout_eq_dec ts cts.
+    remove_all timeout_eq_dec cts ts.
 
   Notation "f [ a '=>' d ]" := (update addr_eq_dec f a (Some d)) (at level 0).
   Notation "f [ a '==>' d ]" := (update addr_eq_dec f a d) (at level 0).

@@ -166,15 +166,13 @@ Section Shed.
                          (* latest state, since occurrences have a sort of fencepost issue *)
                          ts_latest : net;
                          ts_netpreds : list (netpred * list bool); 
-                         ts_tracepreds : list (tracepred * list (option bool));
-                         ts_error : option string }.
+                         ts_tracepreds : list (tracepred * list (option bool)) }.
 
   Definition extend_by (st : test_state) (gst : net) (op : operation) : test_state :=
     {| ts_trace := ts_trace st ++ [(ts_latest st, op)];
        ts_latest := gst;
        ts_netpreds := ts_netpreds st;
-       ts_tracepreds := ts_tracepreds st;
-       ts_error := ts_error st |}.
+       ts_tracepreds := ts_tracepreds st |}.
 
   Definition try_step_test (st : test_state) (op : operation) : option test_state :=
     match run (ts_latest st) op with
@@ -200,20 +198,12 @@ Section Shed.
     {| ts_trace := ts_trace st;
        ts_latest := ts_latest st;
        ts_netpreds := update_netpreds_results st;
-       ts_tracepreds := update_tracepreds_results st;
-       ts_error := ts_error st |}.
+       ts_tracepreds := update_tracepreds_results st |}.
 
-  Definition set_error (st : test_state) s :=
-    {| ts_trace := ts_trace st;
-       ts_latest := ts_latest st;
-       ts_netpreds := ts_netpreds st;
-       ts_tracepreds := ts_tracepreds st;
-       ts_error := Some s |}.
-
-  Fixpoint advance_test (st : test_state) (op : operation) : test_state :=
+  Fixpoint advance_test (st : test_state) (op : operation) : option test_state :=
     match try_step_test st op with
-    | Some st' => add_checks_for_latest st'
-    | None => set_error st "planned an invalid operation"
+    | Some st' => Some (add_checks_for_latest st')
+    | None => None
     end.
 
   Definition pair_to_nil {A B: Type} (x : A) : A * (list B) :=
@@ -223,6 +213,5 @@ Section Shed.
     {| ts_trace := [];
        ts_latest := init;
        ts_netpreds := map pair_to_nil netpreds;
-       ts_tracepreds := map pair_to_nil tracepreds;
-       ts_error := None |}.
+       ts_tracepreds := map pair_to_nil tracepreds |}.
 End Shed.

@@ -1,9 +1,16 @@
 Require Import List.
+Require Import PeanoNat.
 Import ListNotations.
 
 Require Import DynamicNet.
 Require Import Shed.
 Require Import StructTact.Update.
+
+Require Import StructTact.StructTactics.
+Require Import mathcomp.ssreflect.ssreflect.
+Set Bullet Behavior "Strict Subproofs".
+Close Scope boolean_if_scope.
+Open Scope general_if_scope.
 
 Section DynamicShed.
   Variable addr payload data timeout : Type.
@@ -40,7 +47,7 @@ Section DynamicShed.
   Inductive operation :=
   | op_start : addr -> list addr -> operation
   | op_fail : addr -> operation
-  | op_timeout : addr * timeout -> operation
+  | op_timeout : addr -> timeout -> operation
   (* the nat here is the index of the msg in (msgs gst) *)
   | op_deliver : nat -> msg -> operation.
 
@@ -105,8 +112,11 @@ Section DynamicShed.
 
   Definition run_deliver (gst : global_state) (n : nat) (m : msg) : option global_state :=
     match selectnth n (msgs gst) with
-    | Some (xs, (dst, (src, p)), ys) =>
-      if msg_eq_dec (dst, (src, p)) m
+    | Some (xs, m', ys) =>
+      let src := fst m' in
+      let dst := fst (snd m') in
+      let p := snd (snd m') in
+      if msg_eq_dec m m'
       then if exists_and_not_failed gst dst
            then match sigma gst dst with
                 | Some st => Some (run_recv_handler gst (xs ++ ys) src dst st p)
@@ -121,14 +131,70 @@ Section DynamicShed.
     match op with
     | op_start h knowns => run_start gst h knowns
     | op_fail h => run_fail gst h
-    | op_timeout (h, t) => run_timeout gst h t
+    | op_timeout h t => run_timeout gst h t
     | op_deliver n m => run_deliver gst n m
     end.
 
+  Lemma exists_and_not_failed_characterization :
+    forall gst h,
+      (exists_and_not_failed gst h = true ->
+       In h (nodes gst) /\ ~ In h (failed_nodes gst)) /\
+      (In h (nodes gst) -> ~ In h (failed_nodes gst) ->
+      exists_and_not_failed gst h = true).
+  Proof.
+    unfold exists_and_not_failed.
+    move => gst h.
+    split;
+      intuition;
+      repeat break_match;
+      easy.
+  Qed.
+ 
+
+  Lemma run_timeout_valid :
+    forall gst h t gst',
+      run_timeout gst h t = Some gst' ->
+      step_dynamic gst gst'.
+  Proof.
+    (* In h nodes gst
+        not failed
+        sigma valid
+        t in timeouts
+        timeout handler response with x
+        gst' = ahr h x e_t etc *)
+    unfold run_timeout, run_timeout_handler.
+    move => gst h t gst' H_run.
+    repeat break_match => //.
+    find_apply_lem_hyp exists_and_not_failed_characterization; break_and.
+    find_injection.
+    eapply Timeout; eauto.
+  Qed.
+
+  Lemma run_deliver_valid :
+    forall gst n m gst',
+      run_deliver gst n m = Some gst' ->
+      step_dynamic gst gst'.
+  Proof.
+    unfold run_deliver, run_recv_handler.
+    move => gst n m gst' H_run.
+    repeat break_match => //.
+    find_apply_lem_hyp exists_and_not_failed_characterization; break_and.
+    eapply Deliver_node; eauto with *.
+  Admitted.
+ 
   Lemma run_valid :
     forall gst op gst',
       run gst op = Some gst' ->
       step_dynamic gst gst'.
+  Proof.
+    move => gst op gst' H_run.
+    destruct op.
+    - admit.
+    - admit.
+    - move: H_run.
+      exact: run_timeout_valid.
+    - move: H_run.
+      exact: run_deliver_valid.
   Admitted.
 
   Lemma run_complete :
@@ -145,7 +211,7 @@ Section DynamicShed.
     map op_fail (filter (exists_and_not_failed gst) (nodes gst)).
 
   Definition possible_timeouts_at (gst : global_state) (h : addr) : list operation :=
-    map (fun t => op_timeout (h, t)) (timeouts gst h).
+    map (fun t => op_timeout h t) (timeouts gst h).
 
   Definition possible_timeouts (gst : global_state) : list operation :=
     concat (map (possible_timeouts_at gst) (filter (exists_and_not_failed gst) (nodes gst))).
@@ -153,4 +219,92 @@ Section DynamicShed.
   Definition possible_delivers (gst : global_state) : list operation :=
     [].
 
+  Definition picki {A : Type} (rand : nat -> nat) (l : list A) : option (nat * A) :=
+    let i := rand (length l) in
+    match nth_error l i with
+    | Some a => Some (i, a)
+    | None => None
+    end.
+
+  Definition pick {A : Type} (rand : nat -> nat) (l : list A) : option A :=
+    match picki rand l with
+    | Some (i, a) => Some a
+    | None => None
+    end.
+
+  Definition plan_deliver (rand : nat -> nat) (gst : global_state) : option operation :=
+    match picki rand (msgs gst) with
+    | Some (i, m) => Some (op_deliver i m)
+    | None => None
+    end.
+
+  Definition has_timeouts (gst : global_state) (h : addr) : bool :=
+    match timeouts gst h with
+    | nil => false
+    | _ => true
+    end.
+
+  Definition can_fire (gst : global_state) (h : addr) (t : timeout) : bool :=
+    if timeout_constraint_dec gst h t
+    then true
+    else false.
+
+  Lemma can_fire_implies_tc :
+    forall gst h t,
+      can_fire gst h t = true ->
+      timeout_constraint gst h t.
+  Proof.
+    intuition.
+    unfold can_fire in *.
+    destruct (timeout_constraint_dec gst h t); easy.
+  Qed.
+
+  Definition plan_timeout (rand : nat -> nat) (gst : global_state) : option operation :=
+    let hosts := filter (has_timeouts gst) (nodes gst) in
+    match pick rand hosts with
+    | Some h =>
+      let ts := filter (can_fire gst h) (timeouts gst h) in
+      match pick rand ts with
+      | Some t => Some (op_timeout h t)
+      | None => None
+      end
+    | None => None
+    end.
+
+  Fixpoint mk_nats (n : nat) : list nat :=
+    match n with
+    | 0 => [0]
+    | S n' => (mk_nats n') ++ [n]
+    end.
+  
+  Definition enum {A: Type} (l : list A) : list (nat * A) :=
+    combine (mk_nats (length l)) l.
+    
+  Definition plan_deliver_or_timeout (gst : global_state) (steps : nat) (rand : nat -> nat) : option operation :=
+    let hosts := filter (has_timeouts gst) (nodes gst) in
+    let ts := concat (map (fun h =>
+                             map (fun t => (h, t))
+                                 (filter (can_fire gst h) (timeouts gst h)))
+                          hosts) in
+    let timeout_ops := map (fun p => op_timeout (fst p) (snd p)) ts in
+    let sendops := map (fun p => op_deliver (fst p) (snd p)) (enum (msgs gst)) in
+    if Nat.eq_dec (rand 10) 0
+    then match pick rand timeout_ops with
+         | Some op => Some op
+         | None => pick rand sendops
+         end
+    else match pick rand sendops with
+         | Some op => Some op
+         | None => pick rand timeout_ops
+         end.
+ (* 
+    else match pick rand sendops
+    then match plan_timeout rand gst with
+         | Some op => Some op
+         | None => plan_deliver rand gst
+         end
+    else match plan_deliver rand gst with
+         | Some op => Some op
+         | None => plan_timeout rand gst
+         end.*)
 End DynamicShed.

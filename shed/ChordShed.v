@@ -9,9 +9,11 @@ Require Import DynamicNet.
 Require Import DynamicShed.
 Require Import Shed.
 
-Section ChordShed.
+Set Bullet Behavior "Strict Subproofs".
 
-  Set Bullet Behavior "Strict Subproofs".
+
+
+Section ChordShed.
 
   Variable SUCC_LIST_LEN : nat.
   Variable hash : addr -> id.
@@ -22,7 +24,11 @@ Section ChordShed.
   Notation timeout_handler := (timeout_handler hash).
   Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler timeout_constraint failure_constraint).
   Definition operation := (operation addr payload timeout).
+  Notation op_deliver := (op_deliver addr payload timeout).
+  Notation op_timeout := (op_timeout addr payload timeout).
   Notation msg_eq_dec := (msg_eq_dec addr addr_eq_dec payload payload_eq_dec).
+  Notation msgs := (msgs addr payload data timeout).
+  Notation timeouts := (timeouts addr payload data timeout).
   Notation sigma := (sigma addr payload data timeout).
   Notation nodes := (nodes addr payload data timeout).
   Notation failed_nodes := (failed_nodes addr payload data timeout).
@@ -95,7 +101,7 @@ Section ChordShed.
     - left.
       apply KeepaliveTick_unconstrained.
     - destruct (In_dec addr_eq_dec a (failed_nodes gst)).
-      * assert ({(forall m, request_response_pair p m -> ~ In (a, (h, m)) (msgs addr payload data timeout gst))} + {~ (forall m, request_response_pair p m -> ~ In (a, (h, m)) (msgs addr payload data timeout gst))}) by apply constraint_dec_helper.
+      * assert ({(forall m, request_response_pair p m -> ~ In (a, (h, m)) (msgs gst))} + {~ (forall m, request_response_pair p m -> ~ In (a, (h, m)) (msgs gst))}) by apply constraint_dec_helper.
         destruct H.
         + left.
           eapply Request_needs_dst_dead_and_no_msgs; eauto.
@@ -221,9 +227,13 @@ Section ChordShed.
   Definition test_state : Type :=
     test_state net operation run.
 
-  Definition advance_test : test_state -> operation -> test_state :=
+  Definition advance_test : test_state -> operation -> option test_state :=
     advance_test net operation run.
 
   Definition mk_init_state : net -> list netpred -> list tracepred -> test_state :=
     make_initial_state net operation run.
+
+  Definition plan_deliver_or_timeout : net -> nat -> (nat -> nat) -> option operation :=
+    plan_deliver_or_timeout addr payload data timeout timeout_constraint timeout_constraint_dec.
+
 End ChordShed.
