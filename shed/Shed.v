@@ -90,11 +90,11 @@ Section Shed.
       valid_operation (occ_net o) (occ_op o) ->
       execution_prefix [o]
   | ep_cons : forall l o o',
-      execution_prefix (o' :: l) -> 
+      execution_prefix (o' :: l) ->
       occ_step o o' ->
       execution_prefix (o :: o' :: l).
 
-  CoInductive execution : infseq occurrence -> Prop := 
+  CoInductive execution : infseq occurrence -> Prop :=
     exec_Cons : forall o o' s,
       occ_step o o' ->
       execution (Cons o' s) ->
@@ -162,10 +162,10 @@ Section Shed.
     existsb (Bool.eqb false) (map (fun p => proj_sumbool (np_dec p gst)) preds).
 
   Record test_state := { (* trace of program thus far *)
-                         ts_trace : list occurrence; 
+                         ts_trace : list occurrence;
                          (* latest state, since occurrences have a sort of fencepost issue *)
                          ts_latest : net;
-                         ts_netpreds : list (netpred * list bool); 
+                         ts_netpreds : list (netpred * list bool);
                          ts_tracepreds : list (tracepred * list (option bool)) }.
 
   Definition extend_by (st : test_state) (gst : net) (op : operation) : test_state :=

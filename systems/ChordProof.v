@@ -295,7 +295,7 @@ Section ChordProof.
     end.
     intuition.
   Qed.
-      
+
   Definition live_node_bool (gst : global_state) (h : addr) :=
     match sigma gst h with
       | Some st => if joined st
@@ -1144,8 +1144,8 @@ Section ChordProof.
       repeat break_and_goal; eauto.
       eexists; split; eauto.
   Admitted.
- (* 
-     
+ (*
+
       break_exists.
       break_and.
       match goal with

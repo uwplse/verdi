@@ -11,8 +11,6 @@ Require Import Shed.
 
 Set Bullet Behavior "Strict Subproofs".
 
-
-
 Section ChordShed.
 
   Variable SUCC_LIST_LEN : nat.
@@ -198,7 +196,7 @@ Section ChordShed.
 
   Definition all_nodes_live (gst : net) : Prop :=
     Forall (live_node gst) (nodes gst).
-    
+
   Definition all_nodes_live_dec :
     forall gst,
       {all_nodes_live gst} + {~ all_nodes_live gst}.

@@ -41,39 +41,41 @@ module Shim (A: SHED_ARRANGEMENT) = struct
         ; tracepreds : A.tracepred list
         ; plan : A.net -> int -> (int -> int) -> A.operation option
         ; init : A.net
-        ; depth : int }
+        ; depth : int
+        ; show_states : bool }
 
-    let print_occ occ =
-      print_endline (A.show_operation (snd occ));
-      print_endline (A.show_net (fst occ))
+    let print_occ show_states occ =
+      if show_states
+      then print_endline (A.show_net (fst occ));
+      print_endline (A.show_operation (snd occ))
 
-    let print_np_res i (np, l) = 
+    let print_np_res i (np, l) =
       print_endline (A.np_name np ^ ": " ^ string_of_bool (nth l i))
 
     let show_tp_result = function
       | Some true -> "true"
       | Some false -> "false"
       | None -> "maybe"
-      
+
     let print_tp_res i (tp, l) =
       print_endline (A.tp_name tp ^ ": " ^ show_tp_result (nth l i))
 
-    let print_step res i occ =
+    let print_step show_states res i occ =
       printf "STEP %d\n" (i + 1);
-      print_occ occ;
+      print_occ show_states occ;
       iter (print_np_res i) (A.ts_netpreds res);
       iter (print_tp_res i) (A.ts_tracepreds res);
       print_newline ()
 
-    let print_res res =
-      iteri (print_step res) (A.ts_trace res);
+    let print_res show_states res =
+      iteri (print_step show_states res) (A.ts_trace res);
       print_endline "";
       print_endline "FINAL STATE";
       print_endline (A.show_net (A.ts_latest res))
 
     let find_np_by_name s =
       find (fun np -> s = A.np_name np) A.netpreds
-             
+
     let find_tp_by_name s =
       find (fun tp -> s = A.tp_name tp) A.tracepreds
 
@@ -104,38 +106,41 @@ module Shim (A: SHED_ARRANGEMENT) = struct
     let run_test cfg =
       let st = A.mk_init_state cfg.init cfg.netpreds cfg.tracepreds in
       match test_loop st cfg.plan cfg.depth with
-      | Ok res -> print_res res
+      | Ok res -> print_res cfg.show_states res
       | Failed (res, op) ->
          print_endline "!!! invalid operation !!!";
          print_endline (A.show_operation op);
          print_newline ();
-         print_res res
+         print_res cfg.show_states res
       | Stalled res ->
          print_endline "!!! couldn't plan anything !!!";
          print_newline ();
-         print_res res
+         print_res cfg.show_states res
 
-    let main = 
+    let main =
       Random.self_init ();
       let nps = ref [] in
       let tps = ref [] in
       let n = ref 50 in
       let init = ref (fst (hd A.inits)) in
       let plan = ref (fst (hd A.plans))  in
+      let show_states = ref false in
       let add_np s = nps := find_np_by_name s :: !nps in
       let add_tp s = tps := find_tp_by_name s :: !tps in
       let opts =
-          [ ("-np", Arg.String add_np, "network predicate to check")
-          ; ("-tp", Arg.String add_tp, "network predicate to check")
-          ; ("-plan", Arg.Set_string plan, "plan to use")
-          ; ("-depth", Arg.Set_int n, "number of steps to take")
-          ; ("-init", Arg.Set_string init, "name of initial state") ] in
-      Arg.parse opts (fun _ -> ()) "todo";
+          [ ("-np", Arg.String add_np, "Network predicate to check")
+          ; ("-tp", Arg.String add_tp, "Network predicate to check")
+          ; ("-plan", Arg.Set_string plan, "Plan to use")
+          ; ("-depth", Arg.Set_int n, "Number of steps to take")
+          ; ("-init", Arg.Set_string init, "Name of initial state")
+          ; ("-v", Arg.Set show_states, "Show intermediate states") ] in
+      Arg.parse opts (fun _ -> ()) "";
       Printf.printf "running plan %s\n" !plan;
       run_test { netpreds = !nps
                ; tracepreds = !tps
-               ; init = assoc !init A.inits 
+               ; init = assoc !init A.inits
                ; plan = assoc !plan A.plans
-               ; depth = !n }
+               ; depth = !n
+               ; show_states = !show_states }
 end
 

@@ -149,7 +149,6 @@ Section DynamicShed.
       repeat break_match;
       easy.
   Qed.
- 
 
   Lemma run_timeout_valid :
     forall gst h t gst',
@@ -181,7 +180,7 @@ Section DynamicShed.
     find_apply_lem_hyp exists_and_not_failed_characterization; break_and.
     eapply Deliver_node; eauto with *.
   Admitted.
- 
+
   Lemma run_valid :
     forall gst op gst',
       run gst op = Some gst' ->
@@ -276,10 +275,10 @@ Section DynamicShed.
     | 0 => [0]
     | S n' => (mk_nats n') ++ [n]
     end.
-  
+
   Definition enum {A: Type} (l : list A) : list (nat * A) :=
     combine (mk_nats (length l)) l.
-    
+
   Definition plan_deliver_or_timeout (gst : global_state) (steps : nat) (rand : nat -> nat) : option operation :=
     let hosts := filter (has_timeouts gst) (nodes gst) in
     let ts := concat (map (fun h =>
@@ -297,7 +296,7 @@ Section DynamicShed.
          | Some op => Some op
          | None => pick rand timeout_ops
          end.
- (* 
+ (*
     else match pick rand sendops
     then match plan_timeout rand gst with
          | Some op => Some op

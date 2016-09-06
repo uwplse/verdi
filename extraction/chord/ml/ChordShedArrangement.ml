@@ -56,14 +56,7 @@ let pick_timeout gst r =
 let pick_msg gst r =
   let (i, m) = picki r (msgs gst) in
   Op_deliver (i, m)
-(*
-let plan_deliver_or_timeout gst _ r =
-  if List.length (msgs gst) == 0
-  then pick_timeout gst r
-  else if r 10 == 0
-  then pick_timeout gst r
-  else pick_msg gst r
- *)
+
 let init_nodes =
     [10;30;50;70;90]
 
@@ -82,6 +75,7 @@ let succs_for_init = function
   | 70 -> [90;10]
   | 90 -> [10;30]
   | _ -> []
+
 let mp = make_pointer (fun a -> a mod 256)
 let init_sigma h =
     if List.mem h init_nodes
@@ -114,14 +108,33 @@ let implode l =
 let show_field n i (name, value) =
   match i with
   | 0 -> sprintf "{| %s := %s;" name value
-  | i -> if i < n
+  | i -> if i < n - 1
          then sprintf "   %s := %s;" name value
          else sprintf "   %s := %s; |}" name value
 
 let show_record l =
   String.concat "\n" (List.mapi (show_field (List.length l)) l)
 
-let show_st_cur_request st = "TODO show_st_cur_request"
+let show_query = function
+  | Rectify p -> sprintf "Rectify %s" (show_pointer p)
+  | Stabilize -> "Stabilize"
+  | Stabilize2 p -> sprintf "Stabilize2 %s" (show_pointer p)
+  | Join p -> sprintf "Join %s" (show_pointer p)
+  | Join2 p -> sprintf "Join2 %s" (show_pointer p)
+
+let show_pair f g t =
+  let (a, b) = t in
+  sprintf "(%s, %s)" (f a) (g b)
+
+let show_delayed_queries =
+  show_list (show_pair string_of_int show_payload)
+
+let show_cur_request t =
+  let ((p, q), msg) = t in
+  sprintf "(%s, %s, %s)" (show_pointer p) (show_query q) (show_payload msg)
+
+let show_st_cur_request =
+  map_default show_cur_request "None"
 
 let show_state st =
   show_record [ ("pred", show_opt_pointer st.pred)
@@ -129,7 +142,8 @@ let show_state st =
               ; ("known", show_pointer st.known)
               ; ("joined", string_of_bool st.joined)
               ; ("rectify_with", show_opt_pointer st.rectify_with)
-              ; ("cur_request", show_st_cur_request st)]
+              ; ("cur_request", show_st_cur_request st.cur_request)
+              ; ("delayed_queries", show_delayed_queries st.delayed_queries)]
 
 let show_state_for n h =
   match n.sigma h with
@@ -150,7 +164,7 @@ let show_node_info n h =
                 ; "TIMEOUTS AT " ^ header
                 ; show_list show_timeout (timeouts n h) ]
 
-let show_msg (src, (dst, p)) = 
+let show_msg (src, (dst, p)) =
   sprintf "%d -> %d: %s" src dst (show_payload p)
 
 let show_net n =
@@ -159,9 +173,9 @@ let show_net n =
   String.concat "\n" (node_strs @ msgs_strs)
 
 let show_operation = function
-  | Op_start (a, ks) -> 
+  | Op_start (a, ks) ->
       sprintf "op_start %d %s" a (show_addr_list ks)
-  | Op_fail a -> 
+  | Op_fail a ->
       sprintf "op_fail %d" a
   | Op_timeout (a, t) ->
       sprintf "op_timeout %d %s" a (show_timeout t)
@@ -193,26 +207,3 @@ module ChordArrangement = struct
   let mk_init_state = chord_mk_init_state
   let advance_test ts op = chord_advance_test ts op
 end
-(*
-  let inits =
-    [("hardcoded", init)]
-  let tracepreds =
-    [tp_const_true run]
-  let run = run
-  let plans =
-    [{ np_name = "deliver_only",
-       np_dec = plan_deliver_only}]
-  let netpreds list =
-    [ExtractedChordShed.all_nodes_live_netpred]
-  let show_operation = function
-  | Op_start (a, ks) -> 
-      sprintf "op_start %d %s" a (show_addr_list ks)
-  | Op_fail a -> 
-      sprintf "op_fail %d" a
-  | Op_timeout (a, t) ->
-      sprintf "op_timeout %d %s" a (show_timeout t)
-  | Op_deliver (n, (src, (dst, p))) ->
-      sprintf "op_deliver %d %d %d %s" n src dst (show_payload p)
-  let show_net gst = "there should be a network here."
-end
- *)
