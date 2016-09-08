@@ -40,9 +40,9 @@ Section DynamicShed.
   Variable timeout_constraint : global_state -> addr -> timeout -> Prop.
   Variable timeout_constraint_dec : forall gst h t,
       {timeout_constraint gst h t} + {~ timeout_constraint gst h t}.
-  Variable failure_constraint : global_state -> Prop.
-  Variable failure_constraint_dec : forall gst,
-      {failure_constraint gst} + {~ failure_constraint gst}.
+  Variable failure_constraint : global_state -> addr -> global_state -> Prop.
+  Variable failure_constraint_dec : forall gst h gst',
+      {failure_constraint gst h gst'} + {~ failure_constraint gst h gst'}.
   Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler timeout_constraint failure_constraint).
   Inductive operation :=
   | op_start : addr -> list addr -> operation

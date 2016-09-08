@@ -70,7 +70,10 @@ Section Dynamic.
     }.
 
   Variable timeout_constraint : global_state -> addr -> timeout -> Prop.
-  Variable failure_constraint : global_state -> Prop.
+  (* failure_constraint is parametrized over an initial state, the
+     address of the failing node, and what the state would be after
+     the failure. *)
+  Variable failure_constraint : global_state -> addr -> global_state -> Prop.
 
   Definition nil_state : addr -> option data := fun _ => None.
   Definition nil_timeouts : addr -> list timeout := fun _ => [].
@@ -137,7 +140,7 @@ Section Dynamic.
         In h (nodes gst) ->
         ~ In h (failed_nodes gst) ->
         gst' = fail_node gst h ->
-        failure_constraint gst' ->
+        failure_constraint gst h gst' ->
         step_dynamic gst gst'
   | Timeout :
       forall gst gst' h st t st' ms newts clearedts,

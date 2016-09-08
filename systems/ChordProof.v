@@ -17,16 +17,9 @@ Section ChordProof.
   Variable hash : addr -> id.
   Variable hash_inj : forall a b : addr,
       hash a = hash b -> a = b.
-  Variable base : list addr.
 
   Definition between (x y z : id) :=
     x < y < z \/ y < z < x \/ z < x < y.
-
-  Variable base_size : length base = SUCC_LIST_LEN + 1.
-  Variable base_nodup : NoDup base.
-  Variable base_ordered : forall a b xs ys,
-      base = xs ++ a :: b :: ys ->
-      a < b.
 
   Notation start_handler := (start_handler SUCC_LIST_LEN hash).
   Notation recv_handler := (recv_handler SUCC_LIST_LEN hash).
@@ -119,8 +112,45 @@ Section ChordProof.
       exists s,
         best_succ gst h s.
 
-  Definition failure_constraint : global_state -> Prop :=
-    live_node_in_succ_lists.
+  (* This is a way of dealing with succ lists missing entries
+     mid-stabilization that doesn't involve putting artificial entries
+     into the actual successor list. *)
+  Definition ext_succ_list_span_includes (h : id) (succs : list id) (n : id) :=
+    forall n l e,
+      length (h :: succs) = n ->
+      l = last succs h ->
+      e = l + (SUCC_LIST_LEN - n) ->
+      between h n e.
+
+  (* "A principal node is a member that is not skipped by any member's
+     extended successor list" *)
+  Definition principal (gst : global_state) (p : addr) : Prop :=
+    forall h st succs,
+      live_node gst h ->
+      sigma gst h = Some st ->
+      map id_of (succ_list st) = succs ->
+      ext_succ_list_span_includes h succs p ->
+      In p succs.
+
+  Definition principals (gst : global_state) (ps : list addr) : Prop :=
+    NoDup ps /\
+    Forall (principal gst) ps /\
+    forall p, principal gst p -> In p ps.
+
+  Definition sufficient_principals (gst : global_state) : Prop :=
+    exists ps,
+      principals gst ps /\
+      length ps > SUCC_LIST_LEN.
+
+  Definition principal_failure_constraint (gst : global_state) (f : addr) : Prop :=
+    principal gst f ->
+    forall ps,
+      principals gst ps ->
+      length ps > (SUCC_LIST_LEN + 1).
+
+  Definition failure_constraint (gst : global_state) (f : addr) (gst' : global_state) : Prop :=
+    live_node_in_succ_lists gst' /\
+    principal_failure_constraint gst f.
 
   Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler timeout_constraint failure_constraint).
 
@@ -266,13 +296,8 @@ Section ChordProof.
 
   Definition init_sigma (h : addr) : option data.
   Admitted. (* TODO should map base addresses to data for an ideal ring of just the base nodes *)
-  Definition initial_st : global_state :=
-    {| DynamicNet.nodes := base;
-       DynamicNet.failed_nodes := [];
-       DynamicNet.timeouts := nil_timeouts;
-       DynamicNet.sigma := init_sigma;
-       DynamicNet.msgs := [];
-       DynamicNet.trace := []; |}.
+  Definition initial_st : global_state.
+  Admitted.
 
   Inductive reachable_st : global_state -> Prop :=
     | reachableInit : reachable_st initial_st
@@ -449,29 +474,16 @@ Section ChordProof.
       ring_member gst h ->
       best_succ gst h s ->
       ring_member gst x ->
-      ~ between h x s. (* TODO fix between semantics *)
+      ~ between h x s.
       (* or between h x s -> s = x *)
 
   Definition connected_appendages (gst : global_state) : Prop :=
     forall a, live_node gst a ->
       exists r, ring_member gst r /\ reachable gst a r.
 
-  Definition base_not_skipped (gst : global_state) : Prop :=
-    forall h b succs xs s ys st,
-      live_node gst h ->
-      Some st = sigma gst h ->
-      succs = map addr_of (succ_list st) ->
-      xs ++ s :: ys = succs ->
-      In b base ->
-      between h b s ->
-      In b xs.
-
   Definition state_invariant (gst : global_state) : Prop :=
-    at_least_one_ring gst /\
-    at_most_one_ring gst /\
-    ordered_ring gst /\
-    connected_appendages gst /\
-    base_not_skipped gst.
+    sufficient_principals gst /\
+    live_node_in_succ_lists gst.
 
   (* this is not quite what it sounds like, since Chord.start_query will sometimes not send anything *)
   Inductive query_request : query -> payload -> Prop :=
@@ -1244,44 +1256,6 @@ Section ChordProof.
       failed_nodes gst' = failed_nodes gst ->
       sigma gst' = update addr_eq_dec (sigma gst) h (Some st) ->
       P gst'.
-  Hint Unfold start_step_preserves.
-
-  Theorem start_step_keeps_at_most_one_ring :
-    start_step_preserves at_most_one_ring.
-  Proof.
-    unfold start_step_preserves.
-    intuition.
-    break_invariant.
-    unfold at_most_one_ring in *.
-    intuition.
-    eapply adding_node_preserves_reachable; eauto.
-    match goal with
-      | H : forall _ _, _ -> _ -> reachable gst _ _ |- _ => eapply H
-    end. (* eauto using adding_node_preserves_reachable_converse. *)
-  Admitted.
-
-  Theorem start_step_keeps_ordered_ring :
-    start_step_preserves ordered_ring.
-  Admitted.
-
-  Theorem start_step_keeps_connected_appendages :
-    start_step_preserves connected_appendages.
-  Admitted.
-
-  Theorem start_step_keeps_base_not_skipped :
-    start_step_preserves base_not_skipped.
-  Admitted.
-
-  Theorem start_step_keeps_at_least_one_ring :
-    start_step_preserves at_least_one_ring.
-  Proof.
-    unfold start_step_preserves.
-    intuition.
-    break_invariant.
-    unfold at_least_one_ring, ring_member in *.
-    break_exists_exists.
-    eauto using adding_node_preserves_reachable.
-  Qed.
 
   Definition fail_step_preserves (P : global_state -> Prop) : Prop :=
     forall gst gst' h,
@@ -1291,27 +1265,6 @@ Section ChordProof.
       nodes gst' = nodes gst ->
       failed_nodes gst' = h :: failed_nodes gst ->
       P gst'.
-  Hint Unfold fail_step_preserves.
-
-  Lemma fail_step_keeps_at_least_one_ring :
-    fail_step_preserves at_least_one_ring.
-  Admitted.
-
-  Lemma fail_step_keeps_at_most_one_ring :
-    fail_step_preserves at_most_one_ring.
-  Admitted.
-
-  Lemma fail_step_keeps_ordered_ring :
-    fail_step_preserves ordered_ring.
-  Admitted.
-
-  Lemma fail_step_keeps_connected_appendages :
-    fail_step_preserves connected_appendages.
-  Admitted.
-
-  Lemma fail_step_keeps_base_not_skipped :
-    fail_step_preserves base_not_skipped.
-  Admitted.
 
   Definition timeout_step_preserves (P : global_state -> Prop) : Prop :=
     forall gst gst' h st t st' ms newts clearedts,
@@ -1327,27 +1280,6 @@ Section ChordProof.
                (e_timeout h t)
                gst) ->
       P gst'.
-  Hint Unfold timeout_step_preserves.
-
-  Theorem timeout_step_keeps_at_least_one_ring :
-    timeout_step_preserves at_least_one_ring.
-  Admitted.
-
-  Theorem timeout_step_keeps_at_most_one_ring :
-    timeout_step_preserves at_most_one_ring.
-  Admitted.
-
-  Theorem timeout_step_keeps_ordered_ring :
-    timeout_step_preserves ordered_ring.
-  Admitted.
-
-  Theorem timeout_step_keeps_connected_appendages :
-    timeout_step_preserves connected_appendages.
-  Admitted.
-
-  Theorem timeout_step_keeps_base_not_skipped :
-    timeout_step_preserves base_not_skipped.
-  Admitted.
 
   Definition preserved_when_nodes_and_sigma_preserved (P : global_state -> Prop) : Prop :=
       forall gst gst',
@@ -1356,100 +1288,6 @@ Section ChordProof.
           failed_nodes gst' = failed_nodes gst ->
           sigma gst' = sigma gst ->
           P gst'.
-  Hint Unfold preserved_when_nodes_and_sigma_preserved.
-
-  Lemma at_least_one_ring_preserved_when_nodes_and_sigma_preserved :
-    preserved_when_nodes_and_sigma_preserved at_least_one_ring.
-  Proof.
-    unfold preserved_when_nodes_and_sigma_preserved.
-    intuition.
-    break_invariant.
-    unfold at_least_one_ring, ring_member in *.
-    break_exists_exists.
-    eauto using coarse_reachable_characterization.
-  Qed.
-
-  Lemma at_most_one_ring_preserved_when_nodes_and_sigma_preserved :
-    preserved_when_nodes_and_sigma_preserved at_most_one_ring.
-  Proof.
-    unfold preserved_when_nodes_and_sigma_preserved.
-    intuition.
-    break_invariant.
-    unfold at_most_one_ring in *.
-    intuition.
-    eapply coarse_reachable_characterization; eauto.
-    * match goal with
-        | [ H : _ |- _ ] => apply H
-      end.
-      (* why does this work but eauto using CRC; eauto using CRC. doesn't *)
-      eauto using coarse_reachable_characterization.
-      + eauto using coarse_reachable_characterization.
-  Qed.
-
-  Lemma ordered_ring_preserved_when_nodes_and_sigma_preserved :
-    preserved_when_nodes_and_sigma_preserved ordered_ring.
-  Proof.
-    unfold preserved_when_nodes_and_sigma_preserved.
-    intuition.
-    break_invariant.
-    unfold ordered_ring.
-    intuition.
-    match goal with
-      | H : ordered_ring _ |- _ => eapply H
-    end.
-    - eapply coarse_reachable_characterization.
-      * match goal with
-          | [ H : ring_member gst' ?h, H' : best_succ gst' ?h _ |- _ ] => apply H
-        end.
-      * auto.
-      * auto.
-      * auto.
-    - eauto using coarse_best_succ_characterization.
-    - eauto using coarse_reachable_characterization.
-    - auto.
-  Qed.
-
-  Lemma connected_appendages_preserved_when_nodes_and_sigma_preserved :
-    preserved_when_nodes_and_sigma_preserved connected_appendages.
-  Proof.
-    unfold preserved_when_nodes_and_sigma_preserved.
-    intuition.
-    break_invariant.
-    unfold connected_appendages in *.
-    intuition.
-    find_copy_eapply_lem_hyp coarse_live_node_characterization;
-      try find_apply_hyp_hyp;
-      break_exists_exists;
-      break_and;
-      eauto using coarse_reachable_characterization.
-  Qed.
-
-  Lemma base_not_skipped_preserved_when_nodes_and_sigma_preserved :
-    preserved_when_nodes_and_sigma_preserved base_not_skipped.
-  Proof.
-    unfold preserved_when_nodes_and_sigma_preserved.
-    intuition.
-    break_invariant.
-    unfold base_not_skipped.
-    intuition.
-    find_copy_eapply_lem_hyp live_node_means_state_exists.
-    break_exists.
-    repeat find_rewrite.
-    find_injection.
-    eauto using coarse_live_node_characterization.
-   Qed.
-
-  Lemma state_invariant_preserved_when_all_nodes_and_sigma_preserved :
-      preserved_when_nodes_and_sigma_preserved state_invariant.
-  Proof.
-    intuition.
-    repeat split;
-      eauto using at_least_one_ring_preserved_when_nodes_and_sigma_preserved,
-                  at_most_one_ring_preserved_when_nodes_and_sigma_preserved,
-                  ordered_ring_preserved_when_nodes_and_sigma_preserved,
-                  connected_appendages_preserved_when_nodes_and_sigma_preserved,
-                  base_not_skipped_preserved_when_nodes_and_sigma_preserved.
-  Qed.
 
   Definition node_deliver_step_preserves (P : global_state -> Prop) : Prop :=
     forall gst xs m ys gst' h d st ms nts cts e,
@@ -1462,106 +1300,5 @@ Section ChordProof.
       gst' = update_msgs gst (xs ++ ys) ->
       recv_handler (fst m) h d (snd (snd m)) = (st, ms, nts, cts) ->
       P (apply_handler_result h (st, ms, nts, cts) e gst').
-  Hint Unfold node_deliver_step_preserves.
-
-  Lemma node_deliver_step_keeps_at_least_one_ring :
-    node_deliver_step_preserves at_least_one_ring.
-  Admitted.
-
-  Lemma node_deliver_step_keeps_at_most_one_ring :
-    node_deliver_step_preserves at_most_one_ring.
-  Admitted.
-
-  Lemma node_deliver_step_keeps_ordered_ring :
-    node_deliver_step_preserves ordered_ring.
-  Admitted.
-
-  Lemma node_deliver_step_keeps_connected_appendages :
-    node_deliver_step_preserves connected_appendages.
-  Admitted.
-
-  Lemma node_deliver_step_keeps_base_not_skipped :
-    node_deliver_step_preserves base_not_skipped.
-  Admitted.
-
-  Theorem invariant_steps_to_at_least_one_ring : forall gst gst',
-      inductive_invariant gst ->
-      step_dynamic gst gst' ->
-      at_least_one_ring gst'.
-  Proof.
-    intuition.
-    break_step.
-    - eapply start_step_keeps_at_least_one_ring; simpl; eauto.
-    - eauto using fail_step_keeps_at_least_one_ring.
-    - eauto using timeout_step_keeps_at_least_one_ring.
-    - eauto using node_deliver_step_keeps_at_least_one_ring.
-  Qed.
-
-  Theorem invariant_steps_to_at_most_one_ring : forall gst gst',
-      inductive_invariant gst ->
-      step_dynamic gst gst' ->
-      at_most_one_ring gst'.
-  Proof.
-    intuition.
-    break_step.
-    - eapply start_step_keeps_at_most_one_ring; simpl; eauto.
-    - eauto using fail_step_keeps_at_most_one_ring.
-    - eauto using timeout_step_keeps_at_most_one_ring.
-    - eauto using node_deliver_step_keeps_at_most_one_ring.
-  Qed.
-
-  Theorem invariant_steps_to_ordered_ring : forall gst gst',
-      inductive_invariant gst ->
-      step_dynamic gst gst' ->
-      ordered_ring gst'.
-  Proof.
-    intuition.
-    break_step.
-    - eapply start_step_keeps_ordered_ring; simpl; eauto.
-    - eauto using fail_step_keeps_ordered_ring.
-    - eauto using timeout_step_keeps_ordered_ring.
-    - eauto using node_deliver_step_keeps_ordered_ring.
-  Qed.
-
-  Theorem invariant_steps_to_connected_appendages : forall gst gst',
-      inductive_invariant gst ->
-      step_dynamic gst gst' ->
-      connected_appendages gst'.
-  Proof.
-    intuition.
-    break_step.
-    - eapply start_step_keeps_connected_appendages; simpl; eauto.
-    - eauto using fail_step_keeps_connected_appendages.
-    - eauto using timeout_step_keeps_connected_appendages.
-    - eauto using node_deliver_step_keeps_connected_appendages.
-  Qed.
-
-  Theorem invariant_steps_to_base_not_skipped : forall gst gst',
-      inductive_invariant gst ->
-      step_dynamic gst gst' ->
-      base_not_skipped gst'.
-  Proof.
-    intuition.
-    break_step.
-    - eapply start_step_keeps_base_not_skipped; simpl; eauto.
-    - eauto using fail_step_keeps_base_not_skipped.
-    - eauto using timeout_step_keeps_base_not_skipped.
-    - eauto using node_deliver_step_keeps_base_not_skipped.
-  Qed.
-
-  Theorem state_invariant_is_invariant : forall gst gst',
-      inductive_invariant gst ->
-      step_dynamic gst gst' ->
-      (* put the thing here *)
-      state_invariant gst'.
-  Proof.
-    intuition.
-    repeat split.
-    - eauto using invariant_steps_to_at_least_one_ring.
-    - eauto using invariant_steps_to_at_most_one_ring.
-    - eauto using invariant_steps_to_ordered_ring.
-    - eauto using invariant_steps_to_connected_appendages.
-    - eauto using invariant_steps_to_base_not_skipped.
-  Qed.
 
 End ChordProof.

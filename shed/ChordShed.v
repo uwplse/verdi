@@ -174,10 +174,10 @@ Section ChordShed.
       congruence.
   Defined.
 
-  Definition failure_constraint_dec : forall gst,
-      {failure_constraint gst} + {~ failure_constraint gst}.
+  Definition live_node_in_succ_lists_dec : forall gst,
+      {live_node_in_succ_lists gst} + {~ live_node_in_succ_lists gst}.
   Proof.
-    unfold failure_constraint, live_node_in_succ_lists.
+    unfold live_node_in_succ_lists.
     move => gst.
     destruct (Forall_dec (live_node gst) (live_node_dec gst) (nodes gst)) as [H_st | H_st].
     - rewrite -> Forall_forall in H_st.
