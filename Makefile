@@ -38,7 +38,7 @@ raft/RaftState.v:
 
 clean:
 	if [ -f Makefile.coq ]; then \
-	  $(MAKE) -f Makefile.coq clean; fi
+	  $(MAKE) -f Makefile.coq cleanall; fi
 	rm -f Makefile.coq
 	find . -name '*.buildtime' -delete
 	$(MAKE) -C proofalytics clean
