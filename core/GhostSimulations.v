@@ -1,11 +1,11 @@
 Require Import List.
 
 Require Import StructTact.StructTactics.
-Require Import Net.
+Require Import Verdi.Net.
 Require Import StructTact.Util.
 
 Require Import FunctionalExtensionality.
-Require Import Simulations.
+Require Import Verdi.Simulations.
 
 Require Import mathcomp.ssreflect.ssreflect.
 

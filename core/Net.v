@@ -2,7 +2,7 @@ Require Import List.
 Import ListNotations.
 Require Import StructTact.StructTactics.
 Require Import StructTact.Update.
-Require Export VerdiHints.
+Require Export Verdi.VerdiHints.
 
 Set Implicit Arguments.
 

@@ -1,9 +1,9 @@
-Require Import Verdi.
+Require Import Verdi.Verdi.
 
 Require Import String.
 Require Import StringMap.
 
-Require Import StateMachineHandlerMonad.
+Require Import Verdi.StateMachineHandlerMonad.
 
 Definition key := string.
 Definition value := string.

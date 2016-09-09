@@ -1,7 +1,7 @@
 Require Import List.
 Import ListNotations.
 
-Require Import Net.
+Require Import Verdi.Net.
 Require Import StructTact.StructTactics.
 
 Class TraceRelation `{State : Type} `{Event : Type} (step : step_relation State Event) :=
