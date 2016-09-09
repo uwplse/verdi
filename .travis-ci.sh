@@ -9,12 +9,4 @@ pushd ..
   popd
 popd
 
-case $MODE in
-  analytics)
-    ./analytics.sh
-    ;;
-
-  *)
-      ./build.sh
-      ;;
-esac
+./build.sh

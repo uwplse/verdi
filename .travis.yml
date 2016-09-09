@@ -1,7 +1,4 @@
 language: c
-env:
-  - MODE=build
-  - MODE=analytics
 script: bash -ex .travis-ci.sh
 sudo: false
 before_install:
