@@ -45,23 +45,30 @@ Section LockServ.
 
   Definition init_data (n : Name) : Data := mkData [] false.
 
-  Inductive Label := InputLock | InputUnlock | MsgLock | MsgUnlock | MsgLocked | Nop | Silent.
+  Inductive Label :=
+  | InputLock : Client_index -> Label
+  | InputUnlock : Client_index -> Label
+  | MsgLock : Client_index -> Label
+  | MsgUnlock : Label
+  | MsgLocked : Client_index -> Label
+  | Nop
+  | Silent.
 
   Definition Handler (S : Type) := GenHandler (Name * Msg) S Output Label.
 
   Definition ClientNetHandler (i : Client_index) (m : Msg) : Handler Data :=
     match m with
-      | Locked => (put (mkData [] true)) ;; write_output Locked ;; ret MsgLocked
+      | Locked => (put (mkData [] true)) ;; write_output Locked ;; ret (MsgLocked i)
       | _ => ret Nop
     end.
 
   Definition ClientIOHandler (i : Client_index) (m : Msg) : Handler Data :=
     match m with
-      | Lock => send (Server, Lock) ;; ret InputLock
+      | Lock => send (Server, Lock) ;; ret (InputLock i)
       | Unlock => data <- get ;;
                  when (held data) (put (mkData [] false) ;;
                  send (Server, Unlock)) ;;
-                 ret InputUnlock     
+                 ret (InputUnlock      i)
       | _ => ret Nop
     end.
 
@@ -73,7 +80,7 @@ Section LockServ.
         match src with
           | Server => ret Nop
           | Client c =>
-            when (null q) (send (src, Locked)) >> put (mkData (q++[c]) (held st)) >> ret MsgLock
+            when (null q) (send (src, Locked)) >> put (mkData (q++[c]) (held st)) >> ret (MsgLock c)
         end
       | Unlock => match q with
                     | _ :: x :: xs => put (mkData (x :: xs) (held st)) >> send (Client x, Locked)
