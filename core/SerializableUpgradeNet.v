@@ -2015,17 +2015,64 @@ Module PBKV.
               break_match; auto.
             Qed.
 
+            Require Import Permutation.
+
+            Lemma Permutation_single :
+              forall A (l : list A) x,
+                Permutation l [x] ->
+                l = [x].
+            Proof.
+              intros. induction l.
+              - find_apply_lem_hyp Permutation_nil.
+                solve_by_inversion.
+              - inversion H.
+                + find_apply_lem_hyp Permutation_sym.
+                  find_apply_lem_hyp Permutation_nil.
+                  subst. auto.
+                + eapply Permutation_trans.
+              - invcs H.
+              intros. induction H; auto.
+              Focus 2.
+              - find_apply_lem_hyp Permutation_sym.
+                find_apply_lem_hyp Permutation_nil.
+                now subst.
+              - 
+              
+
             Lemma I_equiv :
               forall w w',
                 I w ->
                 (forall h, deserialize (localState w' h) = deserialize (localState w h)) ->
-                PEr
+                Permutation (packets w') (packets w) ->
                 I w'.
             Proof.
               intros.
               unfold I in *.
               break_match; repeat find_higher_order_rewrite; auto;
                 repeat erewrite get_log_deserialize by eauto; auto.
+              - break_let. intuition.
+                + repeat find_rewrite.
+                  find_apply_lem_hyp Permutation_sym.
+                  find_apply_lem_hyp Permutation_nil.
+                  repeat find_rewrite. auto.
+                + subst. right. left. break_exists_exists.
+                  intuition.
+                  unfold lift_packets in *.
+                  match goal with
+                  | H : map ?g _ = _,
+                        H' : Permutation _ _ |- _ =>
+                    eapply Permutation_map with (f := g) in H'
+                  end.
+                  repeat find_rewrite.
+                  inversion H1.
+                    
+                  find_eapply_lem_hyp Permutation_map.
+                    rewrite H2 in H1.
+                  
+                  
+                  find_apply_lem_hyp Permutation_sym.
+                  find_apply_lem_hyp Permutation_nil.
+                  repeat find_rewrite. auto.
             Qed.
 
             eapply state_deserialize; eauto.
