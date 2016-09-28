@@ -1,3 +1,5 @@
+set -ev
+
 pushd ..
   wget 'http://homes.cs.washington.edu/~jrw12/coq-8.5-build-local.tgz'
   tar xf coq-8.5-build-local.tgz
@@ -10,3 +12,10 @@ pushd ..
 popd
 
 ./build.sh
+
+pushd ..
+  git clone 'http://github.com/uwplse/verdi-raft'
+  pushd verdi-raft
+    ./build.sh
+  popd
+popd
