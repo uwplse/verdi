@@ -3,7 +3,7 @@ Import ListNotations.
 
 Require Import StructTact.StructTactics.
 Require Import StructTact.Util.
-Require Import Net.
+Require Import Verdi.Net.
 
 Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 

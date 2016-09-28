@@ -1,8 +1,8 @@
-Require Import Verdi.
+Require Import Verdi.Verdi.
 
 Require Import FunctionalExtensionality.
 
-Require Import SeqNum.
+Require Import Verdi.SeqNum.
 
 Section SeqNumCorrect.
   Context {orig_base_params : BaseParams}.

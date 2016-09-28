@@ -8,7 +8,7 @@ Require Export Sorting.Permutation.
 Require Export StructTact.Util.
 Require Export StructTact.StructTactics.
 
-Require Export VerdiHints.
-Require Export Net.
+Require Export Verdi.VerdiHints.
+Require Export Verdi.Net.
 
 Require NPeano.

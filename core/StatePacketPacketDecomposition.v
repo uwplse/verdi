@@ -1,4 +1,4 @@
-Require Import Verdi.
+Require Import Verdi.Verdi.
 
 Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 

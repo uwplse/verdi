@@ -6,7 +6,7 @@ Require Import Relations.
 Require Import Permutation.
 
 Require Import StructTact.StructTactics.
-Require Import Net.
+Require Import Verdi.Net.
 
 Section dup_drop_reorder.
   Variable A : Type.

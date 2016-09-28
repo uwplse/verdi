@@ -1,7 +1,7 @@
-Require Import Verdi.
+Require Import Verdi.Verdi.
 
-Require Import VarD.
-Require Import PrimaryBackup.
+Require Import Verdi.VarD.
+Require Import Verdi.PrimaryBackup.
 
 Open Scope string_scope.
 
