@@ -7,6 +7,9 @@ Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 Require Import Verdi.StatePacketPacketDecomposition.
 Require Import Verdi.LabeledNet.
 
+Require Import InfSeqExt.infseq.
+Require Import InfSeqExt.classical.
+
 Set Bullet Behavior "Strict Subproofs".
 
 Set Implicit Arguments.
@@ -1388,10 +1391,6 @@ Section LockServ.
       apply in_app_iff; auto.
     - intuition.
   Qed.
-  
-
-  Require Import InfSeqExt.infseq.
-  Require Import InfSeqExt.classical.
 
   Definition label_eq_dec :
     forall x y : label,
