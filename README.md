@@ -45,3 +45,8 @@ Files
       primary-backup replication
       - `VarDPB.v`, the primary-backup transformer applied to the
         key-value store
+
+Projects using Verdi
+--------------------
+
+- [`Verdi Raft`](https://github.com/uwplse/verdi-raft): a verified implementation of the Raft distributed consensus protocol
