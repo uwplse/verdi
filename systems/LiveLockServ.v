@@ -66,9 +66,12 @@ Section LockServ.
     match m with
       | Lock => send (Server, Lock) ;; ret (InputLock i)
       | Unlock => data <- get ;;
-                 when (held data) (put (mkData [] false) ;;
-                 send (Server, Unlock)) ;;
-                 ret (InputUnlock      i)
+                 if (held data) then
+                   (put (mkData [] false) >>
+                   send (Server, Unlock) >>
+                   ret (InputUnlock i))
+                 else
+                   ret Nop
       | _ => ret Nop
     end.
 
@@ -1262,4 +1265,174 @@ Section LockServ.
               auto.
           }
   Qed.
+
+(* LIVENESS *)
+  
+  Lemma InputHandler_lbcases :
+    forall h i st l out st' ms,
+      InputHandler h i st = (l, out, st', ms) ->
+      (exists c, h = Client c /\
+                 ((i = Lock /\ out = [] /\ st' = st /\ ms = [(Server, Lock)] /\ l = InputLock c) \/
+                  (i = Unlock /\ out = [] /\ held st' = false /\
+                   ((held st = true /\ ms = [(Server, Unlock)] /\ l = InputUnlock c) \/
+                    (st' = st /\ ms = [] /\ l = Nop))))) \/
+      (out = [] /\ st' = st /\ ms = [] /\ l = Nop).
+  Proof.
+    handler_unfold.
+    intros.
+    repeat break_match; repeat tuple_inversion;
+      subst; simpl in *; subst; simpl in *.
+    - left. eexists. intuition.
+    - left. eexists. intuition.
+    - left. eexists. intuition.
+    - auto.
+    - auto.
+  Qed.
+
+  Lemma ClientNetHandler_lbcases :
+    forall c m st l out st' ms,
+      ClientNetHandler c m st = (l, out, st', ms) ->
+      ms = [] /\
+      ((st' = st /\ out = [] /\ l = Nop) \/
+       (m = Locked /\ out = [Locked] /\ held st' = true /\ l = MsgLocked c)).
+  Proof.
+    handler_unfold.
+    intros.
+    repeat break_match; repeat tuple_inversion; subst; intuition.
+  Qed.
+  
+  Lemma ServerNetHandler_lbcases :
+    forall src m st l out st' ms,
+      ServerNetHandler src m st = (l, out, st', ms) ->
+      out = [] /\
+      ((exists c, src = Client c /\
+                  (m = Lock /\
+                   l = MsgLock c /\
+                   queue st' = queue st ++ [c] /\
+                  ((queue st = [] /\ ms = [(Client c, Locked)]) \/
+                   (queue st <> [] /\ ms = [])))) \/
+       ((m = Unlock /\
+                   l = MsgUnlock /\
+                   queue st' = tail (queue st) /\
+                   ((queue st' = [] /\ ms = []) \/
+                    (exists next t, queue st' = next :: t /\ ms = [(Client next, Locked)])))) \/
+       ms = [] /\ st' = st /\ l = Nop).
+  Proof.
+    handler_unfold.
+    intros.
+    repeat break_match; repeat tuple_inversion; subst.
+    - find_apply_lem_hyp null_sound. find_rewrite. simpl.
+      intuition. left. eexists. intuition.
+    - simpl. find_apply_lem_hyp null_false_neq_nil.
+      intuition. left. eexists. intuition.
+    - simpl. intuition.
+    - simpl. destruct st; simpl in *; subst; intuition.
+    - simpl in *. intuition.
+    - simpl in *. intuition eauto.
+    - simpl. intuition.
+  Qed.
+
+  Definition message_enables_label p l :=
+    forall net,
+      In p (nwPackets net) ->
+      enabled lb_step_async l net.
+  
+  Lemma Lock_enables_MsgLock :
+    forall i,
+      message_enables_label (mkPacket (Client i) Server Lock) (MsgLock i).
+  Proof.
+    unfold message_enables_label.
+    intros.
+    find_apply_lem_hyp in_split.
+    break_exists_name xs. break_exists_name ys.
+    unfold enabled.
+    destruct (ServerNetHandler (Client i) Lock (nwState net Server)) eqn:?.
+    destruct p. destruct p.
+    cut (l0 = MsgLock i); intros.
+    subst.
+    - repeat eexists. econstructor; eauto.
+    - handler_unfold. repeat break_match; repeat find_inversion; auto.
+  Qed.
+
+  Definition message_delivered_label p l :=
+    forall l' net net' tr,
+      lb_step_async net l' net' tr ->
+      In p (nwPackets net) ->
+      ~ In p (nwPackets net') ->
+      l = l'.
+
+  Lemma In_split_not_In :
+    forall A (p : A) p' xs ys zs,
+      In p (xs ++ p' :: ys) ->
+      ~ In p (zs ++ xs ++ ys) ->
+      p = p'.
+  Proof.
+    intros.
+    find_apply_lem_hyp in_app_iff.
+    simpl in *; intuition;
+      find_false; apply in_app_iff; right; apply in_app_iff; auto.
+  Qed.
+
+  Lemma Lock_delivered_MsgLock :
+    forall i,
+      message_delivered_label (mkPacket (Client i) Server Lock) (MsgLock i).
+  Proof.
+    unfold message_delivered_label.
+    intros.
+    invcs H.
+    - repeat find_rewrite.
+      find_eapply_lem_hyp In_split_not_In; eauto. subst.
+      monad_unfold. simpl in *.
+      handler_unfold. repeat break_match; repeat find_inversion; auto.
+    - unfold not in *. find_false.
+      apply in_app_iff; auto.
+    - intuition.
+  Qed.
+  
+
+  Require Import InfSeqExt.infseq.
+  Require Import InfSeqExt.classical.
+
+  Definition label_eq_dec :
+    forall x y : label,
+      {x = y} + {x <> y}.
+  Proof.
+    decide equality; apply fin_eq_dec.
+  Qed.
+  
+  Lemma messages_trigger_labels :
+    forall l p,
+      message_enables_label p l ->
+      message_delivered_label p l ->
+      forall s,
+      lb_step_execution lb_step_async s ->
+      In p (nwPackets (evt_a (hd s))) ->
+      weak_until (now (l_enabled lb_step_async l))
+                 (now (occurred l))
+                 s.
+  Proof.
+    intros l p Henabled Hdelivered.
+    cofix c.
+    destruct s. destruct e.
+    simpl.
+    intros Hexec Hin.
+    invcs Hexec.
+    destruct (label_eq_dec l evt_l).
+    - subst evt_l.
+      apply W0. simpl. reflexivity.
+    - apply W_tl.
+      + simpl.
+        unfold message_enables_label in *.
+        unfold l_enabled. simpl. auto.
+      + simpl.
+        apply c; auto.
+        simpl.
+        match goal with
+        | |- In ?p ?ps =>
+          destruct (In_dec packet_eq_dec p ps)
+        end; auto.
+        unfold message_delivered_label in *.
+        find_apply_hyp_hyp. intuition.
+  Qed.
+  
 End LockServ.
