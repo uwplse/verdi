@@ -4,7 +4,7 @@ Extract Inlined Constant fin => int.
 
 Extract Inlined Constant fin_eq_dec => "(fun _ -> (=))".
 
-Extract Inlined Constant all_fin => "(fun n -> (Obj.magic (seq 1 n)))".
+Extract Inlined Constant all_fin => "(fun n -> (Obj.magic (seq 0 n)))".
 
 Extract Inlined Constant fin_to_nat => "(fun _ n -> n)".
 
