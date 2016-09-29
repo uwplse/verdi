@@ -1423,7 +1423,7 @@ Section LockServ.
     - apply W_tl.
       + simpl.
         unfold message_enables_label in *.
-        unfold l_enabled. simpl. auto.
+        unfold l_enabled. simpl. now auto.
       + simpl.
         apply c; auto.
         simpl.
@@ -1432,7 +1432,29 @@ Section LockServ.
           destruct (In_dec packet_eq_dec p ps)
         end; auto.
         unfold message_delivered_label in *.
-        find_apply_hyp_hyp. intuition.
+        now find_apply_hyp_hyp.
+  Qed.
+
+  Lemma message_labels_eventually_occur :
+    forall l p,
+      l <> label_silent ->
+      message_enables_label p l ->
+      message_delivered_label p l ->
+      forall s,
+        weak_local_fairness lb_step_async label_silent s ->
+        lb_step_execution lb_step_async s ->
+        In p (nwPackets (evt_a (hd s))) ->
+        eventually (now (occurred l)) s.
+  Proof.
+    intros.
+    find_eapply_lem_hyp messages_trigger_labels; eauto.
+    find_apply_lem_hyp weak_until_until_or_always.
+    intuition.
+    - now eauto using until_eventually.
+    - find_apply_lem_hyp always_continuously.
+      eapply_prop_hyp weak_local_fairness continuously; auto.
+      destruct s.
+      now find_apply_lem_hyp always_now.
   Qed.
   
 End LockServ.
