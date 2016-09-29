@@ -16,7 +16,7 @@ popd
 case $DOWNSTREAM in
 verdi-raft)
   pushd ..
-    git clone 'http://github.com/uwplse/verdi-raft'
+    git clone -b $VERDI_RAFT_BRANCH 'http://github.com/uwplse/verdi-raft'
     pushd verdi-raft
       ./build.sh
     popd
