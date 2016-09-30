@@ -1483,9 +1483,9 @@ Section LockServ.
       lb_step_execution lb_step_async s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
       weak_until (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c)
-                 (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n c
+                 (next (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n c
                         /\ (n = 0 -> In (mkPacket Server (Client c) Locked)
-                                      (nwPackets (evt_a (hd s)))))
+                                      (nwPackets (evt_a (hd s))))))
                  s.
   Proof.
     intros n c.
@@ -1514,7 +1514,6 @@ Section LockServ.
           repeat find_reverse_rewrite. simpl in *.
           repeat find_rewrite. now solve_by_inversion.
         * clear CIH.
-          apply W_tl; simpl; auto. 
           apply W0. simpl.
           fold LockServ_MultiParams in *. (* typeclass stuff *)
           repeat find_rewrite. simpl.
@@ -1541,21 +1540,187 @@ Section LockServ.
     - coinductive_case CIH.
   Qed.
 
+  Lemma MsgUnlock_moves_client :
+    forall n c s,
+      lb_step_execution lb_step_async s ->
+      Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
+      now (occurred MsgUnlock) s ->
+      next (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n c
+                  /\ (n = 0 -> In (mkPacket Server (Client c) Locked)
+                                (nwPackets (evt_a (hd s))))) s.
+  Proof.
+    intros n c s Hexec HNth Hlabel.
+    destruct s. simpl.
+    invcs Hexec.
+    match goal with
+    | H : lb_step_async _ _ _ _ |- _ => invcs H
+    end.
+    - unfold occurred in *.
+      match goal with
+      | H : MsgUnlock = _ |- _ => symmetry in H; repeat find_rewrite; clear H
+      end.
+      monad_unfold. unfold NetHandler in *.
+      break_match.
+      + find_apply_lem_hyp ClientNetHandler_lbcases.
+        intuition; congruence.
+      + find_apply_lem_hyp ServerNetHandler_lbcases.
+        (* not using intuition because i don't want to break
+           or in the goal *)
+        repeat (break_and; try break_or_hyp);
+          break_exists;
+        repeat (break_and; try break_or_hyp);
+        try congruence.
+        * exfalso.
+          repeat find_rewrite.
+          invcs HNth.
+          repeat find_reverse_rewrite.
+          simpl in *. subst. solve_by_inversion.
+        * fold LockServ_MultiParams in *. (* typeclass stuff *)
+          repeat find_rewrite.
+          simpl in *.
+          find_apply_lem_hyp Nth_tl.
+          repeat find_rewrite.
+          intuition; [|intros; subst; solve_by_inversion].
+          rewrite_update. congruence.
+    - unfold occurred in *.
+      match goal with
+      | H : MsgUnlock = _ |- _ => symmetry in H; repeat find_rewrite; clear H
+      end.
+      monad_unfold. find_apply_lem_hyp InputHandler_lbcases.
+      intuition; break_exists; intuition; congruence.
+    - unfold occurred in *. congruence.
+  Qed.
 
+  Lemma Unlock_enables_MsgUnlock :
+    forall n,
+      message_enables_label (mkPacket n Server Unlock) MsgUnlock.
+  Proof.
+    unfold message_enables_label.
+    intros.
+    find_apply_lem_hyp in_split.
+    break_exists_name xs. break_exists_name ys.
+    unfold enabled.
+    destruct (ServerNetHandler n Unlock (nwState net Server)) eqn:?.
+    destruct p. destruct p.
+    cut (l0 = MsgUnlock); intros.
+    subst.
+    - repeat eexists. econstructor; eauto.
+    - handler_unfold. repeat break_match; repeat find_inversion; auto.
+  Qed.
+  
+  Lemma Unlock_delivered_MsgUnlock :
+    forall n,
+      message_delivered_label (mkPacket n Server Unlock) MsgUnlock.
+  Proof.
+    unfold message_delivered_label.
+    intros.
+    invcs H.
+    - repeat find_rewrite.
+      find_eapply_lem_hyp In_split_not_In; eauto. subst.
+      monad_unfold. simpl in *.
+      handler_unfold. repeat break_match; repeat find_inversion; auto.
+    - unfold not in *. find_false.
+      apply in_app_iff; auto.
+    - intuition.
+  Qed.
+
+  Lemma Unlock_in_network_eventually_MsgUnlock :
+    forall c s,
+      lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
+      In (mkPacket c Server Unlock) (nwPackets (evt_a (hd s))) ->
+      eventually (now (occurred MsgUnlock)) s.
+  Proof.
+    intros.
+    eapply message_labels_eventually_occur;
+      eauto using Unlock_enables_MsgUnlock, Unlock_delivered_MsgUnlock.
+    unfold label_silent. simpl. congruence.
+  Qed.
+
+  Lemma eventually_Unlock :
+    forall n c s,
+      lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
+      Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
+      exists c,
+        eventually (fun s => In (mkPacket c Server Unlock) (nwPackets (evt_a (hd s)))) s.
+  Proof.
+  Admitted.
+  
+  Lemma eventually_MsgUnlock :
+    forall n c s,
+      lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
+      Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
+      eventually (now (occurred MsgUnlock)) s.
+  Proof.
+    intros n c s Hexec Hfair HNth.
+    pattern s in Hexec. pattern s in Hfair.
+    find_copy_eapply_lem_hyp eventually_Unlock; eauto.
+    break_exists.
+    match goal with
+    | H1 : (fun x => ?J1) s, H2 : (fun x => ?J2) s |- _ =>
+      assert (and_tl (fun x => J1) (fun x => J2) s) as Hand by (now unfold and_tl);
+        clear H1; clear H2
+    end; simpl in *.
+    eapply eventually_trans.
+    4:eauto. 3:apply Hand.
+    2:intros; eapply Unlock_in_network_eventually_MsgUnlock.
+    all:unfold and_tl in *; intuition eauto.
+    - eauto using lb_step_execution_invar.
+    - simpl. eauto using weak_local_fairness_invar.
+  Qed.
+
+  Lemma weak_until_always :
+    forall (T : Type) (J J' P : infseq T -> Prop) s,
+      weak_until J P s ->
+      always J' s ->
+      weak_until (J' /\_ J) P s.
+  Proof.
+    cofix CIH.
+    intros T J J' P s Hweak Halways.
+    destruct s.
+    invcs Hweak.
+    - now eauto using W0.
+    - invcs Halways.
+      eapply W_tl.
+      + now unfold and_tl.
+      + simpl. now eauto.
+  Qed.
+    
   (* Sketch: eventually an Unlock happens, so eventually a MsgUnlock
      happens, so eventually a client moves up the queue. when this
      happens, the server will send it a Locked msg if it's at the
-     head. *)
+     head.
+
+     Gonna use weak_until_eventually and probs eventually_next
+ *)
   Lemma clients_move_up_in_queue :
     forall n c s,
       lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
       eventually (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n c
                         /\ (n = 0 -> In (mkPacket Server (Client c) Locked)
                                      (nwPackets (evt_a (hd s)))))
                  s.
   Proof.
-  Admitted.
+    intros n c s Hexec Hfair HNth.
+    apply eventually_next.
+    pattern s in HNth.
+    match goal with
+    | H1 : ?J1 s, H2 : ?J2 s, H3 : ?J3 s |- _ =>
+      assert (and_tl J1 (and_tl J2 J3) s) by (now unfold and_tl);
+        eapply weak_until_eventually with (J := (and_tl J1 (and_tl J2 J3)))
+    end; simpl in *.
+    2:now unfold and_tl.
+    3:eauto using eventually_MsgUnlock.
+    - intros. unfold and_tl in *. intuition.
+      eapply MsgUnlock_moves_client; eauto.
+    - apply weak_until_always; eauto using lb_step_execution_invar, always_inv.
+      apply weak_until_always; eauto using weak_local_fairness_invar, always_inv.
+      eauto using clients_only_move_up_in_queue.
+  Qed.
 
   Lemma clients_move_way_up_in_queue :
     forall n n' c s,
