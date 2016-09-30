@@ -51,7 +51,7 @@ Section LockServ.
   Inductive Label :=
   | InputLock : Client_index -> Label
   | InputUnlock : Client_index -> Label
-  | Holds : Client_index -> Label
+  | MsgUnlock : Label
   | MsgLock : Client_index -> Label
   | MsgLocked : Client_index -> Label
   | Nop
@@ -89,10 +89,10 @@ Section LockServ.
             when (null q) (send (src, Locked)) >> put (mkData (q++[c]) (held st)) >> ret (MsgLock c)
         end
       | Unlock => match q with
-                   | _ :: x :: xs => put (mkData (x :: xs) (held st)) >>
-                                      send (Client x, Locked) >> ret (Holds x)
-                   | _ => put (mkData [] (held st)) >> ret Nop
-                 end
+                   | _ :: x :: xs => put (mkData (x :: xs) (held st)) >> send (Client x, Locked)
+                   | _ => put (mkData [] (held st))
+                 end ;;
+                 ret MsgUnlock
       | _ => ret Nop
     end.
 
@@ -1314,10 +1314,10 @@ Section LockServ.
                    queue st' = queue st ++ [c] /\
                   ((queue st = [] /\ ms = [(Client c, Locked)]) \/
                    (queue st <> [] /\ ms = [])))) \/
-       ((m = Unlock /\
+       ((m = Unlock /\ l = MsgUnlock /\
                    queue st' = tail (queue st) /\
-                   ((queue st' = [] /\ ms = [] /\ l = Nop) \/
-                    (exists next t, queue st' = next :: t /\ ms = [(Client next, Locked)] /\ l = Holds next)))) \/
+                   ((queue st' = [] /\ ms = []) \/
+                    (exists next t, queue st' = next :: t /\ ms = [(Client next, Locked)])))) \/
        ms = [] /\ st' = st /\ l = Nop).
   Proof.
     handler_unfold.
@@ -1483,7 +1483,9 @@ Section LockServ.
       lb_step_execution lb_step_async s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
       weak_until (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c)
-                 (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n c)
+                 (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n c
+                        /\ (n = 0 -> In (mkPacket Server (Client c) Locked)
+                                      (nwPackets (evt_a (hd s)))))
                  s.
   Proof.
     intros n c.
@@ -1498,7 +1500,7 @@ Section LockServ.
       + coinductive_case CIH.
         find_rewrite. simpl.
         now rewrite_update.
-      + find_apply_lem_hyp ServerNetHandler_cases.
+      + find_apply_lem_hyp ServerNetHandler_lbcases.
         intuition.
         * coinductive_case CIH. 
           repeat find_rewrite. simpl.
@@ -1511,12 +1513,18 @@ Section LockServ.
           invcs HNth.
           repeat find_reverse_rewrite. simpl in *.
           repeat find_rewrite. now solve_by_inversion.
-        * apply W_tl; simpl; auto. 
+        * clear CIH.
+          apply W_tl; simpl; auto. 
           apply W0. simpl.
           fold LockServ_MultiParams in *. (* typeclass stuff *)
           repeat find_rewrite. simpl.
           rewrite_update. repeat find_rewrite.
-          now eauto using Nth_tl.
+          intuition eauto using Nth_tl.
+          break_exists.
+          intuition. subst.
+          find_apply_lem_hyp Nth_tl.
+          repeat find_rewrite.
+          invcs HNth. auto.
         * coinductive_case CIH. 
           repeat find_rewrite. simpl.
           now rewrite_update.
@@ -1543,7 +1551,8 @@ Section LockServ.
       lb_step_execution lb_step_async s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
       eventually (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n c
-                        /\ (n = 0 -> now (occurred (Holds c)) s))
+                        /\ (n = 0 -> In (mkPacket Server (Client c) Locked)
+                                     (nwPackets (evt_a (hd s)))))
                  s.
   Proof.
   Admitted.
@@ -1553,9 +1562,11 @@ Section LockServ.
       n' <= n ->
       lb_step_execution lb_step_async s ->
       (Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c
-       /\ (S n = 0 -> now (occurred (Holds c)) s)) ->
+       /\ (S n = 0 -> In (mkPacket Server (Client c) Locked)
+                                     (nwPackets (evt_a (hd s))))) ->
       eventually (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n' c
-                        /\ (n' = 0 -> now (occurred (Holds c)) s))
+                        /\ (n' = 0 -> In (mkPacket Server (Client c) Locked)
+                                     (nwPackets (evt_a (hd s)))))
                  s.
   Proof.
     induction n; intros; simpl in *; auto.
@@ -1574,7 +1585,9 @@ Section LockServ.
     forall n c s,
       lb_step_execution lb_step_async s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
-      eventually (now (occurred (Holds c))) s.
+      eventually (fun s =>
+                    In (mkPacket Server (Client c) Locked)
+                       (nwPackets (evt_a (hd s)))) s.
   Proof.
     intros.
     pose proof (@clients_move_way_up_in_queue n 0 c s).
