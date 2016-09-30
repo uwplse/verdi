@@ -1726,6 +1726,7 @@ Section LockServ.
     forall n n' c s,
       n' <= n ->
       lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
       (Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c
        /\ (S n = 0 -> In (mkPacket Server (Client c) Locked)
                                      (nwPackets (evt_a (hd s))))) ->
@@ -1738,17 +1739,26 @@ Section LockServ.
     - intuition.
       assert (n' = 0) by omega. subst.
       eauto using clients_move_up_in_queue.
-    - find_apply_lem_hyp le_lt_eq_dec. intuition.
+    - match goal with
+      | H1 : ?J1 s, H2 : ?J2 s |- _ =>
+        assert (and_tl J1 J2 s) as Hand by (now unfold and_tl);
+          clear H1; clear H2
+      end; simpl in *.
+      find_apply_lem_hyp le_lt_eq_dec. intuition.
       + assert (n' <= n) by omega.
-        find_eapply_lem_hyp clients_move_up_in_queue; eauto.
+        find_eapply_lem_hyp clients_move_up_in_queue; eauto;
+          try solve [unfold and_tl in *; intuition]; [idtac].
         eapply eventually_trans. 4:eauto.
-        eapply lb_step_execution_invar. all:eauto.
-      + subst. eauto using clients_move_up_in_queue.
+        3:apply Hand. all:unfold and_tl in *.
+        all:intuition eauto using lb_step_execution_invar, weak_local_fairness_invar.
+      + subst. unfold and_tl in *. intuition.
+        eauto using clients_move_up_in_queue.
   Qed.
 
   Lemma clients_get_lock_messages :
     forall n c s,
       lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
       eventually (fun s =>
                     In (mkPacket Server (Client c) Locked)
@@ -1760,6 +1770,4 @@ Section LockServ.
     eapply eventually_monotonic_simple; [|eauto].
     intros. simpl in *. intuition.
   Qed.
-  
-          
 End LockServ.
