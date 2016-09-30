@@ -1534,27 +1534,32 @@ Section LockServ.
     - coinductive_case CIH.
   Qed.
 
+
   (* Sketch: eventually an Unlock happens, so eventually a MsgUnlock happens, so
      eventually a client moves up the queue *)
   Lemma clients_move_up_in_queue :
     forall n c s,
       lb_step_execution lb_step_async s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
-      eventually (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n c)
+      eventually (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n c
+                        /\ (n = 0 -> now (occurred (MsgLocked c)) s))
                  s.
   Proof.
   Admitted.
 
-  Lemma clients_move_to_head_of_queue :
+  Lemma clients_move_way_up_in_queue :
     forall n n' c s,
       n' <= n ->
       lb_step_execution lb_step_async s ->
-      Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
-      eventually (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n' c)
+      (Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c
+       /\ (S n = 0 -> now (occurred (MsgLocked c)) s)) ->
+      eventually (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n' c
+                        /\ (n' = 0 -> now (occurred (MsgLocked c)) s))
                  s.
   Proof.
     induction n; intros; simpl in *; auto.
-    - assert (n' = 0) by omega. subst.
+    - intuition.
+      assert (n' = 0) by omega. subst.
       eauto using clients_move_up_in_queue.
     - find_apply_lem_hyp le_lt_eq_dec. intuition.
       + assert (n' <= n) by omega.
@@ -1564,5 +1569,18 @@ Section LockServ.
       + subst. eauto using clients_move_up_in_queue.
   Qed.
 
+  Lemma clients_get_lock_messages :
+    forall n c s,
+      lb_step_execution lb_step_async s ->
+      Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
+      eventually (now (occurred (MsgLocked c))) s.
+  Proof.
+    intros.
+    pose proof (@clients_move_way_up_in_queue n 0 c s).
+    repeat concludes. conclude_using ltac:(intuition; congruence).
+    eapply eventually_monotonic_simple; [|eauto].
+    intros. simpl in *. intuition.
+  Qed.
+  
           
 End LockServ.
