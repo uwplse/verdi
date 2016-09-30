@@ -51,8 +51,8 @@ Section LockServ.
   Inductive Label :=
   | InputLock : Client_index -> Label
   | InputUnlock : Client_index -> Label
+  | Holds : Client_index -> Label
   | MsgLock : Client_index -> Label
-  | MsgUnlock : Label
   | MsgLocked : Client_index -> Label
   | Nop
   | Silent.
@@ -89,10 +89,10 @@ Section LockServ.
             when (null q) (send (src, Locked)) >> put (mkData (q++[c]) (held st)) >> ret (MsgLock c)
         end
       | Unlock => match q with
-                    | _ :: x :: xs => put (mkData (x :: xs) (held st)) >> send (Client x, Locked)
-                    | _ => put (mkData [] (held st))
-                 end ;;
-                 ret MsgUnlock
+                   | _ :: x :: xs => put (mkData (x :: xs) (held st)) >>
+                                      send (Client x, Locked) >> ret (Holds x)
+                   | _ => put (mkData [] (held st)) >> ret Nop
+                 end
       | _ => ret Nop
     end.
 
@@ -1315,10 +1315,9 @@ Section LockServ.
                   ((queue st = [] /\ ms = [(Client c, Locked)]) \/
                    (queue st <> [] /\ ms = [])))) \/
        ((m = Unlock /\
-                   l = MsgUnlock /\
                    queue st' = tail (queue st) /\
-                   ((queue st' = [] /\ ms = []) \/
-                    (exists next t, queue st' = next :: t /\ ms = [(Client next, Locked)])))) \/
+                   ((queue st' = [] /\ ms = [] /\ l = Nop) \/
+                    (exists next t, queue st' = next :: t /\ ms = [(Client next, Locked)] /\ l = Holds next)))) \/
        ms = [] /\ st' = st /\ l = Nop).
   Proof.
     handler_unfold.
@@ -1535,14 +1534,16 @@ Section LockServ.
   Qed.
 
 
-  (* Sketch: eventually an Unlock happens, so eventually a MsgUnlock happens, so
-     eventually a client moves up the queue *)
+  (* Sketch: eventually an Unlock happens, so eventually a MsgUnlock
+     happens, so eventually a client moves up the queue. when this
+     happens, the server will send it a Locked msg if it's at the
+     head. *)
   Lemma clients_move_up_in_queue :
     forall n c s,
       lb_step_execution lb_step_async s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
       eventually (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n c
-                        /\ (n = 0 -> now (occurred (MsgLocked c)) s))
+                        /\ (n = 0 -> now (occurred (Holds c)) s))
                  s.
   Proof.
   Admitted.
@@ -1552,9 +1553,9 @@ Section LockServ.
       n' <= n ->
       lb_step_execution lb_step_async s ->
       (Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c
-       /\ (S n = 0 -> now (occurred (MsgLocked c)) s)) ->
+       /\ (S n = 0 -> now (occurred (Holds c)) s)) ->
       eventually (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n' c
-                        /\ (n' = 0 -> now (occurred (MsgLocked c)) s))
+                        /\ (n' = 0 -> now (occurred (Holds c)) s))
                  s.
   Proof.
     induction n; intros; simpl in *; auto.
@@ -1573,7 +1574,7 @@ Section LockServ.
     forall n c s,
       lb_step_execution lb_step_async s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
-      eventually (now (occurred (MsgLocked c))) s.
+      eventually (now (occurred (Holds c))) s.
   Proof.
     intros.
     pose proof (@clients_move_way_up_in_queue n 0 c s).
