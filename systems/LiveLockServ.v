@@ -1479,7 +1479,7 @@ Section LockServ.
     induction l; intros; solve_by_inversion.
   Qed.
     
-  Lemma clients_move_up_in_queue :
+  Lemma clients_only_move_up_in_queue :
     forall n c s,
       lb_step_execution lb_step_async s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
@@ -1533,5 +1533,36 @@ Section LockServ.
         update_destruct; subst; now rewrite_update.
     - coinductive_case CIH.
   Qed.
+
+  (* Sketch: eventually an Unlock happens, so eventually a MsgUnlock happens, so
+     eventually a client moves up the queue *)
+  Lemma clients_move_up_in_queue :
+    forall n c s,
+      lb_step_execution lb_step_async s ->
+      Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
+      eventually (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n c)
+                 s.
+  Proof.
+  Admitted.
+
+  Lemma clients_move_to_head_of_queue :
+    forall n n' c s,
+      n' <= n ->
+      lb_step_execution lb_step_async s ->
+      Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
+      eventually (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n' c)
+                 s.
+  Proof.
+    induction n; intros; simpl in *; auto.
+    - assert (n' = 0) by omega. subst.
+      eauto using clients_move_up_in_queue.
+    - find_apply_lem_hyp le_lt_eq_dec. intuition.
+      + assert (n' <= n) by omega.
+        find_eapply_lem_hyp clients_move_up_in_queue; eauto.
+        eapply eventually_trans. 4:eauto.
+        eapply lb_step_execution_invar. all:eauto.
+      + subst. eauto using clients_move_up_in_queue.
+  Qed.
+
           
 End LockServ.
