@@ -1455,5 +1455,83 @@ Section LockServ.
       destruct s.
       now find_apply_lem_hyp always_now.
   Qed.
-  
+
+  Ltac coinductive_case CIH :=
+    apply W_tl; simpl in *; auto;
+    apply CIH; simpl in *; auto.
+
+  Lemma Nth_app :
+    forall A (l : list A) l' a n,
+      Nth l n a ->
+      Nth (l ++ l') n a.
+  Proof.
+    induction l; intros; simpl in *; try solve_by_inversion.
+    invcs H.
+    - constructor.
+    - constructor. auto.
+  Qed.
+
+  Lemma Nth_tl :
+    forall A (l : list A) a n,
+      Nth l (S n) a ->
+      Nth (List.tl l) n a.
+  Proof.
+    induction l; intros; solve_by_inversion.
+  Qed.
+    
+  Lemma clients_move_up_in_queue :
+    forall n c s,
+      lb_step_execution lb_step_async s ->
+      Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
+      weak_until (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c)
+                 (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n c)
+                 s.
+  Proof.
+    intros n c.
+    cofix CIH.
+    destruct s.
+    destruct e.
+    intros Hexec HNth.
+    invcs Hexec.
+    invcs H1.
+    - unfold runGenHandler, NetHandler in *.
+      break_match.
+      + coinductive_case CIH.
+        find_rewrite. simpl.
+        now rewrite_update.
+      + find_apply_lem_hyp ServerNetHandler_cases.
+        intuition.
+        * coinductive_case CIH. 
+          repeat find_rewrite. simpl.
+          rewrite_update.
+          break_exists.
+          intuition; repeat find_rewrite; try solve_by_inversion.
+          now eauto using Nth_app.
+        * exfalso. clear CIH.
+          subst.
+          invcs HNth.
+          repeat find_reverse_rewrite. simpl in *.
+          repeat find_rewrite. now solve_by_inversion.
+        * apply W_tl; simpl; auto. 
+          apply W0. simpl.
+          fold LockServ_MultiParams in *. (* typeclass stuff *)
+          repeat find_rewrite. simpl.
+          rewrite_update. repeat find_rewrite.
+          now eauto using Nth_tl.
+        * coinductive_case CIH. 
+          repeat find_rewrite. simpl.
+          now rewrite_update.
+    - unfold runGenHandler in *.
+      find_apply_lem_hyp InputHandler_cases.
+      intuition.
+      + break_exists. break_and. subst.
+        coinductive_case CIH.
+        repeat find_rewrite. simpl.
+        now rewrite_update.
+      + coinductive_case CIH.
+        repeat find_rewrite. simpl.
+        update_destruct; subst; now rewrite_update.
+    - coinductive_case CIH.
+  Qed.
+          
 End LockServ.
