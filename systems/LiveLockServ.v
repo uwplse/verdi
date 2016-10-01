@@ -1273,9 +1273,9 @@ Section LockServ.
     forall st tr c t,
       step_async_star step_async_init st tr ->
       queue (nwState st Server) = c :: t ->
-      (exists p, In p (nwPackets st) /\ pBody p = Locked /\ pDst p = Client c /\ pSrc p = Server) \/
+      (In (mkPacket Server (Client c) Locked) (nwPackets st)) \/
       (held (nwState st (Client c)) = true) \/
-      (exists p, In p (nwPackets st) /\ pBody p = Unlock /\ pSrc p = Client c /\ pDst p = Server).
+      (In (mkPacket (Client c) Server Unlock) (nwPackets st)).
   Proof.
   Admitted.
 
