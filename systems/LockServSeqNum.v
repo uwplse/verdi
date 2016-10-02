@@ -20,7 +20,7 @@ Section LockServSeqNum.
     forall (net : transformed_network) tr,
       step_dup_star (params := transformed_multi_params) step_async_init net tr ->
       @mutual_exclusion num_Clients (nwState (revertNetwork net)).
-  Proof.
+  Proof using.
     intros.
     pose proof @true_in_reachable_transform _ (LockServ_MultiParams num_Clients)
          (fun net : network => mutual_exclusion (nwState net))

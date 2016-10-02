@@ -160,7 +160,7 @@ Lemma map_id_tr :
                  | inl io => (n, inl io)
                  | inr lo => (n, inr (map id lo))
                  end) out = out.
-Proof.
+Proof using.
 elim => //.
 move => tr l IH.
 rewrite /= IH.
@@ -173,7 +173,7 @@ Theorem ghost_simulation_1 :
   forall net net' failed failed' out,
     @step_failure _ _ refined_failure_params (failed, net) (failed', net') out ->
     @step_failure _ _ failure_params (failed, deghost net) (failed', deghost net') out.
-Proof.
+Proof using.
 move => net net' failed failed' out H_step.
 apply step_failure_tot_mapped_simulation_1 in H_step.
 rewrite /tot_map_name /tot_map_net /= 2!map_id /id /= in H_step.
@@ -203,7 +203,7 @@ Theorem ghost_simulation_2 :
     exists gnet',
       step_failure (failed, gnet) (failed', gnet') out /\
       deghost gnet' = net'.
-Proof.
+Proof using.
 move => net net' failed failed' out gnet H_step H_eq.
 eapply step_failure_tot_mapped_simulation_2 in H_step => //.
 - move: H_step => [gnet' [H_step H_eq_net]].
@@ -260,7 +260,7 @@ Arguments ghost_packet /_.
 Lemma reghost_deghost_partial_inverses :
   forall net,
     deghost (reghost net) = net.
-Proof.
+Proof using.
   destruct net. unfold deghost, reghost. simpl in *. f_equal.
   rewrite map_map. map_id.
 Qed.
@@ -275,7 +275,7 @@ Theorem ghost_invariant_lift :
        step_failure (failed, net) (failed', net') out ->
        P (deghost net) ->
        P (deghost net')).
-Proof.
+Proof using.
   intros. eauto using ghost_simulation_1.
 Qed.
 
@@ -289,7 +289,7 @@ Theorem ghost_invariant_lower :
        @step_failure _ _ failure_params (failed, net) (failed', net') out ->
        P net ->
        P net').
-Proof.
+Proof using.
   intros.
   apply ghost_simulation_2 with (gnet := reghost net) in H0.
   - break_exists. intuition. subst.
@@ -333,7 +333,7 @@ Definition mgv_refined_input_handlers me inp st :=
 
 Definition mgv_msg_eq_dec :
   forall x y : ghost_msg * msg, {x = y} + {x <> y}.
-Proof.
+Proof using.
   intros.
   decide equality; auto using msg_eq_dec, ghost_msg_eq_dec.
 Qed.
@@ -459,7 +459,7 @@ forall out,
                  | inl io => (n, inl io)
                  | inr lo => (n, inr (map id lo))
                  end) out = out.
-Proof.
+Proof using.
 elim => //.
 move => tr l IH.
 rewrite /= IH.
@@ -472,7 +472,7 @@ Theorem mgv_ghost_simulation_1 :
   forall net net' failed failed' out,
     @step_failure _ _ mgv_refined_failure_params (failed, net) (failed', net') out ->
     @step_failure _ _ failure_params (failed, mgv_deghost net) (failed', mgv_deghost net') out.
-Proof.
+Proof using.
 move => net net' failed failed' out H_step.
 apply step_failure_tot_mapped_simulation_1 in H_step.
 rewrite /tot_map_name /tot_map_net /= 2!map_id /id /= in H_step.
@@ -518,7 +518,7 @@ Arguments mgv_ghost_packet /_.
 Lemma mgv_reghost_deghost_partial_inverses :
   forall net,
     mgv_deghost (mgv_reghost net) = net.
-Proof.
+Proof using.
   destruct net. unfold mgv_deghost, mgv_reghost. simpl in *. f_equal.
   rewrite map_map. map_id.
 Qed.
@@ -530,7 +530,7 @@ Theorem mgv_ghost_simulation_2 :
     exists gnet',
       step_failure (failed, gnet) (failed', gnet') out /\
       mgv_deghost gnet' = net'.
-Proof.
+Proof using.
 move => net net' failed failed' out gnet H_step H_eq.
 eapply step_failure_tot_mapped_simulation_2 in H_step => //.
 - move: H_step => [gnet' [H_step H_eq_net]].
@@ -574,7 +574,7 @@ Theorem mgv_ghost_invariant_lift :
        step_failure (failed, net) (failed', net') out ->
        P (mgv_deghost net) ->
        P (mgv_deghost net')).
-Proof.
+Proof using.
   intros. eauto using mgv_ghost_simulation_1.
 Qed.
 
@@ -588,7 +588,7 @@ Theorem mgv_ghost_invariant_lower :
        @step_failure _ _ failure_params (failed, net) (failed', net') out ->
        P net ->
        P net').
-Proof.
+Proof using.
   intros.
   apply mgv_ghost_simulation_2 with (gnet := mgv_reghost net) in H0.
   - break_exists. intuition. subst.

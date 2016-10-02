@@ -30,7 +30,7 @@ Section TraceRelations.
     forall s tr,
       refl_trans_1n_trace step init s tr ->
       T tr -> R s.
-  Proof.
+  Proof using.
     intros.
     find_copy_apply_lem_hyp refl_trans_1n_n1_trace.
     remember init as s'.

@@ -124,7 +124,7 @@ Section Decomposition.
     forall h p ms xs ys,
       In p (map (fun m => mkPacket h (fst m) (snd m)) ms ++ xs ++ ys) ->
       (In (pDst p, pBody p) ms /\ h = pSrc p) \/ In p (xs ++ ys).
-  Proof.
+  Proof using.
     intros.
     in_crush. destruct x; simpl in *; eauto.
   Qed.
@@ -133,7 +133,7 @@ Section Decomposition.
     forall h p ms l,
       In p (map (fun m => mkPacket h (fst m) (snd m)) ms ++ l) ->
       (In (pDst p, pBody p) ms /\ h = pSrc p) \/ In p l.
-  Proof.
+  Proof using.
     intros.
     in_crush; destruct x; simpl in *; eauto.
   Qed.
@@ -146,7 +146,7 @@ Section Decomposition.
       In b (xs ++ ys) ->
       distinct_pairs_and network_network_invariant l ->
       network_network_invariant a b.
-  Proof.
+  Proof using.
     induction xs; intros; subst; simpl in *; intuition eauto; subst; eauto.
     apply network_network_invariant_sym. eauto.
   Qed.
@@ -156,7 +156,7 @@ Section Decomposition.
       l = (xs ++ p :: ys) ->
       distinct_pairs_and (A:=A) R l ->
       distinct_pairs_and R (xs ++ ys).
-  Proof.
+  Proof using.
     induction xs; intros; subst; simpl in *; intuition eauto.
   Qed.
 
@@ -169,7 +169,7 @@ Section Decomposition.
          In y l2 ->
          R x y) ->
       distinct_pairs_and R (l1 ++ l2).
-  Proof.
+  Proof using.
     induction l1; intros; simpl in *; intuition.
     find_apply_lem_hyp in_app_or.
     intuition eauto.
@@ -177,7 +177,7 @@ Section Decomposition.
 
   Theorem decomposition_invariant :
     inductive_invariant step_async step_async_init composed_invariant.
-  Proof.
+  Proof using.
     unfold inductive_invariant. intuition.
     - unfold composed_invariant. simpl.
       intuition auto using state_invariant_init.
