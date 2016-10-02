@@ -16,7 +16,7 @@ Section PrimaryBackup.
   Inductive name := Primary | Backup.
 
   Lemma name_eq_dec : forall x y : name, {x = y} + {x <> y}.
-  Proof.
+  Proof using.
     decide equality.
   Qed.
 
@@ -25,7 +25,7 @@ Section PrimaryBackup.
   | Ack : msg.
 
   Lemma msg_eq_dec : forall x y : msg, {x = y} + {x <> y}.
-  Proof.
+  Proof using pb_params.
     decide equality.
     apply input_eq_dec.
   Qed.
@@ -49,14 +49,14 @@ Section PrimaryBackup.
   Lemma all_nodes_all :
     forall x,
       In x all_nodes.
-  Proof.
+  Proof using.
     unfold all_nodes.
     destruct x; intuition.
   Qed.
 
   Lemma NoDup_all_nodes :
     NoDup all_nodes.
-  Proof.
+  Proof using.
     unfold all_nodes.
     repeat constructor; intuition. simpl in *. intuition. congruence.
   Qed.
@@ -104,7 +104,7 @@ Section PrimaryBackup.
        d = d' /\
        ms = [] /\
        os = []).
-  Proof.
+  Proof using.
     unfold PB_input_handler. intros.
     pb_unfold.
     repeat break_match; repeat find_inversion; intuition eauto.
@@ -153,7 +153,7 @@ Section PrimaryBackup.
       (dst = Backup /\ ms = [(Primary, Ack)] /\ queue d' = queue d /\ os = [] /\
        (exists i, m = BackItUp i /\
                   state d' = snd (handler i (state d)))).
-  Proof.
+  Proof using.
     unfold PB_net. intros.
     pb_unfold. repeat (first [break_let | break_match]); repeat find_inversion; auto.
     - right. left. intuition. right. eexists. eexists. intuition eauto.
@@ -183,7 +183,7 @@ Section PrimaryBackup.
       (dst = Backup /\ ms = [(Primary, Ack)] /\ queue d' = queue d /\ os = [] /\
        (exists i, m = BackItUp i /\
                   state d' = snd (handler i (state d)))).
-  Proof.
+  Proof using.
     unfold PB_net. intros.
     pb_unfold. repeat (first [break_let | break_match]); repeat find_inversion; auto; simpl.
     - left. intuition. left. eauto.
@@ -258,7 +258,7 @@ Section PrimaryBackup.
     forall tr,
       inputs_1 tr = [] ->
       outputs_1 tr = [].
-  Proof.
+  Proof using.
     destruct tr; auto.
     intros. simpl in *. discriminate.
   Qed.
@@ -266,7 +266,7 @@ Section PrimaryBackup.
   Lemma inputs_m_app :
     forall l1 l2,
       inputs_m (l1 ++ l2) = inputs_m l1 ++ inputs_m l2.
-  Proof.
+  Proof using.
     unfold inputs_m.
     intros.
     induction l1; simpl; repeat break_match; subst; simpl in *; auto using f_equal.
@@ -275,7 +275,7 @@ Section PrimaryBackup.
   Lemma inputs_m_inr :
     forall h t tr,
       inputs_m ((h, inr t) :: tr) = inputs_m tr.
-  Proof.
+  Proof using.
     unfold inputs_m.
     intros.
     simpl.
@@ -290,7 +290,7 @@ Section PrimaryBackup.
       (dst = Primary /\ exists h t, queue d = h :: t /\ queue d' = t /\
                                     (let (us, st') := handler h (state d) in
                                      os = [RequestResponse h us] /\ state d' = st')).
-  Proof.
+  Proof using.
     intros.
     find_apply_lem_hyp PB_net_defn.
     intuition.
@@ -302,7 +302,7 @@ Section PrimaryBackup.
   Lemma outputs_m_app :
     forall tr1 tr2,
       outputs_m (tr1 ++ tr2) = outputs_m tr1 ++ outputs_m tr2.
-  Proof.
+  Proof using.
     intros. induction tr1; simpl.
     - auto.
     - repeat break_match; subst; auto.
@@ -315,7 +315,7 @@ Section PrimaryBackup.
       sigma' Primary = sigma Primary ->
       outputs_m tr_m' = [] ->
       correspond st sigma' tr_1 (tr_m ++ tr_m').
-  Proof.
+  Proof using.
     unfold correspond.
     intros.
     rewrite outputs_m_app.
@@ -327,14 +327,14 @@ Section PrimaryBackup.
   Lemma outputs_m_inr_nil :
     forall h l,
       outputs_m ((h,inr []) :: l) = outputs_m l.
-  Proof.
+  Proof using.
     destruct h; auto.
   Qed.
 
   Lemma outputs_m_inr_nil_singleton :
     forall h,
       outputs_m [(h,inr [])] = [].
-  Proof.
+  Proof using.
     intros.
     apply outputs_m_inr_nil.
   Qed.
@@ -342,7 +342,7 @@ Section PrimaryBackup.
   Lemma outputs_m_inl_read_singleton :
     forall h,
       outputs_m [(h, inl Read)] = [].
-  Proof.
+  Proof using.
     destruct h; auto.
   Qed.
 
@@ -350,7 +350,7 @@ Section PrimaryBackup.
     forall h i l,
       h = Primary ->
       outputs_m [(h, inr [RequestResponse i l])] = [l].
-  Proof.
+  Proof using.
     unfold outputs_m.
     intros.
     break_match; auto; congruence.
@@ -367,7 +367,7 @@ Section PrimaryBackup.
       h = Primary ->
       queue (sigma h) = i :: queue d ->
       correspond st sigma' tr_1 (tr_m ++ tr_m').
-  Proof.
+  Proof using.
     unfold correspond.
     intros.
     subst.
@@ -382,7 +382,7 @@ Section PrimaryBackup.
   Lemma inputs_m_inr_singleton :
     forall h l,
       inputs_m [(h, inr l)] = [].
-  Proof.
+  Proof using.
     intros.
     rewrite inputs_m_inr.
     auto.
@@ -391,7 +391,7 @@ Section PrimaryBackup.
   Lemma inputs_m_app_inr_singleton :
     forall tr h l,
       inputs_m (tr ++ [(h, inr l)]) = inputs_m tr.
-  Proof.
+  Proof using.
     intros.
     rewrite inputs_m_app in *.
     rewrite inputs_m_inr_singleton in *.
@@ -402,35 +402,35 @@ Section PrimaryBackup.
   Lemma inputs_m_primary_inl :
     forall i l,
       inputs_m ((Primary, inl (Request i)) :: l) = i :: inputs_m l.
-  Proof.
+  Proof using.
     auto.
   Qed.
 
   Lemma inputs_m_primary_inl_request_singleton :
     forall i,
       inputs_m [(Primary, inl (Request i))] = [i].
-  Proof.
+  Proof using.
     auto.
   Qed.
 
   Lemma inputs_m_inl_read_singleton :
     forall h,
       inputs_m [(h, inl Read)] = [].
-  Proof.
+  Proof using.
     intros. destruct h; auto.
   Qed.
 
   Lemma inputs_m_inl_read :
     forall h l,
       inputs_m ((h, inl Read) :: l) = inputs_m l.
-  Proof.
+  Proof using.
     intros. destruct h; auto.
   Qed.
 
   Lemma list_destruct_last :
     forall A (l : list A),
       l = [] \/ exists l' x, l = l' ++ [x].
-  Proof.
+  Proof using.
     induction l; intuition.
     - subst. right. exists nil. simpl. eauto.
     - break_exists. subst. right. eexists. eexists.
@@ -440,14 +440,14 @@ Section PrimaryBackup.
   Lemma inputs_1_app :
     forall tr1 tr2,
       inputs_1 (tr1 ++ tr2) = inputs_1 tr1 ++ inputs_1 tr2.
-  Proof.
+  Proof using.
     unfold inputs_1. auto using map_app.
   Qed.
 
   Lemma outputs_1_app :
     forall tr1 tr2,
       outputs_1 (tr1 ++ tr2) = outputs_1 tr1 ++ outputs_1 tr2.
-  Proof.
+  Proof using.
     unfold outputs_1. auto using map_app.
   Qed.
 
@@ -456,7 +456,7 @@ Section PrimaryBackup.
       processInputs d (l1 ++ l2) = let (d', os) := processInputs d l1 in
                                    let (d'', os') := processInputs d' l2 in
                                    (d'', os ++ os').
-  Proof.
+  Proof using.
     induction l1; intros; simpl in *; repeat break_match.
     - auto.
     - find_inversion. find_higher_order_rewrite.
@@ -472,7 +472,7 @@ Section PrimaryBackup.
       state (sigma' Primary) = state (sigma Primary) ->
       queue (sigma' Primary) = queue (sigma Primary) ++ [i] ->
       correspond st' sigma' (tr_1 ++ [(i,l)]) (tr_m ++ [(Primary, inl (Request i))]).
-  Proof.
+  Proof using.
     unfold correspond.
     intros.
     rewrite outputs_m_app, outputs_1_app in *.
@@ -494,14 +494,14 @@ Section PrimaryBackup.
   Lemma inputs_m_backup_singleton :
     forall i,
       inputs_m [(Backup, inl i)] = [].
-  Proof.
+  Proof using.
     auto.
   Qed.
 
   Lemma inputs_m_backup :
     forall i l,
       inputs_m ((Backup, inl i) :: l) = inputs_m l.
-  Proof.
+  Proof using.
     auto.
   Qed.
 
@@ -510,7 +510,7 @@ Section PrimaryBackup.
       step_1_star st st' tr ->
       tr = [] ->
       st = st'.
-  Proof.
+  Proof using.
     intros.
     invc H; auto.
     invc H1. discriminate.
@@ -520,7 +520,7 @@ Section PrimaryBackup.
     forall tr,
       inputs_1 tr = nil ->
       tr = nil.
-  Proof.
+  Proof using.
     intros.
     destruct tr; auto.
     discriminate.
@@ -528,19 +528,19 @@ Section PrimaryBackup.
 
   Lemma outputs_m_on_nil :
     outputs_m [] = [].
-  Proof.
+  Proof using.
     auto.
   Qed.
 
   Lemma outputs_1_on_nil :
     outputs_1 (@nil ((@input base_params) * ((@output base_params)))) = [].
-  Proof.
+  Proof using.
     auto.
   Qed.
 
   Lemma inputs_m_on_nil :
     inputs_m [] = [].
-  Proof.
+  Proof using.
     auto.
   Qed.
 
@@ -549,21 +549,21 @@ Section PrimaryBackup.
       processInputs st (x :: l) = let (os, d') := handler x st in
                                   let (d'', os') := processInputs d' l in
                                   (d'', os :: os').
-  Proof.
+  Proof using.
     auto.
   Qed.
 
   Lemma processInputs_nil_defn :
     forall st,
       processInputs st [] = (st, []).
-  Proof.
+  Proof using.
     auto.
   Qed.
 
   Lemma outputs_m_inl_singleton :
     forall h i,
       outputs_m [(h, inl i)] = [].
-  Proof.
+  Proof using.
     destruct h; auto.
   Qed.
 
@@ -572,7 +572,7 @@ Section PrimaryBackup.
       inputs_1 l = [i] ->
       exists os,
         l = [(i, os)].
-  Proof.
+  Proof using.
     intros.
     destruct l; simpl in *.
     - discriminate.
@@ -584,7 +584,7 @@ Section PrimaryBackup.
     forall st st' i os,
       step_1_star st st' [(i, os)] ->
       step_1 st st' [(i, os)].
-  Proof.
+  Proof using.
     intros.
     invc H.
     invc H4.
@@ -596,7 +596,7 @@ Section PrimaryBackup.
     forall st st' i os,
       step_1 st st' [(i, os)] ->
       handler i st = (os, st').
-  Proof.
+  Proof using.
     intros.
     invc H.
     auto.
@@ -604,13 +604,13 @@ Section PrimaryBackup.
 
   Lemma inputs_m_on_nil' :
     inputs_m (@nil (name * (PB_input + (list PB_output)))) = [].
-  Proof.
+  Proof using.
     unfold inputs_m. auto.
   Qed.
 
   Lemma correspond_init :
     correspond init PB_init [] [].
-  Proof.
+  Proof using.
     unfold correspond.
     break_let.
     simpl in *. tuple_inversion. auto.
@@ -623,7 +623,7 @@ Section PrimaryBackup.
         tr = y ++ [z] /\
         inputs_1 y = tr' /\
         inputs_1 [z] = [x].
-  Proof.
+  Proof using.
     intros tr.
     pose proof list_destruct_last _ tr.
     intuition.
@@ -640,7 +640,7 @@ Section PrimaryBackup.
       exists st2,
         step_1_star st st2 tr /\
         step_1 st2 st' [t].
-  Proof.
+  Proof using.
     intros.
     find_apply_lem_hyp refl_trans_1n_n1_trace.
     invc H.
@@ -655,7 +655,7 @@ Section PrimaryBackup.
   Lemma outputs_m_read_response_singleton  :
     forall h o,
       outputs_m [(h, inr [ReadResponse o])] = [].
-  Proof.
+  Proof using.
     intros.
     simpl in *.
     break_match; auto.
@@ -668,7 +668,7 @@ Section PrimaryBackup.
         step_1_star init st tr_1 ->
         inputs_1 tr_1 = inputs_m tr_m ->
         correspond st (nwState net) tr_1 tr_m.
-  Proof.
+  Proof using.
     intros net tr_m H.
     find_apply_lem_hyp refl_trans_1n_n1_trace.
     prep_induction H.
@@ -732,7 +732,7 @@ Section PrimaryBackup.
         step_1_star st st' tr_1' ->
         inputs_1 tr_1' = inputs_m tr_m' ->
         correspond st' (nwState net') (tr_1 ++ tr_1') (tr_m ++ tr_m').
-  Proof.
+  Proof using.
     intros.
     invc H; repeat break_let; simpl in *;
     repeat match goal with
@@ -794,7 +794,7 @@ Section PrimaryBackup.
       (inputs_m tr = [] /\ (outputs_m tr = [] /\ nwState net Primary = nwState net' Primary)) \/
       (inputs_m tr = [] /\ exists os, outputs_m tr = [os]) \/
       (exists i, inputs_m tr = [i]).
-  Proof.
+  Proof using.
     intros.
     invc H; simpl; break_match; auto;
     repeat rewrite app_nil_r in *;
@@ -856,7 +856,7 @@ Section PrimaryBackup.
       step_async net net' tr ->
       network_invariant net ->
       network_invariant net'.
-  Proof.
+  Proof using.
     intros.
     invc H; simpl in *.
     - unfold network_invariant in *. simpl.
@@ -869,7 +869,7 @@ Section PrimaryBackup.
 
   Lemma network_invariant_init :
     network_invariant step_async_init.
-  Proof.
+  Proof using.
     unfold network_invariant. simpl. auto.
   Qed.
 
@@ -877,7 +877,7 @@ Section PrimaryBackup.
     forall st net tr_1 tr_m,
       correspond st (nwState net) tr_1 tr_m ->
       Prefix (outputs_m tr_m) (outputs_1 tr_1).
-  Proof.
+  Proof using.
     unfold correspond.
     intros. break_let. intuition. subst.
     eauto using app_Prefix.
@@ -901,7 +901,7 @@ Section PrimaryBackup.
   Lemma revert_state_defn :
     forall net,
       revert_state net = state (nwState net Primary).
-  Proof.
+  Proof using.
     unfold revert_state. auto.
   Qed.
 
@@ -909,7 +909,7 @@ Section PrimaryBackup.
     forall net net' tr,
       step_async net net' tr ->
       step_1_star (revert_state net) (revert_state net') (revert_trace tr).
-  Proof.
+  Proof using.
     intros.
     invc H.
     - repeat rewrite revert_state_defn. simpl. rewrite app_nil_r.
@@ -938,7 +938,7 @@ Section PrimaryBackup.
   Lemma revert_trace_app :
     forall tr1 tr2,
       revert_trace (tr1 ++ tr2) = revert_trace tr1 ++ revert_trace tr2.
-  Proof.
+  Proof using.
     induction tr1; intros; simpl.
     - auto.
     - rewrite IHtr1.
@@ -951,7 +951,7 @@ Section PrimaryBackup.
     forall net tr,
       step_async_star step_async_init net tr ->
       step_1_star init (revert_state net) (revert_trace tr).
-  Proof.
+  Proof using.
     intros.
     apply refl_trans_1n_n1_trace in H.
     prep_induction H.
@@ -973,7 +973,7 @@ Section PrimaryBackup.
       (forall net tr,
          step_async_star step_async_init net tr ->
          P (revert_trace tr)).
-  Proof.
+  Proof using.
     intros.
     find_apply_lem_hyp simulation.
     eauto.
@@ -985,7 +985,7 @@ Section PrimaryBackup.
                              | (Primary, inl (Request i)) => i :: inputs_m tr
                              | _ => inputs_m tr
                            end.
-  Proof.
+  Proof using.
     unfold inputs_m.
     intros. simpl.
     repeat break_match; repeat find_inversion; auto; try discriminate.
@@ -1005,7 +1005,7 @@ Section PrimaryBackup.
     forall A x y,
       @no_output_at_backup_trace A (x :: y) ->
       no_output_at_backup_trace y.
-  Proof.
+  Proof using.
     unfold no_output_at_backup_trace.
     intros. simpl in *. eauto.
   Qed.
@@ -1016,7 +1016,7 @@ Section PrimaryBackup.
       l = [] \/
       exists d,
         l = [ReadResponse d].
-  Proof.
+  Proof using.
     unfold no_output_at_backup_trace, no_output_at_backup.
     intros. simpl in *.
     find_insterU.
@@ -1032,7 +1032,7 @@ Section PrimaryBackup.
     forall tr,
       no_output_at_backup_trace tr ->
       outputs_m tr = outputs_1 (revert_trace tr).
-  Proof.
+  Proof using.
     unfold outputs_1.
     induction tr; simpl; intros.
     - auto.
@@ -1051,7 +1051,7 @@ Section PrimaryBackup.
   Lemma NOABT_nil :
     forall A,
       @no_output_at_backup_trace A [].
-  Proof.
+  Proof using.
     unfold no_output_at_backup_trace.
     simpl. intuition.
   Qed.
@@ -1061,7 +1061,7 @@ Section PrimaryBackup.
       no_output_at_backup x ->
       @no_output_at_backup_trace A y ->
       no_output_at_backup_trace (x :: y).
-  Proof.
+  Proof using.
     unfold no_output_at_backup_trace, no_output_at_backup.
     simpl. intros. intuition; subst; eauto.
   Qed.
@@ -1070,7 +1070,7 @@ Section PrimaryBackup.
     forall A x y,
       @no_output_at_backup_trace A (x :: y) ->
       no_output_at_backup x.
-  Proof.
+  Proof using.
     unfold no_output_at_backup_trace, no_output_at_backup.
     simpl. intuition.
   Qed.
@@ -1080,7 +1080,7 @@ Section PrimaryBackup.
       @no_output_at_backup_trace A xs ->
       no_output_at_backup_trace ys ->
       no_output_at_backup_trace (xs ++ ys).
-  Proof.
+  Proof using.
     induction xs; intros; simpl in *; auto.
     eauto using NOABT_cons,
     NOABT_head,
@@ -1090,7 +1090,7 @@ Section PrimaryBackup.
   Lemma NOABT_singleton_inr_nil :
     forall A h,
       @no_output_at_backup_trace A [(h, inr [])].
-  Proof.
+  Proof using.
     unfold no_output_at_backup_trace, no_output_at_backup.
     simpl. intros. intuition. subst. simpl in *. find_inversion. auto.
   Qed.
@@ -1098,7 +1098,7 @@ Section PrimaryBackup.
   Lemma NOABT_singleton_inr_read_response :
     forall A h d,
       @no_output_at_backup_trace A [(h, inr [ReadResponse d])].
-  Proof.
+  Proof using.
     unfold no_output_at_backup_trace, no_output_at_backup.
     simpl. intros. intuition. subst. simpl in *. find_inversion. auto.
   Qed.
@@ -1106,7 +1106,7 @@ Section PrimaryBackup.
   Lemma NOABT_singleton_primary :
     forall A out,
       no_output_at_backup_trace [(Primary, @inr A _ out)].
-  Proof.
+  Proof using.
     unfold no_output_at_backup_trace, no_output_at_backup.
     simpl.
     intuition.  subst. simpl in *. find_inversion. auto.
@@ -1115,7 +1115,7 @@ Section PrimaryBackup.
   Lemma NOABT_singleton_inl :
     forall A h r,
       @no_output_at_backup_trace A [(h, inl r)].
-  Proof.
+  Proof using.
     unfold no_output_at_backup_trace, no_output_at_backup.
     simpl. intuition. subst. simpl in *. discriminate.
   Qed.
@@ -1124,7 +1124,7 @@ Section PrimaryBackup.
     forall net tr,
       step_async_star (params:=PB_multi_params) step_async_init net tr ->
       no_output_at_backup_trace tr.
-  Proof.
+  Proof using.
     intros.
     find_apply_lem_hyp refl_trans_1n_n1_trace.
     prep_induction H.
@@ -1152,7 +1152,7 @@ Section PrimaryBackup.
   Lemma ZOOOPST_nil :
     forall A B C,
       @zero_or_one_outputs_per_step_trace A B C [].
-  Proof.
+  Proof using.
     unfold zero_or_one_outputs_per_step_trace, zero_or_one_outputs_per_step.
     simpl. intuition.
   Qed.
@@ -1161,7 +1161,7 @@ Section PrimaryBackup.
     forall A B C x y,
       @zero_or_one_outputs_per_step_trace A B C (x :: y) ->
       zero_or_one_outputs_per_step x.
-  Proof.
+  Proof using.
     unfold zero_or_one_outputs_per_step_trace, zero_or_one_outputs_per_step.
     simpl.
     eauto.
@@ -1171,7 +1171,7 @@ Section PrimaryBackup.
     forall A B C x y,
       @zero_or_one_outputs_per_step_trace A B C (x :: y) ->
       zero_or_one_outputs_per_step_trace y.
-  Proof.
+  Proof using.
     unfold zero_or_one_outputs_per_step_trace, zero_or_one_outputs_per_step.
     simpl.
     eauto.
@@ -1182,7 +1182,7 @@ Section PrimaryBackup.
       @zero_or_one_outputs_per_step_trace A B C (x :: y) ->
       zero_or_one_outputs_per_step x /\
       zero_or_one_outputs_per_step_trace y.
-  Proof.
+  Proof using.
     intuition eauto using ZOOOPST_head, ZOOOPST_tail.
   Qed.
 
@@ -1191,7 +1191,7 @@ Section PrimaryBackup.
       @zero_or_one_outputs_per_step A B C x ->
       zero_or_one_outputs_per_step_trace y ->
       zero_or_one_outputs_per_step_trace (x :: y).
-  Proof.
+  Proof using.
     unfold zero_or_one_outputs_per_step_trace, zero_or_one_outputs_per_step.
     simpl.
     intuition; subst; simpl in *; try discriminate; eauto.
@@ -1202,7 +1202,7 @@ Section PrimaryBackup.
       @zero_or_one_outputs_per_step_trace A B C xs ->
       zero_or_one_outputs_per_step_trace ys ->
       zero_or_one_outputs_per_step_trace (xs ++ ys).
-  Proof.
+  Proof using.
     induction xs; intros.
     - auto.
     - eauto using ZOOOPST_cons_intro, ZOOOPST_head, ZOOOPST_tail.
@@ -1211,7 +1211,7 @@ Section PrimaryBackup.
   Lemma ZOOOPST_singleton_nil :
     forall A B C h,
       @zero_or_one_outputs_per_step_trace A B C [(h, inr [])].
-  Proof.
+  Proof using.
     unfold zero_or_one_outputs_per_step_trace, zero_or_one_outputs_per_step.
     simpl in *.
     intuition. subst. simpl in *. find_inversion. auto.
@@ -1220,7 +1220,7 @@ Section PrimaryBackup.
   Lemma ZOOOPST_singleton_singleton :
     forall A B C h x,
       @zero_or_one_outputs_per_step_trace A B C [(h, inr [x])].
-  Proof.
+  Proof using.
     unfold zero_or_one_outputs_per_step_trace, zero_or_one_outputs_per_step.
     simpl. intuition. subst. simpl in *. find_inversion. eauto.
   Qed.
@@ -1228,7 +1228,7 @@ Section PrimaryBackup.
   Lemma ZOOOPST_singleton_inl :
     forall A B C h i,
       @zero_or_one_outputs_per_step_trace A B C [(h, inl i)].
-  Proof.
+  Proof using.
     unfold zero_or_one_outputs_per_step_trace, zero_or_one_outputs_per_step.
     simpl. intuition. subst. discriminate.
   Qed.
@@ -1237,7 +1237,7 @@ Section PrimaryBackup.
     forall net tr,
       step_async_star (params:=PB_multi_params) step_async_init net tr ->
       zero_or_one_outputs_per_step_trace tr.
-  Proof.
+  Proof using.
     intros.
     find_apply_lem_hyp refl_trans_1n_n1_trace.
     prep_induction H.
@@ -1261,7 +1261,7 @@ Section PrimaryBackup.
     forall net tr,
       step_async_star (params := PB_multi_params) step_async_init net tr ->
       inputs_m tr = inputs_1 (revert_trace tr) ++ queue (nwState net Primary).
-  Proof.
+  Proof using.
     intros.
     find_apply_lem_hyp refl_trans_1n_n1_trace.
     prep_induction H.

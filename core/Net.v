@@ -55,7 +55,7 @@ Section StepRelations.
                                         refl_trans_1n_trace step a b os ->
                                         refl_trans_1n_trace step b c os' ->
                                         refl_trans_1n_trace step a c (os ++ os').
-  Proof.
+  Proof using.
     intros.
     induction H; simpl; auto.
     concludes.
@@ -76,7 +76,7 @@ Section StepRelations.
         P a ->
         (refl_trans_1n_trace step) a a' os ->
         P a'.
-  Proof.
+  Proof using.
     unfold inductive. intros.
     induction H1; auto.
     forwards; eauto.
@@ -102,7 +102,7 @@ Section StepRelations.
          P a ->
          P a') ->
       true_in_reachable step init P.
-  Proof.
+  Proof using.
     intros. unfold true_in_reachable, reachable in *.
     intros. break_exists. 
     match goal with H : refl_trans_1n_trace _ _ _ _ |- _ => induction H end;
@@ -117,7 +117,7 @@ Section StepRelations.
     forall step init P,
       inductive_invariant step init P ->
       true_in_reachable step init P.
-  Proof.
+  Proof using.
     unfold inductive_invariant, true_in_reachable, reachable, inductive in *. intros.
     break_exists.
     match goal with H : refl_trans_1n_trace _ _ _ _ |- _ => induction H end;
@@ -136,7 +136,7 @@ Section StepRelations.
       step x y l ->
       refl_trans_n1_trace step y z l' ->
       refl_trans_n1_trace step x z (l ++ l').
-  Proof.
+  Proof using.
     intros.
     induction H0.
     - rewrite app_nil_r. rewrite <- app_nil_l.
@@ -152,7 +152,7 @@ Section StepRelations.
     forall step x y l,
       refl_trans_1n_trace step x y l ->
       refl_trans_n1_trace step x y l.
-  Proof.
+  Proof using.
     intros.
     induction H.
     - constructor.
@@ -164,7 +164,7 @@ Section StepRelations.
       refl_trans_1n_trace step x y l ->
       step y z l' ->
       refl_trans_1n_trace step x z (l ++ l').
-  Proof.
+  Proof using.
     intros.
     induction H.
     - simpl. rewrite <- app_nil_r. econstructor; eauto. constructor.
@@ -176,7 +176,7 @@ Section StepRelations.
     forall step x y l,
       refl_trans_n1_trace step x y l ->
       refl_trans_1n_trace step x y l.
-  Proof.
+  Proof using.
     intros.
     induction H.
     - constructor.
@@ -194,7 +194,7 @@ Section StepRelations.
          P x x'' (tr1 ++ tr2)) ->
       forall x y l,
         refl_trans_1n_trace step x y l -> P x y l.
-  Proof.
+  Proof using.
     intros.
     find_apply_lem_hyp refl_trans_1n_n1_trace.
     eapply refl_trans_n1_trace_ind; eauto.
@@ -210,7 +210,7 @@ Section StepRelations.
          reachable step init a ->
          P a ->
          P a').
-  Proof.
+  Proof using.
     intros. unfold true_in_reachable, reachable in *.
     intros. intuition.
     - apply H; eexists; econstructor.
@@ -280,7 +280,7 @@ Section packet_eta.
   Lemma packet_eta :
     forall p : @packet P M,
       {| pSrc := pSrc p; pDst := pDst p; pBody := pBody p |} = p.
-  Proof.
+  Proof using.
     destruct p; auto.
   Qed.
 End packet_eta.
