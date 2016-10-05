@@ -1647,24 +1647,47 @@ Section LockServ.
     unfold label_silent. simpl. congruence.
   Qed.
 
+  Lemma Nth_something_at_head :
+    forall A (l : list A) n x,
+      Nth l n x ->
+      exists y l',
+        l = y :: l'.
+  Proof.
+    intros.
+    solve_by_inversion' eauto.
+  Qed.
+      
+
   Lemma eventually_Unlock :
     forall n c s,
+      event_step_star step_async step_async_init (hd s) ->
       lb_step_execution lb_step_async s ->
       weak_local_fairness lb_step_async label_silent s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
       exists c,
         eventually (fun s => In (mkPacket c Server Unlock) (nwPackets (evt_a (hd s)))) s.
   Proof.
+    intros.
+    find_apply_lem_hyp Nth_something_at_head.
+    break_exists.
+    invcs H0.
+    find_eapply_lem_hyp head_grant_state_unlock; eauto.
+    intuition.
+    - admit.
+    - admit.
+    - eexists.
+      apply E0; eauto.
   Admitted.
   
   Lemma eventually_MsgUnlock :
     forall n c s,
+      event_step_star step_async step_async_init (hd s) ->
       lb_step_execution lb_step_async s ->
       weak_local_fairness lb_step_async label_silent s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
       eventually (now (occurred MsgUnlock)) s.
   Proof.
-    intros n c s Hexec Hfair HNth.
+    intros n c s Hstar Hexec Hfair HNth.
     pattern s in Hexec. pattern s in Hfair.
     find_copy_eapply_lem_hyp eventually_Unlock; eauto.
     break_exists.
@@ -1707,6 +1730,7 @@ Section LockServ.
  *)
   Lemma clients_move_up_in_queue :
     forall n c s,
+      event_step_star step_async step_async_init (hd s) ->
       lb_step_execution lb_step_async s ->
       weak_local_fairness lb_step_async label_silent s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
@@ -1715,7 +1739,7 @@ Section LockServ.
                                      (nwPackets (evt_a (hd s)))))
                  s.
   Proof.
-    intros n c s Hexec Hfair HNth.
+    intros n c s Hstar Hexec Hfair HNth.
     apply eventually_next.
     pattern s in HNth.
     match goal with
@@ -1735,6 +1759,7 @@ Section LockServ.
   Lemma clients_move_way_up_in_queue :
     forall n n' c s,
       n' <= n ->
+      event_step_star step_async step_async_init (hd s) ->
       lb_step_execution lb_step_async s ->
       weak_local_fairness lb_step_async label_silent s ->
       (Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c
@@ -1750,9 +1775,13 @@ Section LockServ.
       assert (n' = 0) by omega. subst.
       eauto using clients_move_up_in_queue.
     - match goal with
-      | H1 : ?J1 s, H2 : ?J2 s |- _ =>
-        assert (and_tl J1 J2 s) as Hand by (now unfold and_tl);
-          clear H1; clear H2
+      | H : _ (hd s) |- _ =>
+        pattern s in H
+      end.
+      match goal with
+      | H1 : ?J1 s, H2 : ?J2 s, H3 : ?J3 s |- _ =>
+        assert (and_tl J1 (and_tl J2 J3) s) as Hand by (now unfold and_tl);
+          clear H1; clear H2; clear H3
       end; simpl in *.
       find_apply_lem_hyp le_lt_eq_dec. intuition.
       + assert (n' <= n) by omega.
@@ -1761,12 +1790,19 @@ Section LockServ.
         eapply eventually_trans. 4:eauto.
         3:apply Hand. all:unfold and_tl in *.
         all:intuition eauto using lb_step_execution_invar, weak_local_fairness_invar.
+        find_apply_lem_hyp step_async_star_lb_step_execution; auto.
+        destruct s0. simpl in *.
+        find_apply_lem_hyp always_Cons.
+        intuition.
+        find_apply_lem_hyp always_Cons.
+        intuition.
       + subst. unfold and_tl in *. intuition.
         eauto using clients_move_up_in_queue.
   Qed.
 
   Lemma clients_get_lock_messages :
     forall n c s,
+      event_step_star step_async step_async_init (hd s) ->
       lb_step_execution lb_step_async s ->
       weak_local_fairness lb_step_async label_silent s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
