@@ -4,6 +4,7 @@ sudo: false
 env:
   global:
     - VERDI_RAFT_BRANCH=master
+    - STRUCTTACT_BRANCH=master
   matrix:
     - DOWNSTREAM=none
     - DOWNSTREAM=verdi-raft
