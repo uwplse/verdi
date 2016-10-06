@@ -75,7 +75,7 @@ Module FinCompleteAdjacentNameType (Import N : NatValue) (FN : FinNameType N) <:
   Inductive fin_complete : fin n -> fin n -> Prop :=
   | fin_complete_neq : forall x y, x <> y -> fin_complete x y.
   
-  Definition adjacent_to : fin n -> fin n -> Prop := fin_complete.
+  Definition adjacent_to : relation (fin n) := fin_complete.
 
   Definition adjacent_to_dec : forall x y, {adjacent_to x y} + { ~ adjacent_to x y}.
     intros x y.
