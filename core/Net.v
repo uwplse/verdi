@@ -1,7 +1,14 @@
 Require Import List.
 Import ListNotations.
+
 Require Import StructTact.StructTactics.
 Require Import StructTact.Update.
+Require Import StructTact.Update2.
+Require Import StructTact.RemoveAll.
+Require Import Sumbool.
+Require Import Relation_Definitions.
+Require Import RelationClasses.
+
 Require Export Verdi.VerdiHints.
 
 Set Implicit Arguments.
@@ -36,6 +43,24 @@ Class MultiParams (P : BaseParams) :=
 Class FailureParams `(P : MultiParams) :=
   {
     reboot : data -> data
+  }.
+
+Class NameOverlayParams `(P : MultiParams) :=
+  {
+    adjacent_to : relation name ;
+    adjacent_to_dec : forall x y : name, {adjacent_to x y} + {~ adjacent_to x y} ;
+    adjacent_to_symmetric : Symmetric adjacent_to ;
+    adjacent_to_irreflexive : Irreflexive adjacent_to
+  }.
+
+Class FailMsgParams `(P : MultiParams) :=
+  {
+    msg_fail : msg
+  }.
+
+Class NewMsgParams `(P : MultiParams) :=
+  {
+    msg_new : msg
   }.
 
 Section StepRelations.
@@ -386,3 +411,107 @@ Section StepFailure.
 
   Definition step_failure_init : list name * network := ([], step_async_init).
 End StepFailure.
+
+Section StepOrderedFailure.
+  Context `{multi_params : MultiParams}.
+  Context {overlay_params : NameOverlayParams multi_params}.
+  Context {fail_msg_params : FailMsgParams multi_params}.
+
+  Notation src := name (only parsing).
+  Notation dst := name (only parsing).
+
+  Record ordered_network :=
+    mkONetwork
+       { onwPackets : src -> dst -> list msg;
+         onwState   : name -> data
+       }.
+
+  Inductive step_ordered_failure : step_relation (list name * ordered_network) (name * (input + output)) :=
+  | StepOrderedFailure_deliver : forall net net' failed tr m ms out d l from to,
+      onwPackets net from to = m :: ms ->
+      ~ In to failed ->
+      net_handlers to from m (onwState net to) = (out, d, l) ->
+      net' = {| onwPackets := collate name_eq_dec to (update2 name_eq_dec (onwPackets net) from to ms) l;
+                onwState := update name_eq_dec (onwState net) to d |} ->
+      tr = map2fst to (map inr out) ->
+      step_ordered_failure (failed, net) (failed, net') tr
+  | StepOrderedFailure_input : forall h net net' failed tr out inp d l,
+      ~ In h failed ->
+      input_handlers h inp (onwState net h) = (out, d, l) ->
+      net' = {| onwPackets := collate name_eq_dec h (onwPackets net) l;
+                onwState := update name_eq_dec (onwState net) h d |} ->
+      tr = (h, inl inp) :: map2fst h (map inr out) ->
+      step_ordered_failure (failed, net) (failed, net') tr
+  | StepOrderedFailure_fail :  forall h net net' failed,
+      ~ In h failed ->
+      net' = {| onwPackets := collate name_eq_dec h (onwPackets net)
+                  (map2snd msg_fail (filter_rel adjacent_to_dec h (remove_all name_eq_dec failed nodes))) ;
+                onwState := onwState net |} ->
+      step_ordered_failure (failed, net) (h :: failed, net') [].
+
+  Definition step_ordered_failure_star := refl_trans_1n_trace step_ordered_failure.
+
+  Definition step_ordered_failure_init : list name * ordered_network := ([], mkONetwork (fun _ _ => []) init_handlers).
+End StepOrderedFailure.
+
+Section StepOrderedDynamicFailure.
+  Context `{multi_params : MultiParams}.
+  Context {overlay_params : NameOverlayParams multi_params}.
+  Context {new_msg_params : NewMsgParams multi_params}.
+  Context {fail_msg_params : FailMsgParams multi_params}.
+
+  Notation src := name (only parsing).
+  Notation dst := name (only parsing).
+
+  Record ordered_dynamic_network :=
+    mkODNetwork
+       {
+         odnwNodes : list name;
+         odnwPackets : src -> dst -> list msg;
+         odnwState : name -> option data
+       }.
+
+  Inductive step_ordered_dynamic_failure : step_relation (list name * ordered_dynamic_network) (name * (input + output)) :=
+  | StepOrderedDynamicFailure_start : forall net net' failed h,
+      ~ In h (odnwNodes net) ->
+      net' = {| odnwNodes := h :: odnwNodes net;
+                odnwPackets := collate_ls name_eq_dec (filter_rel adjacent_to_dec h (remove_all name_eq_dec failed (odnwNodes net)))
+                                (collate name_eq_dec h (odnwPackets net)
+                                  (map2snd msg_new (filter_rel adjacent_to_dec h (remove_all name_eq_dec failed (odnwNodes net))))) h msg_new;
+                odnwState := update name_eq_dec (odnwState net) h (Some (init_handlers h)) |} ->
+      step_ordered_dynamic_failure (failed, net) (failed, net') []
+  | StepOrderedDynamicFailure_deliver : forall net net' failed tr m ms out d d' l from to,
+      ~ In to failed ->
+      In to (odnwNodes net) ->
+      odnwState net to = Some d ->
+      odnwPackets net from to = m :: ms ->
+      net_handlers to from m d = (out, d', l) ->
+      net' = {| odnwNodes := odnwNodes net;
+                odnwPackets := collate name_eq_dec to (update2 name_eq_dec (odnwPackets net) from to ms) l;
+                odnwState := update name_eq_dec (odnwState net) to (Some d') |} ->
+      tr = map2fst to (map inr out) ->
+      step_ordered_dynamic_failure (failed, net) (failed, net') tr
+  | StepOrderedDynamicFailure_input : forall h net net' failed tr out inp d d' l,
+      ~ In h failed ->
+      In h (odnwNodes net) ->
+      odnwState net h = Some d ->
+      input_handlers h inp d = (out, d', l) ->
+      net' = {| odnwNodes := odnwNodes net;
+                odnwPackets := collate name_eq_dec h (odnwPackets net) l;
+                odnwState := update name_eq_dec (odnwState net) h (Some d') |} ->
+      tr = (h, inl inp) :: map2fst h (map inr out) ->
+      step_ordered_dynamic_failure (failed, net) (failed, net') tr
+  | StepOrderedDynamicFailure_fail : forall h net net' failed,
+      ~ In h failed ->
+      In h (odnwNodes net) ->
+      net' = {| odnwNodes := odnwNodes net;
+                odnwPackets := collate name_eq_dec h (odnwPackets net)
+                                (map2snd msg_fail (filter_rel adjacent_to_dec h (remove_all name_eq_dec failed (odnwNodes net)))) ;
+                odnwState := odnwState net |} ->
+      step_ordered_dynamic_failure (failed, net) (h :: failed, net') [].
+
+  Definition step_ordered_dynamic_failure_star := refl_trans_1n_trace step_ordered_dynamic_failure.
+
+  Definition step_ordered_dynamic_failure_init : list name * ordered_dynamic_network :=
+    ([], mkODNetwork [] (fun _ _ => []) (fun _ => None)).
+End StepOrderedDynamicFailure.
