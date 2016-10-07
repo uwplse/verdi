@@ -1,9 +1,4 @@
-Require Import List.
-Import ListNotations.
-
-Require Import StructTact.StructTactics.
-Require Import StructTact.Util.
-Require Import Verdi.Net.
+Require Import Verdi.Verdi.
 Require Import Verdi.DynamicNetLemmas.
 
 Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
@@ -1486,7 +1481,7 @@ change failed with (fst (failed, net)).
 change net with (snd (failed, net)) at 2.
 move: Heqy.
 induction H_step using refl_trans_1n_trace_n1_ind => H_init /=.
-  rewrite H_init /step_ordered_failure_init /= /step_ordered_failure_init /tot_map_onet /= tot_init_handlers_fun_eq.
+  rewrite H_init /step_ordered_failure_init /= /step_ordered_init /tot_map_onet /= tot_init_handlers_fun_eq.
   exact: RT1nTBase.
 concludes.
 repeat find_rewrite.
