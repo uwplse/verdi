@@ -3,9 +3,9 @@
 ## Configures and calls coqproject.sh (https://github.com/dwoos/coqproject)
 
 ## Configuration options for coqproject.sh
-DEPS=(StructTact)
+DEPS=(StructTact InfSeqExt)
 DIRS=(core lib systems extraction/coq)
-CANARIES=("mathcomp.ssreflect.ssreflect" "Verdi requires mathcomp to be installed" "StructTact.StructTactics" "Build StructTact before building Verdi")
+CANARIES=("mathcomp.ssreflect.ssreflect" "Verdi requires mathcomp to be installed" "StructTact.StructTactics" "Build StructTact before building Verdi" "InfSeqExt.infseq" "Build InfSeqExt before building Verdi")
 NAMESPACE_core="Verdi"
 NAMESPACE_systems="Verdi"
 source script/coqproject.sh
