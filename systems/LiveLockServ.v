@@ -69,15 +69,13 @@ Section LockServ.
     match m with
       | Lock => send (Server, Lock) ;; ret (InputLock i)
       | Unlock => data <- get ;;
-                 if (held data) then
+                 when (held data)
                    (put (mkData [] false) >>
-                   send (Server, Unlock) >>
-                   ret (InputUnlock i))
-                 else
-                   ret Nop
+                        send (Server, Unlock));;
+                   ret (InputUnlock i)
       | _ => ret Nop
     end.
-
+  
   Definition ServerNetHandler (src : Name) (m : Msg) : Handler Data :=
     st <- get ;;
     let q := queue st in
@@ -1286,9 +1284,9 @@ Section LockServ.
       InputHandler h i st = (l, out, st', ms) ->
       (exists c, h = Client c /\
                  ((i = Lock /\ out = [] /\ st' = st /\ ms = [(Server, Lock)] /\ l = InputLock c) \/
-                  (i = Unlock /\ out = [] /\ held st' = false /\
-                   ((held st = true /\ ms = [(Server, Unlock)] /\ l = InputUnlock c) \/
-                    (st' = st /\ ms = [] /\ l = Nop))))) \/
+                  (l = InputUnlock c /\ i = Unlock /\ out = [] /\ held st' = false /\
+                   ((held st = true /\ ms = [(Server, Unlock)]) \/
+                    (st' = st /\ ms = []))))) \/
       (out = [] /\ st' = st /\ ms = [] /\ l = Nop).
   Proof.
     handler_unfold.
@@ -1656,7 +1654,61 @@ Section LockServ.
     intros.
     solve_by_inversion' eauto.
   Qed.
-      
+
+  Lemma InputUnlock_held :
+    forall s c,
+      lb_step_execution lb_step_async s ->
+      held (nwState (evt_a (hd s)) (Client c)) = true ->
+      now (occurred (InputUnlock c)) s ->
+      next (fun s => In (mkPacket (Client c) Server Unlock) (nwPackets (evt_a (hd s)))) s.
+  Proof.
+    intros.
+    invcs H.
+    invcs H2.
+    - monad_unfold.
+      unfold NetHandler in *.
+      break_match_hyp.
+      + unfold occurred in *.
+        find_apply_lem_hyp ClientNetHandler_lbcases; intuition; congruence.
+      + unfold occurred in *.
+        find_apply_lem_hyp ServerNetHandler_lbcases; intuition;
+          break_exists; intuition; congruence.
+    - monad_unfold.
+      find_apply_lem_hyp InputHandler_lbcases.
+      intuition; try congruence.
+      break_exists. intuition; try congruence.
+      fold LockServ_MultiParams in *. (* typeclass stuff *)
+      repeat find_rewrite.
+      simpl. left. unfold occurred in *.
+      congruence.
+    - unfold occurred in *. congruence.
+  Qed.
+
+  Lemma InputHandler_Client_Unlock :
+    forall c sigma,
+      exists sigma' os ms,
+        InputHandler (Client c) Unlock sigma = (InputUnlock c, os, sigma', ms).
+  Proof.
+    intros.
+    unfold InputHandler. unfold ClientIOHandler.
+    monad_unfold. repeat break_let.
+    find_inversion. eauto.
+  Qed.
+  
+  Lemma InputUnlock_always_enabled :
+    forall s c,
+      lb_step_execution lb_step_async s ->
+      now (l_enabled lb_step_async (InputUnlock c)) s.
+  Proof.
+    intros.
+    destruct s. simpl.
+    unfold l_enabled, enabled.
+    pose proof (InputHandler_Client_Unlock c (nwState (evt_a e) (Client c))).
+    break_exists.
+    repeat eexists.
+    unfold InputHandler in *. unfold ClientIOHandler in *.
+    eapply LStepAsync_input with (h := (Client c)) (inp := Unlock); eauto.
+  Qed.
 
   Lemma eventually_Unlock :
     forall n c s,
@@ -1669,14 +1721,14 @@ Section LockServ.
   Proof.
     intros.
     find_apply_lem_hyp Nth_something_at_head.
-    break_exists.
+    break_exists_name holder. break_exists.
+    exists (Client holder).
     invcs H0.
     find_eapply_lem_hyp head_grant_state_unlock; eauto.
     intuition.
     - admit.
     - admit.
-    - eexists.
-      apply E0; eauto.
+    - eauto using E0.
   Admitted.
   
   Lemma eventually_MsgUnlock :
@@ -1703,7 +1755,7 @@ Section LockServ.
     - eauto using lb_step_execution_invar.
     - simpl. eauto using weak_local_fairness_invar.
   Qed.
-
+  
   Lemma weak_until_always :
     forall (T : Type) (J J' P : infseq T -> Prop) s,
       weak_until J P s ->
@@ -1744,7 +1796,7 @@ Section LockServ.
     pattern s in HNth.
     match goal with
     | H1 : ?J1 s, H2 : ?J2 s, H3 : ?J3 s |- _ =>
-      assert (and_tl J1 (and_tl J2 J3) s) by (now unfold and_tl);
+      assert ((J1 /\_ J2 /\_ J3) s) by (now unfold and_tl);
         eapply weak_until_eventually with (J := (and_tl J1 (and_tl J2 J3)))
     end; simpl in *.
     2:now unfold and_tl.
@@ -1780,7 +1832,7 @@ Section LockServ.
       end.
       match goal with
       | H1 : ?J1 s, H2 : ?J2 s, H3 : ?J3 s |- _ =>
-        assert (and_tl J1 (and_tl J2 J3) s) as Hand by (now unfold and_tl);
+        assert ((J1 /\_ J2 /\_ J3) s) as Hand by (now unfold and_tl);
           clear H1; clear H2; clear H3
       end; simpl in *.
       find_apply_lem_hyp le_lt_eq_dec. intuition.
