@@ -26,6 +26,12 @@ Class OneNodeParams (P : BaseParams) :=
     handler : input -> data -> (output * data)
   }.
 
+Class SingleParams (P : BaseParams) :=
+  {
+    init_handler : data;
+    input_handler : input -> data -> (list output * data)
+  }.
+
 Class MultiParams (P : BaseParams) :=
   {
     name : Type ;
@@ -257,6 +263,18 @@ Section Step1.
 
   Definition step_1_star := refl_trans_1n_trace step_1.
 End Step1.
+
+Section StepSingle.
+  Context `{params : SingleParams}.
+
+  Inductive step_s : (step_relation data (input + output)) :=
+  | SST_deliver : forall i s s' out tr,
+                    input_handler i s = (out, s') ->
+                    tr = inl i :: map inr out ->
+                    step_s s s' tr.
+
+  Definition step_s_star := refl_trans_1n_trace step_s.
+End StepSingle.
 
 Section StepAsync.
 
