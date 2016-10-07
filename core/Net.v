@@ -412,10 +412,8 @@ Section StepFailure.
   Definition step_failure_init : list name * network := ([], step_async_init).
 End StepFailure.
 
-Section StepOrderedFailure.
-  Context `{multi_params : MultiParams}.
-  Context {overlay_params : NameOverlayParams multi_params}.
-  Context {fail_msg_params : FailMsgParams multi_params}.
+Section StepOrdered.
+  Context `{params : MultiParams}.
 
   Notation src := name (only parsing).
   Notation dst := name (only parsing).
@@ -425,6 +423,31 @@ Section StepOrderedFailure.
        { onwPackets : src -> dst -> list msg;
          onwState   : name -> data
        }.
+
+  Inductive step_ordered : step_relation ordered_network (name * (input + output)) :=
+  | StepOrdered_deliver : forall net net' tr m ms out d l from to,
+      onwPackets net from to = m :: ms ->
+      net_handlers to from m (onwState net to) = (out, d, l) ->
+      net' = mkONetwork (collate name_eq_dec to (update2 name_eq_dec (onwPackets net) from to ms) l)
+                        (update name_eq_dec (onwState net) to d) ->
+      tr = map2fst to (map inr out) ->
+      step_ordered net net' tr
+  | StepOrdered_input : forall h net net' tr out inp d l,
+      input_handlers h inp (onwState net h) = (out, d, l) ->
+      net' = mkONetwork (collate name_eq_dec h (onwPackets net) l)
+                        (update name_eq_dec (onwState net) h d) ->
+      tr = (h, inl inp) :: map2fst h (map inr out) ->
+      step_ordered net net' tr.
+
+  Definition step_ordered_star := refl_trans_1n_trace step_ordered.
+
+  Definition step_ordered_init : ordered_network := mkONetwork (fun _ _ => []) init_handlers.
+End StepOrdered.
+
+Section StepOrderedFailure.
+  Context `{multi_params : MultiParams}.
+  Context {overlay_params : NameOverlayParams multi_params}.
+  Context {fail_msg_params : FailMsgParams multi_params}.
 
   Inductive step_ordered_failure : step_relation (list name * ordered_network) (name * (input + output)) :=
   | StepOrderedFailure_deliver : forall net net' failed tr m ms out d l from to,
@@ -451,7 +474,7 @@ Section StepOrderedFailure.
 
   Definition step_ordered_failure_star := refl_trans_1n_trace step_ordered_failure.
 
-  Definition step_ordered_failure_init : list name * ordered_network := ([], mkONetwork (fun _ _ => []) init_handlers).
+  Definition step_ordered_failure_init : list name * ordered_network := ([], step_ordered_init).
 End StepOrderedFailure.
 
 Section StepOrderedDynamicFailure.
