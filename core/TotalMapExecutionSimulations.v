@@ -68,6 +68,11 @@ Context {name_map_bijective : MultiParamsNameTotalMapBijective name_map}.
 Context {multi_map_congr : MultiParamsTotalMapCongruency base_map name_map msg_map}.
 Context {multi_map_lb_congr : LabeledMultiParamsTotalMapCongruency base_map name_map msg_map label_map}.
 
+Hypothesis tot_map_label_injective :
+  forall l l', tot_map_label l = tot_map_label l' -> l = l'.
+
+(* lb_step_failure *)
+
 Theorem lb_step_failure_tot_mapped_simulation_1 :
   forall net net' failed failed' lb tr,
     @lb_step_failure _ labeled_multi_fst (failed, net) lb (failed', net') tr ->
@@ -112,133 +117,6 @@ invcs H_step => //=.
 - rewrite tot_lb_label_silent_fst_snd.
   exact: LabeledStepFailure_stutter.
 Qed.
-
-Theorem lb_step_ordered_failure_tot_mapped_simulation_1 :
-  forall net net' failed failed' lb tr,
-    @lb_step_ordered_failure _ labeled_multi_fst (failed, net) lb (failed', net') tr ->
-    @lb_step_ordered_failure _ labeled_multi_snd (List.map tot_map_name failed, tot_map_onet net) (tot_map_label lb) (List.map tot_map_name failed', tot_map_onet net') (List.map tot_map_trace tr).
-Proof.
-move => net net' failed failed' lb tr H_step.
-invcs H_step => //=.
-- apply (@LabeledStepOrderedFailure_deliver _ _ _ _ _ _ (@tot_map_msg _ _ _ _ msg_map m) (List.map (@tot_map_msg _ _ _ _ msg_map) ms) (List.map tot_map_output out) (tot_map_data d) (@tot_map_name_msgs _ _ _ _ _ msg_map l) (@tot_map_name _ _ _ _ name_map from) (@tot_map_name _ _ _ _ name_map to)) => //=.
-  * rewrite /tot_map_onet /=.
-    rewrite 2!tot_map_name_inv_inverse.
-    by find_rewrite.
-  * exact: not_in_failed_not_in.
-  * rewrite /tot_map_onet /= tot_map_name_inv_inverse.
-    have H_q := @tot_net_handlers_eq _ _ _ _ _ _ _ multi_map_congr to from m (onwState net to).
-    rewrite /tot_mapped_net_handlers /net_handlers /= /unlabeled_net_handlers in H_q.
-    repeat break_let.
-    repeat tuple_inversion.
-    have H_q' := @tot_lb_net_handlers_eq _ _ _ _ _ _ _ _ multi_map_lb_congr _ _ _ _ _ _ _ _ Heqp1.
-    rewrite /tot_mapped_lb_net_handlers_label in H_q'.
-    repeat break_let.
-    by repeat tuple_inversion.
-  * rewrite /tot_map_onet /=.         
-    rewrite (@collate_tot_map_update2_eq _ _ _ _ _ _ name_map_bijective).
-    set f1 := fun _ => tot_map_data _.
-    set f2 := update _ _ _ _.
-    have H_eq_f: f1 = f2.
-      rewrite /f1 /f2.
-      apply functional_extensionality => n.
-      rewrite /update.
-      break_if; break_if => //; first by rewrite -e tot_map_name_inverse_inv in n0.
-      by rewrite e tot_map_name_inv_inverse in n0.
-    by rewrite H_eq_f.
-  * by rewrite (@map_tot_map_trace_eq _ _ _ _ _ name_map).
-- rewrite /tot_map_onet /=.
-  apply (@LabeledStepOrderedFailure_input _ _ (@tot_map_name _ _ _ _ name_map h) _ _ _ _ (List.map tot_map_output out) (tot_map_input inp) (tot_map_data d) (@tot_map_name_msgs _ _ _ _ _ msg_map l)).
-  * exact: not_in_failed_not_in.
-  * rewrite /tot_map_onet /= tot_map_name_inv_inverse.
-    have H_q := @tot_input_handlers_eq _ _ _ _ _ _ _ multi_map_congr h inp (onwState net h).
-    rewrite /tot_mapped_input_handlers /= /unlabeled_input_handlers in H_q.
-    repeat break_let.
-    repeat tuple_inversion.
-    have H_q' := @tot_lb_input_handlers_eq _ _ _ _ _ _ _ _ multi_map_lb_congr _ _ _ _ _ _ _ Heqp1.
-    rewrite /tot_mapped_lb_input_handlers_label in H_q'.
-    repeat break_let.
-    by repeat tuple_inversion.
-  * rewrite /tot_map_onet /=.
-    rewrite (@collate_tot_map_eq _ _ _ _ _ _ name_map_bijective).
-    set f1 := fun _ => tot_map_data _.
-    set f2 := update _ _ _ _.
-    have H_eq_f: f1 = f2.
-      rewrite /f1 /f2.
-      apply functional_extensionality => n.
-      rewrite /update.
-      break_if; break_if => //; first by rewrite -e tot_map_name_inverse_inv in n0.
-      by rewrite e tot_map_name_inv_inverse in n0.
-    by rewrite H_eq_f.
-  * by rewrite (@map_tot_map_trace_eq _ _ _ _ _ name_map).
-- rewrite tot_lb_label_silent_fst_snd.
-  exact: LabeledStepOrderedFailure_stutter.
-Qed.
-
-Theorem lb_step_ordered_dynamic_failure_tot_mapped_simulation_1 :
-  forall net net' failed failed' lb tr,
-    @lb_step_ordered_dynamic_failure _ labeled_multi_fst (failed, net) lb (failed', net') tr ->
-    @lb_step_ordered_dynamic_failure _ labeled_multi_snd (List.map tot_map_name failed, tot_map_odnet net) (tot_map_label lb) (List.map tot_map_name failed', tot_map_odnet net') (List.map tot_map_trace tr).
-Proof.
-move => net net' failed failed' lb tr H_step.
-invcs H_step => //=.
-- rewrite /tot_map_odnet /=.
-  apply (@LabeledStepOrderedDynamicFailure_deliver _ _ _ _ _ _ (@tot_map_msg _ _ _ _ msg_map m) (List.map (@tot_map_msg _ _ _ _ msg_map) ms) (List.map tot_map_output out) (tot_map_data d) (tot_map_data d') (@tot_map_name_msgs _ _ _ _ _ msg_map l) (@tot_map_name _ _ _ _ name_map from) (@tot_map_name _ _ _ _ name_map to)) => //=.
-  * exact: not_in_failed_not_in.
-  * exact: in_failed_in. 
-  * rewrite tot_map_name_inv_inverse.
-    by find_rewrite.
-  * rewrite 2!tot_map_name_inv_inverse.
-    by find_rewrite.
-  * have H_q := @tot_net_handlers_eq _ _ _ _ _ _ _ multi_map_congr to from m d.
-    rewrite /tot_mapped_net_handlers /net_handlers /= /unlabeled_net_handlers in H_q.
-    repeat break_let.
-    repeat tuple_inversion.
-    have H_q' := @tot_lb_net_handlers_eq _ _ _ _ _ _ _ _ multi_map_lb_congr _ _ _ _ _ _ _ _ Heqp1.
-    rewrite /tot_mapped_lb_net_handlers_label in H_q'.
-    repeat break_let.
-    by repeat tuple_inversion.
-  * rewrite (@collate_tot_map_update2_eq _ _ _ _ _ _ name_map_bijective).
-    set f1 := fun _ => match _ with _ => _ end.
-    set f2 := update _ _ _ _.
-    have H_eq_f: f1 = f2.
-      rewrite /f1 /f2 /update.
-      apply functional_extensionality => dst.
-      repeat break_if => //=; first by rewrite -e tot_map_name_inverse_inv in n.
-      by rewrite e tot_map_name_inv_inverse in n.
-    by rewrite H_eq_f.
-  * by rewrite (@map_tot_map_trace_eq _ _ _ _ _ name_map).
-- rewrite /tot_map_odnet /=.
-  apply (@LabeledStepOrderedDynamicFailure_input _ _ (@tot_map_name _ _ _ _ name_map h) _ _ _ _ (List.map tot_map_output out) (tot_map_input inp) (tot_map_data d) (tot_map_data d') (@tot_map_name_msgs _ _ _ _ _ msg_map l)) => //=.
-  * exact: not_in_failed_not_in.
-  * exact: in_failed_in. 
-  * rewrite tot_map_name_inv_inverse.
-    by find_rewrite.
-  * have H_q := @tot_input_handlers_eq _ _ _ _ _ _ _ multi_map_congr h inp d.
-    rewrite /tot_mapped_input_handlers /= /unlabeled_input_handlers in H_q.
-    repeat break_let.
-    repeat tuple_inversion.
-    have H_q' := @tot_lb_input_handlers_eq _ _ _ _ _ _ _ _ multi_map_lb_congr _ _ _ _ _ _ _ Heqp1.
-    rewrite /tot_mapped_lb_input_handlers_label in H_q'.
-    repeat break_let.
-    by repeat tuple_inversion.
-  * rewrite (@collate_tot_map_eq _ _ _ _ _ _ name_map_bijective).
-    set f1 := fun _ => match _ with _ => _ end.
-    set f2 := update _ _ _ _.
-    have H_eq_f: f1 = f2.
-      rewrite /f1 /f2 /update.
-      apply functional_extensionality => n.
-      repeat break_match; try by congruence.
-      * by rewrite e tot_map_name_inv_inverse in n0.
-      * by rewrite -e tot_map_name_inverse_inv in n0.
-      * by rewrite e tot_map_name_inv_inverse in n0.
-    by rewrite H_eq_f.
-  * by rewrite (@map_tot_map_trace_eq _ _ _ _ _ name_map).
-- rewrite tot_lb_label_silent_fst_snd.
-  exact: LabeledStepOrderedDynamicFailure_stutter.
-Qed.
-
-Hypothesis tot_map_label_injective : 
-  forall l l', tot_map_label l = tot_map_label l' -> l = l'.
 
 Definition tot_map_net_event e :=
 {| evt_a := (List.map tot_map_name (fst e.(evt_a)), tot_map_net (snd e.(evt_a))) ;
@@ -328,6 +206,69 @@ apply: step_failure_star_lb_step_execution.
   apply: step_failure_tot_mapped_simulation_star_1.
   by have <-: evt_a e = (fst (evt_a e), snd (evt_a e)) by destruct e, evt_a.
 exact: lb_step_trace_execution_lb_step_failure_tot_map_net_infseq.
+Qed.
+
+(* lb_step_ordered_failure *)
+
+Theorem lb_step_ordered_failure_tot_mapped_simulation_1 :
+  forall net net' failed failed' lb tr,
+    @lb_step_ordered_failure _ labeled_multi_fst (failed, net) lb (failed', net') tr ->
+    @lb_step_ordered_failure _ labeled_multi_snd (List.map tot_map_name failed, tot_map_onet net) (tot_map_label lb) (List.map tot_map_name failed', tot_map_onet net') (List.map tot_map_trace tr).
+Proof.
+move => net net' failed failed' lb tr H_step.
+invcs H_step => //=.
+- apply (@LabeledStepOrderedFailure_deliver _ _ _ _ _ _ (@tot_map_msg _ _ _ _ msg_map m) (List.map (@tot_map_msg _ _ _ _ msg_map) ms) (List.map tot_map_output out) (tot_map_data d) (@tot_map_name_msgs _ _ _ _ _ msg_map l) (@tot_map_name _ _ _ _ name_map from) (@tot_map_name _ _ _ _ name_map to)) => //=.
+  * rewrite /tot_map_onet /=.
+    rewrite 2!tot_map_name_inv_inverse.
+    by find_rewrite.
+  * exact: not_in_failed_not_in.
+  * rewrite /tot_map_onet /= tot_map_name_inv_inverse.
+    have H_q := @tot_net_handlers_eq _ _ _ _ _ _ _ multi_map_congr to from m (onwState net to).
+    rewrite /tot_mapped_net_handlers /net_handlers /= /unlabeled_net_handlers in H_q.
+    repeat break_let.
+    repeat tuple_inversion.
+    have H_q' := @tot_lb_net_handlers_eq _ _ _ _ _ _ _ _ multi_map_lb_congr _ _ _ _ _ _ _ _ Heqp1.
+    rewrite /tot_mapped_lb_net_handlers_label in H_q'.
+    repeat break_let.
+    by repeat tuple_inversion.
+  * rewrite /tot_map_onet /=.         
+    rewrite (@collate_tot_map_update2_eq _ _ _ _ _ _ name_map_bijective).
+    set f1 := fun _ => tot_map_data _.
+    set f2 := update _ _ _ _.
+    have H_eq_f: f1 = f2.
+      rewrite /f1 /f2.
+      apply functional_extensionality => n.
+      rewrite /update.
+      break_if; break_if => //; first by rewrite -e tot_map_name_inverse_inv in n0.
+      by rewrite e tot_map_name_inv_inverse in n0.
+    by rewrite H_eq_f.
+  * by rewrite (@map_tot_map_trace_eq _ _ _ _ _ name_map).
+- rewrite /tot_map_onet /=.
+  apply (@LabeledStepOrderedFailure_input _ _ (@tot_map_name _ _ _ _ name_map h) _ _ _ _ (List.map tot_map_output out) (tot_map_input inp) (tot_map_data d) (@tot_map_name_msgs _ _ _ _ _ msg_map l)).
+  * exact: not_in_failed_not_in.
+  * rewrite /tot_map_onet /= tot_map_name_inv_inverse.
+    have H_q := @tot_input_handlers_eq _ _ _ _ _ _ _ multi_map_congr h inp (onwState net h).
+    rewrite /tot_mapped_input_handlers /= /unlabeled_input_handlers in H_q.
+    repeat break_let.
+    repeat tuple_inversion.
+    have H_q' := @tot_lb_input_handlers_eq _ _ _ _ _ _ _ _ multi_map_lb_congr _ _ _ _ _ _ _ Heqp1.
+    rewrite /tot_mapped_lb_input_handlers_label in H_q'.
+    repeat break_let.
+    by repeat tuple_inversion.
+  * rewrite /tot_map_onet /=.
+    rewrite (@collate_tot_map_eq _ _ _ _ _ _ name_map_bijective).
+    set f1 := fun _ => tot_map_data _.
+    set f2 := update _ _ _ _.
+    have H_eq_f: f1 = f2.
+      rewrite /f1 /f2.
+      apply functional_extensionality => n.
+      rewrite /update.
+      break_if; break_if => //; first by rewrite -e tot_map_name_inverse_inv in n0.
+      by rewrite e tot_map_name_inv_inverse in n0.
+    by rewrite H_eq_f.
+  * by rewrite (@map_tot_map_trace_eq _ _ _ _ _ name_map).
+- rewrite tot_lb_label_silent_fst_snd.
+  exact: LabeledStepOrderedFailure_stutter.
 Qed.
 
 Definition tot_map_onet_event e :=
@@ -420,6 +361,71 @@ apply: step_ordered_failure_star_lb_step_execution; last exact: lb_step_executio
 rewrite /= /tot_map_onet_event /= /event_step_star /=.
 apply: step_ordered_failure_tot_mapped_simulation_star_1.
 by have <-: evt_a e = (fst (evt_a e), snd (evt_a e)) by destruct e, evt_a.
+Qed.
+
+(* lb_step_ordered_dynamic_failure *)
+
+Theorem lb_step_ordered_dynamic_failure_tot_mapped_simulation_1 :
+  forall net net' failed failed' lb tr,
+    @lb_step_ordered_dynamic_failure _ labeled_multi_fst (failed, net) lb (failed', net') tr ->
+    @lb_step_ordered_dynamic_failure _ labeled_multi_snd (List.map tot_map_name failed, tot_map_odnet net) (tot_map_label lb) (List.map tot_map_name failed', tot_map_odnet net') (List.map tot_map_trace tr).
+Proof.
+move => net net' failed failed' lb tr H_step.
+invcs H_step => //=.
+- rewrite /tot_map_odnet /=.
+  apply (@LabeledStepOrderedDynamicFailure_deliver _ _ _ _ _ _ (@tot_map_msg _ _ _ _ msg_map m) (List.map (@tot_map_msg _ _ _ _ msg_map) ms) (List.map tot_map_output out) (tot_map_data d) (tot_map_data d') (@tot_map_name_msgs _ _ _ _ _ msg_map l) (@tot_map_name _ _ _ _ name_map from) (@tot_map_name _ _ _ _ name_map to)) => //=.
+  * exact: not_in_failed_not_in.
+  * exact: in_failed_in. 
+  * rewrite tot_map_name_inv_inverse.
+    by find_rewrite.
+  * rewrite 2!tot_map_name_inv_inverse.
+    by find_rewrite.
+  * have H_q := @tot_net_handlers_eq _ _ _ _ _ _ _ multi_map_congr to from m d.
+    rewrite /tot_mapped_net_handlers /net_handlers /= /unlabeled_net_handlers in H_q.
+    repeat break_let.
+    repeat tuple_inversion.
+    have H_q' := @tot_lb_net_handlers_eq _ _ _ _ _ _ _ _ multi_map_lb_congr _ _ _ _ _ _ _ _ Heqp1.
+    rewrite /tot_mapped_lb_net_handlers_label in H_q'.
+    repeat break_let.
+    by repeat tuple_inversion.
+  * rewrite (@collate_tot_map_update2_eq _ _ _ _ _ _ name_map_bijective).
+    set f1 := fun _ => match _ with _ => _ end.
+    set f2 := update _ _ _ _.
+    have H_eq_f: f1 = f2.
+      rewrite /f1 /f2 /update.
+      apply functional_extensionality => dst.
+      repeat break_if => //=; first by rewrite -e tot_map_name_inverse_inv in n.
+      by rewrite e tot_map_name_inv_inverse in n.
+    by rewrite H_eq_f.
+  * by rewrite (@map_tot_map_trace_eq _ _ _ _ _ name_map).
+- rewrite /tot_map_odnet /=.
+  apply (@LabeledStepOrderedDynamicFailure_input _ _ (@tot_map_name _ _ _ _ name_map h) _ _ _ _ (List.map tot_map_output out) (tot_map_input inp) (tot_map_data d) (tot_map_data d') (@tot_map_name_msgs _ _ _ _ _ msg_map l)) => //=.
+  * exact: not_in_failed_not_in.
+  * exact: in_failed_in. 
+  * rewrite tot_map_name_inv_inverse.
+    by find_rewrite.
+  * have H_q := @tot_input_handlers_eq _ _ _ _ _ _ _ multi_map_congr h inp d.
+    rewrite /tot_mapped_input_handlers /= /unlabeled_input_handlers in H_q.
+    repeat break_let.
+    repeat tuple_inversion.
+    have H_q' := @tot_lb_input_handlers_eq _ _ _ _ _ _ _ _ multi_map_lb_congr _ _ _ _ _ _ _ Heqp1.
+    rewrite /tot_mapped_lb_input_handlers_label in H_q'.
+    repeat break_let.
+    by repeat tuple_inversion.
+  * rewrite (@collate_tot_map_eq _ _ _ _ _ _ name_map_bijective).
+    set f1 := fun _ => match _ with _ => _ end.
+    set f2 := update _ _ _ _.
+    have H_eq_f: f1 = f2.
+      rewrite /f1 /f2 /update.
+      apply functional_extensionality => n.
+      repeat break_match; try by congruence.
+      * by rewrite e tot_map_name_inv_inverse in n0.
+      * by rewrite -e tot_map_name_inverse_inv in n0.
+      * by rewrite e tot_map_name_inv_inverse in n0.
+    by rewrite H_eq_f.
+  * by rewrite (@map_tot_map_trace_eq _ _ _ _ _ name_map).
+- rewrite tot_lb_label_silent_fst_snd.
+  exact: LabeledStepOrderedDynamicFailure_stutter.
 Qed.
 
 Definition tot_map_odnet_event e :=
