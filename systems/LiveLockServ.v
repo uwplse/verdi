@@ -1707,7 +1707,7 @@ Section LockServ.
     break_exists.
     repeat eexists.
     unfold InputHandler in *. unfold ClientIOHandler in *.
-    eapply LStepAsync_input with (h := (Client c)) (inp := Unlock); eauto.
+    eapply LabeledStepAsync_input with (h := (Client c)) (inp := Unlock); eauto.
   Qed.
 
   Lemma InputUnlock_continuously_enabled :
