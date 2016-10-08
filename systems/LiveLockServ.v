@@ -1695,7 +1695,7 @@ Section LockServ.
     find_inversion. eauto.
   Qed.
   
-  Lemma InputUnlock_always_enabled :
+  Lemma InputUnlock_enabled :
     forall s c,
       lb_step_execution lb_step_async s ->
       now (l_enabled lb_step_async (InputUnlock c)) s.
@@ -1710,6 +1710,129 @@ Section LockServ.
     eapply LStepAsync_input with (h := (Client c)) (inp := Unlock); eauto.
   Qed.
 
+  Lemma InputUnlock_continuously_enabled :
+    forall s c,
+      lb_step_execution lb_step_async s ->
+      cont_enabled lb_step_async (InputUnlock c) s.
+  Proof.
+    unfold cont_enabled.
+    intros.
+    apply always_continuously.
+    eapply always_monotonic;
+      [|eapply always_inv; eauto; eauto using lb_step_execution_invar];
+      eauto using InputUnlock_enabled.
+  Qed.
+
+  Lemma held_until_Unlock :
+    forall c s,
+      lb_step_execution lb_step_async s ->
+      held (nwState (evt_a (hd s)) (Client c)) = true ->
+      weak_until (fun s => held (nwState (evt_a (hd s)) (Client c)) = true)
+                 (now (occurred (InputUnlock c)))
+                 s.
+  Proof.
+    intros c.
+    cofix CIH.
+    destruct s. simpl.
+    intros.
+    invcs H.
+    invcs H3.
+    - coinductive_case CIH.
+      monad_unfold.
+      unfold NetHandler in *.
+      break_match_hyp.
+      + find_apply_lem_hyp ClientNetHandler_cases.
+        repeat find_rewrite. simpl.
+        intuition;
+          update_destruct_max_simplify; repeat find_rewrite; auto.
+      + find_apply_lem_hyp ServerNetHandler_cases.
+        repeat find_rewrite. simpl.
+        intuition; break_exists; intuition;
+          rewrite_update; repeat find_rewrite; auto.
+    - monad_unfold.
+      find_apply_lem_hyp InputHandler_lbcases.
+      intuition; break_exists; intuition.
+      + coinductive_case CIH.
+        repeat find_rewrite.
+        simpl.
+        update_destruct_max_simplify; repeat find_rewrite; auto.
+      + subst. 
+        destruct (fin_eq_dec _ c x).
+        * subst x.
+          apply W0.
+          simpl. now unfold occurred.
+        * coinductive_case CIH.
+          repeat find_rewrite.
+          simpl. now rewrite_update.
+      + coinductive_case CIH.
+        clear CIH.
+        repeat find_rewrite.
+        simpl.
+        update_destruct_max_simplify; repeat find_rewrite; auto.
+      + coinductive_case CIH. clear CIH.
+        repeat find_rewrite.
+        simpl. 
+        update_destruct_max_simplify; repeat find_rewrite; auto.
+    - coinductive_case CIH.
+      congruence.
+  Qed.
+
+  Lemma held_eventually_InputUnlock :
+    forall c s,
+      lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
+      eventually (now (occurred (InputUnlock c))) s.
+  Proof.
+    intros.
+    pose proof (@InputUnlock_continuously_enabled s c). intuition.
+    eapply_prop_hyp weak_local_fairness cont_enabled; [|now unfold label_silent].
+    solve_by_inversion.
+  Qed.
+
+  Lemma weak_until_always :
+    forall (T : Type) (J J' P : infseq T -> Prop) s,
+      weak_until J P s ->
+      always J' s ->
+      weak_until (J' /\_ J) P s.
+  Proof.
+    cofix CIH.
+    intros T J J' P s Hweak Halways.
+    destruct s.
+    invcs Hweak.
+    - now eauto using W0.
+    - invcs Halways.
+      eapply W_tl.
+      + now unfold and_tl.
+      + simpl. now eauto.
+  Qed.
+    
+  Lemma held_eventually_Unlock :
+    forall s c,
+      lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
+      held (nwState (evt_a (hd s)) (Client c)) = true ->
+      eventually (fun s => In (mkPacket (Client c) Server Unlock)
+                           (nwPackets (evt_a (hd s)))) s.
+  Proof.
+    intros. apply eventually_next.
+    match goal with
+    | H : context [held] |- _ =>
+      pattern s in H
+    end.
+    match goal with
+    | H1 : ?J1 s, H2 : ?J2 s, H3 : ?J3 s |- _ =>
+      assert ((J1 /\_ J2 /\_ J3) s) by (now unfold and_tl);
+        eapply weak_until_eventually with (J := (and_tl J1 (and_tl J2 J3)))
+    end; simpl in *.
+    2:now unfold and_tl.
+    3:eauto using held_eventually_InputUnlock.
+    - intros. unfold and_tl in *. intuition.
+      eapply InputUnlock_held; eauto.
+    - apply weak_until_always; eauto using lb_step_execution_invar, always_inv.
+      apply weak_until_always; eauto using weak_local_fairness_invar, always_inv.
+  Admitted.
+    
+  
   Lemma eventually_Unlock :
     forall n c s,
       event_step_star step_async step_async_init (hd s) ->
@@ -1726,7 +1849,9 @@ Section LockServ.
     invcs H0.
     find_eapply_lem_hyp head_grant_state_unlock; eauto.
     intuition.
-    - admit.
+    - (* eventually the Locked message is delivered, after which this is
+         the same as the next case. *)
+      admit.
     - admit.
     - eauto using E0.
   Admitted.
@@ -1756,22 +1881,6 @@ Section LockServ.
     - simpl. eauto using weak_local_fairness_invar.
   Qed.
   
-  Lemma weak_until_always :
-    forall (T : Type) (J J' P : infseq T -> Prop) s,
-      weak_until J P s ->
-      always J' s ->
-      weak_until (J' /\_ J) P s.
-  Proof.
-    cofix CIH.
-    intros T J J' P s Hweak Halways.
-    destruct s.
-    invcs Hweak.
-    - now eauto using W0.
-    - invcs Halways.
-      eapply W_tl.
-      + now unfold and_tl.
-      + simpl. now eauto.
-  Qed.
     
   (* Sketch: eventually an Unlock happens, so eventually a MsgUnlock
      happens, so eventually a client moves up the queue. when this
