@@ -23,7 +23,7 @@ Class LabeledMultiParamsPartialMapCongruency
   (B : BaseParamsPartialMap B0 B1) 
   (N : MultiParamsNameTotalMap (@unlabeled_multi_params _ P0) (@unlabeled_multi_params _ P1))
   (P : MultiParamsMsgPartialMap (@unlabeled_multi_params _ P0) (@unlabeled_multi_params _ P1))
-  (L : LabeledMultiParamsLabelTotalMap P0 P1) :=
+  (L : LabeledMultiParamsLabelTotalMap P0 P1) : Prop :=
   {
     pt_lb_label_silent_fst_snd : tot_map_label label_silent = label_silent ;
     pt_lb_net_handlers_some : forall me src m st m' out st' ps lb,

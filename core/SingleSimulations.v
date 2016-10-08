@@ -17,7 +17,7 @@ Class MultiSingleParamsTotalMap
 Class MultiSingleParamsTotalMapCongruency
   (B0 : BaseParams) (B1 : BaseParams)
   (P0 : MultiParams B0) (P1 : SingleParams B1)
-  (M : MultiSingleParamsTotalMap P0 B1) (me : name) :=
+  (M : MultiSingleParamsTotalMap P0 B1) (me : name) : Prop :=
   {
     tot_s_init_handlers_eq : tot_s_map_data (init_handlers me) = init_handler ;
     tot_s_input_handlers_eq : forall inp st out st' ps out' st'',

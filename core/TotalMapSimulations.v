@@ -26,7 +26,7 @@ Class MultiParamsNameTotalMap
     tot_map_name_inv : @name B1 P1 -> @name B0 P0
   }.
 
-Class MultiParamsNameTotalMapBijective `(M : MultiParamsNameTotalMap) :=
+Class MultiParamsNameTotalMapBijective `(M : MultiParamsNameTotalMap) : Prop :=
   {
     tot_map_name_inv_inverse : forall n, tot_map_name_inv (tot_map_name n) = n ;
     tot_map_name_inverse_inv : forall n, tot_map_name (tot_map_name_inv n) = n ;
@@ -67,7 +67,7 @@ Class MultiParamsTotalMapCongruency
   (P0 : MultiParams B0) (P1 : MultiParams B1)
   (B : BaseParamsTotalMap B0 B1)
   (N : MultiParamsNameTotalMap P0 P1)
-  (P : MultiParamsMsgTotalMap P0 P1) :=
+  (P : MultiParamsMsgTotalMap P0 P1) : Prop :=
   {
     tot_init_handlers_eq : forall n,
       tot_map_data (init_handlers n) = init_handlers (tot_map_name n) ;
@@ -83,7 +83,7 @@ Class FailureParamsTotalMapCongruency
   (B0 : BaseParams) (B1 : BaseParams)
   (P0 : MultiParams B0) (P1 : MultiParams B1)
   (F0 : FailureParams P0) (F1 : FailureParams P1)
-  (B : BaseParamsTotalMap B0 B1) :=
+  (B : BaseParamsTotalMap B0 B1) : Prop :=
   {
     tot_reboot_eq : forall d, tot_map_data (reboot d) = reboot (tot_map_data d)
   }.
@@ -92,7 +92,7 @@ Class NameOverlayParamsTotalMapCongruency
   (B0 : BaseParams) (B1 : BaseParams)
   (P0 : MultiParams B0) (P1 : MultiParams B1)
   (O0 : NameOverlayParams P0) (O1 : NameOverlayParams P1)
-  (N : MultiParamsNameTotalMap P0 P1) :=
+  (N : MultiParamsNameTotalMap P0 P1) : Prop :=
   {
     tot_adjacent_to_fst_snd : forall n n',
       adjacent_to n n' <-> adjacent_to (tot_map_name n) (tot_map_name n')
@@ -102,7 +102,7 @@ Class FailMsgParamsTotalMapCongruency
   (B0 : BaseParams) (B1 : BaseParams)
   (P0 : MultiParams B0) (P1 : MultiParams B1)
   (F0 : FailMsgParams P0) (F1 : FailMsgParams P1)
-  (P : MultiParamsMsgTotalMap P0 P1) :=
+  (P : MultiParamsMsgTotalMap P0 P1) : Prop :=
   {
     tot_fail_msg_fst_snd : msg_fail = tot_map_msg msg_fail
   }.
@@ -111,7 +111,7 @@ Class NewMsgParamsTotalMapCongruency
   (B0 : BaseParams) (B1 : BaseParams)
   (P0 : MultiParams B0) (P1 : MultiParams B1)
   (N0 : NewMsgParams P0) (N1 : NewMsgParams P1)
-  (P : MultiParamsMsgTotalMap P0 P1) :=
+  (P : MultiParamsMsgTotalMap P0 P1) : Prop :=
   {
     tot_new_msg_fst_snd : msg_new = tot_map_msg msg_new
   }.

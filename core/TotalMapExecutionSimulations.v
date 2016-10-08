@@ -43,7 +43,7 @@ Class LabeledMultiParamsTotalMapCongruency
   (B : BaseParamsTotalMap B0 B1) 
   (N : MultiParamsNameTotalMap (@unlabeled_multi_params _ P0) (@unlabeled_multi_params _ P1))
   (P : MultiParamsMsgTotalMap (@unlabeled_multi_params _ P0) (@unlabeled_multi_params _ P1))
-  (L : LabeledMultiParamsLabelTotalMap P0 P1) :=
+  (L : LabeledMultiParamsLabelTotalMap P0 P1) : Prop :=
   {
     tot_lb_net_handlers_eq : forall me src m st out st' ps lb, 
       lb_net_handlers (tot_map_name me) (tot_map_name src) (tot_map_msg m) (tot_map_data st) = (lb, out, st', ps)  ->

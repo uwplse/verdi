@@ -66,7 +66,7 @@ Class MultiParamsPartialMapCongruency
   (P0 : MultiParams B0) (P1 : MultiParams B1)
   (B : BaseParamsPartialMap B0 B1) 
   (N : MultiParamsNameTotalMap P0 P1)
-  (P : MultiParamsMsgPartialMap P0 P1) :=
+  (P : MultiParamsMsgPartialMap P0 P1) : Prop :=
   {
     pt_init_handlers_eq : forall n, 
       pt_map_data (init_handlers n) = init_handlers (tot_map_name n) ;
@@ -94,7 +94,7 @@ Class FailureParamsPartialMapCongruency
   (B0 : BaseParams) (B1 : BaseParams)
   (P0 : MultiParams B0) (P1 : MultiParams B1)
   (F0 : FailureParams P0) (F1 : FailureParams P1)
-  (B : BaseParamsPartialMap B0 B1) :=
+  (B : BaseParamsPartialMap B0 B1) : Prop :=
   {
     pt_reboot_eq : forall d, pt_map_data (reboot d) = reboot (pt_map_data d)
   }.
@@ -103,7 +103,7 @@ Class FailMsgParamsPartialMapCongruency
   (B0 : BaseParams) (B1 : BaseParams)
   (P0 : MultiParams B0) (P1 : MultiParams B1)
   (F0 : FailMsgParams P0) (F1 : FailMsgParams P1)
-  (P : MultiParamsMsgPartialMap P0 P1) :=
+  (P : MultiParamsMsgPartialMap P0 P1) : Prop :=
   {
     pt_fail_msg_fst_snd : pt_map_msg msg_fail = Some msg_fail
   }.
@@ -112,7 +112,7 @@ Class NewMsgParamsPartialMapCongruency
   (B0 : BaseParams) (B1 : BaseParams)
   (P0 : MultiParams B0) (P1 : MultiParams B1)
   (N0 : NewMsgParams P0) (N1 : NewMsgParams P1)
-  (P : MultiParamsMsgPartialMap P0 P1) :=
+  (P : MultiParamsMsgPartialMap P0 P1) : Prop :=
   {
     pt_new_msg_fst_snd : pt_map_msg msg_new = Some msg_new
   }.
