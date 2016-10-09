@@ -1969,7 +1969,20 @@ Section LockServ.
     intuition.
     - (* eventually the Locked message is delivered, after which this is
          the same as the next case. *)
-      admit.
+      eapply eventually_trans
+      with (inv := lb_step_execution lb_step_async /\_
+                   weak_local_fairness
+                     (lb_step_async(labeled_multi_params := LockServ_LabeledParams))
+                     Silent)
+             (P := now (occurred (MsgLocked holder))).
+      all:unfold and_tl in *; intuition.
+      + eauto using lb_step_execution_invar.
+      + eauto using weak_local_fairness_invar.
+      + (* need `now (MsgLocked i) -> held i = true`, then identical to next case below. *)
+        admit.
+      + econstructor; eauto.
+      + apply Locked_in_network_eventually_MsgLocked; auto.
+        econstructor; eauto.
     - admit.
     - eauto using E0.
   Admitted.
