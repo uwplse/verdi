@@ -1954,6 +1954,32 @@ Section LockServ.
     unfold label_silent. simpl. congruence.
   Qed.
   
+  Lemma MsgLocked_held :
+    forall s c,
+      lb_step_execution lb_step_async s ->
+      now (occurred (MsgLocked c)) s ->
+      next (fun s => held (nwState (evt_a (hd s)) (Client c)) = true) s.
+  Proof.
+    intros.
+    invcs H.
+    invcs H1.
+    - monad_unfold.
+      unfold NetHandler in *.
+      break_match_hyp.
+      + unfold occurred in *.
+        fold LockServ_MultiParams in *. (* typeclass stuff *)
+        repeat find_rewrite. simpl.
+        find_apply_lem_hyp ClientNetHandler_lbcases; intuition; subst;
+          update_destruct_max_simplify; congruence.
+      + unfold occurred in *.
+        find_apply_lem_hyp ServerNetHandler_lbcases; intuition;
+          break_exists; intuition; congruence.
+    - monad_unfold.
+      find_apply_lem_hyp InputHandler_lbcases.
+      intuition; break_exists; intuition; congruence.
+    - congruence.
+  Qed.
+
   Lemma eventually_Unlock :
     forall n c s,
       event_step_star step_async step_async_init (hd s) ->
@@ -1983,7 +2009,8 @@ Section LockServ.
       + eauto using lb_step_execution_invar.
       + eauto using weak_local_fairness_invar.
       + (* need `now (MsgLocked i) -> held i = true`, then identical to next case below. *)
-        admit.
+        find_apply_lem_hyp MsgLocked_held; eauto.
+        admit. (* need next_eventually *)
       + apply Locked_in_network_eventually_MsgLocked; auto.
     - eauto using held_eventually_Unlock.
     - eauto using E0.
