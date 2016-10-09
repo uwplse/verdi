@@ -46,7 +46,7 @@ Class MultiParamsPartialExtendedMapCongruency
   (P0 : MultiParams B0) (P1 : MultiParams B1)
   (N : MultiParamsNameTotalMap P0 P1)
   (P : MultiParamsMsgPartialMap P0 P1)
-  (P : MultiParamsPartialExtendedMap P0 P1) :=
+  (P : MultiParamsPartialExtendedMap P0 P1) : Prop :=
   {
     pt_ext_init_handlers_eq : forall n,
       pt_ext_map_data (init_handlers n) n = init_handlers (tot_map_name n) ;
@@ -72,7 +72,7 @@ Class FailureParamsPartialExtendedMapCongruency
   (B0 : BaseParams) (B1 : BaseParams)
   (P0 : MultiParams B0) (P1 : MultiParams B1)
   (F0 : FailureParams P0) (F1 : FailureParams P1)
-  (P : MultiParamsPartialExtendedMap P0 P1) :=
+  (P : MultiParamsPartialExtendedMap P0 P1) : Prop :=
   {
     pt_ext_reboot_eq : forall d me,
       pt_ext_map_data (reboot d) me = reboot (pt_ext_map_data d me)
