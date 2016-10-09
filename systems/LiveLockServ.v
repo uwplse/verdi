@@ -1907,6 +1907,49 @@ Section LockServ.
       apply weak_until_always; eauto using weak_local_fairness_invar, always_inv.
   Admitted.
     
+  Lemma Locked_enables_MsgLocked :
+    forall i, message_enables_label
+           {| pSrc := Server; pDst := Client i; pBody := Locked |}
+           (MsgLocked i).
+  Proof.
+    unfold message_enables_label, enabled.
+    intros.
+    find_apply_lem_hyp in_split.
+    break_exists_name xs. break_exists_name ys.
+    do 2 eexists.
+    eapply LabeledStepAsync_deliver; eauto.
+    simpl. monad_unfold. simpl. eauto.
+  Qed.
+
+  Lemma Locked_delivered_MsgLocked :
+    forall i, message_delivered_label
+           {| pSrc := Server; pDst := Client i; pBody := Locked |}
+           (MsgLocked i).
+  Proof.
+    unfold message_delivered_label.
+    intros.
+    invcs H.
+    - repeat find_rewrite.
+      find_eapply_lem_hyp In_split_not_In; eauto. subst.
+      monad_unfold. simpl in *.
+      handler_unfold. repeat break_match; repeat find_inversion; auto.
+    - unfold not in *. find_false.
+      apply in_app_iff; auto.
+    - intuition.
+  Qed.
+
+  Lemma Locked_in_network_eventually_MsgLocked :
+    forall i s,
+      lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
+      In (mkPacket Server (Client i) Locked) (nwPackets (evt_a (hd s))) ->
+      eventually (now (occurred (MsgLocked i))) s.
+  Proof.
+    intros.
+    eapply message_labels_eventually_occur;
+      eauto using Locked_enables_MsgLocked, Locked_delivered_MsgLocked.
+    unfold label_silent. simpl. congruence.
+  Qed.
   
   Lemma eventually_Unlock :
     forall n c s,
