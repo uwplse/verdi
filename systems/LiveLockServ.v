@@ -2342,8 +2342,15 @@ Section LockServ.
       now (occurred (InputLock c)) s ->
       eventually (fun s => held (nwState (evt_a (hd s)) (Client c)) = true) s.
   Proof.
-  Admitted.
-
+    intros.
+    find_eapply_lem_hyp locking_clients_eventually_receive_lock_lb; eauto.
+    apply eventually_next.
+    eapply eventually_monotonic with (J := lb_step_execution lb_step_async).
+    4:eauto.
+    all:eauto using lb_step_execution_invar.
+    eauto using MsgLocked_held.
+  Qed.
+  
   (* trace-based correctness theorem *)
   Theorem locking_clients_eventually_receive_lock_tr :
     forall c s,
