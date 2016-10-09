@@ -2141,6 +2141,47 @@ Section LockServ.
     intros. simpl in *. intuition.
   Qed.
 
+  Lemma InputLock_Lock :
+    forall s c,
+      lb_step_execution lb_step_async s ->
+      now (occurred (InputLock c)) s ->
+      next (fun s => In (mkPacket (Client c) Server Lock) (nwPackets (evt_a (hd s)))) s.
+  Proof.
+    intros.
+    invcs H.
+    invcs H1.
+    - monad_unfold.
+      unfold NetHandler in *.
+      break_match_hyp.
+      + unfold occurred in *.
+        find_apply_lem_hyp ClientNetHandler_lbcases; intuition; congruence.
+      + unfold occurred in *.
+        find_apply_lem_hyp ServerNetHandler_lbcases; intuition;
+          break_exists; intuition; congruence.
+    - monad_unfold.
+      find_apply_lem_hyp InputHandler_lbcases.
+      intuition; try congruence.
+      break_exists. intuition; try congruence.
+      fold LockServ_MultiParams in *. (* typeclass stuff *)
+      repeat find_rewrite.
+      simpl. left. unfold occurred in *.
+      congruence.
+    - unfold occurred in *. congruence.
+  Qed.
+  
+  Lemma Lock_in_network_eventually_MsgLock :
+    forall c s,
+      lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
+      In (mkPacket (Client c) Server Lock) (nwPackets (evt_a (hd s))) ->
+      eventually (now (occurred (MsgLock c))) s.
+  Proof.
+    intros.
+    eapply message_labels_eventually_occur;
+      eauto using Lock_enables_MsgLock, Lock_delivered_MsgLock.
+    unfold label_silent. simpl. congruence.
+  Qed.
+
   Lemma InputLock_eventually_MsgLock :
     forall c s,
       lb_step_execution lb_step_async s ->
@@ -2148,7 +2189,21 @@ Section LockServ.
       now (occurred (InputLock c)) s ->
       eventually (now (occurred (MsgLock c))) s.
   Proof.
-  Admitted.
+    intros.
+    find_apply_lem_hyp InputLock_Lock; auto.
+    destruct s.
+    simpl in *.
+    eauto using E_next, Lock_in_network_eventually_MsgLock,
+       lb_step_execution_invar, weak_local_fairness_invar.
+  Qed.
+
+  Lemma Nth_snoc :
+    forall A (l : list A) x,
+      Nth (l ++ [x]) (length l) x.
+  Proof.
+    intros.
+    induction l; simpl in *; constructor; auto.
+  Qed.
 
   Lemma MsgLock_in_queue_or_Locked :
     forall c s,
@@ -2161,7 +2216,34 @@ Section LockServ.
       exists n,
         next (fun s =>
                 Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c) s.
-  Admitted.
+  Proof.
+    intros.
+    invcs H.
+    invcs H2.
+    - monad_unfold.
+      unfold NetHandler in *.
+      break_match_hyp.
+      + unfold occurred in *.
+        find_apply_lem_hyp ClientNetHandler_lbcases; intuition; congruence.
+      + unfold occurred in *.
+        find_apply_lem_hyp ServerNetHandler_lbcases; intuition;
+          break_exists; intuition; try congruence; [left|right];
+            fold LockServ_MultiParams in *; (* typeclass stuff *)
+            repeat find_rewrite; simpl.
+        * left. congruence.
+        * update_destruct_max_simplify; try congruence.
+          find_inversion.
+          repeat find_rewrite.
+          destruct (queue (nwState (evt_a e) Server)) eqn:?; try congruence.
+          exists (length l). simpl.
+          constructor.
+          apply Nth_snoc.
+    - monad_unfold.
+      find_apply_lem_hyp InputHandler_lbcases.
+      intuition; try congruence.
+      break_exists. intuition; congruence.
+    - unfold occurred in *. congruence.
+  Qed.
 
   Lemma MsgLock_Locked :
     forall c s,
