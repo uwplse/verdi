@@ -2010,11 +2010,14 @@ Section LockServ.
       + eauto using weak_local_fairness_invar.
       + (* need `now (MsgLocked i) -> held i = true`, then identical to next case below. *)
         find_apply_lem_hyp MsgLocked_held; eauto.
-        admit. (* need next_eventually *)
+        destruct s.
+        simpl in *.
+        eauto using lb_step_execution_invar, weak_local_fairness_invar,
+          E_next, held_eventually_Unlock.
       + apply Locked_in_network_eventually_MsgLocked; auto.
     - eauto using held_eventually_Unlock.
     - eauto using E0.
-  Admitted.
+  Qed.
   
   Lemma eventually_MsgUnlock :
     forall n c s,
