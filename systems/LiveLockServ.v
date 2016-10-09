@@ -2140,4 +2140,31 @@ Section LockServ.
     eapply eventually_monotonic_simple; [|eauto].
     intros. simpl in *. intuition.
   Qed.
+
+  (* label + state-based correctness theorem *)
+  Theorem locking_clients_eventually_receive_lock_st :
+    forall c s,
+      event_step_star step_async step_async_init (hd s) ->
+      lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
+      now (occurred (InputLock c)) s ->
+      eventually (fun s => held (nwState (evt_a (hd s)) (Client c)) = true) s.
+  Proof.
+  Admitted.
+
+  (* trace-based correctness theorem *)
+  Theorem locking_clients_eventually_receive_lock_tr :
+    forall c s,
+      event_step_star step_async step_async_init (hd s) ->
+      lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
+      (exists tr,
+          evt_trace (hd s) = tr ++ [(Client c, inl Lock)]) ->
+      eventually (fun s =>
+                    (exists tr,
+                        evt_trace (hd s) = tr ++ [(Client c, inr [Locked])])) s.
+  Proof.
+  Admitted.
+
+  
 End LockServ.
