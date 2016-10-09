@@ -1728,7 +1728,7 @@ Section LockServ.
       lb_step_execution lb_step_async s ->
       held (nwState (evt_a (hd s)) (Client c)) = true ->
       weak_until (fun s => held (nwState (evt_a (hd s)) (Client c)) = true)
-                 (now (occurred (InputUnlock c)))
+                 (next (fun s => In (mkPacket (Client c) Server Unlock) (nwPackets (evt_a (hd s)))))
                  s.
   Proof.
     intros c.
@@ -1758,9 +1758,11 @@ Section LockServ.
         update_destruct_max_simplify; repeat find_rewrite; auto.
       + subst. 
         destruct (fin_eq_dec _ c x).
-        * subst x.
-          apply W0.
-          simpl. now unfold occurred.
+        * clear CIH. subst.
+          apply W0; simpl.
+          fold LockServ_MultiParams in *. (* typeclass stuff *)
+          repeat find_rewrite.
+          simpl. auto.
         * coinductive_case CIH.
           repeat find_rewrite.
           simpl. now rewrite_update.
@@ -1830,7 +1832,8 @@ Section LockServ.
       eapply InputUnlock_held; eauto.
     - apply weak_until_always; eauto using lb_step_execution_invar, always_inv.
       apply weak_until_always; eauto using weak_local_fairness_invar, always_inv.
-  Admitted.
+      eauto using held_until_Unlock.
+  Qed.
     
   
   Lemma eventually_Unlock :
@@ -1846,13 +1849,14 @@ Section LockServ.
     find_apply_lem_hyp Nth_something_at_head.
     break_exists_name holder. break_exists.
     exists (Client holder).
+    remember H0 as Hlbs; clear HeqHlbs.
     invcs H0.
     find_eapply_lem_hyp head_grant_state_unlock; eauto.
     intuition.
     - (* eventually the Locked message is delivered, after which this is
          the same as the next case. *)
       admit.
-    - admit.
+    - eauto using held_eventually_Unlock.
     - eauto using E0.
   Admitted.
   
