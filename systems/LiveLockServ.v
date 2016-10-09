@@ -1984,9 +1984,7 @@ Section LockServ.
       + eauto using weak_local_fairness_invar.
       + (* need `now (MsgLocked i) -> held i = true`, then identical to next case below. *)
         admit.
-      + econstructor; eauto.
       + apply Locked_in_network_eventually_MsgLocked; auto.
-        econstructor; eauto.
     - eauto using held_eventually_Unlock.
     - eauto using E0.
   Admitted.
