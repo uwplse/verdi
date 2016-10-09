@@ -2141,6 +2141,116 @@ Section LockServ.
     intros. simpl in *. intuition.
   Qed.
 
+  Lemma InputLock_eventually_MsgLock :
+    forall c s,
+      lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
+      now (occurred (InputLock c)) s ->
+      eventually (now (occurred (MsgLock c))) s.
+  Proof.
+  Admitted.
+
+  Lemma MsgLock_in_queue_or_Locked :
+    forall c s,
+      lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
+      now (occurred (MsgLock c)) s ->
+      next (fun s =>
+              In (mkPacket Server (Client c) Locked)
+                 (nwPackets (evt_a (hd s)))) s \/
+      exists n,
+        next (fun s =>
+                Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c) s.
+  Admitted.
+
+  Lemma MsgLock_Locked :
+    forall c s,
+      event_step_star step_async step_async_init (hd s) ->
+      lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
+      now (occurred (MsgLock c)) s ->
+      eventually
+        (fun s => In (mkPacket Server (Client c) Locked)
+                  (nwPackets (evt_a (hd s)))) s.
+  Proof.
+    intros.
+    find_apply_lem_hyp MsgLock_in_queue_or_Locked; auto.
+    intuition.
+    - destruct s; simpl in *; eauto using E_next, E0.
+    - break_exists.
+      destruct s; simpl in *.
+      apply E_next.
+      eapply clients_get_lock_messages;
+        eauto using lb_step_execution_invar,
+                    weak_local_fairness_invar.
+      find_apply_lem_hyp step_async_star_lb_step_execution; auto.
+      destruct s. simpl.
+      do 2 (find_apply_lem_hyp always_Cons; intuition).
+  Qed.
+
+  Lemma MsgLock_eventually_MsgLocked :
+    forall c s,
+      event_step_star step_async step_async_init (hd s) ->
+      lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
+      now (occurred (MsgLock c)) s ->
+      eventually (now (occurred (MsgLocked c))) s.
+  Proof.
+    intros c s Hss Hlbs Hfair.
+    match goal with
+    | H : _ (hd s) |- _ =>
+      pattern s in H
+    end.
+    match goal with
+    | H1 : ?J1 s, H2 : ?J2 s, H3 : ?J3 s |- _ =>
+      assert ((J1 /\_ J2 /\_ J3) s) as Hand by (now unfold and_tl);
+        clear H1; clear H2; clear H3
+    end; simpl in *. intros.
+    eapply eventually_trans.
+    4:eapply MsgLock_Locked; eauto; unfold and_tl in *; intuition.
+    3:apply Hand. all:unfold and_tl in *.
+    all:intuition eauto using lb_step_execution_invar, weak_local_fairness_invar.
+    - find_apply_lem_hyp step_async_star_lb_step_execution; auto.
+      destruct s0. simpl in *.
+      find_apply_lem_hyp always_Cons.
+      intuition.
+      find_apply_lem_hyp always_Cons.
+      intuition.
+    - eauto using Locked_in_network_eventually_MsgLocked.
+  Qed.
+  
+  (* label-based correctness theorem *)
+  Theorem locking_clients_eventually_receive_lock_lb :
+    forall c s,
+      event_step_star step_async step_async_init (hd s) ->
+      lb_step_execution lb_step_async s ->
+      weak_local_fairness lb_step_async label_silent s ->
+      now (occurred (InputLock c)) s ->
+      eventually (now (occurred (MsgLocked c))) s.
+  Proof.
+    intros c s Hss Hlbs Hfair.
+    match goal with
+    | H : _ (hd s) |- _ =>
+      pattern s in H
+    end.
+    match goal with
+    | H1 : ?J1 s, H2 : ?J2 s, H3 : ?J3 s |- _ =>
+      assert ((J1 /\_ J2 /\_ J3) s) as Hand by (now unfold and_tl);
+        clear H1; clear H2; clear H3
+    end; simpl in *. intros.
+    eapply eventually_trans.
+    4:eapply InputLock_eventually_MsgLock; eauto; unfold and_tl in *; intuition.
+    3:apply Hand. all:unfold and_tl in *.
+    all:intuition eauto using lb_step_execution_invar, weak_local_fairness_invar.
+    - find_apply_lem_hyp step_async_star_lb_step_execution; auto.
+      destruct s0. simpl in *.
+      find_apply_lem_hyp always_Cons.
+      intuition.
+      find_apply_lem_hyp always_Cons.
+      intuition.
+    - eauto using MsgLock_eventually_MsgLocked.
+  Qed.
+
   (* label + state-based correctness theorem *)
   Theorem locking_clients_eventually_receive_lock_st :
     forall c s,
