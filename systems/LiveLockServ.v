@@ -311,12 +311,12 @@ Section LockServ.
     forall c m st u out st' ms,
       ClientNetHandler c m st = (u, out, st', ms) ->
       ms = [] /\
-      ((st' = st /\ out = [] ) \/
+      ((st' = st /\ out = [] /\ m <> Locked) \/
        (m = Locked /\ out = [Locked] /\ held st' = true)).
   Proof.
     handler_unfold.
     intros.
-    repeat break_match; repeat tuple_inversion; subst; auto.
+    repeat break_match; repeat tuple_inversion; subst; intuition (auto; congruence).
   Qed.
 
   Lemma ServerNetHandler_cases :
@@ -332,7 +332,7 @@ Section LockServ.
                    queue st' = tail (queue st) /\
                    ((queue st' = [] /\ ms = []) \/
                     (exists next t, queue st' = next :: t /\ ms = [(Client next, Locked)])))) \/
-       ms = [] /\ st' = st).
+       ms = [] /\ st' = st /\ m <> Unlock).
   Proof.
     handler_unfold.
     intros.
@@ -341,11 +341,11 @@ Section LockServ.
       intuition. left. eexists. intuition.
     - simpl. find_apply_lem_hyp null_false_neq_nil.
       intuition. left. eexists. intuition.
-    - simpl. auto.
-    - simpl. destruct st; simpl in *; subst; auto.
+    - simpl. intuition (auto; congruence).
+    - simpl. destruct st; simpl in *; subst; intuition (auto; congruence).
     - simpl in *. intuition.
     - simpl in *. intuition eauto.
-    - simpl. intuition.
+    - simpl. intuition (auto; congruence).
   Qed.
 
   Definition at_head_of_queue sigma c := (exists t, queue (sigma Server) = c :: t).
@@ -1275,7 +1275,82 @@ Section LockServ.
       (held (nwState st (Client c)) = true) \/
       (In (mkPacket (Client c) Server Unlock) (nwPackets st)).
   Proof.
-  Admitted.
+    intros.
+    find_apply_lem_hyp refl_trans_1n_n1_trace.
+    prep_induction H.
+    induction H; intros; subst.
+    - discriminate.
+    - match goal with
+        | [ H : step_async _ _ _ |- _ ] => invcs H
+      end; unlabeled_unfold;
+        unfold lb_net_handlers, lb_input_handlers in *; simpl in *;
+          monad_unfold;
+          repeat break_let; repeat find_inversion.
+      + unfold NetHandler in *.
+        break_match; rewrite_update.
+        * find_apply_lem_hyp ClientNetHandler_cases.
+          intuition.
+          -- subst. rewrite update_nop_ext.
+             find_apply_lem_hyp IHrefl_trans_n1_trace; auto; [idtac].
+             repeat find_rewrite.
+             simpl.
+             in_crush.
+             discriminate.
+          -- subst.
+             find_apply_lem_hyp refl_trans_n1_1n_trace.
+             find_apply_lem_hyp reachable_intro.
+             match goal with
+             | [ H : reachable _ _ _ |- _ ] =>
+               let H' := fresh H in
+               pose H as H';
+                 eapply locks_correct_locked_invariant with (p := p) in H';
+                 [| now repeat find_rewrite; in_crush];
+                 eapply locks_correct_locked_at_head in H'; eauto
+             end.
+             unfold at_head_of_queue in *. break_exists. find_rewrite. find_inversion.
+             rewrite_update. auto.
+        * find_apply_lem_hyp ServerNetHandler_cases. intuition.
+          -- break_exists. intuition.
+             ++ subst. repeat find_rewrite. simpl in *.
+                find_inversion. auto.
+             ++ subst. repeat find_rewrite.
+                destruct (queue (nwState x' Server)); try congruence.
+                simpl in *. find_inversion.
+                do 2 insterU IHrefl_trans_n1_trace.
+                repeat conclude_using eauto.
+                intuition.
+                ** in_crush. discriminate.
+                ** in_crush. discriminate.
+          -- congruence.
+          -- break_exists. intuition. subst. simpl.
+             repeat find_rewrite. find_inversion. auto.
+          -- subst. simpl.
+             find_apply_hyp_hyp. intuition.
+             ++ repeat find_rewrite. in_crush. discriminate.
+             ++ repeat find_rewrite. in_crush.
+      + find_apply_lem_hyp InputHandler_cases.
+        intuition.
+        * break_exists. break_and. subst.
+          rewrite_update.
+          find_apply_hyp_hyp.
+          intuition.
+          -- subst. rewrite update_nop_ext. auto.
+          -- find_apply_lem_hyp refl_trans_n1_1n_trace.
+             find_apply_lem_hyp reachable_intro.
+             match goal with
+             | [ H : reachable _ _ _ |- _ ] =>
+               pose H as Hmutex;
+                 eapply mutual_exclusion_invariant in Hmutex
+             end.
+             unfold mutual_exclusion in *.
+             assert (c = x) by auto. clear Hmutex.
+             subst. simpl. auto.
+          -- subst. rewrite_update. auto.
+        * subst. simpl. rewrite update_nop_ext in *.
+          match goal with
+          | [ H : _ |- _ ] => apply IHrefl_trans_n1_trace in H; auto
+          end.
+  Qed.
 
 (* LIVENESS *)
   
