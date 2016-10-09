@@ -70,7 +70,7 @@ done
 
 for dir in ${DIRS[@]}; do
     echo >> $COQPROJECT_TMP
-    find $dir -iname '*.v'  >> $COQPROJECT_TMP
+    find $dir -iname '*.v' -not -name '*\#*'  >> $COQPROJECT_TMP
 done
 
 for extra in ${EXTRA[@]}; do
