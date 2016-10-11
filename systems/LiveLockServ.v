@@ -2351,19 +2351,4 @@ Section LockServ.
     eauto using MsgLocked_held.
   Qed.
   
-  (* trace-based correctness theorem *)
-  Theorem locking_clients_eventually_receive_lock_tr :
-    forall c s,
-      event_step_star step_async step_async_init (hd s) ->
-      lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
-      (exists tr,
-          evt_trace (hd s) = tr ++ [(Client c, inl Lock)]) ->
-      eventually (fun s =>
-                    (exists tr,
-                        evt_trace (hd s) = tr ++ [(Client c, inr [Locked])])) s.
-  Proof.
-  Admitted.
-
-  
 End LockServ.
