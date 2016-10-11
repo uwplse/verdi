@@ -1865,23 +1865,6 @@ Section LockServ.
     eapply_prop_hyp weak_local_fairness cont_enabled; [|now unfold label_silent].
     solve_by_inversion.
   Qed.
-
-  Lemma weak_until_always :
-    forall (T : Type) (J J' P : infseq T -> Prop) s,
-      weak_until J P s ->
-      always J' s ->
-      weak_until (J' /\_ J) P s.
-  Proof.
-    cofix CIH.
-    intros T J J' P s Hweak Halways.
-    destruct s.
-    invcs Hweak.
-    - now eauto using W0.
-    - invcs Halways.
-      eapply W_tl.
-      + now unfold and_tl.
-      + simpl. now eauto.
-  Qed.
     
   Lemma held_eventually_Unlock :
     forall s c,
