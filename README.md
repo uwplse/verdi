@@ -31,13 +31,17 @@ Files
 -----
 
 - Core Verdi files:
-    - `Net.v`: core network semantics
+    - `Verdi.v`: exporting of core Verdi theories, imported by systems
+    - `Net.v`: core (unlabeled) network semantics
+    - `LabeledNet.v`: labeled network semantics, for use in liveness reasoning
     - `HandlerMonad.v`: a monad for writing network/input handlers
     - `StatePacketPacket.v`: a technique for writing easily decomposable
     invariants
 - Example systems:
-    - `LockServ.v`: a lock server
-    - `VarD.v`: vard, a key-value store
+    - `Counter.v`: counting server with backup
+    - `LockServ.v`: lock server with proof of safety
+    - `LiveLockServ.v`: lock server with proof of liveness
+    - `VarD.v`: `vard`, a key-value store
 - Verified system transformers:
     - `SeqNum.v` and `SeqNumCorrect.v`, a system transformer
       implementing sequence numbering
@@ -45,7 +49,7 @@ Files
          applied to the lock server
     - `PrimaryBackup.v`, a system transformer implementing asynchronous
       primary-backup replication
-      - `VarDPB.v`, the primary-backup transformer applied to the
+      - `VarDPrimaryBackup.v`, the primary-backup transformer applied to the
         key-value store
 
 Projects using Verdi
