@@ -1,7 +1,7 @@
 Require Import StructTact.StructTactics.
 Require Import StructTact.Util.
-Require Import DynamicNet.
-Require Import Chord.
+Require Import Verdi.DynamicNet.
+Require Import Verdi.Chord.
 Require Import List.
 Import ListNotations.
 Require Import Arith.

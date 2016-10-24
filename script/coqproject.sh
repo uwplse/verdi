@@ -3,33 +3,31 @@
 ### coqproject.sh
 ### Creates a _CoqProject file, including external dependencies.
 
-## Configuration options
-# External dependencies
-# e.g. DEPS = (StructTact)
+### See README.md for a description.
 
-# Directories containing coq files
-# e.g. DIRS=(theories)
-if [ -z ${DIRS+x} ]; then DIRS=(.); fi
-
-# Canary imports, along with error messages if imports fail
-# e.g. CANARIES=("mathcomp.ssreflect.ssreflect" "Ssreflect missing")
-
-# Namespaces corresponding to directories. By default, everything is in "".
-# To put "theories" in the "FermatsTheorem" namespace:
-#   NAMESPACE_theories=FermatsTheorem
-# Note that "." can't be part of a variable name, so it's replaced by "_".
-# So, to put the current directory in the "FermatsTheorem" namespace:
-#   NAMESPACE__=FermatsTheorem
-
-# Extra files (e.g. automatically-generated .v files that won't be
-# around at configure-time)
-# e.g. EXTRA=(GeneratedFile.v)
 ## Implementation
+
+if [ -z ${DIRS+x} ]; then DIRS=(.); fi
 
 COQPROJECT_TMP=_CoqProject.tmp
 
 rm -f $COQPROJECT_TMP
 touch $COQPROJECT_TMP
+
+function dep_dirs_lines(){
+  dep_dirs_var="$2"_DIRS
+  local -a 'dep_dirs=("${'"$dep_dirs_var"'[@]}")'
+  if [ "x${dep_dirs[0]}" = "x" ]; then dep_dirs=(.); fi
+  for dep_dir in "${dep_dirs[@]}"; do
+      namespace_var=NAMESPACE_"$2"_"$dep_dir"
+      namespace_var=${namespace_var//\//_}
+      namespace_var=${namespace_var//-/_}
+      namespace_var=${namespace_var//./_}
+      namespace=${!namespace_var:=$2}
+      LINE="-Q $1/$dep_dir/ $namespace"
+      echo $LINE >> $COQPROJECT_TMP
+  done
+}
 for dep in ${DEPS[@]}; do
     path_var="$dep"_PATH
     path=${!path_var:="../$dep"}
@@ -42,8 +40,8 @@ for dep in ${DEPS[@]}; do
     path=$(pwd)
     popd > /dev/null
     echo "$dep found at $path"
-    LINE="-Q $path $dep"
-    echo $LINE >> $COQPROJECT_TMP
+
+    dep_dirs_lines $path $dep
 done
 
 COQTOP="coqtop $(cat $COQPROJECT_TMP)"
@@ -62,15 +60,17 @@ done
 
 for dir in ${DIRS[@]}; do
     namespace_var=NAMESPACE_"$dir"
+    namespace_var=${namespace_var//\//_}
+    namespace_var=${namespace_var//-/_}
     namespace_var=${namespace_var//./_}
     namespace=${!namespace_var:="\"\""}
-    LINE="-Q $dir $namespace"
+    LINE="-Q $dir/ $namespace"
     echo $LINE >> $COQPROJECT_TMP
 done
 
 for dir in ${DIRS[@]}; do
     echo >> $COQPROJECT_TMP
-    find $dir -iname '*.v'  >> $COQPROJECT_TMP
+    find $dir -iname '*.v' -not -name '*\#*'  >> $COQPROJECT_TMP
 done
 
 for extra in ${EXTRA[@]}; do

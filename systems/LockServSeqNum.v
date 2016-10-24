@@ -1,8 +1,8 @@
-Require Import Verdi.
+Require Import Verdi.Verdi.
 
-Require Import LockServ.
-Require SeqNum.
-Require Import SeqNumCorrect.
+Require Import Verdi.LockServ.
+Require Verdi.SeqNum.
+Require Import Verdi.SeqNumCorrect.
 
 Section LockServSeqNum.
 
@@ -18,9 +18,9 @@ Section LockServSeqNum.
 
   Theorem transformed_correctness :
     forall (net : transformed_network) tr,
-      step_d_star (params := transformed_multi_params) step_m_init net tr ->
+      step_dup_star (params := transformed_multi_params) step_async_init net tr ->
       @mutual_exclusion num_Clients (nwState (revertNetwork net)).
-  Proof.
+  Proof using.
     intros.
     pose proof @true_in_reachable_transform _ (LockServ_MultiParams num_Clients)
          (fun net : network => mutual_exclusion (nwState net))

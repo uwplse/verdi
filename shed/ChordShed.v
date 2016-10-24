@@ -3,11 +3,11 @@ Require Import mathcomp.ssreflect.ssreflect.
 Require Import StructTact.StructTactics.
 Require Import StructTact.Before.
 
-Require Import Chord.
-Require Import ChordProof.
-Require Import DynamicNet.
-Require Import DynamicShed.
-Require Import Shed.
+Require Import Verdi.Chord.
+Require Import Verdi.ChordProof.
+Require Import Verdi.DynamicNet.
+Require Import Verdi.DynamicShed.
+Require Import Verdi.Shed.
 
 Set Bullet Behavior "Strict Subproofs".
 

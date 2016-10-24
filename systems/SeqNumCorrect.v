@@ -1,8 +1,8 @@
-Require Import Verdi.
+Require Import Verdi.Verdi.
 
 Require Import FunctionalExtensionality.
 
-Require Import SeqNum.
+Require Import Verdi.SeqNum.
 
 Section SeqNumCorrect.
   Context {orig_base_params : BaseParams}.
@@ -14,7 +14,7 @@ Section SeqNumCorrect.
       forall p,
         In p l' ->
         n' > (tmNum (snd p)).
-  Proof.
+  Proof using.
     induction l; intros; simpl in *.
     - find_inversion. simpl in *. intuition.
     - break_match. find_inversion. simpl in *. intuition.
@@ -26,7 +26,7 @@ Section SeqNumCorrect.
     forall n l n' l',
       processPackets n l = (n', l') ->
       n' >= n.
-  Proof.
+  Proof using.
     induction l; intros; simpl in *.
     - intros. find_inversion. intuition.
     - break_match. find_inversion.
@@ -40,7 +40,7 @@ Section SeqNumCorrect.
       forall p,
         In p l' ->
         n <= (tmNum (snd p)).
-  Proof.
+  Proof using.
     induction l; intros; simpl in *.
     - invcs H. intuition.
     - break_match.
@@ -57,7 +57,7 @@ Section SeqNumCorrect.
       In p' l' ->
       p <> p' ->
       (tmNum (snd p)) <> (tmNum (snd p')).
-  Proof.
+  Proof using.
     induction l; intros; simpl in *.
     - invcs H. intuition.
     - break_match. invcs H.
@@ -78,7 +78,7 @@ Section SeqNumCorrect.
       In y l' ->
       tmNum (snd x) = tmNum (snd y) ->
       x = y.
-  Proof.
+  Proof using.
     induction l; intros; simpl in *.
     - find_inversion. simpl in *. intuition.
     - break_match. find_inversion. simpl in *.
@@ -90,7 +90,7 @@ Section SeqNumCorrect.
   Lemma processPackets_NoDup : forall n l n' l',
                                   processPackets n l = (n', l') ->
                                   NoDup l'.
-  Proof.
+  Proof using.
     induction l; intros.
     - simpl in *. find_inversion. constructor.
     - simpl in *. break_match. find_inversion.
@@ -105,7 +105,7 @@ Section SeqNumCorrect.
   Lemma processPackets_preserves_messages :
     forall n l,
       map (fun p => (fst p, tmMsg (snd p))) (snd (processPackets n l)) = l.
-  Proof.
+  Proof using.
     induction l.
     - auto.
     - simpl. break_match. simpl in *. rewrite IHl. destruct a. auto.
@@ -141,7 +141,7 @@ Section SeqNumCorrect.
     nwState net = nwState net' ->
     nwPackets net = nwPackets net' ->
     net = net'.
-  Proof.
+  Proof using.
     intros; destruct net, net'.
     simpl in *.
     subst.
@@ -154,12 +154,12 @@ Section SeqNumCorrect.
        tmNum (pBody p) < (tdNum ((nwState net) (pSrc p)))).
 
   Lemma reachable_sane :
-    true_in_reachable step_d step_m_init sequence_sane.
-  Proof.
+    true_in_reachable step_dup step_async_init sequence_sane.
+  Proof using.
     apply inductive_invariant_true_in_reachable. unfold inductive_invariant, inductive.
     unfold sequence_sane. simpl in *. intuition.
     match goal with
-      | [ H : step_d _ _ _ |- _ ] =>
+      | [ H : step_dup _ _ _ |- _ ] =>
         invcs H
     end; try find_inversion.
     - (* deliver case *)
@@ -199,13 +199,13 @@ Section SeqNumCorrect.
       n < (tdNum (nwState net h)).
 
   Lemma reachable_seen :
-    true_in_reachable step_d step_m_init sequence_seen.
-  Proof.
+    true_in_reachable step_dup step_async_init sequence_seen.
+  Proof using.
     apply true_in_reachable_reqs; 
     unfold sequence_seen; simpl in *; intuition.
     find_apply_lem_hyp reachable_sane.
     unfold sequence_sane in *.
-    match goal with H : step_d _ _ _ |- _ => invcs H end.
+    match goal with H : step_dup _ _ _ |- _ => invcs H end.
     - (* step case *)
       unfold seq_num_net_handlers in *.
       repeat (break_match; try find_inversion; simpl in *; eauto);
@@ -236,8 +236,8 @@ Section SeqNumCorrect.
       p = p'.
 
   Theorem reachable_equality :
-    true_in_reachable step_d step_m_init sequence_equality.
-  Proof.
+    true_in_reachable step_dup step_async_init sequence_equality.
+  Proof using.
     apply true_in_reachable_reqs; 
     unfold sequence_equality; simpl in *; intuition.
     match goal with
@@ -246,7 +246,7 @@ Section SeqNumCorrect.
     end.
     unfold sequence_sane, sequence_equality in *.
     intros.
-    match goal with H : step_d _ _ _ |- _ => invcs H end; simpl in *; find_inversion.
+    match goal with H : step_dup _ _ _ |- _ => invcs H end; simpl in *; find_inversion.
     - unfold seq_num_net_handlers in *.
       repeat do_in_app.
       repeat find_rewrite.
@@ -309,7 +309,7 @@ Section SeqNumCorrect.
       In p (nwPackets net) ->
       ~ In (tmNum (pBody p)) (tdSeen (nwState net (pDst p)) (pSrc p)) ->
       In (revertPacket p) (nwPackets (revertNetwork net)).
-  Proof.
+  Proof using.
     intros. unfold revertNetwork. simpl in *.
     in_crush.
     apply filter_In. intuition.
@@ -324,7 +324,7 @@ Section SeqNumCorrect.
       exists xs' ys',
         nwPackets (revertNetwork net) =
         xs' ++ (revertPacket p) :: ys'.
-  Proof.
+  Proof using.
     intros.
     apply in_split. apply revertNetwork_In; repeat find_rewrite; in_crush.
   Qed.
@@ -336,7 +336,7 @@ Section SeqNumCorrect.
       processPackets (tdNum (nwState net h)) l = (n', processed) ->
       dedup pkt_eq_dec ((@send_packets _ multi_params h processed) ++ rest)
       = (send_packets h processed) ++ (dedup pkt_eq_dec rest).
-  Proof.
+  Proof using.
     intros. simpl in *.
     rewrite dedup_app; f_equal.
     - apply dedup_NoDup_id.
@@ -388,7 +388,7 @@ Section SeqNumCorrect.
           nwPackets := (@send_packets _ orig_multi_params (pDst p) l) ++ xs' ++ ys';
           nwState := update name_eq_dec (nwState (revertNetwork st)) (pDst p) d
         |}.
-  Proof.
+  Proof using.
     intros.
     simpl in *.
     unfold revertNetwork.
@@ -477,7 +477,7 @@ Section SeqNumCorrect.
           nwPackets := (@send_packets _ orig_multi_params h l) ++ (nwPackets (revertNetwork st));
           nwState := update name_eq_dec (nwState (revertNetwork st)) h d
         |}.
-  Proof.
+  Proof using.
     intros.
     unfold revertNetwork.
     simpl in *.
@@ -512,17 +512,17 @@ Section SeqNumCorrect.
   
   Lemma reachable_revert_step :
     forall st st' out,
-      reachable step_d step_m_init st ->
-      step_d st st' out ->
-      (exists out, step_m (revertNetwork st) (revertNetwork st') out)
+      reachable step_dup step_async_init st ->
+      step_dup st st' out ->
+      (exists out, step_async (revertNetwork st) (revertNetwork st') out)
       \/ revertNetwork st = revertNetwork st'.
-  Proof.
+  Proof using.
     intros.
     find_copy_apply_lem_hyp reachable_sane.
     find_copy_apply_lem_hyp reachable_seen.
     find_copy_apply_lem_hyp reachable_equality.
     break_exists.
-    match goal with H : step_d _ _ _ |- _ => invcs H end.
+    match goal with H : step_dup _ _ _ |- _ => invcs H end.
     - unfold seq_num_net_handlers in *. break_if.
       + right. find_inversion. simpl in *.
         unfold revertNetwork. simpl in *. intuition.
@@ -556,10 +556,10 @@ Section SeqNumCorrect.
   Qed.
 
   Theorem reachable_revert :
-    true_in_reachable step_d step_m_init
+    true_in_reachable step_dup step_async_init
                       (fun st =>
-                         reachable step_m step_m_init (revertNetwork st)).
-  Proof.
+                         reachable step_async step_async_init (revertNetwork st)).
+  Proof using.
     apply true_in_reachable_reqs.
     - unfold revertNetwork. simpl.
       unfold reachable. exists []. constructor.
@@ -576,9 +576,9 @@ Section SeqNumCorrect.
 
   Theorem true_in_reachable_transform :
     forall P,
-      true_in_reachable step_m step_m_init P ->
-      true_in_reachable step_d step_m_init (fun net => P (revertNetwork net)).
-  Proof.
+      true_in_reachable step_async step_async_init P ->
+      true_in_reachable step_dup step_async_init (fun net => P (revertNetwork net)).
+  Proof using.
     intros. find_apply_lem_hyp true_in_reachable_elim. intuition.
     apply true_in_reachable_reqs; eauto.
     intros. find_copy_apply_lem_hyp reachable_revert.

@@ -4,7 +4,9 @@
 
 ## Configuration options for coqproject.sh
 DEPS=(StructTact InfSeqExt)
-DIRS=(core lib systems raft raft-proofs shed extraction/vard/coq extraction/chord/coq)
+DIRS=(core lib systems shed extraction/coq extraction/chord/coq)
 CANARIES=("mathcomp.ssreflect.ssreflect" "Verdi requires mathcomp to be installed" "StructTact.StructTactics" "Build StructTact before building Verdi" "InfSeqExt.infseq" "Build InfSeqExt before building Verdi")
-EXTRA=(raft/RaftState.v)
+NAMESPACE_core="Verdi"
+NAMESPACE_systems="Verdi"
+NAMESPACE_shed="Verdi"
 source script/coqproject.sh

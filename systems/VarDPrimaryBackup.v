@@ -1,7 +1,7 @@
-Require Import Verdi.
+Require Import Verdi.Verdi.
 
-Require Import VarD.
-Require Import PrimaryBackup.
+Require Import Verdi.VarD.
+Require Import Verdi.PrimaryBackup.
 
 Open Scope string_scope.
 
@@ -12,7 +12,7 @@ Instance vard_pbj_params : PrimaryBackupParams vard_base_params :=
 
 Theorem lifting_applied :
   forall (net : @network _ PB_multi_params) tr,
-    step_m_star step_m_init net tr ->
+    step_async_star step_async_init net tr ->
     trace_correct (revert_trace (base_params := vard_base_params) tr).
 Proof.
   apply transformer.
@@ -23,7 +23,7 @@ Eval compute in revert_trace [(Primary, inl (Request (Put "james" "awesome")))].
 
 Example revert_trace_eg :
   forall net tr o,
-    step_m_star (params := PB_multi_params) step_m_init net tr ->
+    step_async_star (params := PB_multi_params) step_async_init net tr ->
     inputs_m tr = [Put "james" "awesome"] ->
     outputs_m tr = [o] ->
     o = Response "james" (Some "awesome") None.
@@ -51,7 +51,7 @@ Qed.
 
 Example get_set_eg1 :
   forall tr (net : @network _ PB_multi_params) a b,
-    step_m_star step_m_init net tr ->
+    step_async_star step_async_init net tr ->
     inputs_m tr = [Put "james" "awesome"; Get "james"] ->
     outputs_m tr = [a; b] ->
     outputs_m tr = [Response "james" (Some "awesome") None;

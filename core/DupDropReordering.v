@@ -6,7 +6,7 @@ Require Import Relations.
 Require Import Permutation.
 
 Require Import StructTact.StructTactics.
-Require Import Net.
+Require Import Verdi.Net.
 
 Section dup_drop_reorder.
   Variable A : Type.
@@ -26,7 +26,7 @@ Section dup_drop_reorder.
       dup_drop_step_star l l' ->
       dup_drop_step_star l' l'' ->
       dup_drop_step_star l l''.
-  Proof.
+  Proof using.
     intros.
     apply clos_rt_rtn1_iff.
     eapply rt_trans; apply clos_rt_rtn1_iff; eauto.
@@ -37,7 +37,7 @@ Section dup_drop_reorder.
       dup_drop_step_star l l' ->
       dup_drop_step l' l'' ->
       dup_drop_step_star l l''.
-  Proof.
+  Proof using.
     intros.
     econstructor; eauto.
   Qed.
@@ -47,7 +47,7 @@ Section dup_drop_reorder.
       dup_drop_step l l' ->
       dup_drop_step_star l' l'' ->
       dup_drop_step_star l l''.
-  Proof.
+  Proof using.
     intros.
     apply clos_rt_rtn1_iff.
     apply clos_rt_rt1n_iff.
@@ -61,7 +61,7 @@ Section dup_drop_reorder.
     forall l l',
       dup_drop_step l l' ->
       dup_drop_step_star l l'.
-  Proof.
+  Proof using.
     intros.
     eapply dup_drop_step_star_step_1n; eauto.
     constructor.
@@ -70,7 +70,7 @@ Section dup_drop_reorder.
   Lemma dup_drop_swap :
     forall l x y,
       dup_drop_step_star (x :: y :: l) (y :: x :: l).
-  Proof.
+  Proof using.
     intros.
     eapply dup_drop_step_star_step_1n; [eapply DDS_dup with (p := y); simpl; auto|].
     eapply dup_drop_step_star_step_1n.
@@ -82,7 +82,7 @@ Section dup_drop_reorder.
     forall l l' x,
       dup_drop_step_star l l' ->
       dup_drop_step_star (x :: l) (x :: l').
-  Proof.
+  Proof using.
     induction 1.
     - constructor.
     - invc H.
@@ -99,7 +99,7 @@ Section dup_drop_reorder.
     forall l l',
       Permutation l l' ->
       dup_drop_step_star l l'.
-  Proof.
+  Proof using.
     induction 1.
     - constructor.
     - auto using dup_drop_cons.
@@ -111,7 +111,7 @@ Section dup_drop_reorder.
     forall a l,
       ~ In a l ->
       remove A_eq_dec a l = l.
-  Proof.
+  Proof using.
     induction l; simpl; intuition.
     break_if; congruence.
   Qed.
@@ -121,7 +121,7 @@ Section dup_drop_reorder.
       dup_drop_step_star l l' ->
       In a l' ->
       In a l.
-  Proof.
+  Proof using.
     induction 1; intros.
     - auto.
     - invc H.
@@ -137,7 +137,7 @@ Section dup_drop_reorder.
       dup_drop_step_star l l' ->
       In a l ->
       dup_drop_step_star l (a :: l').
-  Proof.
+  Proof using.
     induction 1; intros.
     - apply dup_drop_step_star_step_1. constructor. auto.
     - concludes.
@@ -152,7 +152,7 @@ Section dup_drop_reorder.
       In a l' ->
       dup_drop_step_star l (remove A_eq_dec a l') ->
       dup_drop_step_star (a :: l) l'.
-  Proof.
+  Proof using.
     induction l'; simpl; intuition.
     - subst. break_if; try congruence.
       destruct (in_dec A_eq_dec a0 l').
@@ -181,7 +181,7 @@ Section dup_drop_reorder.
     forall x a l,
       In x (remove A_eq_dec a l) ->
       x <> a /\ In x l.
-  Proof.
+  Proof using.
     induction l; simpl; intuition; break_if; subst; simpl in *; intuition.
   Qed.
 
@@ -189,7 +189,7 @@ Section dup_drop_reorder.
     forall l l' : list A,
       (forall x, In x l' -> In x l) ->
       dup_drop_step_star l l'.
-  Proof.
+  Proof using A_eq_dec.
     induction l; intros.
     - destruct l'.
       + constructor.
@@ -213,14 +213,14 @@ Section dup_drop_reorder.
   Qed.
 End dup_drop_reorder.
 
-Section step_f_dup_drop_step.
+Section step_failure_dup_drop_step.
   Context `{params : FailureParams}.
 
-  Theorem step_f_dup_drop_step :
+  Theorem step_failure_dup_drop_step :
     forall ps ps' Sigma f,
       dup_drop_step_star _ ps ps' ->
-      step_f_star (f, mkNetwork ps Sigma) (f, mkNetwork ps' Sigma) [].
-  Proof.
+      step_failure_star (f, mkNetwork ps Sigma) (f, mkNetwork ps' Sigma) [].
+  Proof using.
     induction 1.
     - constructor.
     - match goal with
@@ -231,11 +231,11 @@ Section step_f_dup_drop_step.
         eapply RTn1TStep with (cs := []).
         * apply refl_trans_1n_n1_trace.
           apply IHclos_refl_trans_n1.
-        * eapply SF_dup; [simpl; eauto|]. auto.
+        * eapply StepFailure_dup; [simpl; eauto|]. auto.
       + apply refl_trans_n1_1n_trace.
         eapply RTn1TStep with (cs := []).
         * apply refl_trans_1n_n1_trace.
           apply IHclos_refl_trans_n1.
-        * eapply SF_drop; [simpl; eauto|]. auto.
+        * eapply StepFailure_drop; [simpl; eauto|]. auto.
   Qed.
-End step_f_dup_drop_step.
+End step_failure_dup_drop_step.

@@ -1,9 +1,13 @@
 language: c
-env:
-  - MODE=build
-  - MODE=analytics
 script: bash -ex .travis-ci.sh
 sudo: false
+env:
+  global:
+    - VERDI_RAFT_BRANCH=master
+    - STRUCTTACT_BRANCH=master
+  matrix:
+    - DOWNSTREAM=none
+    - DOWNSTREAM=verdi-raft
 before_install:
   - openssl aes-256-cbc -K $encrypted_130bc391cda8_key -iv $encrypted_130bc391cda8_iv -in .travis/travis_rsa.enc -out .travis/travis_rsa -d
   - cp .travis/travis_rsa ~/.ssh

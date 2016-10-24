@@ -1,6 +1,6 @@
 Require Import List.
 
-Require Import Net.
+Require Import Verdi.Net.
 Require Import StructTact.StructTactics.
 
 Class InverseTraceRelation `{State : Type} `{Event : Type} (step : step_relation State Event) :=
@@ -27,7 +27,7 @@ Section InverseTraceRelations.
       refl_trans_1n_trace step init s tr ->
       R s ->
       T tr.
-  Proof.
+  Proof using.
     intros. find_apply_lem_hyp refl_trans_1n_n1_trace.
     remember init as s'.
     induction H.
