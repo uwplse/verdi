@@ -1,4 +1,4 @@
-module Main (A : OrderedShim.ARRANGEMENT) = struct
+module OrderedMain (A : OrderedShim.ARRANGEMENT) = struct
   module S = OrderedShim.Shim(A)
 
   let usage msg =
