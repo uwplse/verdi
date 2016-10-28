@@ -37,4 +37,4 @@ lint:
 distclean: clean
 	rm -f _CoqProject
 
-.PHONY: default clean lint distclean
+.PHONY: default quick clean lint distclean

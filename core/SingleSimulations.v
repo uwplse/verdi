@@ -53,7 +53,7 @@ Theorem step_ordered_failure_tot_one_mapped_simulation_1 :
     step_ordered_failure (failed, net) (failed', net') tr' ->
     net.(onwState) me = net'.(onwState) me \/
     exists tr'', @step_s _ single (tot_s_map_data (net.(onwState) me)) (tot_s_map_data (net'.(onwState) me)) tr''.
-Proof.
+Proof using map_congr.
 move => H_net_eq net net' failed failed' tr tr' H_star H_step.
 invcs H_step.
 - rewrite /update.
@@ -84,7 +84,7 @@ Lemma step_ordered_failure_tot_one_mapped_simulation_star_1 :
   forall net failed tr,
     step_ordered_failure_star step_ordered_failure_init (failed, net) tr ->
     exists tr', @step_s_star _ single init_handler (tot_s_map_data (net.(onwState) me)) tr'.
-Proof.
+Proof using map_congr.
 move => H_net_eq net failed tr H_st.
 have ->: net = snd (failed, net) by [].
 remember step_ordered_failure_init as y in H_st.
@@ -131,7 +131,7 @@ Theorem step_ordered_dynamic_failure_tot_one_mapped_simulation_1 :
     forall d, net.(odnwState) me = Some d ->
     forall d', net'.(odnwState) me = Some d' ->
     d = d' \/ exists tr'', @step_s _ single (tot_s_map_data d) (tot_s_map_data d') tr''.
-Proof.
+Proof using map_congr.
 move => H_net_eq net net' failed failed' tr tr' H_star H_step d H_eq d' H_eq'.
 invcs H_step.
 - left.
@@ -181,7 +181,7 @@ Lemma step_ordered_dynamic_failure_tot_one_mapped_simulation_1_init :
     net.(odnwState) me = None ->
     forall d, net'.(odnwState) me = Some d ->
     tot_s_map_data d = init_handler.
-Proof.
+Proof using map_congr.
 move => net net' failed failed' tr H_st H_eq d H_eq'.
 invcs H_st => //=.
 - move: H_eq'.
@@ -204,7 +204,7 @@ Lemma step_ordered_dynamic_failure_tot_one_mapped_simulation_star_1 :
     step_ordered_dynamic_failure_star step_ordered_dynamic_failure_init (failed, net) tr ->
     forall d, net.(odnwState) me = Some d ->
     exists tr', @step_s_star _ single init_handler (tot_s_map_data d) tr'.
-Proof.
+Proof using map_congr.
 move => H_net_eq net failed tr H_st.
 have ->: net = snd (failed, net) by [].
 remember step_ordered_dynamic_failure_init as y in H_st.
