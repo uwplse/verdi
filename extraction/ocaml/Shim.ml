@@ -282,8 +282,8 @@ module Shim (A: ARRANGEMENT) = struct
     eloop env state'
 
   let main (cfg : cfg) : unit =
-    print_endline "VarD running setup";
+    print_endline "Unordered shim running setup";
     let (env, initial_state) = setup cfg in
-    print_endline "VarD ready for action";
+    print_endline "Unordered shim ready for action";
     eloop env initial_state
 end
