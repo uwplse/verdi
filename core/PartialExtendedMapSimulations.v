@@ -92,7 +92,7 @@ Context {multi_map_congr : MultiParamsPartialExtendedMapCongruency name_map msg_
 
 Lemma pt_ext_init_handlers_fun_eq : 
   init_handlers = fun n : name => pt_ext_map_data (init_handlers (tot_map_name_inv n)) (tot_map_name_inv n).
-Proof.
+Proof using name_map_bijective multi_map_congr msg_map.
 apply functional_extensionality => n.
 have H_eq := pt_ext_init_handlers_eq.
 rewrite H_eq {H_eq}.
@@ -107,7 +107,7 @@ Lemma pt_ext_map_update_eq :
 forall f h d,
   (fun n : name => pt_ext_map_data (update name_eq_dec f h d (tot_map_name_inv n)) (tot_map_name_inv n)) =
   update name_eq_dec (fun n : name => pt_ext_map_data (f (tot_map_name_inv n)) (tot_map_name_inv n)) (tot_map_name h) (pt_ext_map_data d h).
-Proof.
+Proof using name_map_bijective.
 move => f h d.
 apply functional_extensionality => n.
 rewrite /update /=.
@@ -126,7 +126,7 @@ Lemma pt_ext_map_update_eq_some :
     pt_map_packet p = Some p' ->
     (fun n : name => pt_ext_map_data (update name_eq_dec (nwState net) (pDst p) d (tot_map_name_inv n)) (tot_map_name_inv n)) =
     update name_eq_dec (fun n : name => pt_ext_map_data (nwState net (tot_map_name_inv n)) (tot_map_name_inv n)) (pDst p') (pt_ext_map_data d (pDst p)).
-Proof.
+Proof using name_map_bijective.
 move => net d p p'.
 case: p => src dst m.
 case: p' => src' dst' m' /=.
@@ -140,7 +140,7 @@ Theorem step_async_pt_ext_mapped_simulation_1 :
   forall net net' tr,
     @step_async _ multi_fst net net' tr ->
     (exists tr, @step_async _ multi_snd (pt_ext_map_net net) (pt_ext_map_net net') tr) \/ pt_ext_map_net net' = pt_ext_map_net net.
-Proof.
+Proof using name_map_bijective multi_map_congr.
 move => net net' tr.
 case => {net net' tr}.
 - move => net net' p ms ms' out d l H_eq H_hnd H_eq'.
@@ -225,7 +225,7 @@ Corollary step_async_pt_ext_mapped_simulation_star_1 :
   forall net tr,
     @step_async_star _ multi_fst step_async_init net tr ->
     exists tr', @step_async_star _ multi_snd step_async_init (pt_ext_map_net net) tr'.
-Proof.
+Proof using name_map_bijective multi_map_congr.
 move => net tr H_step.
 remember step_async_init as y in *.
 move: Heqy.
@@ -262,7 +262,7 @@ Theorem step_ordered_pt_ext_mapped_simulation_1 :
   forall net net' tr,
     @step_ordered _ multi_fst net net' tr ->
     (exists tr', @step_ordered _ multi_snd (pt_ext_map_onet net) (pt_ext_map_onet net') tr') \/ pt_ext_map_onet net' = pt_ext_map_onet net.
-Proof.
+Proof using name_map_bijective multi_map_congr.
 move => net net' tr.
 case => {net net' tr}.
 - move => net net' tr m ms out d l from to H_eq H_hnd H_eq' H_eq_tr.
@@ -338,7 +338,7 @@ Corollary step_ordered_pt_ext_mapped_simulation_star_1 :
   forall net tr,
     @step_ordered_star _ multi_fst step_ordered_init net tr ->
     exists tr', @step_ordered_star _ multi_snd step_ordered_init (pt_ext_map_onet net) tr'.
-Proof.
+Proof using name_map_bijective multi_map_congr.
 move => net tr H_step.
 remember step_ordered_init as y in *.
 move: Heqy.
@@ -378,7 +378,7 @@ Theorem step_ordered_failure_pt_ext_mapped_simulation_1 :
   forall net net' failed failed' tr,
     @step_ordered_failure _ _ overlay_fst fail_msg_fst (failed, net) (failed', net') tr ->
     (exists tr', @step_ordered_failure _ _ overlay_snd fail_msg_snd (map tot_map_name failed, pt_ext_map_onet net) (map tot_map_name failed', pt_ext_map_onet net') tr') \/ pt_ext_map_onet net' = pt_ext_map_onet net /\ failed = failed'.
-Proof.
+Proof using overlay_map_congr name_map_bijective multi_map_congr fail_msg_map_congr.
 move => net net' failed failed' tr H_step.
 invcs H_step.
 - case H_m: (pt_map_msg m) => [m'|].
@@ -473,7 +473,7 @@ Corollary step_ordered_failure_pt_ext_mapped_simulation_star_1 :
   forall net failed tr,
     @step_ordered_failure_star _ _ overlay_fst fail_msg_fst step_ordered_failure_init (failed, net) tr ->
     exists tr', @step_ordered_failure_star _ _ overlay_snd fail_msg_snd step_ordered_failure_init (map tot_map_name failed, pt_ext_map_onet net) tr'.
-Proof.
+Proof using overlay_map_congr name_map_bijective multi_map_congr fail_msg_map_congr.
 move => net failed tr H_step.
 remember step_ordered_failure_init as y in *.
 have H_eq_f: failed = fst (failed, net) by [].
@@ -526,7 +526,7 @@ Theorem step_ordered_dynamic_failure_pt_ext_mapped_simulation_1 :
     NoDup (odnwNodes net) ->
     @step_ordered_dynamic_failure _ _ overlay_fst new_msg_fst fail_msg_fst (failed, net) (failed', net') tr ->
     (exists tr', @step_ordered_dynamic_failure _ _ overlay_snd new_msg_snd fail_msg_snd (map tot_map_name failed, pt_ext_map_odnet net) (map tot_map_name failed', pt_ext_map_odnet net') tr') \/ (pt_ext_map_odnet net' = pt_ext_map_odnet net /\ failed = failed').
-Proof.
+Proof using overlay_map_congr new_msg_map_congr name_map_bijective multi_map_congr fail_msg_map_congr.
 move => net net' failed failed' tr H_nd H_step.
 invcs H_step.
 - left.
@@ -710,7 +710,7 @@ Corollary step_ordered_dynamic_failure_pt_ext_mapped_simulation_star_1 :
   forall net failed tr,
     @step_ordered_dynamic_failure_star _ _ overlay_fst new_msg_fst fail_msg_fst step_ordered_dynamic_failure_init (failed, net) tr ->
     exists tr', @step_ordered_dynamic_failure_star _ _ overlay_snd new_msg_snd fail_msg_snd step_ordered_dynamic_failure_init (map tot_map_name failed, pt_ext_map_odnet net) tr'.
-Proof.
+Proof using overlay_map_congr new_msg_map_congr name_map_bijective multi_map_congr fail_msg_map_congr.
 move => net failed tr H_step.
 remember step_ordered_dynamic_failure_init as y in *.
 change failed with (fst (failed, net)).

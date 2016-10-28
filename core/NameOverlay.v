@@ -91,7 +91,7 @@ Module FinCompleteAdjacentNameType (Import N : NatValue) (FN : FinNameType N) <:
   Defined.
 
   Lemma adjacent_to_symmetric : Symmetric adjacent_to.
-  Proof using.
+  Proof.
     unfold Symmetric.
     intros x y H_r.
     inversion H_r; subst.
@@ -102,7 +102,7 @@ Module FinCompleteAdjacentNameType (Import N : NatValue) (FN : FinNameType N) <:
   Qed.
 
   Lemma adjacent_to_irreflexive : Irreflexive adjacent_to.
-  Proof using.
+  Proof.
     unfold Irreflexive; unfold Reflexive; unfold complement.
     intros x H_x.
     inversion H_x.
