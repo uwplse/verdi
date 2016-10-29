@@ -660,37 +660,6 @@ Section ChordProof.
       query_state_net_invariant gst'.
   Abort.
 
-  Definition open_query_invariant (gst : global_state) : Prop :=
-    forall src dst st q m,
-      live_node gst src ->
-      sigma gst h = Some st ->
-      cur_request src = Some (dst, q, m) ->
-      request_in_transit_invariant gst src dst st q m \/
-      response_in_transit_invariant gst src dst st q m \/
-      query_pending_invariant gst src dst st q m.
-
-  Definition queries_have_unique_messages (gst : global_state) : Prop :=
-    forall src dst st q m,
-      
-      sigma gst src = Some st ->
-      (* either the other node is live and the query has been delayed
-         at the destination... *)
-      (exists st',
-          sigma gst dst = Some st' /\
-          query_delayed_at dst st' src m
-          (* AND no msg exists in the network *)) \/
-      (* ...or there's a message somewhere *)
-      cur_request st = Some (make_pointer dst, q, m) ->
-      query_delayed_at
-      exists qmsg,
-        (* a request or response is in the network *)
-        (request_for_query gst src dst q qmsg \/
-         response_for_query gst src dst q qmsg) /\
-        forall msg,
-          (In (dst, (src, msg)) (msgs gst) /\ request_payload msg) \/
-          (In (src, (dst, msg)) (msgs gst) /\ response_payload msg) ->
-          msg = qmsg.
-
   Definition query_set_for_request (st : data) (dst : addr) (r : payload) :=
     exists q remove,
       cur_request st = Some (make_pointer dst, q, remove) /\
@@ -746,9 +715,7 @@ Section ChordProof.
       In dst (nodes gst).
 
   Definition network_invariant (gst : global_state) : Prop :=
-    queries_have_unique_messages gst /\
-    requests_have_queries_or_timeouts gst /\
-    responses_have_queries gst.
+    True.
 
   Definition live_nodes_have_state (gst : global_state) : Prop :=
     forall h,
