@@ -905,7 +905,7 @@ Section LabeledChord.
 
   Lemma responses_come_from_dst_of_timeout :
     forall gst dst req h src p,
-      inductive_invariant SUCC_LIST_LEN hash gst ->
+      inductive_invariant SUCC_LIST_LEN gst ->
       In (Request dst req) (timeouts gst h) ->
       In (src, (h, p)) (msgs gst) ->
       response_payload p ->
@@ -914,7 +914,7 @@ Section LabeledChord.
 
   Lemma responses_are_paired_to_requests :
     forall gst req dst h p,
-      inductive_invariant SUCC_LIST_LEN hash gst ->
+      inductive_invariant SUCC_LIST_LEN gst ->
       In (Request dst req) (timeouts gst h) ->
       In (dst, (h, p)) (msgs gst) ->
       response_payload p ->
@@ -923,13 +923,13 @@ Section LabeledChord.
 
   Lemma invariant_implies_timeouts_match_query :
     forall gst,
-      inductive_invariant SUCC_LIST_LEN hash gst ->
+      inductive_invariant SUCC_LIST_LEN gst ->
       timeouts_match_query gst.
   Admitted.
 
   Lemma constrained_Request_not_cleared_by_recv_handler :
     forall gst h dst req p src st st' ms nts cts,
-      inductive_invariant SUCC_LIST_LEN hash gst ->
+      inductive_invariant SUCC_LIST_LEN gst ->
       timeout_constraint gst h (Request dst req) ->
       In h (nodes gst) ->
       sigma gst h = Some st ->
@@ -973,7 +973,7 @@ Section LabeledChord.
 
   Lemma recv_handler_keeps_timeouts_satisfying_constraint :
    forall gst src dst p gst' t h,
-     inductive_invariant SUCC_LIST_LEN hash gst ->
+     inductive_invariant SUCC_LIST_LEN gst ->
      labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
      In t (timeouts gst h) ->
      timeout_constraint gst h t ->
@@ -1021,7 +1021,7 @@ Section LabeledChord.
 
   Lemma labeled_step_dynamic_recv_timeout_enabled :
     forall gst gst' gst'' a b m h t,
-      inductive_invariant SUCC_LIST_LEN hash gst ->
+      inductive_invariant SUCC_LIST_LEN gst ->
       t <> KeepaliveTick ->
       labeled_step_dynamic gst (RecvMsg a b m) gst' ->
       labeled_step_dynamic gst (Timeout h t) gst'' ->
@@ -1074,22 +1074,22 @@ Section LabeledChord.
 
   Definition satisfies_invariant (s : infseq occurrence) :=
     match s with
-    | Cons o s => inductive_invariant SUCC_LIST_LEN hash (occ_gst o)
+    | Cons o s => inductive_invariant SUCC_LIST_LEN (occ_gst o)
     end.
 
   Lemma satisfies_invariant_inv :
     forall s,
       satisfies_invariant s ->
-      inductive_invariant SUCC_LIST_LEN hash (occ_gst (hd s)).
+      inductive_invariant SUCC_LIST_LEN (occ_gst (hd s)).
   Proof.
-    intuition.
+    intros.
     now destruct s.
   Qed.
 
   Lemma always_satisfies_inv_means_hd_satisfies_inv :
     forall o s,
       always satisfies_invariant (Cons o s) ->
-      inductive_invariant SUCC_LIST_LEN hash (occ_gst o).
+      inductive_invariant SUCC_LIST_LEN (occ_gst o).
   Proof.
     intuition.
     find_eapply_lem_hyp always_now.
@@ -1350,7 +1350,7 @@ Section LabeledChord.
 
   Lemma queries_are_closed_by_recvmsg_occ :
       forall o src dst m p,
-        inductive_invariant SUCC_LIST_LEN hash (occ_gst o) ->
+        inductive_invariant SUCC_LIST_LEN (occ_gst o) ->
         request_response_pair m p ->
         In (Request dst m) (timeouts (occ_gst o) src) ->
         occ_label o = RecvMsg dst src p ->
@@ -1359,13 +1359,13 @@ Section LabeledChord.
 
   Lemma inv_responses_are_unique :
     forall gst,
-      inductive_invariant SUCC_LIST_LEN hash gst ->
+      inductive_invariant SUCC_LIST_LEN gst ->
       responses_are_unique gst.
   Admitted.
 
   Lemma inv_Request_payload_has_response :
     forall gst,
-      inductive_invariant SUCC_LIST_LEN hash gst ->
+      inductive_invariant SUCC_LIST_LEN gst ->
       Request_payload_has_response gst.
   Admitted.
 

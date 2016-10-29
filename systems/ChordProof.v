@@ -514,7 +514,6 @@ Section ChordProof.
       query_response q msg /\
       In (dst, (src, msg)) (msgs gst).
 
-  Print recv_handler.
   Definition query_delayed_at (dst : addr) (st : data) (src : addr) (msg : payload) : Prop :=
     In (src, msg) (delayed_queries st).
 
