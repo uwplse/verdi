@@ -350,6 +350,7 @@ Section Chord.
                 | Some p => (st, [(src, p)], [], [])
                 | None => (st, [], [], [])
                 end
+           (* drops leftover Busy messages on the floor *)
            else (st, [], [], [])
          end.
 

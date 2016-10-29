@@ -2,6 +2,7 @@ Require Import StructTact.StructTactics.
 Require Import StructTact.Util.
 Require Import Verdi.DynamicNet.
 Require Import Verdi.Chord.
+Require Coqlib.
 Require Import List.
 Import ListNotations.
 Require Import Arith.
@@ -14,6 +15,7 @@ Open Scope general_if_scope.
 
 Section ChordProof.
   Variable SUCC_LIST_LEN : nat.
+  Variable N : nat.
   Variable hash : addr -> id.
   Variable hash_inj : forall a b : addr,
       hash a = hash b -> a = b.
@@ -506,18 +508,184 @@ Section ChordProof.
   (* for all nodes, query = some -> exactly one corresponding req or res in net *)
   Definition request_for_query (gst : global_state) (src dst : addr) (q : query) (msg : payload) : Prop :=
       query_request q msg /\
-      In (dst, (src, msg)) (msgs gst).
+      In (src, (dst, msg)) (msgs gst).
 
   Definition response_for_query (gst : global_state) (src dst : addr) (q : query) (msg : payload) : Prop :=
       query_response q msg /\
-      In (src, (dst, msg)) (msgs gst).
+      In (dst, (src, msg)) (msgs gst).
+
+  Print recv_handler.
+  Definition query_delayed_at (dst : addr) (st : data) (src : addr) (msg : payload) : Prop :=
+    In (src, msg) (delayed_queries st).
+
+  Definition addr_eqb : addr -> addr -> bool :=
+    Nat.eqb.
+
+  Lemma addr_eqb_true :
+    forall a b,
+      addr_eqb a b = true ->
+      a = b.
+  Proof.
+    exact beq_nat_true.
+  Qed.
+
+  Lemma addr_eqb_false :
+    forall a b,
+      addr_eqb a b = false ->
+      a <> b.
+  Proof.
+    exact beq_nat_false.
+  Qed.
+
+  Lemma addr_eqb_refl :
+    forall a,
+      addr_eqb a a = true.
+  Proof.
+    symmetry.
+    apply beq_nat_refl.
+  Qed.
+
+  Definition on_channel (src dst : addr) (t : addr * (addr * payload)) :=
+    let '(s, (d, m)) := t in
+    andb (addr_eqb src s) (addr_eqb dst d).
+
+  Definition channel (gst : global_state) (src dst : addr) : list payload :=
+    filterMap
+      (fun m =>
+         if andb (addr_eqb (fst m) src)
+                 (addr_eqb (fst (snd m)) dst)
+         then Some (snd (snd m))
+         else None)
+      (msgs gst).
+
+  (* note: this doesn't really tell you anything about repeated messages *)
+  Lemma channel_contents :
+    forall gst src dst p,
+        In (src, (dst, p)) (msgs gst) <-> In p (channel gst src dst).
+  Proof.
+    unfold channel.
+    intuition.
+    - eapply filterMap_In; eauto.
+      now repeat rewrite addr_eqb_refl.
+    - find_eapply_lem_hyp In_filterMap; eauto.
+      break_exists.
+      break_and.
+      assert (x = (src, (dst, p))).
+      { break_if; try discriminate.
+        find_apply_lem_hyp Bool.andb_true_iff; break_and.
+        repeat find_apply_lem_hyp addr_eqb_true.
+        find_injection.
+        now repeat apply injective_projections. }
+      now find_reverse_rewrite.
+  Qed.
+
+  (* If we have an open query at a live node, we have one of the following:
+     - an appropriate request from src to dst
+       and no other requests from src to dst
+       and no responses from dst to src
+       and no pending queries from src in the local state of dst
+     - an appropriate response from dst to src
+       and no requests from src to dst
+       and no other responses from dst to src
+       and no pending queries from src in the local state of dst
+     - a corresponding pending query from src in the local state of dst
+       and no requests from src to dst
+       and no responses from dst to src *)
+
+  Definition request_in_transit (gst : global_state) (src dst : addr) (q : query) : Prop :=
+    forall chan,
+      chan = channel gst src dst ->
+      exists req,
+        query_request q req /\
+        In req chan /\
+        (* no other requests *)
+        (forall m xs ys,
+            chan = xs ++ req :: ys ->
+            In m (xs ++ ys) ->
+            request_payload m ->
+            m = req) /\
+        (* no responses *)
+        (forall m,
+            In m (channel gst dst src) ->
+            ~ response_payload m) /\
+        (forall m st,
+            sigma gst dst = Some st ->
+            ~ query_delayed_at dst st src m).
+
+  Definition response_in_transit (gst : global_state) (src dst : addr) (q : query) : Prop :=
+    forall chan,
+      chan = channel gst dst src ->
+      exists res,
+        query_response q res /\
+        In res chan /\
+        (* no other responses *)
+        (forall m xs ys,
+            chan = xs ++ res :: ys ->
+            In m (xs ++ ys) ->
+            response_payload m ->
+            m = res) /\
+        (* no requests *)
+        (forall m,
+            In m (channel gst src dst) ->
+            ~ request_payload m) /\
+        (forall m st,
+            sigma gst dst = Some st ->
+            ~ query_delayed_at dst st src m).
+
+  Definition pending_query (gst : global_state) (src dst : addr) (q : query) : Prop :=
+    (forall st,
+        exists m,
+          sigma gst src = Some st ->
+          query_delayed_at dst st src m) /\
+    (forall m,
+        In m (channel gst src dst) ->
+        ~ request_payload m) /\
+    (forall m,
+        In m (channel gst dst src) ->
+        ~ response_payload m).
+
+  Definition query_state_net_invariant (gst : global_state) : Prop :=
+    forall src st dstp q m,
+      sigma gst src = Some st ->
+      cur_request st = Some (dstp, q, m) ->
+      src <> (addr_of dstp) /\
+      (request_in_transit gst src (addr_of dstp) q \/
+       response_in_transit gst src (addr_of dstp) q \/
+       pending_query gst src (addr_of dstp) q).
+
+  Definition query_state_net_invariant_inductive :
+    forall gst gst',
+      query_state_net_invariant gst ->
+      step_dynamic gst gst' ->
+      query_state_net_invariant gst'.
+  Abort.
+
+  Definition open_query_invariant (gst : global_state) : Prop :=
+    forall src dst st q m,
+      live_node gst src ->
+      sigma gst h = Some st ->
+      cur_request src = Some (dst, q, m) ->
+      request_in_transit_invariant gst src dst st q m \/
+      response_in_transit_invariant gst src dst st q m \/
+      query_pending_invariant gst src dst st q m.
 
   Definition queries_have_unique_messages (gst : global_state) : Prop :=
     forall src dst st q m,
+      
       sigma gst src = Some st ->
+      (* either the other node is live and the query has been delayed
+         at the destination... *)
+      (exists st',
+          sigma gst dst = Some st' /\
+          query_delayed_at dst st' src m
+          (* AND no msg exists in the network *)) \/
+      (* ...or there's a message somewhere *)
       cur_request st = Some (make_pointer dst, q, m) ->
+      query_delayed_at
       exists qmsg,
-        (request_for_query gst src dst q qmsg \/ response_for_query gst src dst q qmsg) /\
+        (* a request or response is in the network *)
+        (request_for_query gst src dst q qmsg \/
+         response_for_query gst src dst q qmsg) /\
         forall msg,
           (In (dst, (src, msg)) (msgs gst) /\ request_payload msg) \/
           (In (src, (dst, msg)) (msgs gst) /\ response_payload msg) ->
