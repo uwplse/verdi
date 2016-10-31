@@ -49,6 +49,8 @@ Section ChordProof.
   Notation handle_stabilize := (handle_stabilize SUCC_LIST_LEN hash).
   Notation try_rectify := (try_rectify hash).
 
+  Notation msg := (msg addr payload).
+  Notation event := (event addr payload timeout).
   Notation e_send := (e_send addr payload timeout).
   Notation e_recv := (e_recv addr payload timeout).
   Notation e_timeout := (e_timeout addr payload timeout).
@@ -303,10 +305,15 @@ Section ChordProof.
 
   Inductive reachable_st : global_state -> Prop :=
     | reachableInit : reachable_st initial_st
-    | rechableStep : forall gst gst',
+    | reachableStep : forall gst gst',
         reachable_st gst ->
         step_dynamic gst gst' ->
         reachable_st gst'.
+
+  Ltac induct_reachable_st :=
+    match goal with
+    | [H : reachable_st _ |- _ ] => prep_induction H; induction H
+    end.
 
   Theorem live_node_characterization : forall gst h st,
       sigma gst h = Some st ->
@@ -590,7 +597,6 @@ Section ChordProof.
      - a corresponding pending query from src in the local state of dst
        and no requests from src to dst
        and no responses from dst to src *)
-
   Definition request_in_transit (gst : global_state) (src dst : addr) (q : query) : Prop :=
     forall chan,
       chan = channel gst src dst ->
@@ -643,8 +649,18 @@ Section ChordProof.
         In m (channel gst dst src) ->
         ~ response_payload m).
 
+  Theorem queries_always_remote :
+    forall gst,
+      reachable_st gst ->
+      forall h st dstp q p,
+        sigma gst h = Some st ->
+        cur_request st = Some (dstp, q, p) ->
+        h <> (addr_of dstp).
+  Admitted.
+
   Definition query_state_net_invariant (gst : global_state) : Prop :=
     forall src st dstp q m,
+      In src (nodes gst) ->
       sigma gst src = Some st ->
       cur_request st = Some (dstp, q, m) ->
       src <> (addr_of dstp) /\
@@ -652,12 +668,20 @@ Section ChordProof.
        response_in_transit gst src (addr_of dstp) q \/
        pending_query gst src (addr_of dstp) q).
 
-  Definition query_state_net_invariant_inductive :
-    forall gst gst',
+  Lemma query_state_net_invariant_elim :
+    forall gst,
       query_state_net_invariant gst ->
-      step_dynamic gst gst' ->
-      query_state_net_invariant gst'.
-  Abort.
+      forall src dstp q st m,
+        In src (nodes gst) ->
+        sigma gst src = Some st ->
+        cur_request st = Some (dstp, q, m) ->
+        src <> (addr_of dstp) /\
+        (request_in_transit gst src (addr_of dstp) q \/
+         response_in_transit gst src (addr_of dstp) q \/
+         pending_query gst src (addr_of dstp) q).
+  Proof.
+    eauto.
+  Qed.
 
   Definition query_set_for_request (st : data) (dst : addr) (r : payload) :=
     exists q remove,
@@ -733,15 +757,13 @@ Section ChordProof.
     break_step.
     - destruct (addr_eq_dec h n).
       + subst_max.
-        eexists.
-        now apply update_eq.
-      + simpl in H_in.
-        break_or_hyp.
-        exfalso => //.
+        apply update_for_start_sigma_h_exists.
+      + find_rewrite_lem update_for_start_nodes_eq.
+        find_apply_lem_hyp in_inv.
+        break_or_hyp; try (exfalso; eauto; fail).
         find_apply_lem_hyp H_st.
         break_exists_exists.
-        find_reverse_rewrite.
-        now apply update_diff.
+        eapply update_for_start_sigma_h_n; eauto.
     - eauto.
     - destruct (addr_eq_dec h n).
       * eexists.
@@ -1059,6 +1081,13 @@ Section ChordProof.
     simpl in *.
     break_if; congruence.
   Qed.
+
+  Lemma apply_handler_result_In_timeouts :
+    forall t h0 h st ms nts cts e gst,
+      In t (timeouts (apply_handler_result h0 (st, ms, nts, cts) e gst) h) ->
+      In t nts \/
+      In t (timeouts gst h) /\ (~ In t cts \/ h <> h0).
+  Admitted.
 
   Theorem live_node_preserved_by_recv_step : forall gst h src st msg gst' e st' ms nts cts,
       live_node gst h ->
@@ -1379,18 +1408,6 @@ Section ChordProof.
         reachable gst from to.
   Admitted.
 
-  Definition start_step_preserves (P : global_state -> Prop) : Prop :=
-    forall gst gst' h st k known,
-      inductive_invariant gst ->
-      ~ In h (nodes gst) ->
-      (In k known -> In k (nodes gst)) ->
-      (In k known -> ~ In k (failed_nodes gst)) ->
-      (known = [] -> nodes gst = []) ->
-      nodes gst' = h :: nodes gst ->
-      failed_nodes gst' = failed_nodes gst ->
-      sigma gst' = update addr_eq_dec (sigma gst) h (Some st) ->
-      P gst'.
-
   Definition fail_step_preserves (P : global_state -> Prop) : Prop :=
     forall gst gst' h,
       inductive_invariant gst ->
@@ -1435,4 +1452,553 @@ Section ChordProof.
       recv_handler (fst m) h d (snd (snd m)) = (st, ms, nts, cts) ->
       P (apply_handler_result h (st, ms, nts, cts) e gst').
 
+  (** Valid pointers *)
+  Definition valid_ptr (gst : global_state) (p : pointer) : Prop :=
+    id_of p = hash (addr_of p) /\
+    In (addr_of p) (nodes gst).
+
+  Lemma valid_ptr_intro :
+    forall gst p,
+      id_of p = hash (addr_of p) ->
+      In (addr_of p) (nodes gst) ->
+      valid_ptr gst p.
+  Proof.
+    easy.
+  Qed.
+
+  Lemma valid_ptr_elim :
+    forall gst p,
+      valid_ptr gst p ->
+      id_of p = hash (addr_of p) /\
+      In (addr_of p) (nodes gst).
+  Proof.
+    unfold valid_ptr.
+    easy.
+  Qed.
+
+  Lemma valid_ptr_elim_hash :
+    forall gst p,
+      valid_ptr gst p ->
+      id_of p = hash (addr_of p).
+  Proof.
+    unfold valid_ptr.
+    easy.
+  Qed.
+
+  Lemma valid_ptr_elim_nodes :
+    forall gst p,
+      valid_ptr gst p ->
+      In (addr_of p) (nodes gst).
+  Proof.
+    unfold valid_ptr.
+    easy.
+  Qed.
+
+  Lemma valid_ptr_nodes_subset :
+    forall gst gst' p,
+      valid_ptr gst p ->
+      (forall n, In n (nodes gst) -> In n (nodes gst')) ->
+      valid_ptr gst' p.
+  Proof.
+    unfold valid_ptr.
+    intuition.
+  Qed.
+
+  Lemma valid_ptr_nodes :
+    forall gst gst' p,
+      nodes gst = nodes gst' ->
+      valid_ptr gst p ->
+      valid_ptr gst' p.
+  Proof.
+    intros.
+    eapply valid_ptr_nodes_subset; eauto.
+    now find_rewrite.
+  Qed.
+
+  Lemma make_pointer_valid :
+    forall a,
+      id_of (make_pointer a) = hash (addr_of (make_pointer a)).
+  Proof.
+    by unfold make_pointer.
+  Qed.
+
+  Definition valid_ptr_list (gst : global_state) (ps : list pointer) :=
+    Forall (valid_ptr gst) ps.
+
+  Lemma valid_ptr_list_nodes_subset :
+    forall gst gst' ps,
+      valid_ptr_list gst ps ->
+      (forall n, In n (nodes gst) -> In n (nodes gst')) ->
+      valid_ptr_list gst' ps.
+  Proof.
+    intros.
+    apply Forall_forall.
+    intros.
+    eapply valid_ptr_nodes_subset; eauto.
+    find_eapply_lem_hyp Forall_forall; eauto.
+  Qed.
+
+  Lemma valid_ptr_list_nodes :
+    forall gst gst' ps,
+      nodes gst = nodes gst' ->
+      valid_ptr_list gst ps ->
+      valid_ptr_list gst' ps.
+  Proof.
+    intros.
+    eapply valid_ptr_list_nodes_subset; eauto.
+    now find_rewrite.
+  Qed.
+
+  Inductive lift_pred_opt {A} (P : A -> Prop) : option A -> Prop :=
+  | LiftPredOptSome : forall a, P a -> lift_pred_opt P (Some a)
+  | LiftPredOptNone : lift_pred_opt P None.
+
+  Ltac inv_lift_pred_opt :=
+    match goal with
+    | [ H: lift_pred_opt _ _ |- _ ] => inv H
+    end.
+
+  Lemma lift_pred_opt_elim :
+    forall A (P : A -> Prop) o,
+      lift_pred_opt P o ->
+      (exists a, o = Some a /\ P a) \/
+      o = None.
+  Proof.
+    intros.
+    inv H; [left | right]; eexists; eauto.
+  Qed.
+
+  Definition valid_opt_ptr (gst : global_state) : option pointer -> Prop :=
+    lift_pred_opt (valid_ptr gst).
+
+  Lemma valid_opt_ptr_elim :
+    forall gst o,
+      valid_opt_ptr gst o ->
+      (exists p, o = Some p /\ valid_ptr gst p) \/
+      o = None.
+  Proof.
+    eauto using lift_pred_opt_elim.
+  Qed.
+
+  Inductive valid_ptr_payload (gst : global_state) : payload -> Prop :=
+  | VPBusy : valid_ptr_payload gst Busy
+  | VPGetBestPredecessor : forall p,
+      valid_ptr gst p ->
+      valid_ptr_payload gst (GetBestPredecessor p)
+  | VPGotBestPredecessor : forall p,
+      valid_ptr gst p ->
+      valid_ptr_payload gst (GotBestPredecessor p)
+  | VPGetSuccList : valid_ptr_payload gst GetSuccList
+  | VPGotSuccList : forall ps,
+      valid_ptr_list gst ps ->
+      valid_ptr_payload gst (GotSuccList ps)
+  | VPGetPredAndSuccs : valid_ptr_payload gst GetPredAndSuccs
+  | VPGotPredAndSuccs : forall p ps,
+      valid_opt_ptr gst p ->
+      valid_ptr_list gst ps ->
+      valid_ptr_payload gst (GotPredAndSuccs p ps)
+  | VPNotify : valid_ptr_payload gst Notify
+  | VPPing : valid_ptr_payload gst Ping
+  | VPPong : valid_ptr_payload gst Pong.
+
+  Ltac inv_vpp :=
+    match goal with
+    | [ H: valid_ptr_payload _ _ |- _ ] => inv H
+    end.
+
+  Inductive valid_ptr_query (gst : global_state) : query -> Prop :=
+  | VPQRectify : forall p, valid_ptr gst p -> valid_ptr_query gst (Rectify p)
+  | VPQStabilize : valid_ptr_query gst Stabilize
+  | VPQStabilize2 : forall p, valid_ptr gst p -> valid_ptr_query gst (Stabilize2 p)
+  | VPQJoin : forall p, valid_ptr gst p -> valid_ptr_query gst (Join p)
+  | VPQJoin2 : forall p, valid_ptr gst p -> valid_ptr_query gst (Join2 p).
+
+  Definition valid_ptrs_some_cur_request (gst : global_state) (t : pointer * query * payload) : Prop :=
+    let '(p, q, m) := t in
+    valid_ptr gst p /\
+    valid_ptr_query gst q /\
+    valid_ptr_payload gst m.
+
+  Lemma valid_ptrs_some_cur_request_intro :
+    forall gst p q m,
+      valid_ptr gst p ->
+      valid_ptr_query gst q ->
+      valid_ptr_payload gst m ->
+      valid_ptrs_some_cur_request gst (p, q, m).
+  Proof.
+    easy.
+  Qed.
+
+  Lemma valid_ptrs_some_cur_request_elim :
+    forall gst p q m,
+      valid_ptrs_some_cur_request gst (p, q, m) ->
+      valid_ptr gst p /\
+      valid_ptr_query gst q /\
+      valid_ptr_payload gst m.
+  Proof.
+    easy.
+  Qed.
+
+  Lemma valid_ptrs_some_cur_request_elim_p :
+    forall gst p q m,
+      valid_ptrs_some_cur_request gst (p, q, m) ->
+      valid_ptr gst p.
+  Proof.
+    unfold valid_ptrs_some_cur_request.
+    easy.
+  Qed.
+
+  Lemma valid_ptrs_some_cur_request_elim_q :
+    forall gst p q m,
+      valid_ptrs_some_cur_request gst (p, q, m) ->
+      valid_ptr_query gst q.
+  Proof.
+    unfold valid_ptrs_some_cur_request.
+    easy.
+  Qed.
+
+  Lemma valid_ptrs_some_cur_request_elim_m :
+    forall gst p q m,
+      valid_ptrs_some_cur_request gst (p, q, m) ->
+      valid_ptr_payload gst m.
+  Proof.
+    unfold valid_ptrs_some_cur_request.
+    easy.
+  Qed.
+
+  Definition valid_ptrs_cur_request (gst : global_state) : option (pointer * query * payload) -> Prop :=
+    lift_pred_opt (valid_ptrs_some_cur_request gst).
+
+  Definition valid_ptrs_state (gst : global_state) (d : data) :=
+    valid_ptr gst (ptr d) /\
+    valid_opt_ptr gst (pred d) /\
+    Forall (valid_ptr gst) (succ_list d) /\
+    valid_ptr gst (known d) /\
+    valid_opt_ptr gst (rectify_with d) /\
+    valid_ptrs_cur_request gst (cur_request d).
+
+  Definition valid_ptrs_net (gst : global_state) (ms : list msg) : Prop :=
+    forall src dst p,
+      In (src, (dst, p)) ms ->
+      valid_ptr_payload gst p.
+
+  Inductive valid_ptr_timeout (gst : global_state) : timeout -> Prop :=
+  | VPTRequest : forall h p, valid_ptr_payload gst p -> valid_ptr_timeout gst (Request h p)
+  | VPTick : valid_ptr_timeout gst Tick
+  | VPTKeepaliveTick : valid_ptr_timeout gst KeepaliveTick.
+
+  Ltac inv_vpt :=
+    match goal with
+    | [ H: valid_ptr_timeout _ _ |- _ ] => inv H
+    end.
+
+  Definition valid_ptrs_timeouts (gst : global_state) (ts : list timeout) : Prop :=
+    Forall (valid_ptr_timeout gst) ts.
+
+  Lemma valid_ptrs_timeouts_intro :
+    forall gst h,
+      (forall t, In t (timeouts gst h) -> valid_ptr_timeout gst t) ->
+      valid_ptrs_timeouts gst (timeouts gst h).
+  Proof.
+    intros.
+    now apply Forall_forall.
+  Qed.
+
+  Lemma valid_ptrs_timeouts_elim :
+    forall gst h,
+      valid_ptrs_timeouts gst (timeouts gst h) ->
+      forall t,
+        In t (timeouts gst h) ->
+        valid_ptr_timeout gst t.
+  Proof.
+    unfold valid_ptrs_timeouts.
+    intros until 1.
+    now apply Forall_forall.
+  Qed.
+
+  Inductive valid_ptr_event (gst : global_state) : event -> Prop :=
+  | VPEsend : forall src dst p, valid_ptr_payload gst p -> valid_ptr_event gst (e_send (src, (dst, p)))
+  | VPErecv : forall src dst p, valid_ptr_payload gst p -> valid_ptr_event gst (e_recv (src, (dst, p)))
+  | VPEtimeout : forall h t, valid_ptr_timeout gst t -> valid_ptr_event gst (e_timeout h t)
+  | VPEfail : forall h, valid_ptr_event gst (e_fail h).
+
+  Definition valid_ptrs_trace (gst : global_state) : Prop :=
+    Forall (valid_ptr_event gst) (trace gst).
+
+  Lemma valid_ptrs_trace_intro :
+    forall gst,
+      (forall e, In e (trace gst) -> valid_ptr_event gst e) ->
+      valid_ptrs_trace gst.
+  Proof.
+    intros.
+    now apply Forall_forall.
+  Qed.
+
+  Definition valid_ptrs_global (gst : global_state) : Prop :=
+    (forall h, valid_ptrs_timeouts gst (timeouts gst h)) /\
+    (forall h, lift_pred_opt (valid_ptrs_state gst) (sigma gst h)) /\
+    valid_ptrs_net gst (msgs gst) /\
+    valid_ptrs_trace gst.
+
+  Lemma valid_ptrs_global_elim :
+    forall gst,
+      valid_ptrs_global gst ->
+      (forall h, valid_ptrs_timeouts gst (timeouts gst h)) /\
+      (forall h, lift_pred_opt (valid_ptrs_state gst) (sigma gst h)) /\
+      valid_ptrs_net gst (msgs gst) /\
+      valid_ptrs_trace gst.
+  Proof.
+    auto.
+  Qed.
+
+  Ltac copy_elim_valid_ptrs_global :=
+    match goal with
+    | [ H : valid_ptrs_global _ |- _ ] =>
+      copy_apply valid_ptrs_global_elim H;
+        break_and
+    end.
+
+  Lemma valid_opt_ptr_nodes_subset :
+    forall gst gst' o,
+      valid_opt_ptr gst o ->
+      (forall n, In n (nodes gst) -> In n (nodes gst')) ->
+      valid_opt_ptr gst' o.
+  Proof.
+    intros.
+    find_eapply_lem_hyp valid_opt_ptr_elim.
+    break_or_hyp; try constructor.
+    break_exists; break_and; subst_max.
+    constructor.
+    eauto using valid_ptr_nodes_subset.
+  Qed.
+
+  Lemma valid_opt_ptr_nodes :
+    forall gst gst' o,
+      nodes gst = nodes gst' ->
+      valid_opt_ptr gst o ->
+      valid_opt_ptr gst' o.
+  Proof.
+    intros.
+    eapply valid_opt_ptr_nodes_subset; eauto.
+    now find_rewrite.
+  Qed.
+
+  Lemma valid_ptr_payload_nodes_subset :
+    forall gst gst' p,
+      valid_ptr_payload gst p ->
+      (forall n, In n (nodes gst) -> In n (nodes gst')) ->
+      valid_ptr_payload gst' p.
+  Proof.
+    intros.
+    inv_vpp; constructor;
+    eauto using valid_ptr_nodes_subset, valid_ptr_list_nodes_subset, valid_opt_ptr_nodes_subset.
+  Qed.
+
+  Lemma valid_ptr_payload_nodes :
+    forall gst gst' p,
+      nodes gst = nodes gst' ->
+      valid_ptr_payload gst p ->
+      valid_ptr_payload gst' p.
+  Proof.
+    intros.
+    eapply valid_ptr_payload_nodes_subset; eauto.
+    now find_rewrite.
+  Qed.
+
+  Lemma valid_ptr_timeout_nodes :
+    forall gst gst' t,
+      valid_ptr_timeout gst t ->
+      nodes gst = nodes gst' ->
+      valid_ptr_timeout gst' t.
+  Proof.
+    intros.
+    inv_vpt.
+    - constructor.
+      eauto using valid_ptr_payload_nodes.
+    - constructor.
+    - constructor.
+  Qed.
+
+  Lemma valid_ptrs_timeouts_nodes_subset_timeouts :
+    forall gst gst' h,
+      valid_ptrs_timeouts gst (timeouts gst h) ->
+      timeouts gst = timeouts gst' ->
+      nodes gst = nodes gst' ->
+      valid_ptrs_timeouts gst' (timeouts gst' h).
+  Abort.
+
+  Lemma valid_ptrs_timeouts_nodes_timeouts :
+    forall gst gst' h,
+      valid_ptrs_timeouts gst (timeouts gst h) ->
+      timeouts gst = timeouts gst' ->
+      nodes gst = nodes gst' ->
+      valid_ptrs_timeouts gst' (timeouts gst' h).
+  Proof.
+    intros.
+    apply valid_ptrs_timeouts_intro; intros.
+    eapply valid_ptr_timeout_nodes; eauto.
+    eapply valid_ptrs_timeouts_elim; eauto.
+    now repeat find_rewrite.
+  Qed.
+
+  Lemma valid_ptrs_global_timeout_handler :
+    forall gst h st t st' ms nts cts t0,
+      valid_ptrs_global gst ->
+      timeout_handler h st t = (st', ms, nts, cts) ->
+      In t0 nts ->
+      valid_ptr_timeout gst t0.
+  Admitted.
+
+  Lemma valid_ptrs_global_recv_handler :
+    forall gst h src st p st' ms nts cts t,
+      valid_ptrs_global gst ->
+      recv_handler h src st p = (st', ms, nts, cts) ->
+      In t nts ->
+      valid_ptr_timeout gst t.
+  Admitted.
+
+  Lemma valid_ptrs_global_timeouts :
+    forall gst gst',
+      valid_ptrs_global gst ->
+      step_dynamic gst gst' ->
+      forall h,
+        valid_ptrs_timeouts gst' (timeouts gst' h).
+  Proof.
+    intros.
+    copy_elim_valid_ptrs_global.
+    break_step.
+    - apply valid_ptrs_timeouts_intro; intros.
+      unfold update_for_start in *.
+      repeat break_let.
+      simpl in *.
+      tuple_inversion.
+      simpl in *.
+      destruct t; constructor.
+      destruct (addr_eq_dec h h0).
+      + find_erewrite_lem update_eq.
+        find_apply_lem_hyp in_inv.
+        break_or_hyp.
+        * find_inversion.
+          constructor.
+          (* question: can I make this eauto not work? *)
+          apply valid_ptr_intro; simpl; eauto.
+        * exfalso; auto using in_nil.
+      + find_erewrite_lem update_diff.
+        find_apply_lem_hyp valid_ptrs_global_elim.
+        break_and.
+        find_apply_lem_hyp valid_ptrs_timeouts_elim; eauto.
+        inversion H7; subst_max.
+        eapply valid_ptr_payload_nodes_subset; simpl; eauto.
+    - eauto using valid_ptrs_timeouts_nodes_timeouts.
+    - apply valid_ptrs_timeouts_intro; intros.
+      eapply valid_ptr_timeout_nodes;
+        try eapply apply_handler_result_preserves_nodes; eauto.
+      find_apply_lem_hyp apply_handler_result_In_timeouts;
+        repeat (break_and || break_or_hyp);
+        eauto using valid_ptrs_global_timeout_handler,
+                    valid_ptr_timeout_nodes,
+                    valid_ptrs_timeouts_elim.
+    - apply valid_ptrs_timeouts_intro; intros.
+      eapply valid_ptr_timeout_nodes;
+        try eapply apply_handler_result_preserves_nodes; eauto.
+      find_apply_lem_hyp apply_handler_result_In_timeouts;
+        repeat (break_and || break_or_hyp);
+        eauto using valid_ptrs_global_recv_handler,
+                    valid_ptr_timeout_nodes,
+                    valid_ptrs_timeouts_elim.
+  Qed.
+
+  Lemma valid_ptrs_global_sigma :
+    forall gst gst',
+      valid_ptrs_global gst ->
+      step_dynamic gst gst' ->
+      forall h d,
+        sigma gst' h = Some d ->
+        valid_ptrs_state gst' d.
+  Proof.
+    intros.
+    break_step.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+  Admitted.
+
+  Lemma valid_ptrs_global_net :
+    forall gst gst',
+      valid_ptrs_global gst ->
+      step_dynamic gst gst' ->
+      valid_ptrs_net gst' (msgs gst').
+  Proof.
+    intros.
+    break_step.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+  Admitted.
+
+  Lemma valid_ptrs_global_trace :
+    forall gst gst',
+      valid_ptrs_global gst ->
+      step_dynamic gst gst' ->
+      valid_ptrs_trace gst'.
+  Proof.
+    intros.
+    break_step.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+  Admitted.
+
+  Theorem valid_ptrs_global_inductive :
+    forall gst,
+      reachable_st gst ->
+      valid_ptrs_global gst.
+  Proof.
+    intros.
+    induct_reachable_st.
+    - admit.
+    - unfold valid_ptrs_global; repeat break_and_goal.
+      + eapply valid_ptrs_global_timeouts; eauto.
+      + intros;
+        destruct (sigma _ _) eqn:H_st;
+        constructor;
+        eapply valid_ptrs_global_sigma; eauto.
+      + eapply valid_ptrs_global_net; eauto.
+      + eapply valid_ptrs_global_trace; eauto.
+  Admitted.
+  
+    
+
+  Definition query_state_net_invariant_inductive :
+    forall gst,
+      reachable_st gst ->
+      query_state_net_invariant gst.
+  Proof.
+    intros.
+    induct_reachable_st.
+    { admit. } (* have to define valid initial states *)
+    assert (reachable_st gst') by eauto using reachableStep.
+    pose proof (query_state_net_invariant_elim gst IHreachable_st).
+    intros until 3.
+    split.
+    - eapply queries_always_remote; eauto.
+    - break_step.
+      + (* start case *)
+        destruct (addr_eq_dec src h).
+        * (* source of query is the joining node *)
+          admit.
+        * (* it's unrelated *)
+          admit.
+      + (* fail case *)
+        admit.
+      + (* timeout case *)
+        admit.
+      + (* receive case *)
+        admit.
+  Admitted.
+
 End ChordProof.
+

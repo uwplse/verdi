@@ -116,24 +116,82 @@ Section Dynamic.
        trace := trace gst ++ [e]
     |}.
 
+  Lemma apply_handler_result_nodes :
+    forall h r e gst,
+      nodes (apply_handler_result h r e gst) = nodes gst.
+  Proof.
+    unfold apply_handler_result.
+    intros.
+    now repeat break_let.
+  Qed.
+
+  Definition update_for_start
+             (gst : global_state) (h : addr)
+             (res : data * list (addr * payload) * list timeout) : global_state :=
+    let '(st, ms, newts) := res in
+    let sends := map (send h) ms in
+    {| nodes := h :: nodes gst;
+       failed_nodes := failed_nodes gst;
+       timeouts := (timeouts gst)[h ==> newts];
+       sigma := (sigma gst)[h => st];
+       msgs := sends ++ msgs gst;
+       trace := trace gst ++ (map e_send sends)
+    |}.
+
+  Lemma update_for_start_nodes :
+    forall gst gst' h res,
+      update_for_start gst h res = gst' ->
+      h :: nodes gst = nodes gst'.
+  Proof.
+    unfold update_for_start.
+    intros.
+    repeat break_let.
+    now repeat find_reverse_rewrite.
+  Qed.
+
+  Lemma update_for_start_nodes_eq :
+    forall gst h res,
+      nodes (update_for_start gst h res) = h :: nodes gst.
+  Proof.
+    unfold update_for_start.
+    intros.
+    now repeat break_let.
+  Qed.
+
+  Lemma update_for_start_sigma_h_exists :
+    forall gst h res,
+      exists st,
+        sigma (update_for_start gst h res) h = Some st.
+  Proof.
+    unfold update_for_start.
+    intros.
+    repeat break_let.
+    simpl.
+    eexists; eauto using update_eq.
+  Qed.
+
+  Lemma update_for_start_sigma_h_n :
+    forall gst h n res st,
+      h <> n ->
+      sigma gst n = Some st ->
+      sigma (update_for_start gst h res) n = Some st.
+  Proof.
+    unfold update_for_start.
+    intros.
+    repeat break_let.
+    simpl.
+    now rewrite update_diff.
+  Qed.
+
   Inductive step_dynamic : global_state -> global_state -> Prop :=
   | Start :
-      forall h gst gst' ms st new_msgs known k newts,
+      forall h gst gst' k,
         ~ In h (nodes gst) ->
         (* hypotheses on the list of known nodes *)
-        (In k known -> In k (nodes gst)) ->
-        (In k known -> ~ In k (failed_nodes gst)) ->
-        (known = [] -> (nodes gst) = []) ->
+        In k (nodes gst) ->
+        ~ In k (failed_nodes gst) ->
         (* note that clearedts might as well be [] *)
-        start_handler h known = (st, ms, newts) ->
-        new_msgs = map (send h) ms ->
-        gst' = {| nodes := h :: nodes gst;
-                  failed_nodes := failed_nodes gst;
-                  timeouts := (timeouts gst)[h ==> newts];
-                  sigma := (sigma gst)[h => st];
-                  msgs := new_msgs ++ msgs gst;
-                  trace := trace gst ++ (map e_send new_msgs)
-               |} ->
+        gst' = update_for_start gst h (start_handler h (k :: nil)) ->
         step_dynamic gst gst'
   | Fail :
       forall h gst gst',
@@ -327,11 +385,12 @@ Section Dynamic.
       * intuition.
         break_exists.
         invc_lstep;
-          unfold apply_handler_result in *;
-          find_inversion;
-          eapply list_neq_cons;
-          eauto.
-      * eauto using join_churn, list_neq_cons.
+          find_apply_lem_hyp update_for_start_nodes;
+          find_rewrite_lem apply_handler_result_nodes;
+          eapply list_neq_cons; eauto.
+      * apply join_churn.
+        rewrite update_for_start_nodes_eq.
+        eauto using list_neq_cons.
     - right.
       unfold fail_node.
       split.
