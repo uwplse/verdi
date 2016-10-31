@@ -1969,8 +1969,6 @@ Section ChordProof.
       + eapply valid_ptrs_global_net; eauto.
       + eapply valid_ptrs_global_trace; eauto.
   Admitted.
-  
-    
 
   Definition query_state_net_invariant_inductive :
     forall gst,
@@ -2001,4 +1999,3 @@ Section ChordProof.
   Admitted.
 
 End ChordProof.
-
