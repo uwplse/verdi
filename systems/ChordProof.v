@@ -1849,12 +1849,119 @@ Section ChordProof.
       valid_ptr_timeout gst t0.
   Admitted.
 
+  Lemma recv_handler_definition :
+    forall src dst st p st' ms newts clearedts,
+      recv_handler src dst st p = (st', ms, newts, clearedts) ->
+      p = Ping /\
+      st' = st /\
+      ms = [(src, Pong)] /\
+      newts = [] /\
+      clearedts = [] \/
+
+      p = Notify /\
+      st' = set_rectify_with st (make_pointer src) /\
+      ms = [] /\
+      newts = [] /\
+      clearedts = [] \/
+
+      (exists qd q qm,
+          cur_request st = Some (qd, q, qm) /\
+          (request_payload p /\
+           st' = delay_query st src p /\
+           clearedts = [] /\
+           (delayed_queries st = [] /\
+            newts = [KeepaliveTick]) \/
+           (length (delayed_queries st) > 0 /\
+            newts = [])) \/
+          (p = Busy /\
+           st' = st /\
+           newts = timeouts_in st /\
+           clearedts = timeouts_in st) \/
+          (exists n,
+              q = Rectify n /\
+              p = Pong /\
+              (exists pr,
+                  pred st = Some pr /\
+                  end_query dst (handle_rectify dst st pr q n) = (st', ms, newts, clearedts)) \/
+              (pred st = None /\
+               end_query dst (update_pred st n, [], [], []) = (st', ms, newts, clearedts))) \/
+          (q = Stabilize /\
+           (exists new_succ succs,
+               p = GotPredAndSuccs (Some new_succ) succs /\
+               handle_stabilize dst (make_pointer src) st q new_succ succs = (st', ms, newts, clearedts)) \/
+           (exists succs,
+               p = GotPredAndSuccs None succs /\
+               end_query dst (st, [], [], []) = (st', ms, newts, clearedts))) \/
+          (exists new_succ,
+              q = Stabilize2 new_succ /\
+              exists succs,
+                p = GotSuccList succs /\
+                end_query dst (update_succ_list st (make_succs SUCC_LIST_LEN new_succ succs),
+                               [(addr_of new_succ, Notify)], [], []) = (st', ms, newts, clearedts)) \/
+          (exists k,
+              q = Join k /\
+              (exists bestpred,
+                  p = GotBestPredecessor bestpred /\
+                  clearedts = [Request src (GetBestPredecessor (make_pointer dst))] /\
+                  st' = st /\
+                  (addr_of bestpred = src /\
+                   ms = [(src, GetSuccList)] /\
+                   newts = [Request src GetSuccList]) \/
+                  (addr_of bestpred <> src /\
+                   ms = [(addr_of bestpred, (GetBestPredecessor (make_pointer dst)))] /\
+                   newts = [Request (addr_of bestpred) (GetBestPredecessor (make_pointer dst))])) \/
+              (p = GotSuccList [] /\
+               end_query dst (st, [], [], []) = (st', ms, newts, clearedts)) \/
+              (exists new_succ rest,
+                  p = GotSuccList (new_succ :: rest) /\
+                  start_query (addr_of new_succ) st (Join2 new_succ) = (st', ms, newts, clearedts))) \/
+          (exists new_succ succs,
+              q = Join2 new_succ /\
+              p = GotSuccList succs /\
+              add_tick (end_query dst (update_for_join st (make_succs SUCC_LIST_LEN new_succ succs), [], [], [])) = (st', ms, newts, clearedts))) \/
+
+      (cur_request st = None /\
+       st' = st /\
+       clearedts = [] /\
+       newts = [] /\
+       (exists h,
+           p = GetBestPredecessor h /\
+           ms = [(src, GotBestPredecessor (best_predecessor (ptr st) (succ_list st) (id_of h)))]) \/
+       (p = GetSuccList /\
+        ms = [(src, GotSuccList (succ_list st))]) \/
+       (p = GetPredAndSuccs /\
+        ms = [(src, GotPredAndSuccs (pred st) (succ_list st))])) \/
+      st = st' /\ ms = [] /\ newts = [] /\ clearedts = [].
+  Proof.
+    unfold recv_handler.
+    intros.
+    break_if.
+    - unfold handle_safe_msg, handle_notify in *.
+      find_apply_lem_hyp safe_msgs; break_or_hyp;
+      tuple_inversion; intuition.
+    - repeat break_match.
+      + admit.
+      + admit.
+      + unfold handle_query_req in *.
+        break_match;
+          try discriminate;
+          repeat find_inversion;
+          try tuple_inversion;
+          intuition eauto.
+      + tuple_inversion; intuition eauto.
+      + tuple_inversion; intuition eauto.
+  Admitted.
+
   Lemma valid_ptrs_global_recv_handler :
-    forall gst h src st p st' ms nts cts t,
+    forall gst xs m ys d st ms newts clearedts,
       valid_ptrs_global gst ->
-      recv_handler h src st p = (st', ms, nts, cts) ->
-      In t nts ->
-      valid_ptr_timeout gst t.
+      msgs gst = xs ++ m :: ys ->
+      In (fst (snd m)) (nodes gst) ->
+      ~ In (fst (snd m)) (failed_nodes gst) ->
+      sigma gst (fst (snd m)) = Some d ->
+      recv_handler (fst m) (fst (snd m)) d (snd (snd m)) = (st, ms, newts, clearedts) ->
+      forall t, In t newts ->
+           valid_ptr_timeout gst t.
   Admitted.
 
   Lemma valid_ptrs_global_timeouts :
