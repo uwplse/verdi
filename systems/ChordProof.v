@@ -7,6 +7,7 @@ Require Import List.
 Import ListNotations.
 Require Import Arith.
 Require Import mathcomp.ssreflect.ssreflect.
+Require Import Omega.
 
 Set Bullet Behavior "Strict Subproofs".
 
@@ -1849,6 +1850,101 @@ Section ChordProof.
       valid_ptr_timeout gst t0.
   Admitted.
 
+  Lemma handle_query_req_busy_definition :
+    forall src dst st msg st' ms newts clearedts,
+      handle_query_req_busy src dst st msg = (st', ms, newts, clearedts) ->
+      st' = delay_query st src msg /\
+      ms = [(src, Busy)] /\
+      clearedts = [] /\
+      ((delayed_queries st = [] /\ newts = [KeepaliveTick]) \/
+       (delayed_queries st <> [] /\ newts = [])).
+  Proof.
+    unfold handle_query_req_busy.
+    intros.
+    repeat break_match; tuple_inversion; tauto.
+  Qed.
+
+  Lemma handle_query_res_definition :
+    forall src dst st blank q p st' ms newts clearedts,
+      handle_query_res src dst st blank q p = (st', ms, newts, clearedts) ->
+      (request_payload p /\
+       st' = delay_query st src p /\
+       clearedts = [] /\
+       (delayed_queries st = [] /\
+        newts = [KeepaliveTick]) \/
+       (delayed_queries st <> [] /\
+        newts = [])) \/
+      (p = Busy /\
+       st' = st /\
+       newts = timeouts_in st /\
+       clearedts = timeouts_in st) \/
+      (exists n,
+          q = Rectify n /\
+          p = Pong /\
+          (exists pr,
+              pred st = Some pr /\
+              end_query dst (handle_rectify dst st pr q n) = (st', ms, newts, clearedts)) \/
+          (pred st = None /\
+           end_query dst (update_pred st n, [], [], []) = (st', ms, newts, clearedts))) \/
+      (q = Stabilize /\
+       (exists new_succ succs,
+           p = GotPredAndSuccs (Some new_succ) succs /\
+           handle_stabilize dst (make_pointer src) st q new_succ succs = (st', ms, newts, clearedts)) \/
+       (exists succs,
+           p = GotPredAndSuccs None succs /\
+           end_query dst (st, [], [], []) = (st', ms, newts, clearedts))) \/
+      (exists new_succ,
+          q = Stabilize2 new_succ /\
+          exists succs,
+            p = GotSuccList succs /\
+            end_query dst (update_succ_list st (make_succs SUCC_LIST_LEN new_succ succs),
+                           [(addr_of new_succ, Notify)], [], []) = (st', ms, newts, clearedts)) \/
+      (exists k,
+          q = Join k /\
+          (exists bestpred,
+              p = GotBestPredecessor bestpred /\
+              clearedts = [Request src (GetBestPredecessor (make_pointer dst))] /\
+              st' = st /\
+              (addr_of bestpred = src /\
+               ms = [(src, GetSuccList)] /\
+               newts = [Request src GetSuccList]) \/
+              (addr_of bestpred <> src /\
+               ms = [(addr_of bestpred, (GetBestPredecessor (make_pointer dst)))] /\
+               newts = [Request (addr_of bestpred) (GetBestPredecessor (make_pointer dst))])) \/
+          (p = GotSuccList [] /\
+           end_query dst (st, [], [], []) = (st', ms, newts, clearedts)) \/
+          (exists new_succ rest,
+              p = GotSuccList (new_succ :: rest) /\
+              start_query (addr_of new_succ) st (Join2 new_succ) = (st', ms, newts, clearedts))) \/
+      (exists new_succ succs,
+          q = Join2 new_succ /\
+          p = GotSuccList succs /\
+          add_tick (end_query dst (update_for_join st (make_succs SUCC_LIST_LEN new_succ succs), [], [], [])) = (st', ms, newts, clearedts)) \/
+      st' = st /\ ms = [] /\ newts = [] /\ clearedts = [].
+  Proof.
+    unfold handle_query_res.
+    intros.
+    repeat break_match; try tuple_inversion; try tauto.
+    - right. right. left. eexists. intuition eauto.
+    - intuition eauto.
+    - intuition eauto.
+    - intuition eauto.
+    - intuition eauto.
+    - do 5 right. left.
+      exists p0. left. firstorder.
+      eexists; intuition eauto.
+    - do 5 right. left.
+      exists p0. intuition eauto.
+    - repeat find_rewrite.
+      do 5 right. left.
+      exists p0. right.
+      intuition.
+    - do 5 right. left.
+      exists p0.
+      intuition eauto.
+    - intuition eauto.
+  Qed.
+
   Lemma recv_handler_definition :
     forall src dst st p st' ms newts clearedts,
       recv_handler src dst st p = (st', ms, newts, clearedts) ->
@@ -1871,7 +1967,7 @@ Section ChordProof.
            clearedts = [] /\
            (delayed_queries st = [] /\
             newts = [KeepaliveTick]) \/
-           (length (delayed_queries st) > 0 /\
+           (delayed_queries st <> [] /\
             newts = [])) \/
           (p = Busy /\
            st' = st /\
@@ -1940,8 +2036,10 @@ Section ChordProof.
       find_apply_lem_hyp safe_msgs; break_or_hyp;
       tuple_inversion; intuition.
     - repeat break_match.
-      + admit.
-      + admit.
+      + intuition (eauto using handle_query_req_busy_definition).
+        admit.
+      + (*find_eapply_lem_hyp handle_query_res_definition.*)
+        admit.
       + unfold handle_query_req in *.
         break_match;
           try discriminate;
