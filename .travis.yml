@@ -1,6 +1,13 @@
 language: c
 script: bash -ex .travis-ci.sh
 sudo: false
+addons:
+  apt:
+    sources:
+      - avsm
+    packages:
+      - ocaml
+      - opam
 env:
   global:
     - VERDI_RAFT_BRANCH=master
