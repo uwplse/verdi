@@ -21,9 +21,6 @@ Section ChordProof.
   Variable hash_inj : forall a b : addr,
       hash a = hash b -> a = b.
 
-  Definition between (x y z : id) :=
-    x < y < z \/ y < z < x \/ z < x < y.
-
   Notation start_handler := (start_handler SUCC_LIST_LEN hash).
   Notation recv_handler := (recv_handler SUCC_LIST_LEN hash).
   Notation timeout_handler := (timeout_handler hash).
@@ -56,6 +53,52 @@ Section ChordProof.
   Notation e_recv := (e_recv addr payload timeout).
   Notation e_timeout := (e_timeout addr payload timeout).
   Notation e_fail := (e_fail addr payload timeout).
+
+  Inductive between : id -> id -> id -> Prop :=
+  | BetweenMono :
+      forall a x b, a < b -> a < x -> x < b -> between a x b
+  | BetweenWrapL :
+      forall a x b, a >= b -> a < x -> between a x b
+  | BetweenWrapR :
+      forall a x b, a >= b -> x < b -> between a x b.
+
+  Ltac inv_between :=
+    match goal with
+    | [H: between _ _ _ |- _] => inv H
+    end.
+
+  Lemma between_between_bool_equiv :
+    forall a x b,
+      between a x b <-> between_bool a x b = true.
+  Proof.
+    unfold between_bool.
+    intros.
+    split; intros.
+    - inv_between;
+        repeat break_if;
+        omega || reflexivity.
+    - repeat break_if;
+        constructor;
+        congruence || omega.
+  Qed.
+
+  Lemma between_bool_true_between :
+    forall a x b,
+      between_bool a x b = true ->
+      between a x b.
+  Proof.
+    intros.
+    now rewrite between_between_bool_equiv.
+  Qed.
+
+  Lemma between_bool_false_not_between :
+    forall a x b,
+      between_bool a x b = false ->
+      ~ between a x b.
+  Proof.
+    intros.
+    rewrite between_between_bool_equiv; congruence.
+  Qed.
 
   Inductive request_response_pair : payload -> payload -> Prop :=
   | pair_GetBestPredecessor : forall n p, request_response_pair (GetBestPredecessor n) (GotBestPredecessor p)
@@ -258,11 +301,8 @@ Section ChordProof.
     intuition.
     find_copy_apply_lem_hyp unsafe_msgs_not_safe_ones.
     break_and.
-    request_payload_inversion.
-    - eexists; eauto.
-    - eexists; eauto.
-    - eexists; eauto.
-    - exfalso; eauto.
+    request_payload_inversion;
+      eauto || congruence.
   Qed.
 
   Lemma requests_are_always_responded_to : forall src dst msg st sends nts cts,
@@ -990,8 +1030,8 @@ Section ChordProof.
     - find_apply_lem_hyp joined_preserved_by_end_query; auto.
   Qed.
 
-  Lemma joined_preserved_by_end_query_handle_rectify : forall h st p q n st' ms nts cts,
-      end_query h (handle_rectify h st p q n) = (st', ms, nts, cts) ->
+  Lemma joined_preserved_by_end_query_handle_rectify : forall h st p n st' ms nts cts,
+      end_query h (handle_rectify st p n) = (st', ms, nts, cts) ->
       joined st = joined st'.
   Proof.
     unfold handle_rectify.
@@ -1678,10 +1718,36 @@ Section ChordProof.
     valid_opt_ptr gst (rectify_with d) /\
     valid_ptrs_cur_request gst (cur_request d).
 
-  Definition valid_ptrs_net (gst : global_state) (ms : list msg) : Prop :=
+  Definition valid_ptrs_state_elim :
+    forall gst d,
+      (valid_ptrs_state gst d -> valid_ptr gst (ptr d)) /\
+      (valid_ptrs_state gst d -> valid_opt_ptr gst (pred d)) /\
+      (valid_ptrs_state gst d -> Forall (valid_ptr gst) (succ_list d)) /\
+      (valid_ptrs_state gst d -> valid_ptr gst (known d)) /\
+      (valid_ptrs_state gst d -> valid_opt_ptr gst (rectify_with d)) /\
+      (valid_ptrs_state gst d -> valid_ptrs_cur_request gst (cur_request d)).
+  Proof.
+    unfold valid_ptrs_state.
+    tauto.
+  Qed.
+
+  Definition valid_ptrs_net (gst : global_state) : Prop :=
     forall src dst p,
-      In (src, (dst, p)) ms ->
+      In (src, (dst, p)) (msgs gst) ->
       valid_ptr_payload gst p.
+
+  Lemma valid_ptrs_net_elim_snd_snd :
+    forall gst m,
+      valid_ptrs_net gst ->
+      In m (msgs gst) ->
+      valid_ptr_payload gst (snd (snd m)).
+  Proof.
+    unfold valid_ptrs_net.
+    intros.
+    destruct m.
+    destruct p.
+    eauto.
+  Qed.
 
   Inductive valid_ptr_timeout (gst : global_state) : timeout -> Prop :=
   | VPTRequest : forall h p, valid_ptr_payload gst p -> valid_ptr_timeout gst (Request h p)
@@ -1738,7 +1804,7 @@ Section ChordProof.
   Definition valid_ptrs_global (gst : global_state) : Prop :=
     (forall h, valid_ptrs_timeouts gst (timeouts gst h)) /\
     (forall h, lift_pred_opt (valid_ptrs_state gst) (sigma gst h)) /\
-    valid_ptrs_net gst (msgs gst) /\
+    valid_ptrs_net gst /\
     valid_ptrs_trace gst.
 
   Lemma valid_ptrs_global_elim :
@@ -1746,7 +1812,7 @@ Section ChordProof.
       valid_ptrs_global gst ->
       (forall h, valid_ptrs_timeouts gst (timeouts gst h)) /\
       (forall h, lift_pred_opt (valid_ptrs_state gst) (sigma gst h)) /\
-      valid_ptrs_net gst (msgs gst) /\
+      valid_ptrs_net gst /\
       valid_ptrs_trace gst.
   Proof.
     auto.
@@ -1883,7 +1949,7 @@ Section ChordProof.
           p = Pong /\
           (exists pr,
               pred st = Some pr /\
-              end_query dst (handle_rectify dst st pr q n) = (st', ms, newts, clearedts)) \/
+              end_query dst (handle_rectify st pr n) = (st', ms, newts, clearedts)) \/
           (pred st = None /\
            end_query dst (update_pred st n, [], [], []) = (st', ms, newts, clearedts))) \/
       (q = Stabilize /\
@@ -1977,56 +2043,59 @@ Section ChordProof.
               q = Rectify n /\
               p = Pong /\
               (exists pr,
-                  pred st = Some pr /\
-                  end_query dst (handle_rectify dst st pr q n) = (st', ms, newts, clearedts)) \/
-              (pred st = None /\
-               end_query dst (update_pred st n, [], [], []) = (st', ms, newts, clearedts))) \/
-          (q = Stabilize /\
-           (exists new_succ succs,
-               p = GotPredAndSuccs (Some new_succ) succs /\
-               handle_stabilize dst (make_pointer src) st q new_succ succs = (st', ms, newts, clearedts)) \/
-           (exists succs,
-               p = GotPredAndSuccs None succs /\
-               end_query dst (st, [], [], []) = (st', ms, newts, clearedts))) \/
-          (exists new_succ,
-              q = Stabilize2 new_succ /\
-              exists succs,
-                p = GotSuccList succs /\
-                end_query dst (update_succ_list st (make_succs SUCC_LIST_LEN new_succ succs),
-                               [(addr_of new_succ, Notify)], [], []) = (st', ms, newts, clearedts)) \/
-          (exists k,
-              q = Join k /\
-              (exists bestpred,
-                  p = GotBestPredecessor bestpred /\
-                  clearedts = [Request src (GetBestPredecessor (make_pointer dst))] /\
-                  st' = st /\
-                  (addr_of bestpred = src /\
-                   ms = [(src, GetSuccList)] /\
-                   newts = [Request src GetSuccList]) \/
-                  (addr_of bestpred <> src /\
-                   ms = [(addr_of bestpred, (GetBestPredecessor (make_pointer dst)))] /\
-                   newts = [Request (addr_of bestpred) (GetBestPredecessor (make_pointer dst))])) \/
-              (p = GotSuccList [] /\
-               end_query dst (st, [], [], []) = (st', ms, newts, clearedts)) \/
-              (exists new_succ rest,
-                  p = GotSuccList (new_succ :: rest) /\
-                  start_query (addr_of new_succ) st (Join2 new_succ) = (st', ms, newts, clearedts))) \/
-          (exists new_succ succs,
-              q = Join2 new_succ /\
-              p = GotSuccList succs /\
-              add_tick (end_query dst (update_for_join st (make_succs SUCC_LIST_LEN new_succ succs), [], [], [])) = (st', ms, newts, clearedts))) \/
+              pred st = Some pr /\
+              end_query dst (handle_rectify st pr n) = (st', ms, newts, clearedts)) \/
+          (pred st = None /\
+           end_query dst (update_pred st n, [], [], []) = (st', ms, newts, clearedts))) \/
+      (q = Stabilize /\
+       (exists new_succ succs,
+           p = GotPredAndSuccs (Some new_succ) succs /\
+           handle_stabilize dst (make_pointer src) st q new_succ succs = (st', ms, newts, clearedts)) \/
+       (exists succs,
+           p = GotPredAndSuccs None succs /\
+           end_query dst (st, [], [], []) = (st', ms, newts, clearedts))) \/
+      (exists new_succ,
+          q = Stabilize2 new_succ /\
+          exists succs,
+            p = GotSuccList succs /\
+            end_query dst (update_succ_list st (make_succs SUCC_LIST_LEN new_succ succs),
+                           [(addr_of new_succ, Notify)], [], []) = (st', ms, newts, clearedts)) \/
+      (exists k,
+          q = Join k /\
+          (exists bestpred,
+              p = GotBestPredecessor bestpred /\
+              clearedts = [Request src (GetBestPredecessor (make_pointer dst))] /\
+              st' = st /\
+              (addr_of bestpred = src /\
+               ms = [(src, GetSuccList)] /\
+               newts = [Request src GetSuccList]) \/
+              (addr_of bestpred <> src /\
+               ms = [(addr_of bestpred, (GetBestPredecessor (make_pointer dst)))] /\
+               newts = [Request (addr_of bestpred) (GetBestPredecessor (make_pointer dst))])) \/
+          (p = GotSuccList [] /\
+           end_query dst (st, [], [], []) = (st', ms, newts, clearedts)) \/
+          (exists new_succ rest,
+              p = GotSuccList (new_succ :: rest) /\
+              start_query (addr_of new_succ) st (Join2 new_succ) = (st', ms, newts, clearedts))) \/
+      (exists new_succ succs,
+          q = Join2 new_succ /\
+          p = GotSuccList succs /\
+          add_tick (end_query dst (update_for_join st (make_succs SUCC_LIST_LEN new_succ succs), [], [], [])) = (st', ms, newts, clearedts)) \/
+      st' = st /\ ms = [] /\ newts = [] /\ clearedts = []
+      ) \/
 
       (cur_request st = None /\
        st' = st /\
        clearedts = [] /\
        newts = [] /\
-       (exists h,
+       ((exists h,
            p = GetBestPredecessor h /\
            ms = [(src, GotBestPredecessor (best_predecessor (ptr st) (succ_list st) (id_of h)))]) \/
        (p = GetSuccList /\
         ms = [(src, GotSuccList (succ_list st))]) \/
        (p = GetPredAndSuccs /\
-        ms = [(src, GotPredAndSuccs (pred st) (succ_list st))])) \/
+        ms = [(src, GotPredAndSuccs (pred st) (succ_list st))]))) \/
+
       st = st' /\ ms = [] /\ newts = [] /\ clearedts = [].
   Proof.
     unfold recv_handler.
@@ -2036,10 +2105,17 @@ Section ChordProof.
       find_apply_lem_hyp safe_msgs; break_or_hyp;
       tuple_inversion; intuition.
     - repeat break_match.
-      + intuition (eauto using handle_query_req_busy_definition).
-        admit.
-      + (*find_eapply_lem_hyp handle_query_res_definition.*)
-        admit.
+      + find_eapply_lem_hyp handle_query_req_busy_definition.
+        repeat break_and.
+        find_apply_lem_hyp is_request_same_as_request_payload.
+        do 2 right. left.
+        repeat eexists; left; split; eauto.
+        repeat split.
+        repeat break_and.
+        break_or_hyp; intuition eauto.
+      + find_eapply_lem_hyp handle_query_res_definition.
+        do 2 right. left.
+        repeat eexists; intuition eauto.
       + unfold handle_query_req in *.
         break_match;
           try discriminate;
@@ -2048,7 +2124,150 @@ Section ChordProof.
           intuition eauto.
       + tuple_inversion; intuition eauto.
       + tuple_inversion; intuition eauto.
-  Admitted.
+  Qed.
+
+  Lemma In_timeouts_in :
+    forall t st,
+      In t (timeouts_in st) ->
+      exists dst q m,
+        cur_request st = Some (dst, q, m) /\
+        t = Request (addr_of dst) m.
+  Proof.
+    unfold timeouts_in.
+    intros.
+    repeat break_match.
+    repeat eexists; eauto.
+    match type of H with
+    | In _ _ => inv H
+    end.
+    eauto.
+    exfalso; auto with *.
+    exfalso; auto with *.
+  Qed.
+
+  Lemma lift_pred_opt_Some_elim :
+    forall A x (P : A -> Prop) a,
+      lift_pred_opt P x ->
+      x = Some a ->
+      P a.
+  Proof.
+    intros.
+    match type of H with
+    | lift_pred_opt _ _ => inv H
+    end; congruence.
+  Qed.
+
+  Lemma try_rectify_definition :
+    forall h st ms nts cts st' ms' nts' cts',
+      try_rectify h (st, ms, nts, cts) = (st', ms', nts', cts') ->
+      (joined st = true /\
+       (exists new,
+           rectify_with st = Some new /\
+           (exists x sq_ms sq_nts sq_cts,
+               pred st = Some x /\
+               start_query h (clear_rectify_with st) (Rectify new) = (st', sq_ms, sq_nts, sq_cts) /\
+               ms' = ms ++ sq_ms /\
+               nts' = nts ++ sq_nts /\
+               cts' = cts ++ sq_cts) \/
+           (pred st = None /\
+            st' = clear_rectify_with (update_pred st new) /\
+            ms' = ms /\
+            nts' = nts /\
+            cts' = cts))) \/
+      ((joined st = false \/ rectify_with st = None) /\
+       (st', ms', nts', cts') = (st, ms, nts, cts)).
+  Proof.
+    unfold try_rectify.
+    intros.
+    repeat break_match; tuple_inversion.
+    - left.
+      split; eauto.
+      intuition eauto.
+      exists p.
+      left.
+      intuition eauto.
+      repeat eexists; intuition eauto.
+    - left.
+      split; try tauto.
+      eexists; right; split; eauto.
+    - tauto.
+    - tauto.
+  Qed.
+
+  Lemma start_query_definition : 
+    forall h st k st' ms nts cts,
+      start_query h st k = (st', ms, nts, cts) ->
+      (exists dst msg,
+          make_request hash h st k = Some (dst, msg) /\
+          st' = update_query st dst k msg /\
+          ms = [(addr_of dst, msg)] /\
+          nts = [Request (addr_of dst) msg] /\
+          cts = timeouts_in st) \/
+      (make_request hash h st k = None /\
+       st' = st /\
+       ms = [] /\
+       ms = [] /\
+       nts = [] /\
+       cts = []).
+  Proof.
+    unfold start_query.
+    intros.
+    repeat break_match; tuple_inversion; try tauto.
+    left; repeat eexists.
+  Qed.
+
+  Lemma handle_delayed_queries_definition :
+    forall h st st' ms nts cts,
+     handle_delayed_queries h st = (st', ms, nts, cts) ->
+     st' = clear_delayed_queries st /\
+     ms = concat (map (handle_delayed_query h st) (delayed_queries st)) /\
+     nts = [] /\
+     cts = [KeepaliveTick].
+  Proof.
+    unfold handle_delayed_queries.
+    intros.
+    tuple_inversion.
+    intuition eauto.
+  Qed.
+
+  Lemma end_query_definition :
+    forall h st ms newts clearedts st' ms' newts' clearedts',
+      end_query h (st, ms, newts, clearedts) = (st', ms', newts', clearedts') ->
+      exists st'' ms'',
+        handle_delayed_queries h (clear_query st) = (st'', ms'', [], [KeepaliveTick]) /\
+        try_rectify h (st'', ms'' ++ ms, newts, timeouts_in st ++ [KeepaliveTick] ++ clearedts) = (st', ms', newts', clearedts').
+  Proof.
+    unfold end_query.
+    intros.
+    repeat break_let.
+    find_apply_lem_hyp handle_delayed_queries_definition.
+    repeat (break_and || break_or_hyp || break_exists).
+    subst_max.
+    repeat eexists; eauto.
+  Qed.
+
+  Lemma handle_rectify_definition :
+    forall st my_pred notifier st' ms nts cts,
+      handle_rectify st my_pred notifier = (st', ms, nts, cts) ->
+      ms = [] /\
+      nts = [] /\
+      cts = [] /\
+      (between (id_of my_pred) (id_of notifier) (id_of (ptr st)) /\
+       st' = update_pred st notifier \/
+       ~ between (id_of my_pred) (id_of notifier) (id_of (ptr st)) /\
+       st' = st).
+  Proof.
+    unfold handle_rectify.
+    intros.
+    rewrite between_between_bool_equiv.
+    break_if; tuple_inversion; firstorder.
+  Qed.
+
+  Ltac expand_def :=
+    repeat (try break_or_hyp; try break_and; try break_exists);
+    subst_max;
+    try tuple_inversion;
+    try (exfalso; tauto).
 
   Lemma valid_ptrs_global_recv_handler :
     forall gst xs m ys d st ms newts clearedts,
@@ -2060,6 +2279,111 @@ Section ChordProof.
       recv_handler (fst m) (fst (snd m)) d (snd (snd m)) = (st, ms, newts, clearedts) ->
       forall t, In t newts ->
            valid_ptr_timeout gst t.
+  Proof.
+    intros.
+    find_apply_lem_hyp recv_handler_definition.
+    find_apply_lem_hyp valid_ptrs_global_elim; break_and.
+    assert (valid_ptr_payload gst (snd (snd m))).
+    { apply valid_ptrs_net_elim_snd_snd;
+      try find_rewrite; auto with datatypes. }
+    expand_def.
+    - find_apply_lem_hyp in_inv.
+      break_or_hyp; try (exfalso; auto with *; fail).
+      constructor.
+    - find_apply_lem_hyp In_timeouts_in.
+      break_exists; break_and; subst_max.
+      constructor.
+      assert (valid_ptrs_state gst d).
+      { pose proof (H6 (fst (snd m))).
+        find_eapply_lem_hyp lift_pred_opt_Some_elim; eauto. }
+      find_apply_lem_hyp valid_ptrs_state_elim.
+      find_rewrite.
+      inv H10.
+      simpl in *; tauto.
+    - break_and.
+      destruct (handle_rectify _ _ _) eqn:H_rectify.
+      repeat destruct p.
+      find_eapply_lem_hyp end_query_definition.
+      break_exists.
+      break_and.
+      find_apply_lem_hyp try_rectify_definition.
+      expand_def; try (exfalso; tauto).
+      + find_apply_lem_hyp start_query_definition.
+        find_apply_lem_hyp handle_rectify_definition.
+        expand_def;
+          try (find_apply_lem_hyp in_inv;
+                break_or_hyp; try (exfalso; eauto using in_nil; fail)).
+        * constructor.
+          simpl in *.
+          break_match; find_inversion || congruence.
+          constructor.
+        * constructor.
+          simpl in *.
+          break_match; find_inversion || congruence.
+          constructor.
+      + find_eapply_lem_hyp handle_rectify_definition.
+        expand_def; exfalso; tauto.
+      + find_eapply_lem_hyp handle_rectify_definition.
+        expand_def; exfalso; tauto.
+      + find_eapply_lem_hyp handle_rectify_definition.
+        expand_def; exfalso; tauto.
+    - find_eapply_lem_hyp end_query_definition; expand_def.
+      find_eapply_lem_hyp try_rectify_definition; expand_def;
+      try (exfalso; tauto).
+      + simpl in *.
+        find_eapply_lem_hyp start_query_definition; expand_def;
+        simpl in *; try break_or_hyp; try (exfalso; tauto).
+        break_match.
+        * find_inversion.
+          do 2 constructor.
+        * discriminate.
+    - admit. (* handle_stabilize *)
+    - find_eapply_lem_hyp end_query_definition.
+      expand_def.
+      find_eapply_lem_hyp try_rectify_definition.
+      expand_def.
+      simpl in *.
+      find_eapply_lem_hyp start_query_definition.
+      expand_def.
+      simpl in *; break_or_hyp; try (exfalso; tauto).
+      break_match; try discriminate.
+      repeat find_inversion.
+      do 2 constructor.
+    - find_eapply_lem_hyp end_query_definition.
+      expand_def.
+      find_eapply_lem_hyp try_rectify_definition.
+      expand_def.
+      simpl in *.
+      find_eapply_lem_hyp start_query_definition.
+      expand_def.
+      simpl in *; break_or_hyp; try (exfalso; tauto).
+      break_match; try discriminate.
+      repeat find_inversion.
+      do 2 constructor.
+    - simpl in *; break_or_hyp; try (exfalso; tauto).
+      do 2 constructor.
+    - simpl in *; break_or_hyp; try (exfalso; tauto).
+      do 2 constructor.
+      apply valid_ptr_intro.
+      + apply make_pointer_valid.
+      + assumption.
+    - find_eapply_lem_hyp end_query_definition.
+      expand_def.
+      find_eapply_lem_hyp try_rectify_definition.
+      expand_def.
+      simpl in *.
+      find_eapply_lem_hyp start_query_definition.
+      expand_def.
+      simpl in *; break_or_hyp; try (exfalso; tauto).
+      break_match; try discriminate.
+      repeat find_inversion.
+      do 2 constructor.
+    - find_eapply_lem_hyp start_query_definition.
+      expand_def.
+      simpl in *; break_or_hyp; try (exfalso; tauto).
+      repeat find_inversion.
+      do 2 constructor.
+    - admit. (* add_tick on end_query *)
   Admitted.
 
   Lemma valid_ptrs_global_timeouts :
@@ -2133,7 +2457,7 @@ Section ChordProof.
     forall gst gst',
       valid_ptrs_global gst ->
       step_dynamic gst gst' ->
-      valid_ptrs_net gst' (msgs gst').
+      valid_ptrs_net gst'.
   Proof.
     intros.
     break_step.

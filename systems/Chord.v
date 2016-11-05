@@ -251,7 +251,7 @@ Section Chord.
   Definition make_succs (head : pointer) (rest : list pointer) : list pointer :=
     chop_succs (head :: rest).
 
-  Definition handle_rectify (h : addr) (st : data) (my_pred : pointer) (q : query) (notifier : pointer) : res :=
+  Definition handle_rectify (st : data) (my_pred : pointer) (notifier : pointer) : res :=
     if between_bool (id_of my_pred) (id_of notifier) (id_of (ptr st))
     then (update_pred st notifier, [], [], [])
     else (st, [], [], []).
@@ -270,7 +270,7 @@ Section Chord.
          | Rectify notifier =>
            match msg with
            | Pong => match (pred st) with
-                     | Some p => end_query h (handle_rectify h st p q notifier)
+                     | Some p => end_query h (handle_rectify st p notifier)
                      | None => end_query h (update_pred st notifier, [], [], [])
                      end
            | _ => (st, [], [], [])
