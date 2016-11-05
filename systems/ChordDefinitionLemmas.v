@@ -3,7 +3,7 @@ Import ListNotations.
 
 Require Import StructTact.StructTactics.
 Require Import Verdi.Chord.
-Require Import Verdi.ChordProps.
+Require Import Verdi.ChordLocalProps.
 
 Section ChordDefinitionLemmas.
   Variable SUCC_LIST_LEN : nat.

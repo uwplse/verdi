@@ -4,7 +4,7 @@ Require Import StructTact.StructTactics.
 Require Import StructTact.Before.
 
 Require Import Verdi.Chord.
-Require Import Verdi.ChordProps.
+Require Import Verdi.ChordLocalProps.
 Require Import Verdi.ChordProof.
 Require Import Verdi.DynamicNet.
 Require Import Verdi.DynamicShed.

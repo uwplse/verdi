@@ -3,7 +3,7 @@ Require Import StructTact.Util.
 Require Import Verdi.DynamicNet.
 Require Import Verdi.Chord.
 Require Import Arith.
-Require Import Verdi.ChordProps.
+Require Import Verdi.ChordLocalProps.
 Require Coqlib.
 Require Import List.
 Import ListNotations.
