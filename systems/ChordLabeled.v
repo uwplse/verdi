@@ -14,7 +14,7 @@ Require Import mathcomp.ssreflect.ssrbool.
 
 Set Bullet Behavior "Strict Subproofs".
 
-Section LabeledChord.
+Section ChordLabeled.
   Variable SUCC_LIST_LEN : nat.
   Variable hash : addr -> id.
   Variable base : list addr.
@@ -1725,4 +1725,4 @@ Inductive further_succ_error_spec (gst : global_state) (h s : pointer) (n : nat)
       sigma gst (addr_of s1) = Some succ_st ->
       nth_error (succ_list succ_st) (n - 1) <> Some s ->
       further_succ_error_spec gst h s n 1.
-End LabeledChord.
+End ChordLabeled.
