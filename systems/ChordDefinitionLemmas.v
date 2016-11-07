@@ -5,6 +5,13 @@ Require Import StructTact.StructTactics.
 Require Import Verdi.Chord.
 Require Import Verdi.ChordLocalProps.
 
+
+Ltac expand_def :=
+  repeat (try break_or_hyp; try break_and; try break_exists);
+  subst_max;
+  try tuple_inversion;
+  try (exfalso; tauto).
+
 Section ChordDefinitionLemmas.
   Variable SUCC_LIST_LEN : nat.
   Variable N : nat.
@@ -16,12 +23,10 @@ Section ChordDefinitionLemmas.
   Notation handle_query_res := (handle_query_res SUCC_LIST_LEN hash).
   Notation handle_query_timeout := (handle_query_timeout hash).
   Notation make_pointer := (make_pointer hash).
-  Notation end_query := (end_query hash).
   Notation start_query := (start_query hash).
   Notation handle_stabilize := (handle_stabilize SUCC_LIST_LEN hash).
-  Notation try_rectify := (try_rectify hash).
+  Notation do_rectify := (do_rectify hash).
   Notation make_succs := (make_succs SUCC_LIST_LEN).
-
 
   (* Definition lemmas *)
   Lemma handle_query_req_busy_definition :
@@ -57,21 +62,21 @@ Section ChordDefinitionLemmas.
           p = Pong /\
           (exists pr,
               pred st = Some pr /\
-              end_query dst (handle_rectify st pr n) = (st', ms, newts, clearedts)) \/
+              end_query (handle_rectify st pr n) = (st', ms, newts, clearedts)) \/
           (pred st = None /\
-           end_query dst (update_pred st n, [], [], []) = (st', ms, newts, clearedts))) \/
+           end_query (update_pred st n, [], [], []) = (st', ms, newts, clearedts))) \/
       (q = Stabilize /\
        (exists new_succ succs,
            p = GotPredAndSuccs (Some new_succ) succs /\
            handle_stabilize dst (make_pointer src) st q new_succ succs = (st', ms, newts, clearedts)) \/
        (exists succs,
            p = GotPredAndSuccs None succs /\
-           end_query dst (st, [], [], []) = (st', ms, newts, clearedts))) \/
+           end_query (st, [], [], []) = (st', ms, newts, clearedts))) \/
       (exists new_succ,
           q = Stabilize2 new_succ /\
           exists succs,
             p = GotSuccList succs /\
-            end_query dst (update_succ_list st (make_succs new_succ succs),
+            end_query (update_succ_list st (make_succs new_succ succs),
                            [(addr_of new_succ, Notify)], [], []) = (st', ms, newts, clearedts)) \/
       (exists k,
           q = Join k /\
@@ -86,14 +91,14 @@ Section ChordDefinitionLemmas.
                ms = [(addr_of bestpred, (GetBestPredecessor (make_pointer dst)))] /\
                newts = [Request (addr_of bestpred) (GetBestPredecessor (make_pointer dst))])) \/
           (p = GotSuccList [] /\
-           end_query dst (st, [], [], []) = (st', ms, newts, clearedts)) \/
+           end_query (st, [], [], []) = (st', ms, newts, clearedts)) \/
           (exists new_succ rest,
               p = GotSuccList (new_succ :: rest) /\
               start_query (addr_of new_succ) st (Join2 new_succ) = (st', ms, newts, clearedts))) \/
       (exists new_succ succs,
           q = Join2 new_succ /\
           p = GotSuccList succs /\
-          add_tick (end_query dst (update_for_join st (make_succs new_succ succs), [], [], [])) = (st', ms, newts, clearedts)) \/
+          add_tick (end_query (update_for_join st (make_succs new_succ succs), [], [], [])) = (st', ms, newts, clearedts)) \/
       st' = st /\ ms = [] /\ newts = [] /\ clearedts = [].
   Proof.
     unfold handle_query_res.
@@ -152,21 +157,21 @@ Section ChordDefinitionLemmas.
               p = Pong /\
               (exists pr,
               pred st = Some pr /\
-              end_query dst (handle_rectify st pr n) = (st', ms, newts, clearedts)) \/
+              end_query (handle_rectify st pr n) = (st', ms, newts, clearedts)) \/
           (pred st = None /\
-           end_query dst (update_pred st n, [], [], []) = (st', ms, newts, clearedts))) \/
+           end_query (update_pred st n, [], [], []) = (st', ms, newts, clearedts))) \/
       (q = Stabilize /\
        (exists new_succ succs,
            p = GotPredAndSuccs (Some new_succ) succs /\
            handle_stabilize dst (make_pointer src) st q new_succ succs = (st', ms, newts, clearedts)) \/
        (exists succs,
            p = GotPredAndSuccs None succs /\
-           end_query dst (st, [], [], []) = (st', ms, newts, clearedts))) \/
+           end_query (st, [], [], []) = (st', ms, newts, clearedts))) \/
       (exists new_succ,
           q = Stabilize2 new_succ /\
           exists succs,
             p = GotSuccList succs /\
-            end_query dst (update_succ_list st (make_succs new_succ succs),
+            end_query (update_succ_list st (make_succs new_succ succs),
                            [(addr_of new_succ, Notify)], [], []) = (st', ms, newts, clearedts)) \/
       (exists k,
           q = Join k /\
@@ -181,14 +186,14 @@ Section ChordDefinitionLemmas.
                ms = [(addr_of bestpred, (GetBestPredecessor (make_pointer dst)))] /\
                newts = [Request (addr_of bestpred) (GetBestPredecessor (make_pointer dst))])) \/
           (p = GotSuccList [] /\
-           end_query dst (st, [], [], []) = (st', ms, newts, clearedts)) \/
+           end_query (st, [], [], []) = (st', ms, newts, clearedts)) \/
           (exists new_succ rest,
               p = GotSuccList (new_succ :: rest) /\
               start_query (addr_of new_succ) st (Join2 new_succ) = (st', ms, newts, clearedts))) \/
       (exists new_succ succs,
           q = Join2 new_succ /\
           p = GotSuccList succs /\
-          add_tick (end_query dst (update_for_join st (make_succs new_succ succs), [], [], [])) = (st', ms, newts, clearedts)) \/
+          add_tick (end_query (update_for_join st (make_succs new_succ succs), [], [], [])) = (st', ms, newts, clearedts)) \/
       st' = st /\ ms = [] /\ newts = [] /\ clearedts = []
       ) \/
 
@@ -205,70 +210,33 @@ Section ChordDefinitionLemmas.
         ms = [(src, GotPredAndSuccs (pred st) (succ_list st))]))) \/
 
       st = st' /\ ms = [] /\ newts = [] /\ clearedts = [].
-  Proof.
-    unfold recv_handler.
-    intros.
-    break_if.
-    - unfold handle_safe_msg, handle_notify in *.
-      find_apply_lem_hyp safe_msgs; break_or_hyp;
-      tuple_inversion; intuition.
-    - repeat break_match.
-      + find_eapply_lem_hyp handle_query_req_busy_definition.
-        repeat break_and.
-        find_apply_lem_hyp is_request_same_as_request_payload.
-        do 2 right. left.
-        repeat eexists; left; split; eauto.
-        repeat split.
-        repeat break_and.
-        break_or_hyp; intuition eauto.
-      + find_eapply_lem_hyp handle_query_res_definition.
-        do 2 right. left.
-        repeat eexists; intuition eauto.
-      + unfold handle_query_req in *.
-        break_match;
-          try discriminate;
-          repeat find_inversion;
-          try tuple_inversion;
-          intuition eauto.
-      + tuple_inversion; intuition eauto.
-      + tuple_inversion; intuition eauto.
-  Qed.
+  Admitted.
 
-  Lemma try_rectify_definition :
-    forall h st ms nts cts st' ms' nts' cts',
-      try_rectify h (st, ms, nts, cts) = (st', ms', nts', cts') ->
-      (joined st = true /\
+  Lemma do_rectify_definition :
+    forall h st st' ms' nts' cts',
+      do_rectify h st = (st', ms', nts', cts') ->
+      (cur_request st = None /\
+       joined st = true /\
        (exists new,
            rectify_with st = Some new /\
-           (exists x sq_ms sq_nts sq_cts,
+           (exists x,
                pred st = Some x /\
-               start_query h (clear_rectify_with st) (Rectify new) = (st', sq_ms, sq_nts, sq_cts) /\
-               ms' = ms ++ sq_ms /\
-               nts' = nts ++ sq_nts /\
-               cts' = cts ++ sq_cts) \/
+               start_query h (clear_rectify_with st) (Rectify new) = (st', ms', nts', cts')) \/
            (pred st = None /\
             st' = clear_rectify_with (update_pred st new) /\
-            ms' = ms /\
-            nts' = nts /\
-            cts' = cts))) \/
-      ((joined st = false \/ rectify_with st = None) /\
-       (st', ms', nts', cts') = (st, ms, nts, cts)).
+            ms' = [] /\
+            nts' = [] /\
+            cts' = []))) \/
+      ((joined st = false \/ rectify_with st = None \/ exists r, cur_request st = Some r) /\
+       st' = st /\ ms' = [] /\ nts' = [] /\ cts' = []).
   Proof.
-    unfold try_rectify.
+    unfold do_rectify.
     intros.
-    repeat break_match; tuple_inversion.
+    repeat break_match; try tuple_inversion; try tauto.
+    - firstorder eauto.
+    - firstorder eauto.
     - left.
-      split; eauto.
-      intuition eauto.
-      exists p.
-      left.
-      intuition eauto.
-      repeat eexists; intuition eauto.
-    - left.
-      split; try tauto.
-      eexists; right; split; eauto.
-    - tauto.
-    - tauto.
+      repeat (eexists; firstorder).
   Qed.
 
   Lemma start_query_definition : 
@@ -295,32 +263,32 @@ Section ChordDefinitionLemmas.
 
   Lemma handle_delayed_queries_definition :
     forall h st st' ms nts cts,
-     handle_delayed_queries h st = (st', ms, nts, cts) ->
-     st' = clear_delayed_queries st /\
-     ms = concat (map (handle_delayed_query h st) (delayed_queries st)) /\
-     nts = [] /\
-     cts = [KeepaliveTick].
+     do_delayed_queries h st = (st', ms, nts, cts) ->
+     (exists r, cur_request st = Some r /\
+           st' = st /\ ms = [] /\ nts = [] /\ cts = []) \/
+     (cur_request st = None /\
+      st' = clear_delayed_queries st /\
+      ms = concat (map (handle_delayed_query h st) (delayed_queries st)) /\
+      nts = [] /\
+      cts = [KeepaliveTick]).
   Proof.
-    unfold handle_delayed_queries.
+    unfold do_delayed_queries.
     intros.
-    tuple_inversion.
-    intuition eauto.
+    repeat break_match; tuple_inversion;
+    [left; eexists|]; tauto.
   Qed.
 
   Lemma end_query_definition :
-    forall h st ms newts clearedts st' ms' newts' clearedts',
-      end_query h (st, ms, newts, clearedts) = (st', ms', newts', clearedts') ->
-      exists st'' ms'',
-        handle_delayed_queries h (clear_query st) = (st'', ms'', [], [KeepaliveTick]) /\
-        try_rectify h (st'', ms'' ++ ms, newts, timeouts_in st ++ [KeepaliveTick] ++ clearedts) = (st', ms', newts', clearedts').
+    forall st ms newts clearedts st' ms' newts' clearedts',
+      end_query (st, ms, newts, clearedts) = (st', ms', newts', clearedts') ->
+      st' = clear_query st /\
+      ms' = ms /\
+      newts' = newts /\
+      clearedts' = timeouts_in st ++ clearedts.
   Proof.
-    unfold end_query.
+    unfold end_query; simpl.
     intros.
-    repeat break_let.
-    find_apply_lem_hyp handle_delayed_queries_definition.
-    repeat (break_and || break_or_hyp || break_exists).
-    subst_max.
-    repeat eexists; eauto.
+    tuple_inversion; tauto.
   Qed.
 
   Lemma handle_rectify_definition :
@@ -340,11 +308,4 @@ Section ChordDefinitionLemmas.
     break_if; tuple_inversion; firstorder.
   Qed.
 
-  Ltac expand_def :=
-    repeat (try break_or_hyp; try break_and; try break_exists);
-    subst_max;
-    try tuple_inversion;
-    try (exfalso; tauto).
-
 End ChordDefinitionLemmas.
-

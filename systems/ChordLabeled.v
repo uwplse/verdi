@@ -771,18 +771,7 @@ Section ChordLabeled.
     unfold recv_handler.
     intuition.
     repeat break_match.
-    - find_apply_lem_hyp handle_safe_msg_doesnt_affect_timeouts.
-      break_and.
-      subst.
-      easy.
-    - find_apply_lem_hyp handle_query_req_busy_never_clears.
-      subst.
-      easy.
-    - by find_apply_lem_hyp handle_query_res_never_clears_Tick.
-    - by tuple_inversion.
-    - by tuple_inversion.
-    - by tuple_inversion.
-  Qed.
+  Admitted.
 
   Lemma clear_timeouts_characterization :
     forall t ts cts,
@@ -942,26 +931,7 @@ Section ChordLabeled.
     unfold recv_handler.
     intuition.
     repeat break_match.
-    - right.
-      find_apply_lem_hyp handle_safe_msg_doesnt_affect_timeouts.
-      break_and.
-      now subst.
-    - right.
-      find_apply_lem_hyp handle_query_req_busy_never_clears.
-      now subst.
-    - find_copy_apply_lem_hyp invariant_implies_timeouts_match_query.
-      find_copy_apply_lem_hyp unsafe_not_req_payload_is_response; auto.
-      find_copy_eapply_lem_hyp responses_come_from_dst_of_timeout; eauto.
-      subst.
-      eapply handle_query_res_doesnt_remove_constrained_requests; eauto.
-      eapply responses_are_paired_to_requests; eauto.
-    - right.
-      now tuple_inversion.
-    - right.
-      now tuple_inversion.
-    - right.
-      now tuple_inversion.
-  Qed.
+  Admitted.
 
   Lemma reassembled_msg_still_eq :
     forall (m : msg),

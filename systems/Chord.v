@@ -21,7 +21,7 @@ Section Chord.
   Definition pointer_eq_dec : forall x y : pointer,
       {x = y} + {x <> y}.
   Proof.
-    decide equality; auto using Nat.eq_dec.
+    repeat decide equality.
   Defined.
   Definition make_pointer (a : addr) : pointer := (hash a, a).
 
@@ -45,7 +45,7 @@ Section Chord.
   Definition payload_eq_dec : forall x y : payload,
       {x = y} + {x <> y}.
   Proof.
-    decide equality; auto using pointer_eq_dec, list_eq_dec, option_eq_dec.
+    repeat decide equality.
   Defined.
 
   Inductive timeout :=
@@ -55,7 +55,7 @@ Section Chord.
   Definition timeout_eq_dec : forall x y : timeout,
       {x = y} + {x <> y}.
   Proof.
-    decide equality; auto using addr_eq_dec, payload_eq_dec.
+    repeat decide equality.
   Defined.
 
   Inductive query :=
@@ -248,17 +248,20 @@ Section Chord.
       | None => []
     end.
 
-  Definition handle_delayed_queries (h : addr) (st : data) : res :=
-    let sends := map (handle_delayed_query h st) (delayed_queries st) in
-    (clear_delayed_queries st, concat sends, [], [KeepaliveTick]).
+  Definition do_delayed_queries (h : addr) (st : data) : res :=
+    match cur_request st with
+    | Some _ => (st, [], [], [])
+    | None =>
+      let sends := map (handle_delayed_query h st) (delayed_queries st) in
+      (clear_delayed_queries st, concat sends, [], [KeepaliveTick])
+    end.
 
   (* need to prove that this never gets called with requests in the sends of r *)
-  Definition end_query (h : addr) (r : res) : res :=
+  Definition end_query (r : res) : res :=
     let '(st, outs, nts, cts) := r in
-    let st' := clear_query st in
-    let '(st'', delayed_sends, nts', cts') := handle_delayed_queries h st' in
     let clearreq := timeouts_in st in
-    try_rectify h (st'', delayed_sends ++ outs, nts' ++ nts, clearreq ++ cts' ++ cts).
+    let st' := clear_query st in
+    (st', outs, nts, clearreq ++ cts).
 
   Definition ptrs_to_addrs : list (pointer * payload) -> list (addr * payload) :=
     map (fun p => (addr_of (fst p), (snd p))).
@@ -278,7 +281,7 @@ Section Chord.
     let new_st := update_succ_list st (make_succs src succs) in
     if between_bool (id_of (ptr st)) (id_of new_succ) (id_of src)
     then start_query h new_st (Stabilize2 new_succ)
-    else end_query h (new_st, [(addr_of src, Notify)], [], []).
+    else end_query (new_st, [(addr_of src, Notify)], [], []).
 
   Definition handle_query_res (src : addr) (h : addr) (st : data) (qdst : pointer) (q : query) (msg : payload) : res :=
     if payload_eq_dec msg Busy
@@ -288,8 +291,8 @@ Section Chord.
          | Rectify notifier =>
            match msg with
            | Pong => match (pred st) with
-                     | Some p => end_query h (handle_rectify st p notifier)
-                     | None => end_query h (update_pred st notifier, [], [], [])
+                     | Some p => end_query (handle_rectify st p notifier)
+                     | None => end_query (update_pred st notifier, [], [], [])
                      end
            | _ => (st, [], [], [])
            end
@@ -298,13 +301,13 @@ Section Chord.
            | GotPredAndSuccs new_succ succs =>
              match new_succ with
              | Some ns => (handle_stabilize h (make_pointer src) st q ns succs)
-             | None => end_query h (st, [], [], [])
+             | None => end_query (st, [], [], [])
              end
            | _ => (st, [], [], [])
            end
          | Stabilize2 new_succ =>
            match msg with
-           | GotSuccList succs => end_query h (update_succ_list st (make_succs new_succ succs),
+           | GotSuccList succs => end_query (update_succ_list st (make_succs new_succ succs),
                                                [(addr_of new_succ, Notify)], [], [])
            | _ => (st, [], [], [])
            end
@@ -319,7 +322,7 @@ Section Chord.
                                      else (st, [(a, gbp)], [Request a gbp], [oldt])
            | GotSuccList l =>
              match l with
-             | [] => end_query h (st, [], [], []) (* this is bad *)
+             | [] => end_query (st, [], [], []) (* this is bad *)
              | (new_succ :: _) => start_query (addr_of new_succ) st (Join2 new_succ)
              end
            | _ => (st, [], [], [])
@@ -327,7 +330,7 @@ Section Chord.
          | Join2 new_succ =>
            match msg with
            | GotSuccList l => let succs := make_succs new_succ l in
-                              add_tick (end_query h (update_for_join st succs, [], [], []))
+                              add_tick (end_query (update_for_join st succs, [], [], []))
            | _ => (st, [], [], [])
            end
          end.
@@ -354,7 +357,7 @@ Section Chord.
     | _ => (st, [], [], [])
     end.
 
-  Definition recv_handler (src : addr) (dst : addr) (st : data) (msg : payload) : res :=
+  Definition handle_msg (src : addr) (dst : addr) (st : data) (msg : payload) : res :=
     if is_safe msg
     then handle_safe_msg src dst st msg
     else match cur_request st with
@@ -371,6 +374,12 @@ Section Chord.
            (* drops leftover Busy messages on the floor *)
            else (st, [], [], [])
          end.
+
+  Definition recv_handler (src : addr) (dst : addr) (st : data) (msg : payload) : res :=
+    let '(st, ms1, nts1, cts1) := handle_msg src dst st msg in
+    let '(st, ms2, nts2, cts2) := do_delayed_queries dst st in
+    let '(st, ms3, nts3, cts3) := do_rectify dst st in
+    (st, ms1 ++ ms2 ++ ms3, nts1 ++ nts2 ++ nts3, cts1 ++ cts2 ++ cts3).
 
   Definition pi {A B C D : Type} (t : A * B * C * D) : A * B * C :=
     let '(a, b, c, d) := t in (a, b, c).
@@ -400,19 +409,19 @@ Section Chord.
 
   Definition handle_query_timeout (h : addr) (st : data) (dead : pointer) (q : query) : res :=
     match q with
-      | Rectify notifier => end_query h (update_pred st notifier, [], [], [])
+      | Rectify notifier => end_query (update_pred st notifier, [], [], [])
       | Stabilize =>
         match succ_list st with
           | _ :: rest => start_query h (update_succ_list st rest) Stabilize
-          | [] => end_query h (st, [], [], []) (* should not happen in a good network (TODO add axiom?) *)
+          | [] => end_query (st, [], [], []) (* should not happen in a good network (TODO add axiom?) *)
         end
       | Stabilize2 new_succ =>
         match succ_list st with
-          | next :: _ => end_query h (st, [(addr_of next, Notify)], [], [])
-          | [] => end_query h (st, [], [], []) (* again, this shouldn't happen (TODO prove this) *)
+          | next :: _ => end_query (st, [(addr_of next, Notify)], [], [])
+          | [] => end_query (st, [], [], []) (* again, this shouldn't happen (TODO prove this) *)
         end
-      | Join known => end_query h (st, [], [], [])
-      | Join2 new_succ => end_query h (st, [], [], [])
+      | Join known => end_query (st, [], [], [])
+      | Join2 new_succ => end_query (st, [], [], [])
     end.
 
   Definition send_keepalives (st : data) : list (addr * payload) :=
