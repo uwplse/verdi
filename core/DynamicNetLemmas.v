@@ -23,7 +23,7 @@ forall net failed tr,
  step_ordered_dynamic_failure_star step_ordered_dynamic_failure_init (failed, net) tr ->
  forall n, ~ In n (odnwNodes net) ->
  odnwState net n = None.
-Proof.
+Proof using.
 move => net failed tr H.
 remember step_ordered_dynamic_failure_init as y in *.
 have ->: net = snd (failed, net) by [].
@@ -62,7 +62,7 @@ forall net failed tr,
  step_ordered_dynamic_failure_star step_ordered_dynamic_failure_init (failed, net) tr ->
  forall n, In n (odnwNodes net) ->
  exists d, odnwState net n = Some d.
-Proof.
+Proof using.
 move => net failed tr H.
 remember step_ordered_dynamic_failure_init as y in *.
 have ->: net = snd (failed, net) by [].
@@ -102,7 +102,7 @@ forall net failed tr,
  step_ordered_dynamic_failure_star step_ordered_dynamic_failure_init (failed, net) tr ->
  forall n, In n failed ->
  In n (odnwNodes net).
-Proof.
+Proof using.
 move => net failed tr H.
 remember step_ordered_dynamic_failure_init as y in *.
 have ->: failed = fst (failed, net) by [].
@@ -132,7 +132,7 @@ forall net failed tr,
  step_ordered_dynamic_failure_star step_ordered_dynamic_failure_init (failed, net) tr ->
  forall n, ~ In n (odnwNodes net) ->
  ~ In n failed.
-Proof.
+Proof using.
 move => net failed tr H.
 remember step_ordered_dynamic_failure_init as y in *.
 have ->: failed = fst (failed, net) by [].
@@ -164,7 +164,7 @@ forall onet failed tr,
   step_ordered_dynamic_failure_star step_ordered_dynamic_failure_init (failed, onet) tr -> 
   forall n, ~ In n (odnwNodes onet) ->
   forall n', onet.(odnwPackets) n n' = [].
-Proof.
+Proof using.
 move => net failed tr H.
 remember step_ordered_dynamic_failure_init as y in *.
 have ->: net = snd (failed, net) by [].
@@ -206,7 +206,7 @@ Lemma ordered_dynamic_nodes_no_dup :
 forall onet failed tr,
   step_ordered_dynamic_failure_star step_ordered_dynamic_failure_init (failed, onet) tr -> 
   NoDup (odnwNodes onet).
-Proof.
+Proof using.
 move => net failed tr H.
 remember step_ordered_dynamic_failure_init as y in *.
 have ->: net = snd (failed, net) by [].

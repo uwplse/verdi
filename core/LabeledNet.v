@@ -83,7 +83,7 @@ Section LabeledStepExecution.
 
   Lemma strong_local_fairness_invar :
     forall step e silent s, strong_local_fairness step silent (Cons e s) -> strong_local_fairness step silent s.
-  Proof. 
+  Proof using. 
     unfold strong_local_fairness. unfold inf_enabled, inf_occurred, inf_often. 
     intros step e silent s fair l neq alev. 
     assert (alevt_es: always (eventually (now (l_enabled step l))) (Cons e s)).
@@ -96,7 +96,7 @@ Section LabeledStepExecution.
 
   Lemma strong_local_fairness_extensional :
     forall step silent, extensional (strong_local_fairness step silent).
-  Proof.
+  Proof using.
     move => step silent.
     rewrite /extensional /strong_local_fairness /inf_enabled /inf_occurred /=.
     move => s1 s2 H_eq H_s1 l' H_neq' H_en.
@@ -116,7 +116,7 @@ Section LabeledStepExecution.
 
   Lemma weak_local_fairness_invar :
     forall step e silent s, weak_local_fairness step silent (Cons e s) -> weak_local_fairness step silent s.
-  Proof.
+  Proof using.
     unfold weak_local_fairness. unfold cont_enabled, inf_occurred, continuously, inf_often.
     intros step e silent s fair a neq eval.
     assert (eval_es: eventually (always (now (l_enabled step a))) (Cons e s)).
@@ -129,7 +129,7 @@ Section LabeledStepExecution.
 
   Lemma weak_local_fairness_extensional :
     forall step silent, extensional (weak_local_fairness step silent).
-  Proof.
+  Proof using.
   move => step silent.
   rewrite /extensional /weak_local_fairness /cont_enabled /inf_occurred /=.
   move => s1 s2 H_eq H_s1 l' H_neq' H_en.
@@ -149,7 +149,7 @@ Section LabeledStepExecution.
 
   Lemma strong_local_fairness_weak :
     forall step silent s, strong_local_fairness step silent s -> weak_local_fairness step silent s.
-  Proof.
+  Proof using.
   move => step silent.
   case => e s.
   rewrite /strong_local_fairness /weak_local_fairness /inf_enabled /cont_enabled.
@@ -167,14 +167,14 @@ Section LabeledStepExecution.
 
   Lemma lb_step_execution_invar :
     forall step x s, lb_step_execution step (Cons x s) -> lb_step_execution step s.
-  Proof.
+  Proof using.
     intros step x s e. change (lb_step_execution step (tl (Cons x s))).
     destruct e; simpl. assumption. 
   Qed.
 
   Lemma lb_step_execution_extensional :
     forall step, extensional (lb_step_execution step).
-  Proof.
+  Proof using.
   move => step.
   rewrite /extensional /=.
   cofix c.
@@ -206,7 +206,7 @@ Section LabeledStepExecution.
       forall s, event_step_star step init (hd s) ->
       lb_step_execution lb_step s ->
       always (now (event_step_star step init)) s.
-  Proof.
+  Proof using.
     move => lb_step step init H_r.
     case => e s H_star.
     move: e s H_star.
@@ -247,7 +247,7 @@ Section LabeledStepAsync.
 
   Lemma step_async_star_lb_step_reachable :
     step_star_lb_step_reachable lb_step_async step_async step_async_init.
-  Proof.
+  Proof using.
     rewrite /step_star_lb_step_reachable.
     move => net l.
     move => net' tr tr' H_star H_st.
@@ -275,7 +275,7 @@ Section LabeledStepAsync.
     forall s, event_step_star step_async step_async_init (hd s) ->
          lb_step_execution lb_step_async s ->
          always (now (event_step_star step_async step_async_init)) s.
-  Proof.
+  Proof using.
     apply: step_star_lb_step_execution.
     exact: step_async_star_lb_step_reachable.
   Qed.
@@ -304,7 +304,7 @@ Section LabeledStepFailure.
 
   Lemma step_failure_star_lb_step_reachable :
     step_star_lb_step_reachable lb_step_failure step_failure step_failure_init.
-  Proof.
+  Proof using.
     rewrite /step_star_lb_step_reachable.
     case => failed net l.
     case => failed' net' tr tr' H_star H_st.
@@ -332,7 +332,7 @@ Section LabeledStepFailure.
     forall s, event_step_star step_failure step_failure_init (hd s) ->
          lb_step_execution lb_step_failure s ->
          always (now (event_step_star step_failure step_failure_init)) s.
-  Proof.
+  Proof using.
   apply: step_star_lb_step_execution.
   exact: step_failure_star_lb_step_reachable.
   Qed.
@@ -364,7 +364,7 @@ Section LabeledStepOrderFailure.
 
   Lemma step_ordered_failure_star_lb_step_reachable :
     step_star_lb_step_reachable lb_step_ordered_failure step_ordered_failure step_ordered_failure_init.
-  Proof.
+  Proof using.
     rewrite /step_star_lb_step_reachable.
     case => failed net l.
     case => failed' net' tr tr' H_star H_st.
@@ -392,7 +392,7 @@ Section LabeledStepOrderFailure.
     forall s, event_step_star step_ordered_failure step_ordered_failure_init (hd s) ->
          lb_step_execution lb_step_ordered_failure s ->
          always (now (event_step_star step_ordered_failure step_ordered_failure_init)) s.
-  Proof.
+  Proof using.
   apply: step_star_lb_step_execution.
   exact: step_ordered_failure_star_lb_step_reachable.
   Qed.
@@ -432,7 +432,7 @@ Section LabeledStepOrderDynamicFailure.
 
   Lemma step_ordered_dynamic_failure_star_lb_step_reachable :
     step_star_lb_step_reachable lb_step_ordered_dynamic_failure step_ordered_dynamic_failure step_ordered_dynamic_failure_init.
-  Proof.
+  Proof using.
     rewrite /step_star_lb_step_reachable.
     case => failed net l.
     case => failed' net' tr tr' H_star H_st.
@@ -460,7 +460,7 @@ Section LabeledStepOrderDynamicFailure.
     forall s, event_step_star step_ordered_dynamic_failure step_ordered_dynamic_failure_init (hd s) ->
          lb_step_execution lb_step_ordered_dynamic_failure s ->
          always (now (event_step_star step_ordered_dynamic_failure step_ordered_dynamic_failure_init)) s.
-  Proof.
+  Proof using.
     apply: step_star_lb_step_execution.
     exact: step_ordered_dynamic_failure_star_lb_step_reachable.
   Qed.

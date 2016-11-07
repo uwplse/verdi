@@ -169,7 +169,7 @@ Definition pt_map_net (net : @network _ multi_fst) : @network _ multi_snd :=
 
 Lemma pt_init_handlers_fun_eq : 
     init_handlers = fun n : name => pt_map_data (init_handlers (tot_map_name_inv n)).
-Proof.
+Proof using name_map_bijective multi_map_congr msg_map.
 apply functional_extensionality => n.
 have H_eq := pt_init_handlers_eq.
 rewrite H_eq {H_eq}.
@@ -179,7 +179,7 @@ Qed.
 Lemma pt_map_name_msgs_app_distr : 
   forall l l',
   pt_map_name_msgs (l ++ l') = pt_map_name_msgs l ++ pt_map_name_msgs l'.
-Proof.
+Proof using.
 elim => //=.
 case => n m l IH l'.
 rewrite /= IH.
@@ -189,7 +189,7 @@ Qed.
 Lemma pt_map_packets_app_distr : 
   forall l l',
   pt_map_packets (l ++ l') = pt_map_packets l ++ pt_map_packets l'.
-Proof.
+Proof using.
 elim => //=.
 move => n l IH l'.
 rewrite /= IH.
@@ -200,7 +200,7 @@ Lemma pt_map_name_msgs_empty_eq :
   forall l dst,
   pt_map_name_msgs l = [] ->
   pt_map_packets (map (fun m0 : name * msg => {| pSrc := dst; pDst := fst m0; pBody := snd m0 |}) l) = [].
-Proof.
+Proof using.
 elim => //=.
 case => n m l IH dst.
 case H_m: pt_map_msg => [m'|] //=.
@@ -212,7 +212,7 @@ Lemma pt_map_packet_map_eq :
   forall l h,
     pt_map_packets (map (fun m : name * msg => {| pSrc := h; pDst := fst m; pBody := snd m |}) l) = 
     map (fun m : name * msg => {| pSrc := tot_map_name h; pDst := fst m; pBody := snd m |}) (pt_map_name_msgs l).
-Proof.
+Proof using.
 move => l h.
 elim: l => //=.
 case => n m l IH.
@@ -225,7 +225,7 @@ Lemma pt_map_packet_map_eq_some :
     pt_map_packet p = Some p' ->
     pt_map_packets (map (fun m : name * msg => {| pSrc := pDst p; pDst := fst m; pBody := snd m |}) l) = 
     map (fun m : name * msg => {| pSrc := pDst p'; pDst := fst m; pBody := snd m |}) (pt_map_name_msgs l).
-Proof.
+Proof using.
 move => l; case => /= src dst m p.
 case H_m: (pt_map_msg m) => [m'|] // H_eq.
 injection H_eq => H_eq_p.
@@ -237,7 +237,7 @@ Lemma pt_map_update_eq :
 forall f h d,
   (fun n : name => pt_map_data (update name_eq_dec f h d (tot_map_name_inv n))) =
   update name_eq_dec (fun n : name => pt_map_data (f (tot_map_name_inv n))) (tot_map_name h) (pt_map_data d).
-Proof.
+Proof using name_map_bijective.
 move => f h d.
 apply functional_extensionality => n.
 rewrite /update /=.
@@ -253,7 +253,7 @@ Lemma pt_map_update_eq_some :
     pt_map_packet p = Some p' ->
     (fun n : name => pt_map_data (update name_eq_dec (nwState net) (pDst p) d (tot_map_name_inv n))) =
     update name_eq_dec (fun n : name => pt_map_data (nwState net (tot_map_name_inv n))) (pDst p') (pt_map_data d).
-Proof.
+Proof using name_map_bijective.
 move => net d p p'.
 case: p => src dst m.
 case: p' => src' dst' m' /=.
@@ -275,7 +275,7 @@ Theorem step_async_pt_mapped_simulation_1 :
     @step_async _ multi_fst net net' tr ->
     @step_async _ multi_snd (pt_map_net net) (pt_map_net net') (pt_map_trace tr) \/ 
     (pt_map_net net' = pt_map_net net /\ pt_trace_remove_empty_out (pt_map_trace tr) = []).
-Proof.
+Proof using name_map_bijective multi_map_congr.
 move => net net' tr.
 case => {net net' tr}.
 - move => net net' p ms ms' out d l H_eq H_hnd H_eq'.
@@ -367,7 +367,7 @@ Qed.
 Lemma pt_map_trace_app_distr : 
   forall tr1 tr2,
   pt_map_trace (tr1 ++ tr2) = pt_map_trace tr1 ++ pt_map_trace tr2.
-Proof.
+Proof using.
 elim => //.
 case => n.
 case.
@@ -383,7 +383,7 @@ Qed.
 Lemma pt_trace_remove_empty_out_app_distr :
   forall tr1 tr2,
     pt_trace_remove_empty_out (tr1 ++ tr2 ) = pt_trace_remove_empty_out tr1 ++ pt_trace_remove_empty_out tr2.
-Proof.
+Proof using.
 elim => //.
 case => n.
 case.
@@ -399,7 +399,7 @@ Corollary step_async_pt_mapped_simulation_star_1 :
     @step_async_star _ multi_fst step_async_init net tr ->
     exists tr', @step_async_star _ multi_snd step_async_init (pt_map_net net) tr' /\ 
      pt_trace_remove_empty_out (pt_map_trace tr) = pt_trace_remove_empty_out tr'.
-Proof.
+Proof using name_map_bijective multi_map_congr.
 move => net tr H_step.
 remember step_async_init as y in *.
 move: Heqy.
@@ -442,7 +442,7 @@ Theorem step_failure_pt_mapped_simulation_1 :
     @step_failure _ _ fail_fst (failed, net) (failed', net') tr ->
     @step_failure _ _ fail_snd (map tot_map_name failed, pt_map_net net) (map tot_map_name failed', pt_map_net net') (pt_map_trace tr) \/ 
     (pt_map_net net' = pt_map_net net /\ failed = failed' /\ pt_trace_remove_empty_out (pt_map_trace tr) = []).
-Proof.
+Proof using name_map_bijective multi_map_congr fail_map_congr.
 move => net net' failed failed' tr H_step.
 invcs H_step.
 - rewrite /pt_map_trace /=.
@@ -565,7 +565,7 @@ Corollary step_failure_pt_mapped_simulation_star_1 :
     @step_failure_star _ _ fail_fst step_failure_init (failed, net) tr ->
     exists tr', @step_failure_star _ _ fail_snd step_failure_init (map tot_map_name failed, pt_map_net net) tr' /\ 
      pt_trace_remove_empty_out (pt_map_trace tr) = pt_trace_remove_empty_out tr'.
-Proof.
+Proof using name_map_bijective multi_map_congr fail_map_congr.
 move => net failed tr H_step.
 remember step_failure_init as y in *.
 have H_eq_f: failed = fst (failed, net) by [].
@@ -623,7 +623,7 @@ Lemma pt_map_msg_update2 :
     (fun src dst => pt_map_msgs (update2 name_eq_dec f from to ms (tot_map_name_inv src) (tot_map_name_inv dst))) =
     update2 name_eq_dec (fun src0 dst0 : name => pt_map_msgs (f (tot_map_name_inv src0) (tot_map_name_inv dst0)))
         (tot_map_name from) (tot_map_name to) (pt_map_msgs ms).
-Proof.
+Proof using name_map_bijective.
 move => f ms to from.
 apply functional_extensionality => src.
 apply functional_extensionality => dst.
@@ -646,7 +646,7 @@ Qed.
 Lemma pt_map_msgs_app_distr : 
   forall ms ms',
   pt_map_msgs (ms ++ ms') = pt_map_msgs ms ++ pt_map_msgs ms'.
-Proof.
+Proof using.
 elim => //=.
 move => m ms IH ms'.
 rewrite /= IH.
@@ -657,7 +657,7 @@ Lemma collate_pt_map_eq :
   forall f h l,
     (fun src dst => pt_map_msgs (collate name_eq_dec h f l (tot_map_name_inv src) (tot_map_name_inv dst))) =
     collate name_eq_dec (tot_map_name h) (fun src dst => pt_map_msgs (f (tot_map_name_inv src) (tot_map_name_inv dst))) (pt_map_name_msgs l).
-Proof.
+Proof using name_map_bijective.
 move => f h l.
 elim: l h f => //.
 case => n m l IH h f.
@@ -703,7 +703,7 @@ Lemma collate_pt_map_update2_eq :
                 pt_map_msgs
                   (f (tot_map_name_inv src) (tot_map_name_inv dst))) (tot_map_name from)
                (tot_map_name to) (pt_map_msgs ms)) (pt_map_name_msgs l).
-Proof.
+Proof using name_map_bijective.
 move => f from to ms l.
 rewrite -pt_map_msg_update2.
 by rewrite collate_pt_map_eq.
@@ -733,7 +733,7 @@ fold_right (fun e l =>
 
 Lemma pt_map_traces_app : forall tr tr',
   pt_map_traces (tr ++ tr') = pt_map_traces tr ++ pt_map_traces tr'.
-Proof.
+Proof using.
 elim => //=.
 move => occ tr IH tr'.
 by case pt_map_trace_ev => [p|]; rewrite IH.
@@ -743,7 +743,7 @@ Lemma pt_map_traces_outputs_eq :
   forall out to,
     pt_map_traces (map2fst to (map inr out)) =
     map2fst (tot_map_name to) (map inr (pt_map_outputs out)).
-Proof.
+Proof using.
 elim => //=.
 move => o out IH to.
 by case pt_map_output => [o'|]; rewrite IH.
@@ -754,7 +754,7 @@ Theorem step_ordered_pt_mapped_simulation_1 :
     @step_ordered _ multi_fst net net' tr ->
     @step_ordered _ multi_snd (pt_map_onet net) (pt_map_onet net') (pt_map_traces tr) \/ 
     pt_map_onet net' = pt_map_onet net /\ pt_map_traces tr = [].
-Proof.
+Proof using name_map_bijective multi_map_congr.
 move => net net' tr.
 case => {net net' tr}.
 - move => net net' tr m ms out d l from to H_eq H_hnd H_eq' H_eq_tr.
@@ -837,7 +837,7 @@ Corollary step_ordered_pt_mapped_simulation_star_1 :
   forall net tr,
     @step_ordered_star _ multi_fst step_ordered_init net tr ->
     @step_ordered_star _ multi_snd step_ordered_init (pt_map_onet net) (pt_map_traces tr).
-Proof.
+Proof using name_map_bijective multi_map_congr.
 move => net tr H_step.
 remember step_ordered_init as y in *.
 move: Heqy.
@@ -870,7 +870,7 @@ Lemma pt_msg_in_map :
          | None => l'
          end) [] l) ->
 pt_map_msg m = Some m'.
-Proof.
+Proof using.
 move => m.
 elim => //=.
 case => /= n m' l IH n' m0 H_in.
@@ -903,7 +903,7 @@ Lemma pt_map_in_in :
          | Some m0 => (tot_map_name (fst nm), m0) :: l'
          | None => l'
          end) [] l).
-Proof.
+Proof using name_map_bijective.
 move => m m0 n.
 elim => //=.
 case => /= n' m' l IH H_fail H_in.
@@ -946,7 +946,7 @@ Lemma nodup_pt_map :
          | Some m => (tot_map_name (fst nm), m) :: l
          | None => l
          end) [] nms).
-Proof.
+Proof using name_map_bijective.
 move => m.
 elim => /=.
   move => H_m H_nd.
@@ -985,7 +985,7 @@ Lemma pt_map_in_snd :
                | None => l
                end) [] (map2snd m' (filter_rel adjacent_to_dec h ns))) ->
    snd nm = m.
-Proof.
+Proof using.
 move => m m' h.
 elim => //=.
 move => n ns IH.
@@ -1013,7 +1013,7 @@ In (n, m') (fold_right
                | None => l
                end) [] l) ->
 In (tot_map_name_inv n, m) l.
-Proof.
+Proof using name_map_bijective.
 move => m m'.
 elim => //=.
 case => /= n m0 l IH n' H_eq H_in.
@@ -1049,7 +1049,7 @@ Lemma in_pt_map_map_pair :
                   | Some m0 => (tot_map_name (fst nm), m0) :: l
                   | None => l
                   end) [] l).
-Proof.
+Proof using name_map_bijective.
 move => m m'.
 elim => //=.
 case => n m0 /= l IH n' H_eq H_in.
@@ -1093,7 +1093,7 @@ Lemma pt_nodup_perm_map_map_pair_perm :
                | None => l
                end) [] (map2snd m (filter_rel adjacent_to_dec h (remove_all name_eq_dec failed ns))))
     (map2snd m' (filter_rel adjacent_to_dec (tot_map_name h) (remove_all name_eq_dec (map tot_map_name failed) ns'))).
-Proof.
+Proof using overlay_map_congr name_map_bijective.
 move => m m' h failed ns ns' H_nd H_pm H_eq.
 apply NoDup_Permutation; last split.
 - apply (@nodup_pt_map m); first exact: in_map2snd_snd.
@@ -1159,7 +1159,7 @@ Lemma pt_map_map_pair_eq :
                | None => l
                end) [] (map2snd m (filter_rel adjacent_to_dec h (remove_all name_eq_dec failed nodes))))
     (map2snd m' (filter_rel adjacent_to_dec (tot_map_name h) (remove_all name_eq_dec (map tot_map_name failed) nodes))).
-Proof.
+Proof using overlay_map_congr name_map_bijective.
 move => m m' h failed H_eq.
 apply pt_nodup_perm_map_map_pair_perm => //; first exact: no_dup_nodes.
 apply Permutation_sym.
@@ -1175,7 +1175,7 @@ Theorem step_ordered_failure_pt_mapped_simulation_1 :
     @step_ordered_failure _ _ overlay_fst fail_msg_fst (failed, net) (failed', net') tr ->
     @step_ordered_failure _ _ overlay_snd fail_msg_snd (map tot_map_name failed, pt_map_onet net) (map tot_map_name failed', pt_map_onet net') (pt_map_traces tr) \/ 
     pt_map_onet net' = pt_map_onet net /\ failed = failed' /\ pt_map_traces tr = [].
-Proof.
+Proof using overlay_map_congr name_map_bijective multi_map_congr fail_msg_map_congr.
 move => net net' failed failed' tr H_step.
 invcs H_step.
 - case H_m: (pt_map_msg m) => [m'|].
@@ -1271,7 +1271,7 @@ Corollary step_ordered_failure_pt_mapped_simulation_star_1 :
   forall net failed tr,
     @step_ordered_failure_star _ _ overlay_fst fail_msg_fst step_ordered_failure_init (failed, net) tr ->
     @step_ordered_failure_star _ _ overlay_snd fail_msg_snd step_ordered_failure_init (map tot_map_name failed, pt_map_onet net) (pt_map_traces tr).
-Proof.
+Proof using overlay_map_congr name_map_bijective multi_map_congr fail_msg_map_congr.
 move => net failed tr H_step.
 remember step_ordered_failure_init as y in *.
 have H_eq_f: failed = fst (failed, net) by [].
@@ -1319,7 +1319,7 @@ Lemma collate_ls_pt_map_eq :
     pt_map_msg m = Some m' ->
     (fun src dst => pt_map_msgs (collate_ls name_eq_dec ns f h m (tot_map_name_inv src) (tot_map_name_inv dst))) =
     collate_ls name_eq_dec (map tot_map_name ns) (fun src dst => pt_map_msgs (f (tot_map_name_inv src) (tot_map_name_inv dst))) (tot_map_name h) m'.
-Proof.
+Proof using name_map_bijective.
 elim => //=.
 move => n ns IH f h m m' H_eq.
 rewrite /= (IH _ _ _  m') //=.
@@ -1340,7 +1340,7 @@ Theorem step_ordered_dynamic_failure_pt_mapped_simulation_1 :
     @step_ordered_dynamic_failure _ _ overlay_fst new_msg_fst fail_msg_fst (failed, net) (failed', net') tr ->
     @step_ordered_dynamic_failure _ _ overlay_snd new_msg_snd fail_msg_snd (map tot_map_name failed, pt_map_odnet net) (map tot_map_name failed', pt_map_odnet net') (pt_map_traces tr) \/ 
     pt_map_odnet net' = pt_map_odnet net /\ failed = failed' /\ pt_map_traces tr = [].
-Proof.
+Proof using overlay_map_congr new_msg_map_congr name_map_bijective multi_map_congr fail_msg_map_congr.
 move => net net' failed failed' tr H_nd H_step.
 invcs H_step.
 - left.
@@ -1519,7 +1519,7 @@ Corollary step_ordered_dynamic_failure_pt_mapped_simulation_star_1 :
   forall net failed tr,
     @step_ordered_dynamic_failure_star _ _ overlay_fst new_msg_fst fail_msg_fst step_ordered_dynamic_failure_init (failed, net) tr ->
     @step_ordered_dynamic_failure_star _ _ overlay_snd new_msg_snd fail_msg_snd step_ordered_dynamic_failure_init (map tot_map_name failed, pt_map_odnet net) (pt_map_traces tr).
-Proof.
+Proof using overlay_map_congr new_msg_map_congr name_map_bijective multi_map_congr fail_msg_map_congr.
 move => net failed tr H_step.
 remember step_ordered_dynamic_failure_init as y in *.
 change failed with (fst (failed, net)).
@@ -1551,7 +1551,7 @@ Lemma in_msg_pt_map_msgs :
     pt_map_msg m0 = Some m' ->
     In m0 l ->
     In m' (pt_map_msgs l).
-Proof.
+Proof using.
 elim => //.
 move => m0 l IH.
 move => m1 m2 H_eq H_in.
@@ -1571,7 +1571,7 @@ Lemma in_pt_map_msgs_in_msg :
     pt_map_msg m0 = Some m1 ->
     In m1 (pt_map_msgs l) ->
     In m0 l.
-Proof.
+Proof using pt_map_msg_injective.
 elim => //=.
 move => m0 l IH.
 move => m1 m2 H_eq H_in.
@@ -1595,7 +1595,7 @@ Lemma in_all_before_pt_map_msg :
     pt_map_msg m1 = Some m'1 ->
     before_all m'0 m'1 (pt_map_msgs l) ->
     before_all m0 m1 l.
-Proof.
+Proof using.
 elim => //=.
 move => m l IH m0 m1 m'0 m'1 H_eq H_eq' H_bef.
 break_match; simpl in *.
@@ -1625,7 +1625,7 @@ Lemma count_occ_pt_map_msgs_eq :
   forall l m' m0,
   pt_map_msg m0 = Some m' ->
   count_occ msg_eq_dec (pt_map_msgs l) m' = count_occ msg_eq_dec l m0.
-Proof.
+Proof using pt_map_msg_injective.
 elim => //=.
 move => m l IH m' m0 H_eq.
 break_if.
@@ -1650,7 +1650,7 @@ Lemma hd_error_pt_map_msgs :
   pt_map_msg m0 = Some m' ->
   hd_error l = Some m0 ->
   hd_error (pt_map_msgs l) = Some m'.
-Proof.
+Proof using.
 case => //=.
 move => m l m' m0 H_eq H_eq'.
 find_injection.
