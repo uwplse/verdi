@@ -83,9 +83,6 @@ Section Dynamic.
   Definition clear_timeouts (ts : list timeout) (cts : list timeout) : list timeout :=
     remove_all timeout_eq_dec cts ts.
 
-  Notation "f [ a '=>' d ]" := (update addr_eq_dec f a (Some d)) (at level 0).
-  Notation "f [ a '==>' d ]" := (update addr_eq_dec f a d) (at level 0).
-
   Definition update_msgs (gst : global_state) (ms : list msg) : global_state :=
     {| nodes := nodes gst;
        failed_nodes := failed_nodes gst;
@@ -104,16 +101,16 @@ Section Dynamic.
        trace := trace gst
     |}.
 
-  Definition apply_handler_result (h : addr) (r : res) (e : event) (gst : global_state) : global_state :=
+  Definition apply_handler_result (h : addr) (r : res) (es : list event) (gst : global_state) : global_state :=
     let '(st, ms, nts, cts) := r in
     let sends := map (send h) ms in
     let ts' := nts ++ clear_timeouts (timeouts gst h) cts in
     {| nodes := nodes gst;
        failed_nodes := failed_nodes gst;
-       timeouts := (timeouts gst)[h ==> ts'];
-       sigma := (sigma gst)[h => st];
+       timeouts := update addr_eq_dec (timeouts gst) h ts';
+       sigma := update addr_eq_dec (sigma gst) h (Some st);
        msgs := sends ++ msgs gst;
-       trace := trace gst ++ [e]
+       trace := trace gst ++ es
     |}.
 
   Lemma apply_handler_result_nodes :
@@ -132,8 +129,8 @@ Section Dynamic.
     let sends := map (send h) ms in
     {| nodes := h :: nodes gst;
        failed_nodes := failed_nodes gst;
-       timeouts := (timeouts gst)[h ==> newts];
-       sigma := (sigma gst)[h => st];
+       timeouts := update addr_eq_dec (timeouts gst) h newts;
+       sigma := update addr_eq_dec (sigma gst) h (Some st);
        msgs := sends ++ msgs gst;
        trace := trace gst ++ (map e_send sends)
     |}.
@@ -210,7 +207,7 @@ Section Dynamic.
         gst' = (apply_handler_result
                   h
                   (st', ms, newts, t :: clearedts)
-                  (e_timeout h t)
+                  [e_timeout h t]
                   gst) ->
         timeout_constraint gst h t ->
         step_dynamic gst gst'
@@ -225,7 +222,7 @@ Section Dynamic.
         gst' = apply_handler_result
                  h
                  (st, ms, newts, clearedts)
-                 (e_recv m)
+                 [e_recv m]
                  (update_msgs gst (xs ++ ys)) ->
         step_dynamic gst gst'.
 
@@ -240,7 +237,7 @@ Section Dynamic.
         gst' = (apply_handler_result
                   h
                   (st', ms, newts, t :: clearedts)
-                  (e_timeout h t)
+                  [e_timeout h t]
                   gst) ->
         timeout_constraint gst h t ->
         labeled_step_dynamic gst lb gst'
@@ -255,7 +252,7 @@ Section Dynamic.
         gst' = apply_handler_result
                  h
                  (st, ms, newts, clearedts)
-                 (e_recv m)
+                 [e_recv m]
                  (update_msgs gst (xs ++ ys)) ->
         labeled_step_dynamic gst lb gst'.
 

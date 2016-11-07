@@ -105,7 +105,7 @@ Section ChordLabeled.
   pose gst' := apply_handler_result
                  dst
                  (st, ms, newts, clearedts)
-                 (e_recv (src, (dst, m)))
+                 [e_recv (src, (dst, m))]
                  (update_msgs (occ_gst e) (x ++ x0)).
   exists gst'.
   by eapply LDeliver_node; eauto.
@@ -218,7 +218,7 @@ Section ChordLabeled.
         recv_handler_l src dst st p = (st', ms, newts, clearedts, RecvMsg src dst p) /\
         gst' = (apply_handler_result dst
                                      (st', ms, newts, clearedts)
-                                     (e_recv (src, (dst, p)))
+                                     [e_recv (src, (dst, p))]
                                      (update_msgs gst (xs ++ ys))).
   Proof.
     intuition.
@@ -615,7 +615,7 @@ Section ChordLabeled.
     pose gst' := apply_handler_result
                    h
                    (st', ms, nts, t :: cts)
-                   (e_timeout h t)
+                   [e_timeout h t]
                    gst.
     have H_l: l = Timeout h t.
       rewrite /timeout_handler_l /= in H_r.
@@ -1178,7 +1178,7 @@ Section ChordLabeled.
     pose gst' := apply_handler_result
                    h
                    (st', ms, newts, t :: clearedts)
-                   (e_timeout h t)
+                   [e_timeout h t]
                    gst.
     exists gst'.
     by eapply LTimeout; eauto.

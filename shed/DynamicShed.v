@@ -85,7 +85,7 @@ Section DynamicShed.
 
   Definition run_timeout_handler (gst : global_state) (h : addr) (st : data) (t : timeout) : global_state :=
     let '(st', ms, nts, cts) := timeout_handler h st t in
-    apply_handler_result h (st', ms, nts, t :: cts) (e_timeout h t) gst.
+    apply_handler_result h (st', ms, nts, t :: cts) [e_timeout h t] gst.
 
   Definition run_timeout (gst : global_state) (h : addr) (t : timeout) : option global_state :=
     if exists_and_not_failed gst h
@@ -102,7 +102,7 @@ Section DynamicShed.
 
   Definition run_recv_handler (gst : global_state) (net : list msg) (src dst : addr) (st : data) (p : payload) : global_state :=
     let '(st', ms, nts, cts) := recv_handler src dst st p in
-    apply_handler_result dst (st', ms, nts, cts) (e_recv (src, (dst, p))) (update_msgs gst net).
+    apply_handler_result dst (st', ms, nts, cts) [e_recv (src, (dst, p))] (update_msgs gst net).
 
   Definition selectnth {A : Type} (n : nat) (l : list A) : option (list A * A * list A) :=
     match nth_error l n with

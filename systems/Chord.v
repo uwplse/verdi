@@ -174,6 +174,24 @@ Section Chord.
       | None => (st, [], [], []) (* only happens if succ_list = [], which is contra protocol assumptions *)
     end.
 
+  Definition do_rectify (h : addr) (st : data) : res :=
+    if joined st
+    then match cur_request st with
+         | Some _ => (st, [], [], [])
+         | None =>
+           match rectify_with st with
+           | Some new =>
+             match pred st with
+             | Some _ => let st := clear_rectify_with st in
+                        start_query h st (Rectify new)
+             | None => let st := clear_rectify_with (update_pred st new) in
+                      (st, [], [], [])
+             end
+           | None => (st, [], [], [])
+           end
+         end
+    else (st, [], [], []).
+
   (* something to prove: try_rectify is not invoked unless cur_request st is None *)
   Definition try_rectify (h : addr) (r : res) : res :=
     let '(st, outs, nts, cts) := r in

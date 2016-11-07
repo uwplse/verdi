@@ -46,6 +46,7 @@ Section ChordProof.
   Notation start_query := (start_query hash).
   Notation handle_stabilize := (handle_stabilize SUCC_LIST_LEN hash).
   Notation try_rectify := (try_rectify hash).
+  Notation do_rectify := (do_rectify hash).
 
   Notation msg := (msg addr payload).
   Notation event := (event addr payload timeout).
@@ -264,6 +265,19 @@ Section ChordProof.
     match goal with
     | [H : reachable_st _ |- _ ] => prep_induction H; induction H
     end.
+
+  Inductive intermediate_reachable_st : global_state -> Prop :=
+  | intReachableInit : intermediate_reachable_st initial_st
+  | intReachableStep : forall gst gst',
+      intermediate_reachable_st gst ->
+      step_dynamic gst gst' ->
+      intermediate_reachable_st gst'
+  | intReachableHandler : forall gst h d res,
+      In h (nodes gst) ->
+      ~ In h (failed_nodes gst) ->
+      sigma gst h = Some d ->
+      do_rectify h d = res ->
+      intermediate_reachable_st (apply_handler_result h res [] gst).
 
   Theorem live_node_characterization : forall gst h st,
       sigma gst h = Some st ->
@@ -1378,7 +1392,7 @@ Section ChordProof.
       gst' = (apply_handler_result
                h
                (st', ms, newts, t :: clearedts)
-               (e_timeout h t)
+               [e_timeout h t]
                gst) ->
       P gst'.
 
