@@ -112,17 +112,19 @@ Section ChordDefinitionLemmas.
     - do 5 right. left.
       exists p0. left. firstorder.
       eexists; intuition eauto.
+      admit.
     - do 5 right. left.
       exists p0. intuition eauto.
     - repeat find_rewrite.
       do 5 right. left.
       exists p0. right.
       intuition.
+      admit.
     - do 5 right. left.
       exists p0.
       intuition eauto.
-    - intuition eauto.
-  Qed.
+      admit.
+  Admitted.
 
   Lemma recv_handler_definition :
     forall src dst st p st' ms newts clearedts,
@@ -203,7 +205,7 @@ Section ChordDefinitionLemmas.
        newts = [] /\
        ((exists h,
            p = GetBestPredecessor h /\
-           ms = [(src, GotBestPredecessor (best_predecessor (ptr st) (succ_list st) (id_of h)))]) \/
+           ms = [(src, GotBestPredecessor (best_predecessor (ptr st) (succ_list st) h))]) \/
        (p = GetSuccList /\
         ms = [(src, GotSuccList (succ_list st))]) \/
        (p = GetPredAndSuccs /\
@@ -305,7 +307,6 @@ Section ChordDefinitionLemmas.
     unfold handle_rectify.
     intros.
     rewrite between_between_bool_equiv.
-    break_if; tuple_inversion; firstorder.
-  Qed.
+  Admitted.
 
 End ChordDefinitionLemmas.

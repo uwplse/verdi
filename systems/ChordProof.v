@@ -45,7 +45,6 @@ Section ChordProof.
   Notation apply_handler_result := (apply_handler_result addr addr_eq_dec payload data timeout timeout_eq_dec).
   Notation start_query := (start_query hash).
   Notation handle_stabilize := (handle_stabilize SUCC_LIST_LEN hash).
-  Notation try_rectify := (try_rectify hash).
   Notation do_rectify := (do_rectify hash).
 
   Notation msg := (msg addr payload).
@@ -201,16 +200,15 @@ Section ChordProof.
   Qed.
 
   Lemma handle_query_req_gives_response :
-    forall st m,
+    forall st src m,
       is_safe m = false ->
       request_payload m ->
       exists p,
-        handle_query_req st m = Some p.
+        handle_query_req st src m = [(src, p)].
   Proof.
     unfold handle_query_req.
     intuition.
-    find_copy_apply_lem_hyp unsafe_msgs_not_safe_ones.
-    break_and.
+    find_copy_apply_lem_hyp unsafe_msgs_not_safe_ones; break_and.
     request_payload_inversion;
       eauto || congruence.
   Qed.
@@ -223,6 +221,7 @@ Section ChordProof.
 
   Definition init_sigma (h : addr) : option data.
   Admitted. (* TODO should map base addresses to data for an ideal ring of just the base nodes *)
+
   Definition initial_st : global_state.
   Admitted.
 
@@ -904,19 +903,15 @@ Section ChordProof.
     - tuple_inversion; auto.
   Qed.
 
-  Lemma joined_preserved_by_try_rectify : forall h st st' ms ms' cts cts' nts nts',
-      try_rectify h (st, ms, cts, nts) = (st', ms', cts', nts') ->
+  Lemma joined_preserved_by_do_rectify : forall h st st' ms' cts' nts',
+      do_rectify h st = (st', ms', cts', nts') ->
       joined st = joined st'.
   Proof.
-    unfold try_rectify, clear_rectify_with.
-    simpl.
-    intuition.
-    repeat break_match.
-    - find_inversion.
-      find_apply_lem_hyp joined_preserved_by_start_query; auto.
-    - find_inversion; auto.
-    - find_inversion; auto.
-    - find_inversion; auto.
+    unfold do_rectify.
+    intros.
+    repeat break_match;
+      try find_eapply_lem_hyp joined_preserved_by_start_query;
+      find_inversion; eauto.
   Qed.
 
   Lemma joined_preserved_by_do_delayed_queries :

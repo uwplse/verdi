@@ -691,29 +691,6 @@ Section ChordLabeled.
     invc_labeled_step.
   Qed.
 
-  Lemma handle_notify_doesnt_affect_timeouts :
-    forall src dst st st' ms cts nts,
-      handle_notify hash src dst st = (st', ms, cts, nts) ->
-      nts = nil /\ cts = nil.
-  Proof.
-    unfold handle_notify.
-    intuition;
-      tuple_inversion;
-      reflexivity.
-  Qed.
-
-  Lemma handle_safe_msg_doesnt_affect_timeouts :
-    forall src dst st p st' ms nts cts,
-      handle_safe_msg hash src dst st p = (st', ms, nts, cts) ->
-      nts = nil /\ cts = nil.
-  Proof.
-    unfold handle_safe_msg.
-    intuition;
-      break_match;
-      tuple_inversion || find_apply_lem_hyp handle_notify_doesnt_affect_timeouts;
-      easy.
-  Qed.
-
   Lemma handle_query_req_busy_never_clears :
     forall src dst st p st' ms nts cts,
       handle_query_req_busy src dst st p = (st', ms, nts, cts) ->
@@ -747,20 +724,8 @@ Section ChordLabeled.
     (* takes care of nil cases *)
     repeat break_match;
       try tuple_inversion;
-      try easy.
-    - by find_apply_lem_hyp timeouts_in_never_has_Tick.
-    - admit.
-    - admit.
-    - admit.
-    - admit.
-    - admit.
-    - find_apply_lem_hyp in_inv.
-      by break_or_hyp.
-    - find_apply_lem_hyp in_inv.
-      by break_or_hyp.
-    - admit.
-    - admit.
-    - admit.
+      try easy;
+      try by find_apply_lem_hyp timeouts_in_never_has_Tick.
   Admitted.
 
   Lemma recv_handler_never_clears_Tick :
