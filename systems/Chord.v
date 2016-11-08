@@ -74,24 +74,24 @@ Section Chord.
   (* needs to know new successor *)
   | Join2 : pointer -> query.
 
-  Record data := mkData { ptr : pointer ;
-                        pred : option pointer ;
-                        succ_list : list pointer ;
-                        known : pointer ;
-                        joined : bool ;
-                        rectify_with : option pointer ;
-                        cur_request : option (pointer * query * payload) ;
-                        delayed_queries : list (addr * payload) }.
+  Record data := mkData { ptr : pointer;
+                          pred : option pointer;
+                          succ_list : list pointer;
+                          known : pointer;
+                          joined : bool;
+                          rectify_with : option pointer;
+                          cur_request : option (pointer * query * payload);
+                          delayed_queries : list (addr * payload) }.
 
   Definition res := (data * list (addr * payload) * list timeout * list timeout)%type.
 
   Definition is_request (p : payload) : bool :=
     match p with
-      | GetBestPredecessor _ => true
-      | GetSuccList => true
-      | GetPredAndSuccs => true
-      | Ping => true
-      | _ => false
+    | GetBestPredecessor _ => true
+    | GetSuccList => true
+    | GetPredAndSuccs => true
+    | Ping => true
+    | _ => false
     end.
 
   Definition closes_request (req res : payload) : bool :=
@@ -106,6 +106,12 @@ Section Chord.
   Definition add_tick (r : res) : res :=
     let '(st, sends, newts, cts) := r in
     (st, sends, Tick :: newts, cts).
+
+  Definition chop_succs (succs : list pointer) : list pointer :=
+    firstn SUCC_LIST_LEN succs.
+
+  Definition make_succs (head : pointer) (rest : list pointer) : list pointer :=
+    chop_succs (head :: rest).
 
   Definition update_pred (st : data) (p : pointer) : data :=
     {| ptr := ptr st;
@@ -177,6 +183,38 @@ Section Chord.
        cur_request := None;
        delayed_queries := delayed_queries st |}.
 
+  Definition init_state_preset (h pred : addr) (succs : list addr) : data :=
+    {| ptr := make_pointer h;
+       pred := Some (make_pointer pred);
+       succ_list := chop_succs (map make_pointer succs);
+       known := make_pointer pred;
+       joined := true;
+       rectify_with := None;
+       cur_request := None;
+       delayed_queries := [] |}.
+
+  Definition init_state_join (h k : addr) : data :=
+    {| ptr := make_pointer h;
+       pred := None;
+       succ_list := [];
+       known := make_pointer k;
+       joined := false;
+       rectify_with := None;
+       cur_request := None;
+       delayed_queries := [] |}.
+
+  Definition empty_start_res (h : addr) : data * list (addr * payload) * list timeout :=
+    ({| ptr := make_pointer h;
+        pred := None;
+        succ_list := [];
+        known := make_pointer h;
+        joined := false;
+        rectify_with := None;
+        cur_request := None;
+        delayed_queries := [] |},
+     [],
+     []).
+
   Definition send_eq_dec :
     forall x y : addr * payload,
       {x = y} + {x <> y}.
@@ -217,7 +255,7 @@ Section Chord.
     | Join2 new_succ =>
       Some (new_succ, GetSuccList)
     end.
-  
+
   Definition timeouts_in (st : data) : list timeout :=
     match cur_request st with
     | Some (dst, _, m) => [Request (addr_of dst) m]
@@ -296,12 +334,6 @@ Section Chord.
 
   Definition ptrs_to_addrs : list (pointer * payload) -> list (addr * payload) :=
     map (fun p => (addr_of (fst p), (snd p))).
-
-  Definition chop_succs (succs : list pointer) : list pointer :=
-    firstn SUCC_LIST_LEN succs.
-
-  Definition make_succs (head : pointer) (rest : list pointer) : list pointer :=
-    chop_succs (head :: rest).
 
   Definition handle_rectify (st : data) (my_pred : pointer) (notifier : pointer) : res :=
     if ptr_between_bool my_pred notifier (ptr st)
@@ -391,38 +423,6 @@ Section Chord.
   Definition pi {A B C D : Type} (t : A * B * C * D) : A * B * C :=
     let '(a, b, c, d) := t in (a, b, c).
 
-  Definition init_state_preset (h pred : addr) (succs : list addr) : data :=
-    {| ptr := make_pointer h;
-       pred := Some (make_pointer pred);
-       succ_list := chop_succs (map make_pointer succs);
-       known := make_pointer pred;
-       joined := true;
-       rectify_with := None;
-       cur_request := None;
-       delayed_queries := [] |}.
-
-  Definition init_state_join (h k : addr) : data :=
-    {| ptr := make_pointer h;
-       pred := None;
-       succ_list := [];
-       known := make_pointer k;
-       joined := false;
-       rectify_with := None;
-       cur_request := None;
-       delayed_queries := [] |}.
-       
-  Definition empty_start_res (h : addr) : data * list (addr * payload) * list timeout :=
-    ({| ptr := make_pointer h;
-        pred := None;
-        succ_list := [];
-        known := make_pointer h;
-        joined := false;
-        rectify_with := None;
-        cur_request := None;
-        delayed_queries := [] |},
-     [],
-     []).
-     
   Definition start_handler (h : addr) (knowns : list addr) : data * list (addr * payload) * list timeout :=
     match knowns with
     | k :: [] =>
@@ -462,10 +462,10 @@ Section Chord.
     (* Join, Join2 *)
     | _ => end_query (st, [], [], [])
     end.
-  
+
   Definition send_keepalives (st : data) : list (addr * payload) :=
     map (fun q => (fst q, Busy)) (delayed_queries st).
-  
+
   Definition timeout_handler (h : addr) (st : data) (t : timeout) : res :=
     match t with
     | Request dst msg =>

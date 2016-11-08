@@ -213,7 +213,8 @@ Section ChordProof.
       eauto || congruence.
   Qed.
 
-  Lemma requests_are_always_responded_to : forall src dst msg st sends nts cts,
+  Lemma requests_are_always_responded_to :
+    forall src dst msg st sends nts cts,
       request_payload msg ->
       (st, sends, nts, cts) = recv_handler src dst st msg ->
       exists res, In (src, res) sends.
@@ -275,7 +276,8 @@ Section ChordProof.
     induct_reachable_st; econstructor; eauto.
   Qed.
 
-  Theorem live_node_characterization : forall gst h st,
+  Theorem live_node_characterization :
+    forall gst h st,
       sigma gst h = Some st ->
       joined st = true ->
       In h (nodes gst) ->
@@ -361,7 +363,8 @@ Section ChordProof.
       congruence.
   Defined.
 
-  Theorem live_node_dec_equiv_live_node : forall gst h,
+  Theorem live_node_dec_equiv_live_node :
+    forall gst h,
       live_node gst h <-> live_node_bool gst h = true.
   Proof.
     unfold live_node_bool.
@@ -760,7 +763,8 @@ Section ChordProof.
         unfold inductive_invariant, state_invariant, network_invariant in H; break_and
     end.
 
-  Lemma live_node_specificity : forall gst gst',
+  Lemma live_node_specificity :
+    forall gst gst',
       nodes gst = nodes gst' ->
       failed_nodes gst = failed_nodes gst' ->
       sigma gst = sigma gst' ->
@@ -772,7 +776,8 @@ Section ChordProof.
     auto.
   Qed.
 
-  Lemma live_node_joined : forall gst h,
+  Lemma live_node_joined :
+    forall gst h,
       live_node gst h ->
       exists st,
         sigma gst h = Some st /\
@@ -782,7 +787,8 @@ Section ChordProof.
     by break_live_node_exists_exists.
   Qed.
 
-  Lemma live_node_in_nodes : forall gst h,
+  Lemma live_node_in_nodes :
+    forall gst h,
       live_node gst h ->
       In h (nodes gst).
   Proof.
@@ -790,7 +796,8 @@ Section ChordProof.
     by break_live_node.
   Qed.
 
-  Lemma live_node_not_in_failed_nodes : forall gst h,
+  Lemma live_node_not_in_failed_nodes :
+    forall gst h,
       live_node gst h ->
       ~ In h (failed_nodes gst).
   Proof.
@@ -798,7 +805,8 @@ Section ChordProof.
     by break_live_node.
   Qed.
 
-  Lemma live_node_equivalence : forall gst gst' h st st',
+  Lemma live_node_equivalence :
+    forall gst gst' h st st',
       live_node gst h ->
       nodes gst = nodes gst' ->
       failed_nodes gst = failed_nodes gst' ->
@@ -818,7 +826,8 @@ Section ChordProof.
     * repeat find_rewrite; auto.
   Qed.
 
-  Lemma live_node_means_state_exists : forall gst h,
+  Lemma live_node_means_state_exists :
+    forall gst h,
       live_node gst h ->
       exists st, sigma gst h = Some st.
   Proof.
@@ -828,7 +837,8 @@ Section ChordProof.
     by break_and.
   Qed.
 
-  Lemma coarse_live_node_characterization : forall gst gst' h,
+  Lemma coarse_live_node_characterization :
+    forall gst gst' h,
       live_node gst h ->
       nodes gst = nodes gst' ->
       failed_nodes gst = failed_nodes gst' ->
@@ -847,7 +857,8 @@ Section ChordProof.
     * repeat find_rewrite; eauto.
   Qed.
 
-  Lemma apply_handler_result_preserves_nodes : forall gst gst' h res e,
+  Lemma apply_handler_result_preserves_nodes :
+    forall gst gst' h res e,
       gst' = apply_handler_result h res e gst ->
       nodes gst = nodes gst'.
   Proof.
@@ -857,7 +868,8 @@ Section ChordProof.
     find_rewrite; auto.
   Qed.
 
-  Lemma apply_handler_result_preserves_failed_nodes : forall gst gst' h res e,
+  Lemma apply_handler_result_preserves_failed_nodes :
+    forall gst gst' h res e,
       gst' = apply_handler_result h res e gst ->
       failed_nodes gst = failed_nodes gst'.
   Proof.
@@ -890,7 +902,8 @@ Section ChordProof.
       break_live_node; auto.
   Qed.
 
-  Lemma joined_preserved_by_start_query : forall h st k st' ms nts cts,
+  Lemma joined_preserved_by_start_query :
+    forall h st k st' ms nts cts,
       start_query h st k = (st', ms, nts, cts) ->
       joined st = joined st'.
   Proof.
@@ -903,7 +916,8 @@ Section ChordProof.
     - tuple_inversion; auto.
   Qed.
 
-  Lemma joined_preserved_by_do_rectify : forall h st st' ms' cts' nts',
+  Lemma joined_preserved_by_do_rectify :
+    forall h st st' ms' cts' nts',
       do_rectify h st = (st', ms', cts', nts') ->
       joined st = joined st'.
   Proof.
@@ -920,7 +934,8 @@ Section ChordProof.
       joined st = joined st'.
   Admitted.
 
-  Lemma joined_preserved_by_end_query : forall st st' ms ms' cts cts' nts nts',
+  Lemma joined_preserved_by_end_query :
+    forall st st' ms ms' cts cts' nts nts',
       end_query (st, ms, cts, nts) = (st', ms', cts', nts') ->
       joined st = joined st'.
   Proof.
@@ -930,7 +945,8 @@ Section ChordProof.
     tauto.
   Qed.
 
-  Lemma joined_preserved_by_handle_stabilize : forall h src st q new_succ succ st' ms nts cts,
+  Lemma joined_preserved_by_handle_stabilize :
+    forall h src st q new_succ succ st' ms nts cts,
       handle_stabilize h src st q new_succ succ = (st', ms, nts, cts) ->
       joined st = joined st'.
   Proof.
@@ -942,7 +958,8 @@ Section ChordProof.
     - find_apply_lem_hyp joined_preserved_by_end_query; auto.
   Qed.
 
-  Lemma joined_preserved_by_end_query_handle_rectify : forall st p n st' ms nts cts,
+  Lemma joined_preserved_by_end_query_handle_rectify :
+    forall st p n st' ms nts cts,
       end_query (handle_rectify st p n) = (st', ms, nts, cts) ->
       joined st = joined st'.
   Proof.
@@ -954,13 +971,15 @@ Section ChordProof.
   Qed.
 
   (* not as strong as the other ones since handle_query for a Join query can change joined st from false to true *)
-  Lemma joined_preserved_by_handle_query : forall src h st p q m st' ms nts cts,
+  Lemma joined_preserved_by_handle_query :
+    forall src h st p q m st' ms nts cts,
         handle_query_res src h st p q m = (st', ms, nts, cts) ->
         joined st = true ->
         joined st' = true.
   Admitted.
 
-  Lemma joined_preserved_by_recv_handler : forall src h st msg st' ms nts cts,
+  Lemma joined_preserved_by_recv_handler :
+    forall src h st msg st' ms nts cts,
       recv_handler src h st msg = (st', ms, nts, cts) ->
       joined st = true ->
       joined st' = true.
@@ -969,7 +988,8 @@ Section ChordProof.
     intuition.
   Admitted.
 
-  Lemma joined_preserved_by_tick_handler : forall h st st' ms nts cts,
+  Lemma joined_preserved_by_tick_handler :
+    forall h st st' ms nts cts,
     tick_handler h st = (st', ms, nts, cts) ->
     joined st = joined st'.
   Proof.
@@ -980,7 +1000,8 @@ Section ChordProof.
         find_apply_lem_hyp joined_preserved_by_start_query; eauto.
   Qed.
 
-  Lemma joined_preserved_by_update_pred : forall st p st',
+  Lemma joined_preserved_by_update_pred :
+    forall st p st',
       st' = update_pred st p ->
       joined st = joined st'.
   Proof.
@@ -989,7 +1010,8 @@ Section ChordProof.
     find_rewrite; auto.
   Qed.
 
-  Lemma joined_preserved_by_handle_query_timeout : forall h st dst q st' ms nts cts,
+  Lemma joined_preserved_by_handle_query_timeout :
+    forall h st dst q st' ms nts cts,
       handle_query_timeout h st dst q = (st', ms, nts, cts) ->
       joined st = joined st'.
   Proof.
@@ -1001,7 +1023,8 @@ Section ChordProof.
       eauto.
   Qed.
 
-  Lemma joined_preserved_by_timeout_handler : forall h st t st' ms nts cts,
+  Lemma joined_preserved_by_timeout_handler :
+    forall h st t st' ms nts cts,
     timeout_handler h st t = (st', ms, nts, cts) ->
     joined st = joined st'.
   Proof.
@@ -1012,7 +1035,8 @@ Section ChordProof.
       eauto using joined_preserved_by_tick_handler, joined_preserved_by_handle_query_timeout.
   Qed.
 
-  Lemma update_determined_by_f : forall A (f : addr -> A) x d d' y,
+  Lemma update_determined_by_f :
+    forall A (f : addr -> A) x d d' y,
     y <> x ->
     update addr_eq_dec f x d y = d' ->
     f y = d'.
@@ -1024,7 +1048,8 @@ Section ChordProof.
     now apply not_eq_sym.
   Qed.
 
-  Lemma apply_handler_result_updates_sigma : forall h st ms nts cts e gst gst',
+  Lemma apply_handler_result_updates_sigma :
+    forall h st ms nts cts e gst gst',
       gst' = apply_handler_result h (st, ms, nts, cts) e gst ->
       sigma gst' h = Some st.
   Proof.
@@ -1042,7 +1067,8 @@ Section ChordProof.
       In t (timeouts gst h) /\ (~ In t cts \/ h <> h0).
   Admitted.
 
-  Theorem live_node_preserved_by_recv_step : forall gst h src st msg gst' e st' ms nts cts,
+  Theorem live_node_preserved_by_recv_step :
+    forall gst h src st msg gst' e st' ms nts cts,
       live_node gst h ->
       Some st = sigma gst h ->
       recv_handler src h st msg = (st', ms, nts, cts) ->
@@ -1060,7 +1086,8 @@ Section ChordProof.
         auto.
   Qed.
 
-  Theorem live_node_preserved_by_timeout_step : forall gst h st st' t ms nts cts e gst',
+  Theorem live_node_preserved_by_timeout_step :
+    forall gst h st st' t ms nts cts e gst',
       live_node gst h ->
       sigma gst h = Some st ->
       timeout_handler h st t = (st', ms, nts, cts) ->
@@ -1077,7 +1104,8 @@ Section ChordProof.
       eauto.
   Qed.
 
-  Lemma adding_nodes_does_not_affect_live_node : forall gst gst' h n st,
+  Lemma adding_nodes_does_not_affect_live_node :
+    forall gst gst' h n st,
       ~ In n (nodes gst) ->
       sigma gst' = update addr_eq_dec (sigma gst) n (Some st) ->
       nodes gst' = n :: nodes gst ->
@@ -1101,7 +1129,8 @@ Section ChordProof.
   Qed.
 
   (* reverse of the above, with additional hypothesis that h <> n. *)
-  Lemma adding_nodes_did_not_affect_live_node : forall gst gst' h n st,
+  Lemma adding_nodes_did_not_affect_live_node :
+    forall gst gst' h n st,
       ~ In n (nodes gst) ->
       sigma gst' = update addr_eq_dec (sigma gst) n st ->
       nodes gst' = n :: nodes gst ->
@@ -1130,7 +1159,8 @@ Section ChordProof.
       apply update_diff; auto.
   Qed.
 
-  Lemma adding_nodes_does_not_affect_dead_node : forall gst gst' h n st,
+  Lemma adding_nodes_does_not_affect_dead_node :
+    forall gst gst' h n st,
       ~ In n (nodes gst) ->
       sigma gst' = update addr_eq_dec (sigma gst) n st ->
       nodes gst' = n :: nodes gst ->
@@ -1152,7 +1182,8 @@ Section ChordProof.
       congruence.
   Qed.
 
-  Lemma adding_nodes_did_not_affect_dead_node : forall gst gst' h n st,
+  Lemma adding_nodes_did_not_affect_dead_node :
+    forall gst gst' h n st,
       ~ In n (nodes gst) ->
       In h (nodes gst) ->
       sigma gst' = update addr_eq_dec (sigma gst) n st ->
@@ -1175,7 +1206,8 @@ Section ChordProof.
       * repeat find_rewrite; eauto.
   Qed.
 
-  Lemma coarse_dead_node_characterization : forall gst gst' h,
+  Lemma coarse_dead_node_characterization :
+    forall gst gst' h,
       dead_node gst h ->
       sigma gst' = sigma gst ->
       nodes gst' = nodes gst ->
@@ -1188,7 +1220,8 @@ Section ChordProof.
     now exists d.
   Qed.
 
-  Lemma coarse_best_succ_characterization : forall gst gst' h s,
+  Lemma coarse_best_succ_characterization :
+    forall gst gst' h s,
       best_succ gst h s ->
       sigma gst' = sigma gst ->
       nodes gst' = nodes gst ->
@@ -1210,7 +1243,8 @@ Section ChordProof.
     - eapply coarse_live_node_characterization; eauto.
   Qed.
 
-  Lemma adding_nodes_does_not_affect_best_succ : forall gst gst' h s n st,
+  Lemma adding_nodes_does_not_affect_best_succ :
+    forall gst gst' h s n st,
       best_succ gst h s ->
       ~ In n (nodes gst) ->
       sigma gst' = update addr_eq_dec (sigma gst) n (Some st) ->
@@ -1237,19 +1271,22 @@ Section ChordProof.
       eauto using adding_nodes_does_not_affect_dead_node.
   Qed.
 
-  Lemma in_half_means_in_whole : forall A (x : A) (xs ys : list A),
+  Lemma in_half_means_in_whole :
+    forall A (x : A) (xs ys : list A),
       In x xs -> In x (xs ++ ys).
   Proof.
     intuition.
   Qed.
 
-  Lemma in_middle_means_in_whole : forall A (x : A) (xs ys : list A),
+  Lemma in_middle_means_in_whole :
+    forall A (x : A) (xs ys : list A),
       In x (xs ++ x :: ys).
   Proof.
     intuition.
   Qed.
 
-  Lemma adding_nodes_did_not_affect_best_succ : forall gst gst' h s n st,
+  Lemma adding_nodes_did_not_affect_best_succ :
+    forall gst gst' h s n st,
       best_succ gst' h s ->
       In h (nodes gst) ->
       ~ In n (nodes gst) ->
@@ -1316,7 +1353,8 @@ Section ChordProof.
         auto using in_middle_means_in_whole.
   Qed.
 *)
-  Lemma coarse_reachable_characterization : forall from to gst gst',
+  Lemma coarse_reachable_characterization :
+    forall from to gst gst',
       reachable gst from to ->
       nodes gst' = nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
@@ -1328,7 +1366,8 @@ Section ChordProof.
       eauto using ReachableSucc, ReachableTransL, coarse_best_succ_characterization.
   Qed.
 
-  Lemma adding_node_preserves_reachable : forall h from to gst gst' st,
+  Lemma adding_node_preserves_reachable :
+    forall h from to gst gst' st,
         reachable gst from to ->
         ~ In h (nodes gst) ->
         nodes gst' = h :: nodes gst ->
@@ -1351,7 +1390,8 @@ Section ChordProof.
         break_and
     end.
 
-  Lemma adding_node_preserves_reachable_converse : forall h from to gst gst' st,
+  Lemma adding_node_preserves_reachable_converse :
+    forall h from to gst gst' st,
         reachable gst' from to ->
         ~ In h (nodes gst) ->
         In from (nodes gst) ->

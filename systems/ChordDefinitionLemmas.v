@@ -241,7 +241,7 @@ Section ChordDefinitionLemmas.
       repeat (eexists; firstorder).
   Qed.
 
-  Lemma start_query_definition : 
+  Lemma start_query_definition :
     forall h st k st' ms nts cts,
       start_query h st k = (st', ms, nts, cts) ->
       (exists dst msg,
