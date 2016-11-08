@@ -30,8 +30,8 @@ Section ChordDefinitionLemmas.
 
   (* Definition lemmas *)
   Lemma handle_query_req_busy_definition :
-    forall src dst st msg st' ms newts clearedts,
-      handle_query_req_busy src dst st msg = (st', ms, newts, clearedts) ->
+    forall src st msg st' ms newts clearedts,
+      handle_query_req_busy src st msg = (st', ms, newts, clearedts) ->
       st' = delay_query st src msg /\
       ms = [(src, Busy)] /\
       clearedts = [] /\
@@ -44,8 +44,8 @@ Section ChordDefinitionLemmas.
   Qed.
 
   Lemma handle_query_res_definition :
-    forall src dst st blank q p st' ms newts clearedts,
-      handle_query_res src dst st blank q p = (st', ms, newts, clearedts) ->
+    forall src dst st q p st' ms newts clearedts,
+      handle_query_res src dst st q p = (st', ms, newts, clearedts) ->
       (request_payload p /\
        st' = delay_query st src p /\
        clearedts = [] /\

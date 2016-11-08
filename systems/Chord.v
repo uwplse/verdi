@@ -153,16 +153,6 @@ Section Chord.
        cur_request := cur_request st;
        delayed_queries := delayed_queries st |}.
 
-  Definition set_rectify_with (st : data) (rw : pointer) : data :=
-    {| ptr := ptr st;
-       pred := pred st;
-       succ_list := succ_list st;
-       known := known st;
-       joined := joined st;
-       rectify_with := Some rw;
-       cur_request := cur_request st;
-       delayed_queries := delayed_queries st |}.
-
   Definition clear_rectify_with (st : data) : data :=
     {| ptr := ptr st;
        pred := pred st;
@@ -182,6 +172,16 @@ Section Chord.
        rectify_with := rectify_with st;
        cur_request := None;
        delayed_queries := delayed_queries st |}.
+
+  Definition clear_delayed_queries (st : data) : data :=
+    {| ptr := ptr st;
+       pred := pred st;
+       succ_list := succ_list st;
+       known := known st;
+       joined := joined st;
+       rectify_with := rectify_with st;
+       cur_request := cur_request st;
+       delayed_queries := [] |}.
 
   Definition init_state_preset (h pred : addr) (succs : list addr) : data :=
     {| ptr := make_pointer h;
@@ -215,6 +215,34 @@ Section Chord.
      [],
      []).
 
+  (* true iff x in (a, b) on some sufficiently large "circle" *)
+  Definition between_bool (a x b : id) : bool :=
+    match lt_dec a b, lt_dec a x, lt_dec x b with
+    | left _, left _, left _ => true
+    | right _, left _, _ => true
+    | right _, _, left _ => true
+    | _, _, _ => false
+    end.
+
+  Definition ptr_between_bool (a x b : pointer) : bool :=
+    between_bool (id_of a) (id_of x) (id_of b).
+
+  Definition set_rectify_with (st : data) (rw : pointer) : data :=
+    match rectify_with st with
+    | Some rw0 =>
+      if ptr_between_bool rw0 rw (ptr st)
+      then {| ptr := ptr st;
+              pred := pred st;
+              succ_list := succ_list st;
+              known := known st;
+              joined := joined st;
+              rectify_with := Some rw;
+              cur_request := cur_request st;
+              delayed_queries := delayed_queries st |}
+      else st
+    | None => st
+    end.
+
   Definition send_eq_dec :
     forall x y : addr * payload,
       {x = y} + {x <> y}.
@@ -231,16 +259,6 @@ Section Chord.
        rectify_with := rectify_with st;
        cur_request := cur_request st;
        delayed_queries := dedup send_eq_dec ((src, msg) :: delayed_queries st) |}.
-
-  Definition clear_delayed_queries (st : data) : data :=
-    {| ptr := ptr st;
-       pred := pred st;
-       succ_list := succ_list st;
-       known := known st;
-       joined := joined st;
-       rectify_with := rectify_with st;
-       cur_request := cur_request st;
-       delayed_queries := [] |}.
 
   Definition make_request (h : addr) (st : data) (k : query) : option (pointer * payload) :=
     match k with
@@ -285,18 +303,6 @@ Section Chord.
       end
     | _, _, _ => (st, [], [], [])
     end.
-
-  (* true iff x in (a, b) on some sufficiently large "circle" *)
-  Definition between_bool (a x b : id) : bool :=
-    match lt_dec a b, lt_dec a x, lt_dec x b with
-    | left _, left _, left _ => true
-    | right _, left _, _ => true
-    | right _, _, left _ => true
-    | _, _, _ => false
-    end.
-
-  Definition ptr_between_bool (a x b : pointer) : bool :=
-    between_bool (id_of a) (id_of x) (id_of b).
 
   Definition best_predecessor (h : pointer) (succs : list pointer) (them : pointer) : pointer :=
     hd h (filter (fun s => ptr_between_bool h s them)
@@ -351,7 +357,7 @@ Section Chord.
     then GetSuccList
     else GetBestPredecessor self.
 
-  Definition handle_query_res (src h : addr) (st : data) (qdst : pointer) (q : query) (p : payload) : res :=
+  Definition handle_query_res (src h : addr) (st : data) (q : query) (p : payload) : res :=
     match q, p with
     | Rectify notifier, Pong =>
       match pred st with
@@ -387,7 +393,7 @@ Section Chord.
     | _, _ => (st, [], [], [])
     end.
 
-  Definition handle_query_req_busy (src dst : addr) (st : data) (msg : payload) : res :=
+  Definition handle_query_req_busy (src : addr) (st : data) (msg : payload) : res :=
     if list_eq_dec send_eq_dec (delayed_queries st) nil
     then (delay_query st src msg, [(src, Busy)], [KeepaliveTick], [])
     else (delay_query st src msg, [(src, Busy)], [], []).
@@ -400,18 +406,12 @@ Section Chord.
     end.
 
   Definition handle_msg (src : addr) (dst : addr) (st : data) (msg : payload) : res :=
-    match msg with
-    | Notify => (set_rectify_with st (make_pointer src), [], [], [])
-    | Ping => (st, [(src, Pong)], [], [])
-    | _ =>
-      match cur_request st with
-      | Some (query_dst, q, _) =>
-        if is_request msg
-        then handle_query_req_busy src dst st msg
-        else handle_query_res src dst st query_dst q msg
-      | None =>
-        (st, handle_query_req st src msg, [], [])
-      end
+    match msg, cur_request st, is_request msg with
+    | Notify, _, _ => (set_rectify_with st (make_pointer src), [], [], [])
+    | Ping, _, _ => (st, [(src, Pong)], [], [])
+    | _, Some (query_dst, q, _), true => handle_query_req_busy src st msg
+    | _, Some (query_dst, q, _), false => handle_query_res src dst st q msg
+    | _, None, _ => (st, handle_query_req st src msg, [], [])
     end.
 
   Definition recv_handler (src : addr) (dst : addr) (st : data) (msg : payload) : res :=
@@ -466,17 +466,22 @@ Section Chord.
   Definition send_keepalives (st : data) : list (addr * payload) :=
     map (fun q => (fst q, Busy)) (delayed_queries st).
 
+  Definition keepalive_handler (st : data) : res :=
+    (st, send_keepalives st, [KeepaliveTick], []).
+
+  Definition request_timeout_handler (h : addr) (st : data) (dst : addr) (msg : payload) : res :=
+    match cur_request st with
+    | Some (ptr, q, _) =>
+      if addr_eq_dec (addr_of ptr) dst
+      then handle_query_timeout h st ptr q
+      else (st, [], [], []) (* shouldn't happen *)
+    | None => (st, [], [], []) (* shouldn't happen *)
+    end.
+
   Definition timeout_handler (h : addr) (st : data) (t : timeout) : res :=
     match t with
-    | Request dst msg =>
-      match cur_request st with
-      | Some (ptr, q, _) =>
-        if addr_eq_dec (addr_of ptr) dst
-        then handle_query_timeout h st ptr q
-        else (st, [], [], []) (* shouldn't happen *)
-      | None => (st, [], [], []) (* shouldn't happen *)
-      end
+    | Request dst msg => request_timeout_handler h st dst msg
     | Tick => tick_handler h st
-    | KeepaliveTick => (st, send_keepalives st, [KeepaliveTick], [])
+    | KeepaliveTick => keepalive_handler st
     end.
 End Chord.

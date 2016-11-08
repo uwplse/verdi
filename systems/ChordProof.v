@@ -26,6 +26,8 @@ Section ChordProof.
   Notation recv_handler := (recv_handler SUCC_LIST_LEN hash).
   Notation timeout_handler := (timeout_handler hash).
   Notation tick_handler := (tick_handler hash).
+  Notation request_timeout_handler := (request_timeout_handler hash).
+  Notation handle_msg := (handle_msg SUCC_LIST_LEN hash).
 
   Notation handle_query_res := (handle_query_res SUCC_LIST_LEN hash).
   Notation handle_query_timeout := (handle_query_timeout hash).
@@ -41,6 +43,8 @@ Section ChordProof.
   Notation trace := (trace addr payload data timeout).
   Notation update_msgs := (update_msgs addr payload data timeout).
   Notation make_pointer := (make_pointer hash).
+  Notation fail_node := (fail_node addr payload data timeout).
+  Notation update_for_start := (update_for_start addr addr_eq_dec payload data timeout).
 
   Notation apply_handler_result := (apply_handler_result addr addr_eq_dec payload data timeout timeout_eq_dec).
   Notation start_query := (start_query hash).
@@ -151,9 +155,9 @@ Section ChordProof.
   Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler timeout_constraint failure_constraint).
 
   Lemma busy_response_exists :
-    forall msg st' sends nts cts src dst st,
+    forall msg st' sends nts cts src st,
       request_payload msg ->
-      (st', sends, nts, cts) = handle_query_req_busy src dst st msg ->
+      (st', sends, nts, cts) = handle_query_req_busy src st msg ->
       In (src, Busy) sends.
   Proof.
     unfold handle_query_req_busy.
@@ -188,8 +192,8 @@ Section ChordProof.
   Qed.
 
   Lemma handle_query_req_busy_sends_busy :
-    forall src dst st msg st' ms nts cts,
-      handle_query_req_busy src dst st msg = (st', ms, nts, cts) ->
+    forall src st msg st' ms nts cts,
+      handle_query_req_busy src st msg = (st', ms, nts, cts) ->
       In (src, Busy) ms.
   Proof.
     unfold handle_query_req_busy.
@@ -276,6 +280,153 @@ Section ChordProof.
     induct_reachable_st; econstructor; eauto.
   Qed.
 
+  Definition chord_init_invariant (P : global_state -> Prop) :=
+    P initial_st.
+
+(** things i need to show something is an invariant
+- timeout
+  + tick
+  + keepalive tick
+  + request timeout
+- node startup
+- recv
+  + handle_msg:
+    * set_rectify_with
+    * pong
+    * handle_query_req_busy
+    * handle_query_res
+    * handle_query_req
+  + do_delayed_queries
+  + do_rectify
+- failure *)
+
+  Definition chord_start_invariant (P : global_state -> Prop) : Prop :=
+    forall h gst gst' k,
+      gst' = update_for_start gst h (start_handler h [k]) ->
+      P gst ->
+      ~ In h (nodes gst) ->
+      In k (nodes gst) ->
+      ~ In k (failed_nodes gst) ->
+      P gst'.
+
+  Definition chord_fail_invariant (P : global_state -> Prop) : Prop :=
+    forall h gst gst',
+      failure_constraint gst h gst' ->
+      gst' = fail_node gst h ->
+      P gst ->
+      In h (nodes gst) ->
+      ~ In h (failed_nodes gst) ->
+      P gst'.
+
+  Definition chord_tick_invariant (P : global_state -> Prop) : Prop :=
+    forall gst gst' h st st' ms newts clearedts,
+      In Tick (timeouts gst h) ->
+      tick_handler h st = (st', ms, newts, clearedts) ->
+      P gst ->
+      In h (nodes gst) ->
+      ~ In h (failed_nodes gst) ->
+      sigma gst h = Some st ->
+      gst' = apply_handler_result
+               h
+               (st', ms, newts, Tick :: clearedts)
+               [e_timeout h Tick]
+               gst ->
+      timeout_constraint gst h Tick ->
+      P gst'.
+
+  Definition chord_do_delayed_queries_invariant (P : global_state -> Prop) : Prop :=
+    forall gst h st,
+      P gst ->
+      In h (nodes gst) ->
+      ~ In h (failed_nodes gst) ->
+      sigma gst h = Some st ->
+      P (apply_handler_result h (do_delayed_queries h st) [] gst).
+
+  Definition chord_do_rectify_invariant (P : global_state -> Prop) : Prop :=
+    forall gst h st,
+      P gst ->
+      In h (nodes gst) ->
+      ~ In h (failed_nodes gst) ->
+      sigma gst h = Some st ->
+      P (apply_handler_result h (do_rectify h st) [] gst).
+
+  Definition chord_keepalive_invariant (P : global_state -> Prop) : Prop :=
+    forall gst gst' h st st' ms newts clearedts,
+      In KeepaliveTick (timeouts gst h) ->
+      keepalive_handler st = (st', ms, newts, clearedts) ->
+      P gst ->
+      In h (nodes gst) ->
+      ~ In h (failed_nodes gst) ->
+      sigma gst h = Some st ->
+      gst' = apply_handler_result
+               h
+               (st', ms, newts, KeepaliveTick :: clearedts)
+               [e_timeout h KeepaliveTick]
+               gst ->
+      timeout_constraint gst h KeepaliveTick ->
+      P gst'.
+
+  Definition chord_handle_msg_invariant (P : global_state -> Prop) : Prop :=
+    forall gst gst' xs m ys h d st ms newts clearedts,
+      handle_msg (fst m) h d (snd (snd m)) = (st, ms, newts, clearedts) ->
+      P gst ->
+      msgs gst = xs ++ m :: ys ->
+      h = fst (snd m) ->
+      In h (nodes gst) ->
+      ~ In h (nodes gst') ->
+      sigma gst h = Some d ->
+      gst' = apply_handler_result
+               h
+               (st, ms, newts, clearedts)
+               [e_recv m]
+               (update_msgs gst (xs ++ ys)) ->
+      msgs gst' = xs ++ ys ->
+      P gst'.
+
+  Definition chord_request_timeout_invariant (P : global_state -> Prop) : Prop :=
+    forall gst gst' h req dst t d st ms newts clearedts,
+      request_timeout_handler h d dst req = (st, ms, newts, clearedts) ->
+      t = Request dst req ->
+      sigma gst h = Some d ->
+      gst' = apply_handler_result
+               h
+               (st, ms, newts, t :: clearedts)
+               [e_timeout h t]
+               gst ->
+      timeout_constraint gst h t ->
+      P gst'.
+
+  Ltac break_step :=
+    match goal with
+      | H : step_dynamic _ _ |- _ =>
+        induction H
+    end; subst.
+
+  Theorem chord_net_invariant :
+    forall P net,
+      chord_init_invariant P ->
+      chord_start_invariant P ->
+      chord_fail_invariant P ->
+      chord_tick_invariant P ->
+      chord_keepalive_invariant P ->
+      chord_request_timeout_invariant P ->
+      chord_handle_msg_invariant P ->
+      chord_do_delayed_queries_invariant P ->
+      chord_do_rectify_invariant P ->
+      reachable_st net ->
+      P net.
+  Proof.
+    intros.
+    match goal with
+    | [H : reachable_st net |- _] => induction H
+    end.
+    - intros.
+      eapply_prop chord_init_invariant.
+    - break_step; eauto.
+      + destruct t; simpl in *; eauto.
+      + eapply_prop chord_handle_msg_invariant; eauto; admit.
+  Admitted.
+
   Theorem live_node_characterization :
     forall gst h st,
       sigma gst h = Some st ->
@@ -303,12 +454,6 @@ Section ChordProof.
                    else false
       | None => false
     end.
-
-  Ltac break_step :=
-    match goal with
-      | H : step_dynamic _ _ |- _ =>
-        induction H
-    end; subst.
 
   Ltac break_live_node :=
     match goal with
@@ -972,8 +1117,8 @@ Section ChordProof.
 
   (* not as strong as the other ones since handle_query for a Join query can change joined st from false to true *)
   Lemma joined_preserved_by_handle_query :
-    forall src h st p q m st' ms nts cts,
-        handle_query_res src h st p q m = (st', ms, nts, cts) ->
+    forall src h st q m st' ms nts cts,
+        handle_query_res src h st q m = (st', ms, nts, cts) ->
         joined st = true ->
         joined st' = true.
   Admitted.
@@ -1033,7 +1178,7 @@ Section ChordProof.
     repeat break_match;
       try tuple_inversion;
       eauto using joined_preserved_by_tick_handler, joined_preserved_by_handle_query_timeout.
-  Qed.
+  Admitted.
 
   Lemma update_determined_by_f :
     forall A (f : addr -> A) x d d' y,

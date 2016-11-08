@@ -692,8 +692,8 @@ Section ChordLabeled.
   Qed.
 
   Lemma handle_query_req_busy_never_clears :
-    forall src dst st p st' ms nts cts,
-      handle_query_req_busy src dst st p = (st', ms, nts, cts) ->
+    forall src st p st' ms nts cts,
+      handle_query_req_busy src st p = (st', ms, nts, cts) ->
       cts = nil.
   Proof.
     unfold handle_query_req_busy.
@@ -715,8 +715,8 @@ Section ChordLabeled.
   Qed.
 
   Lemma handle_query_res_never_clears_Tick :
-    forall src dst st p q o st' ms nts cts,
-      handle_query_res SUCC_LIST_LEN hash src dst st o q p = (st', ms, nts, cts) ->
+    forall src dst st p q st' ms nts cts,
+      handle_query_res SUCC_LIST_LEN hash src dst st q p = (st', ms, nts, cts) ->
       ~ In Tick cts.
   Proof.
     unfold handle_query_res.
@@ -810,7 +810,7 @@ Section ChordLabeled.
     end.
 
   Lemma handle_query_res_doesnt_remove_constrained_requests :
-    forall h dst gst req st p q o st' ms nts cts,
+    forall h dst gst req st p q st' ms nts cts,
       timeouts_match_query gst ->
       (* handle_query_res is only called on responses, so this should hold *)
       request_response_pair req p ->
@@ -819,7 +819,7 @@ Section ChordLabeled.
       In (Request dst req) (timeouts gst h) ->
       timeout_constraint gst h (Request dst req) ->
       In (dst, (h, p)) (msgs gst) ->
-      handle_query_res SUCC_LIST_LEN hash dst h st o q p = (st', ms, nts, cts) ->
+      handle_query_res SUCC_LIST_LEN hash dst h st q p = (st', ms, nts, cts) ->
       In (Request dst req) nts \/ ~ In (Request dst req) cts.
   Proof.
     unfold handle_query_res.
