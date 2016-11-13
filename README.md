@@ -9,7 +9,7 @@ Requirements
 ------------
 
  - [`Coq 8.5`](https://coq.inria.fr/download)
- - [`Mathematical Components 1.6`](http://math-comp.github.io/math-comp/)
+ - [`Mathematical Components 1.6`](http://math-comp.github.io/math-comp/) (`ssreflect` library)
  - [`StructTact`](https://github.com/uwplse/StructTact)
  - [`InfSeqExt`](https://github.com/palmskog/InfSeqExt)
 
@@ -51,6 +51,11 @@ Files
       primary-backup replication
       - `VarDPrimaryBackup.v`, the primary-backup transformer applied to the
         key-value store
+
+Documentation
+-------------
+
+See the scientific papers and blog posts linked from the [Verdi website](http://verdi.uwplse.org).
 
 Projects using Verdi
 --------------------
