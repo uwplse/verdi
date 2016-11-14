@@ -6,6 +6,7 @@ Require Import Arith.
 Require Import Verdi.ChordLocalProps.
 Require Import Verdi.ChordDefinitionLemmas.
 Require Coqlib.
+Import FunctionalExtensionality.
 Require Import List.
 Import ListNotations.
 Require Import mathcomp.ssreflect.ssreflect.
@@ -2223,6 +2224,24 @@ Section ChordProof.
   Proof.
   Admitted.
 
+  Lemma app_eq_l :
+    forall A (xs ys zs : list A),
+      ys = zs ->
+      xs ++ ys = xs ++ zs.
+  Proof.
+    intros.
+    now find_rewrite.
+  Qed.
+
+  Lemma app_eq_r :
+    forall A (xs ys zs : list A),
+      xs = ys ->
+      xs ++ zs = ys ++ zs.
+  Proof.
+    intros.
+    now find_rewrite.
+  Qed.
+
   Theorem chord_net_invariant :
     forall P net,
       chord_init_invariant P ->
@@ -2241,11 +2260,15 @@ Section ChordProof.
     match goal with
     | [H : reachable_st net |- _] => induction H
     end.
-    - eauto.
+    - eapply_prop chord_init_invariant.
     - break_step; eauto.
-      + destruct t; simpl in *; eauto.
+      + destruct t.
+        * eapply_prop chord_tick_invariant; eauto.
+        * eapply_prop chord_keepalive_invariant; eauto.
+        * eapply_prop chord_request_timeout_invariant; eauto.
       + unfold recv_handler in *.
-        repeat break_let.
+        repeat break_let; subst_max.
+        (* formulating intermediate states and proving they satisfy P *)
         match goal with
         | [ _ : context[handle_msg ?from ?to ?d ?p] |- _ ] => 
           remember (apply_handler_result
@@ -2253,18 +2276,18 @@ Section ChordProof.
                       (handle_msg from to d p)
                       [e_recv m]
                       (update_msgs gst (xs ++ ys)))
-            as gst0
+            as gst0;
+            assert (P gst0)
         end.
-        assert (P gst0).
-        { eapply_prop chord_handle_msg_invariant; eauto;
-          [find_eapply_lem_hyp apply_handler_result_preserves_failed_nodes |];
-          now repeat find_reverse_rewrite. }
-
+        { eapply_prop chord_handle_msg_invariant; eauto.
+          * find_eapply_lem_hyp apply_handler_result_preserves_failed_nodes.
+            now find_reverse_rewrite.
+          * now repeat find_reverse_rewrite. }
         match goal with
         | [ _ : context[do_delayed_queries ?h ?st] |- _ ] =>
-          remember (apply_handler_result h (do_delayed_queries h st) [] gst0) as gst1
+          remember (apply_handler_result h (do_delayed_queries h st) [] gst0) as gst1;
+            assert (P gst1)
         end.
-        assert (P gst1).
         { eapply_prop chord_do_delayed_queries_invariant; eauto.
           * repeat find_rewrite.
             eapply apply_handler_result_updates_sigma; eauto.
@@ -2272,12 +2295,11 @@ Section ChordProof.
             now repeat find_reverse_rewrite.
           * repeat find_eapply_lem_hyp apply_handler_result_preserves_failed_nodes.
             now repeat find_reverse_rewrite. }
-
         match goal with
         | [ _ : context[do_rectify ?h ?st] |- _ ] =>
-          remember (apply_handler_result h (do_rectify h st) [] gst1) as gst2
+          remember (apply_handler_result h (do_rectify h st) [] gst1) as gst2;
+            assert (P gst2)
         end.
-        assert (P gst2).
         { eapply_prop chord_do_rectify_invariant; eauto.
           * repeat find_rewrite.
             eapply apply_handler_result_updates_sigma; eauto.
@@ -2286,6 +2308,7 @@ Section ChordProof.
           * repeat find_eapply_lem_hyp apply_handler_result_preserves_failed_nodes.
             now repeat find_reverse_rewrite. }
 
+        (* proving the final intermediate state is gst *)
         match goal with
         | [ |- P ?gst ] => assert (gst = gst2)
         end.
@@ -2295,45 +2318,42 @@ Section ChordProof.
           * repeat find_eapply_lem_hyp apply_handler_result_preserves_failed_nodes.
             now repeat find_reverse_rewrite.
           * repeat find_rewrite.
-            simpl.
-            unfold clear_timeouts.
-            simpl.
             tuple_inversion.
+            simpl.
             match goal with
             | [ |- update ?eq ?f ?x ?t = ?f' ] => assert (update eq f x t x = f' x)
             end.
-            repeat rewrite update_same.
-            assert (list_head_app: forall A (xs ys zs : list A),
-                       ys = zs -> xs ++ ys = xs ++ zs) by admit.
-            repeat rewrite <- app_assoc.
-            apply list_head_app.
-            
-            repeat (rewrite remove_all_app_l || rewrite remove_all_app_to_delete).
-            rewrite app_assoc.
-            apply list_head_app.
-            rewrite remove_all_del_comm.
-            symmetry.
-            rewrite remove_all_del_comm.
-            apply f_equal.
-            by rewrite remove_all_del_comm.
-            admit.
-          * simpl.
-            repeat find_rewrite.
+            { unfold clear_timeouts.
+              repeat rewrite update_same.
+              repeat rewrite <- app_assoc.
+              apply app_eq_l.
+              repeat (rewrite remove_all_app_l || rewrite remove_all_app_to_delete).
+              rewrite app_assoc.
+              apply app_eq_l.
+              rewrite (remove_all_del_comm _ _ l2).
+              rewrite (remove_all_del_comm _ _ l).
+              f_equal.
+              now rewrite remove_all_del_comm. }
+            apply functional_extensionality => x.
+            destruct (addr_eq_dec x (fst (snd m))).
+            -- now subst.
+            -- repeat rewrite update_diff; auto.
+          * repeat find_rewrite.
             simpl.
             repeat rewrite update_overwrite.
-            f_equal.
             now tuple_inversion.
-          * simpl.
-            repeat find_rewrite.
+          * repeat find_rewrite.
             simpl.
             tuple_inversion.
             repeat rewrite map_app.
             repeat (rewrite app_assoc; try reflexivity).
-          * subst; simpl.
+          * repeat find_rewrite.
             unfold apply_handler_result; simpl.
             repeat (break_let; simpl).
             now do 2 rewrite app_nil_r. }
+
+        (* and we're done *)
         now repeat find_rewrite.
-  Admitted.
+  Qed.
 
 End ChordProof.
