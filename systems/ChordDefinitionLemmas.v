@@ -37,7 +37,7 @@ Section ChordDefinitionLemmas.
       clearedts = [] /\
       ((delayed_queries st = [] /\ newts = [KeepaliveTick]) \/
        (delayed_queries st <> [] /\ newts = [])).
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     unfold handle_query_req_busy.
     intros.
     repeat break_match; tuple_inversion; tauto.
@@ -100,7 +100,7 @@ Section ChordDefinitionLemmas.
           p = GotSuccList succs /\
           add_tick (end_query (update_for_join st (make_succs new_succ succs), [], [], [])) = (st', ms, newts, clearedts)) \/
       st' = st /\ ms = [] /\ newts = [] /\ clearedts = [].
-  Proof.
+  Proof using.
     unfold handle_query_res.
     intros.
     repeat break_match; try tuple_inversion; try tauto.
@@ -231,7 +231,7 @@ Section ChordDefinitionLemmas.
             cts' = []))) \/
       ((joined st = false \/ rectify_with st = None \/ exists r, cur_request st = Some r) /\
        st' = st /\ ms' = [] /\ nts' = [] /\ cts' = []).
-  Proof.
+  Proof using SUCC_LIST_LEN.
     unfold do_rectify.
     intros.
     repeat break_match; try tuple_inversion; try tauto.
@@ -256,7 +256,7 @@ Section ChordDefinitionLemmas.
        ms = [] /\
        nts = [] /\
        cts = []).
-  Proof.
+  Proof using.
     unfold start_query.
     intros.
     repeat break_match; tuple_inversion; try tauto.
@@ -273,7 +273,7 @@ Section ChordDefinitionLemmas.
       ms = concat (map (handle_delayed_query h st) (delayed_queries st)) /\
       nts = [] /\
       cts = [KeepaliveTick]).
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     unfold do_delayed_queries.
     intros.
     repeat break_match; tuple_inversion;
@@ -287,7 +287,7 @@ Section ChordDefinitionLemmas.
       ms' = ms /\
       newts' = newts /\
       clearedts' = timeouts_in st ++ clearedts.
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     unfold end_query; simpl.
     intros.
     tuple_inversion; tauto.
@@ -303,7 +303,7 @@ Section ChordDefinitionLemmas.
        st' = update_pred st notifier \/
        ~ between (id_of my_pred) (id_of notifier) (id_of (ptr st)) /\
        st' = st).
-  Proof.
+  Proof using.
     unfold handle_rectify.
     intros.
     rewrite between_between_bool_equiv.

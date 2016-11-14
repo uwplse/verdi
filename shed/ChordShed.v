@@ -34,7 +34,7 @@ Section ChordShed.
 
   Definition request_response_pair_dec : forall p m,
       {request_response_pair p m} + {~ request_response_pair p m}.
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     intuition.
     destruct p;
       destruct m;
@@ -47,7 +47,7 @@ Section ChordShed.
       (* parens here to avoid clashing w/ some ssreflect notation *)
       {(forall m, request_response_pair p m -> ~ In (dst, (h, m)) l)} +
       {~ (forall m, request_response_pair p m -> ~ In (dst, (h, m)) l)}.
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     intros.
     induction l.
     - left.
@@ -92,7 +92,7 @@ Section ChordShed.
 
   Definition timeout_constraint_dec : forall gst h t,
       {timeout_constraint gst h t} + {~ timeout_constraint gst h t}.
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     intros.
     destruct t.
     - left.
@@ -124,7 +124,7 @@ Section ChordShed.
     forall gst h st,
       sigma gst h = Some st ->
       {(exists s, best_succ gst h s)} + {~ exists s, best_succ gst h s}.
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     intros.
     unfold best_succ.
     set (addrs := map addr_of (succ_list st)).
@@ -164,7 +164,7 @@ Section ChordShed.
   Definition has_state_dec :
     forall gst h,
       {has_state gst h} + {~has_state gst h}.
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     intuition.
     destruct (sigma gst h) as [st|] eqn:H_st.
     - left.
@@ -177,7 +177,7 @@ Section ChordShed.
 
   Definition live_node_in_succ_lists_dec : forall gst,
       {live_node_in_succ_lists gst} + {~ live_node_in_succ_lists gst}.
-  Proof.
+  Proof using.
     unfold live_node_in_succ_lists.
     move => gst.
     destruct (Forall_dec (live_node gst) (live_node_dec gst) (nodes gst)) as [H_st | H_st].
@@ -201,7 +201,7 @@ Section ChordShed.
   Definition all_nodes_live_dec :
     forall gst,
       {all_nodes_live gst} + {~ all_nodes_live gst}.
-  Proof.
+  Proof using.
     move => gst.
     apply Forall_dec.
     exact: live_node_dec.

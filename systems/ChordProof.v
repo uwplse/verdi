@@ -160,7 +160,7 @@ Section ChordProof.
       request_payload msg ->
       (st', sends, nts, cts) = handle_query_req_busy src st msg ->
       In (src, Busy) sends.
-  Proof.
+  Proof using.
     unfold handle_query_req_busy.
     intuition.
     break_if;
@@ -172,7 +172,7 @@ Section ChordProof.
     forall msg,
       is_safe msg = false ->
       msg <> Notify /\ msg <> Ping.
-  Proof.
+  Proof using.
     unfold is_safe.
     intuition;
       break_match;
@@ -184,7 +184,7 @@ Section ChordProof.
       request_payload msg ->
       is_safe msg = true ->
       msg = Ping.
-  Proof.
+  Proof using.
     intuition.
     request_payload_inversion;
       find_apply_lem_hyp safe_msgs;
@@ -196,7 +196,7 @@ Section ChordProof.
     forall src st msg st' ms nts cts,
       handle_query_req_busy src st msg = (st', ms, nts, cts) ->
       In (src, Busy) ms.
-  Proof.
+  Proof using.
     unfold handle_query_req_busy.
     intuition.
     break_if;
@@ -210,7 +210,7 @@ Section ChordProof.
       request_payload m ->
       exists p,
         handle_query_req st src m = [(src, p)].
-  Proof.
+  Proof using.
     unfold handle_query_req.
     intuition.
     find_copy_apply_lem_hyp unsafe_msgs_not_safe_ones; break_and.
@@ -276,7 +276,7 @@ Section ChordProof.
     forall gst,
       reachable_st gst ->
       intermediate_reachable_st gst.
-  Proof.
+  Proof using.
     intros.
     induct_reachable_st; econstructor; eauto.
   Qed.
@@ -288,7 +288,7 @@ Section ChordProof.
       In h (nodes gst) ->
       ~ In h (failed_nodes gst) ->
       live_node gst h.
-  Proof.
+  Proof using.
     unfold live_node.
     intuition.
     match goal with
@@ -348,7 +348,7 @@ Section ChordProof.
   Definition live_node_dec (gst : global_state) :
     forall h,
       {live_node gst h} + {~ live_node gst h}.
-  Proof.
+  Proof using.
     move => h.
     destruct (sigma gst h) as [st |] eqn:H_st.
     - destruct (joined st) eqn:H_joined;
@@ -365,7 +365,7 @@ Section ChordProof.
   Theorem live_node_dec_equiv_live_node :
     forall gst h,
       live_node gst h <-> live_node_bool gst h = true.
-  Proof.
+  Proof using.
     unfold live_node_bool.
     intuition.
     - repeat break_match;
@@ -396,7 +396,7 @@ Section ChordProof.
       reachable gst from x ->
       best_succ gst x to ->
       reachable gst from to.
-  Proof.
+  Proof using.
     intuition.
     induct_reachable.
     - eapply ReachableTransL.
@@ -410,7 +410,7 @@ Section ChordProof.
       reachable gst from x ->
       reachable gst x to ->
       reachable gst from to.
-  Proof.
+  Proof using.
     intros gst from x to H.
     generalize dependent to.
     induction H.
@@ -493,7 +493,7 @@ Section ChordProof.
     forall a b,
       addr_eqb a b = true ->
       a = b.
-  Proof.
+  Proof using.
     exact beq_nat_true.
   Qed.
 
@@ -501,14 +501,14 @@ Section ChordProof.
     forall a b,
       addr_eqb a b = false ->
       a <> b.
-  Proof.
+  Proof using.
     exact beq_nat_false.
   Qed.
 
   Lemma addr_eqb_refl :
     forall a,
       addr_eqb a a = true.
-  Proof.
+  Proof using.
     symmetry.
     apply beq_nat_refl.
   Qed.
@@ -530,7 +530,7 @@ Section ChordProof.
   Lemma channel_contents :
     forall gst src dst p,
         In (src, (dst, p)) (msgs gst) <-> In p (channel gst src dst).
-  Proof.
+  Proof using.
     unfold channel.
     intuition.
     - eapply filterMap_In; eauto.
@@ -641,7 +641,7 @@ Section ChordProof.
         (request_in_transit gst src (addr_of dstp) q \/
          response_in_transit gst src (addr_of dstp) q \/
          pending_query gst src (addr_of dstp) q).
-  Proof.
+  Proof using.
     eauto.
   Qed.
 
@@ -719,7 +719,7 @@ Section ChordProof.
       live_nodes_have_state gst ->
       step_dynamic gst gst' ->
       live_nodes_have_state gst'.
-  Proof.
+  Proof using.
     unfold live_nodes_have_state.
     move => gst gst' H_st H_step n H_in.
     break_step.
@@ -774,7 +774,7 @@ Section ChordProof.
       failed_nodes gst = failed_nodes gst' ->
       sigma gst = sigma gst' ->
       live_node gst = live_node gst'.
-  Proof.
+  Proof using.
     intuition.
     unfold live_node.
     repeat find_rewrite.
@@ -787,7 +787,7 @@ Section ChordProof.
       exists st,
         sigma gst h = Some st /\
         joined st = true.
-  Proof.
+  Proof using.
     intuition.
     by break_live_node_exists_exists.
   Qed.
@@ -796,7 +796,7 @@ Section ChordProof.
     forall gst h,
       live_node gst h ->
       In h (nodes gst).
-  Proof.
+  Proof using.
     intuition.
     by break_live_node.
   Qed.
@@ -805,7 +805,7 @@ Section ChordProof.
     forall gst h,
       live_node gst h ->
       ~ In h (failed_nodes gst).
-  Proof.
+  Proof using.
     intuition.
     by break_live_node.
   Qed.
@@ -819,7 +819,7 @@ Section ChordProof.
       sigma gst' h = Some st' ->
       joined st = joined st' ->
       live_node gst' h.
-  Proof.
+  Proof using.
     intuition.
     break_live_node.
     eapply live_node_characterization.
@@ -835,7 +835,7 @@ Section ChordProof.
     forall gst h,
       live_node gst h ->
       exists st, sigma gst h = Some st.
-  Proof.
+  Proof using.
     intuition.
     find_apply_lem_hyp live_node_joined.
     break_exists_exists.
@@ -849,7 +849,7 @@ Section ChordProof.
       failed_nodes gst = failed_nodes gst' ->
       sigma gst = sigma gst' ->
       live_node gst' h.
-  Proof.
+  Proof using.
     intuition.
     find_copy_apply_lem_hyp live_node_means_state_exists.
     break_exists.
@@ -866,7 +866,7 @@ Section ChordProof.
     forall gst gst' h res e,
       gst' = apply_handler_result h res e gst ->
       nodes gst = nodes gst'.
-  Proof.
+  Proof using.
     unfold apply_handler_result.
     intuition.
     repeat break_let.
@@ -877,7 +877,7 @@ Section ChordProof.
     forall gst gst' h res e,
       gst' = apply_handler_result h res e gst ->
       failed_nodes gst = failed_nodes gst'.
-  Proof.
+  Proof using.
     unfold apply_handler_result.
     intuition.
     repeat break_let.
@@ -892,7 +892,7 @@ Section ChordProof.
       joined st' = true ->
       gst' = apply_handler_result h0 (st', ms, cts, nts) e gst ->
       live_node gst' h.
-  Proof.
+  Proof using.
     intuition.
     eapply live_node_characterization.
     - eauto.
@@ -911,7 +911,7 @@ Section ChordProof.
     forall h st k st' ms nts cts,
       start_query h st k = (st', ms, nts, cts) ->
       joined st = joined st'.
-  Proof.
+  Proof using.
     unfold start_query.
     intuition.
     break_match.
@@ -925,7 +925,7 @@ Section ChordProof.
     forall h st st' ms' cts' nts',
       do_rectify h st = (st', ms', cts', nts') ->
       joined st = joined st'.
-  Proof.
+  Proof using.
     unfold do_rectify.
     intros.
     repeat break_match;
@@ -943,7 +943,7 @@ Section ChordProof.
     forall st st' ms ms' cts cts' nts nts',
       end_query (st, ms, cts, nts) = (st', ms', cts', nts') ->
       joined st = joined st'.
-  Proof.
+  Proof using.
     unfold end_query.
     intros.
     tuple_inversion.
@@ -954,7 +954,7 @@ Section ChordProof.
     forall h src st q new_succ succ st' ms nts cts,
       handle_stabilize h src st q new_succ succ = (st', ms, nts, cts) ->
       joined st = joined st'.
-  Proof.
+  Proof using.
     unfold handle_stabilize.
     unfold update_succ_list.
     intuition.
@@ -967,7 +967,7 @@ Section ChordProof.
     forall st p n st' ms nts cts,
       end_query (handle_rectify st p n) = (st', ms, nts, cts) ->
       joined st = joined st'.
-  Proof.
+  Proof using.
     unfold handle_rectify.
     intuition.
     repeat break_match;
@@ -988,7 +988,7 @@ Section ChordProof.
       recv_handler src h st msg = (st', ms, nts, cts) ->
       joined st = true ->
       joined st' = true.
-  Proof.
+  Proof using.
     unfold recv_handler.
     intuition.
   Admitted.
@@ -997,7 +997,7 @@ Section ChordProof.
     forall h st st' ms nts cts,
     tick_handler h st = (st', ms, nts, cts) ->
     joined st = joined st'.
-  Proof.
+  Proof using.
     unfold tick_handler, add_tick.
     intuition.
     - repeat break_match; repeat tuple_inversion; auto.
@@ -1009,7 +1009,7 @@ Section ChordProof.
     forall st p st',
       st' = update_pred st p ->
       joined st = joined st'.
-  Proof.
+  Proof using.
     unfold update_pred.
     intuition.
     find_rewrite; auto.
@@ -1019,7 +1019,7 @@ Section ChordProof.
     forall h st dst q st' ms nts cts,
       handle_query_timeout h st dst q = (st', ms, nts, cts) ->
       joined st = joined st'.
-  Proof.
+  Proof using.
     unfold handle_query_timeout.
     intuition.
     repeat break_match;
@@ -1032,7 +1032,7 @@ Section ChordProof.
     forall h st t st' ms nts cts,
     timeout_handler h st t = (st', ms, nts, cts) ->
     joined st = joined st'.
-  Proof.
+  Proof using.
     unfold timeout_handler.
     intuition.
     repeat break_match;
@@ -1045,7 +1045,7 @@ Section ChordProof.
     y <> x ->
     update addr_eq_dec f x d y = d' ->
     f y = d'.
-  Proof.
+  Proof using.
     intuition.
     symmetry.
     repeat find_reverse_rewrite.
@@ -1057,7 +1057,7 @@ Section ChordProof.
     forall h st ms nts cts e gst gst',
       gst' = apply_handler_result h (st, ms, nts, cts) e gst ->
       sigma gst' h = Some st.
-  Proof.
+  Proof using.
     unfold apply_handler_result, update.
     intuition.
     repeat find_rewrite.
@@ -1079,7 +1079,7 @@ Section ChordProof.
       recv_handler src h st msg = (st', ms, nts, cts) ->
       gst' = apply_handler_result h (st', ms, nts, cts) e gst ->
       live_node gst' h.
-  Proof.
+  Proof using.
     intuition.
     eapply when_apply_handler_result_preserves_live_node; eauto.
     - eauto using apply_handler_result_updates_sigma.
@@ -1098,7 +1098,7 @@ Section ChordProof.
       timeout_handler h st t = (st', ms, nts, cts) ->
       gst' = apply_handler_result h (st', ms, nts, t :: cts) e gst ->
       live_node gst' h.
-  Proof.
+  Proof using.
     intuition.
     eapply when_apply_handler_result_preserves_live_node; eauto.
     - eauto using apply_handler_result_updates_sigma.
@@ -1117,7 +1117,7 @@ Section ChordProof.
       failed_nodes gst' = failed_nodes gst ->
       live_node gst h ->
       live_node gst' h.
-  Proof.
+  Proof using.
     intuition.
     break_live_node_name d.
     repeat split.
@@ -1143,7 +1143,7 @@ Section ChordProof.
       live_node gst' h ->
       h <> n ->
       live_node gst h.
-  Proof.
+  Proof using.
     intuition.
     unfold live_node.
     break_live_node_name d.
@@ -1172,7 +1172,7 @@ Section ChordProof.
       failed_nodes gst' = failed_nodes gst ->
       dead_node gst h ->
       dead_node gst' h.
-  Proof.
+  Proof using.
     intuition.
     break_dead_node_name d.
     repeat split.
@@ -1196,7 +1196,7 @@ Section ChordProof.
       failed_nodes gst' = failed_nodes gst ->
       dead_node gst' h ->
       dead_node gst h.
-  Proof.
+  Proof using.
     intuition.
     break_dead_node_name d.
     unfold dead_node.
@@ -1218,7 +1218,7 @@ Section ChordProof.
       nodes gst' = nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
       dead_node gst' h.
-  Proof.
+  Proof using.
     intuition.
     break_dead_node_name d.
     repeat split; try (find_rewrite; auto).
@@ -1232,7 +1232,7 @@ Section ChordProof.
       nodes gst' = nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
       best_succ gst' h s.
-  Proof.
+  Proof using.
     unfold best_succ in *.
     intuition.
     break_exists_exists.
@@ -1256,7 +1256,7 @@ Section ChordProof.
       nodes gst' = n :: nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
       best_succ gst' h s.
-  Proof.
+  Proof using.
     unfold best_succ.
     intuition.
     break_exists_exists.
@@ -1279,14 +1279,14 @@ Section ChordProof.
   Lemma in_half_means_in_whole :
     forall A (x : A) (xs ys : list A),
       In x xs -> In x (xs ++ ys).
-  Proof.
+  Proof using.
     intuition.
   Qed.
 
   Lemma in_middle_means_in_whole :
     forall A (x : A) (xs ys : list A),
       In x (xs ++ x :: ys).
-  Proof.
+  Proof using.
     intuition.
   Qed.
 
@@ -1301,7 +1301,7 @@ Section ChordProof.
       nodes gst' = n :: nodes gst ->
       failed_nodes gst' = failed_nodes gst ->
       best_succ gst h s.
-  Proof.
+  Proof using.
     intuition.
     unfold best_succ in *.
     break_exists_exists.
@@ -1365,7 +1365,7 @@ Section ChordProof.
       failed_nodes gst' = failed_nodes gst ->
       sigma gst' = sigma gst ->
       reachable gst' from to.
-  Proof.
+  Proof using.
     intuition.
     induction H;
       eauto using ReachableSucc, ReachableTransL, coarse_best_succ_characterization.
@@ -1379,7 +1379,7 @@ Section ChordProof.
         failed_nodes gst' = failed_nodes gst ->
         sigma gst' = update addr_eq_dec (sigma gst) h (Some st) ->
         reachable gst' from to.
-  Proof.
+  Proof using.
     intuition.
     induction H;
       eauto using ReachableSucc, ReachableTransL, adding_nodes_does_not_affect_best_succ.
@@ -1460,7 +1460,7 @@ Section ChordProof.
       id_of p = hash (addr_of p) ->
       In (addr_of p) (nodes gst) ->
       valid_ptr gst p.
-  Proof.
+  Proof using.
     easy.
   Qed.
 
@@ -1469,7 +1469,7 @@ Section ChordProof.
       valid_ptr gst p ->
       id_of p = hash (addr_of p) /\
       In (addr_of p) (nodes gst).
-  Proof.
+  Proof using.
     unfold valid_ptr.
     easy.
   Qed.
@@ -1478,7 +1478,7 @@ Section ChordProof.
     forall gst p,
       valid_ptr gst p ->
       id_of p = hash (addr_of p).
-  Proof.
+  Proof using.
     unfold valid_ptr.
     easy.
   Qed.
@@ -1487,7 +1487,7 @@ Section ChordProof.
     forall gst p,
       valid_ptr gst p ->
       In (addr_of p) (nodes gst).
-  Proof.
+  Proof using.
     unfold valid_ptr.
     easy.
   Qed.
@@ -1497,7 +1497,7 @@ Section ChordProof.
       valid_ptr gst p ->
       (forall n, In n (nodes gst) -> In n (nodes gst')) ->
       valid_ptr gst' p.
-  Proof.
+  Proof using.
     unfold valid_ptr.
     intuition.
   Qed.
@@ -1507,7 +1507,7 @@ Section ChordProof.
       nodes gst = nodes gst' ->
       valid_ptr gst p ->
       valid_ptr gst' p.
-  Proof.
+  Proof using.
     intros.
     eapply valid_ptr_nodes_subset; eauto.
     now find_rewrite.
@@ -1516,7 +1516,7 @@ Section ChordProof.
   Lemma make_pointer_valid :
     forall a,
       id_of (make_pointer a) = hash (addr_of (make_pointer a)).
-  Proof.
+  Proof using.
     by unfold make_pointer.
   Qed.
 
@@ -1528,7 +1528,7 @@ Section ChordProof.
       valid_ptr_list gst ps ->
       (forall n, In n (nodes gst) -> In n (nodes gst')) ->
       valid_ptr_list gst' ps.
-  Proof.
+  Proof using.
     intros.
     apply Forall_forall.
     intros.
@@ -1541,7 +1541,7 @@ Section ChordProof.
       nodes gst = nodes gst' ->
       valid_ptr_list gst ps ->
       valid_ptr_list gst' ps.
-  Proof.
+  Proof using.
     intros.
     eapply valid_ptr_list_nodes_subset; eauto.
     now find_rewrite.
@@ -1561,7 +1561,7 @@ Section ChordProof.
       lift_pred_opt P o ->
       (exists a, o = Some a /\ P a) \/
       o = None.
-  Proof.
+  Proof using.
     intros.
     inv H; [left | right]; eexists; eauto.
   Qed.
@@ -1574,7 +1574,7 @@ Section ChordProof.
       valid_opt_ptr gst o ->
       (exists p, o = Some p /\ valid_ptr gst p) \/
       o = None.
-  Proof.
+  Proof using.
     eauto using lift_pred_opt_elim.
   Qed.
 
@@ -1623,7 +1623,7 @@ Section ChordProof.
       valid_ptr_query gst q ->
       valid_ptr_payload gst m ->
       valid_ptrs_some_cur_request gst (p, q, m).
-  Proof.
+  Proof using.
     easy.
   Qed.
 
@@ -1633,7 +1633,7 @@ Section ChordProof.
       valid_ptr gst p /\
       valid_ptr_query gst q /\
       valid_ptr_payload gst m.
-  Proof.
+  Proof using.
     easy.
   Qed.
 
@@ -1641,7 +1641,7 @@ Section ChordProof.
     forall gst p q m,
       valid_ptrs_some_cur_request gst (p, q, m) ->
       valid_ptr gst p.
-  Proof.
+  Proof using.
     unfold valid_ptrs_some_cur_request.
     easy.
   Qed.
@@ -1650,7 +1650,7 @@ Section ChordProof.
     forall gst p q m,
       valid_ptrs_some_cur_request gst (p, q, m) ->
       valid_ptr_query gst q.
-  Proof.
+  Proof using.
     unfold valid_ptrs_some_cur_request.
     easy.
   Qed.
@@ -1659,7 +1659,7 @@ Section ChordProof.
     forall gst p q m,
       valid_ptrs_some_cur_request gst (p, q, m) ->
       valid_ptr_payload gst m.
-  Proof.
+  Proof using.
     unfold valid_ptrs_some_cur_request.
     easy.
   Qed.
@@ -1683,7 +1683,7 @@ Section ChordProof.
       (valid_ptrs_state gst d -> valid_ptr gst (known d)) /\
       (valid_ptrs_state gst d -> valid_opt_ptr gst (rectify_with d)) /\
       (valid_ptrs_state gst d -> valid_ptrs_cur_request gst (cur_request d)).
-  Proof.
+  Proof using.
     unfold valid_ptrs_state.
     tauto.
   Qed.
@@ -1698,7 +1698,7 @@ Section ChordProof.
       valid_ptrs_net gst ->
       In m (msgs gst) ->
       valid_ptr_payload gst (snd (snd m)).
-  Proof.
+  Proof using.
     unfold valid_ptrs_net.
     intros.
     destruct m.
@@ -1723,7 +1723,7 @@ Section ChordProof.
     forall gst h,
       (forall t, In t (timeouts gst h) -> valid_ptr_timeout gst t) ->
       valid_ptrs_timeouts gst (timeouts gst h).
-  Proof.
+  Proof using.
     intros.
     now apply Forall_forall.
   Qed.
@@ -1734,7 +1734,7 @@ Section ChordProof.
       forall t,
         In t (timeouts gst h) ->
         valid_ptr_timeout gst t.
-  Proof.
+  Proof using.
     unfold valid_ptrs_timeouts.
     intros until 1.
     now apply Forall_forall.
@@ -1753,7 +1753,7 @@ Section ChordProof.
     forall gst,
       (forall e, In e (trace gst) -> valid_ptr_event gst e) ->
       valid_ptrs_trace gst.
-  Proof.
+  Proof using.
     intros.
     now apply Forall_forall.
   Qed.
@@ -1771,7 +1771,7 @@ Section ChordProof.
       (forall h, lift_pred_opt (valid_ptrs_state gst) (sigma gst h)) /\
       valid_ptrs_net gst /\
       valid_ptrs_trace gst.
-  Proof.
+  Proof using.
     auto.
   Qed.
 
@@ -1787,7 +1787,7 @@ Section ChordProof.
       valid_opt_ptr gst o ->
       (forall n, In n (nodes gst) -> In n (nodes gst')) ->
       valid_opt_ptr gst' o.
-  Proof.
+  Proof using.
     intros.
     find_eapply_lem_hyp valid_opt_ptr_elim.
     break_or_hyp; try constructor.
@@ -1801,7 +1801,7 @@ Section ChordProof.
       nodes gst = nodes gst' ->
       valid_opt_ptr gst o ->
       valid_opt_ptr gst' o.
-  Proof.
+  Proof using.
     intros.
     eapply valid_opt_ptr_nodes_subset; eauto.
     now find_rewrite.
@@ -1812,7 +1812,7 @@ Section ChordProof.
       valid_ptr_payload gst p ->
       (forall n, In n (nodes gst) -> In n (nodes gst')) ->
       valid_ptr_payload gst' p.
-  Proof.
+  Proof using.
     intros.
     inv_vpp; constructor;
     eauto using valid_ptr_nodes_subset, valid_ptr_list_nodes_subset, valid_opt_ptr_nodes_subset.
@@ -1823,7 +1823,7 @@ Section ChordProof.
       nodes gst = nodes gst' ->
       valid_ptr_payload gst p ->
       valid_ptr_payload gst' p.
-  Proof.
+  Proof using.
     intros.
     eapply valid_ptr_payload_nodes_subset; eauto.
     now find_rewrite.
@@ -1834,7 +1834,7 @@ Section ChordProof.
       valid_ptr_timeout gst t ->
       nodes gst = nodes gst' ->
       valid_ptr_timeout gst' t.
-  Proof.
+  Proof using.
     intros.
     inv_vpt.
     - constructor.
@@ -1857,7 +1857,7 @@ Section ChordProof.
       timeouts gst = timeouts gst' ->
       nodes gst = nodes gst' ->
       valid_ptrs_timeouts gst' (timeouts gst' h).
-  Proof.
+  Proof using.
     intros.
     apply valid_ptrs_timeouts_intro; intros.
     eapply valid_ptr_timeout_nodes; eauto.
@@ -1879,7 +1879,7 @@ Section ChordProof.
       exists dst q m,
         cur_request st = Some (dst, q, m) /\
         t = Request (addr_of dst) m.
-  Proof.
+  Proof using.
     unfold timeouts_in.
     intros.
     repeat break_match.
@@ -1897,7 +1897,7 @@ Section ChordProof.
       lift_pred_opt P x ->
       x = Some a ->
       P a.
-  Proof.
+  Proof using.
     intros.
     match type of H with
     | lift_pred_opt _ _ => inv H
@@ -1914,7 +1914,7 @@ Section ChordProof.
       recv_handler (fst m) (fst (snd m)) d (snd (snd m)) = (st, ms, newts, clearedts) ->
       forall t, In t newts ->
            valid_ptr_timeout gst t.
-  Proof.
+  Proof using.
   Admitted.
 
   Lemma valid_ptrs_global_timeouts :
@@ -1923,7 +1923,7 @@ Section ChordProof.
       step_dynamic gst gst' ->
       forall h,
         valid_ptrs_timeouts gst' (timeouts gst' h).
-  Proof.
+  Proof using hash_inj N.
     intros.
     copy_elim_valid_ptrs_global.
     break_step.
@@ -1975,7 +1975,7 @@ Section ChordProof.
       forall h d,
         sigma gst' h = Some d ->
         valid_ptrs_state gst' d.
-  Proof.
+  Proof using.
     intros.
     break_step.
     - admit.
@@ -1989,7 +1989,7 @@ Section ChordProof.
       valid_ptrs_global gst ->
       step_dynamic gst gst' ->
       valid_ptrs_net gst'.
-  Proof.
+  Proof using.
     intros.
     break_step.
     - admit.
@@ -2003,7 +2003,7 @@ Section ChordProof.
       valid_ptrs_global gst ->
       step_dynamic gst gst' ->
       valid_ptrs_trace gst'.
-  Proof.
+  Proof using.
     intros.
     break_step.
     - admit.
@@ -2016,7 +2016,7 @@ Section ChordProof.
     forall gst,
       reachable_st gst ->
       valid_ptrs_global gst.
-  Proof.
+  Proof using.
     intros.
     induct_reachable_st.
     - admit.
@@ -2034,7 +2034,7 @@ Section ChordProof.
     forall gst,
       reachable_st gst ->
       query_state_net_invariant gst.
-  Proof.
+  Proof using.
     intros.
     induct_reachable_st.
     { admit. } (* have to define valid initial states *)
@@ -2184,7 +2184,7 @@ Section ChordProof.
       sigma gst = sigma gst' /\
       msgs gst' = ms /\
       trace gst = trace gst'.
-  Proof.
+  Proof using.
     intros; subst; tauto.
   Qed.
 
@@ -2197,7 +2197,7 @@ Section ChordProof.
       msgs gst = msgs gst' ->
       trace gst = trace gst' ->
       gst = gst'.
-  Proof.
+  Proof using.
     intros.
     destruct gst, gst'.
     simpl in *.
@@ -2208,27 +2208,27 @@ Section ChordProof.
   Lemma remove_all_app_to_delete :
     forall A A_eq_dec (xs ys zs : list A),
       remove_all A_eq_dec (xs ++ ys) zs = remove_all A_eq_dec xs (remove_all A_eq_dec ys zs).
-  Proof.
+  Proof using.
   Admitted.
 
   Lemma remove_all_app_l :
     forall A A_eq_dec (xs ys zs : list A),
       remove_all A_eq_dec xs (ys ++ zs) = (remove_all A_eq_dec xs ys) ++ remove_all A_eq_dec xs zs.
-  Proof.
+  Proof using.
   Admitted.
 
   Lemma remove_all_del_comm :
     forall A A_eq_dec (xs ys zs : list A),
       remove_all A_eq_dec xs (remove_all A_eq_dec ys zs) =
       remove_all A_eq_dec ys (remove_all A_eq_dec xs zs).
-  Proof.
+  Proof using.
   Admitted.
 
   Lemma app_eq_l :
     forall A (xs ys zs : list A),
       ys = zs ->
       xs ++ ys = xs ++ zs.
-  Proof.
+  Proof using.
     intros.
     now find_rewrite.
   Qed.
@@ -2237,7 +2237,7 @@ Section ChordProof.
     forall A (xs ys zs : list A),
       xs = ys ->
       xs ++ zs = ys ++ zs.
-  Proof.
+  Proof using.
     intros.
     now find_rewrite.
   Qed.
@@ -2255,7 +2255,7 @@ Section ChordProof.
       chord_do_rectify_invariant P ->
       reachable_st net ->
       P net.
-  Proof.
+  Proof using.
     intros.
     match goal with
     | [H : reachable_st net |- _] => induction H

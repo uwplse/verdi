@@ -116,7 +116,7 @@ Section Dynamic.
   Lemma apply_handler_result_nodes :
     forall h r e gst,
       nodes (apply_handler_result h r e gst) = nodes gst.
-  Proof.
+  Proof using.
     unfold apply_handler_result.
     intros.
     now repeat break_let.
@@ -139,7 +139,7 @@ Section Dynamic.
     forall gst gst' h res,
       update_for_start gst h res = gst' ->
       h :: nodes gst = nodes gst'.
-  Proof.
+  Proof using.
     unfold update_for_start.
     intros.
     repeat break_let.
@@ -149,7 +149,7 @@ Section Dynamic.
   Lemma update_for_start_nodes_eq :
     forall gst h res,
       nodes (update_for_start gst h res) = h :: nodes gst.
-  Proof.
+  Proof using.
     unfold update_for_start.
     intros.
     now repeat break_let.
@@ -159,7 +159,7 @@ Section Dynamic.
     forall gst h res,
       exists st,
         sigma (update_for_start gst h res) h = Some st.
-  Proof.
+  Proof using.
     unfold update_for_start.
     intros.
     repeat break_let.
@@ -172,7 +172,7 @@ Section Dynamic.
       h <> n ->
       sigma gst n = Some st ->
       sigma (update_for_start gst h res) n = Some st.
-  Proof.
+  Proof using.
     unfold update_for_start.
     intros.
     repeat break_let.
@@ -283,7 +283,7 @@ Section Dynamic.
 
   Lemma strong_local_fairness_invar :
     forall e s, strong_local_fairness (Cons e s) -> strong_local_fairness s.
-  Proof.
+  Proof using.
     unfold strong_local_fairness. unfold inf_enabled, inf_occurred, inf_often.
     intros e s fair a alev.
     assert (alevt_es: always (eventually (now (l_enabled a))) (Cons e s)).
@@ -296,7 +296,7 @@ Section Dynamic.
 
   Lemma weak_local_fairness_invar :
     forall e s, weak_local_fairness (Cons e s) -> weak_local_fairness s.
-  Proof.
+  Proof using.
     unfold weak_local_fairness. unfold cont_enabled, inf_occurred, continuously, inf_often.
     intros e s fair l eval.
     assert (eval_es: eventually (always (now (l_enabled l))) (Cons e s)).
@@ -308,7 +308,7 @@ Section Dynamic.
 
   Lemma strong_local_fairness_weak :
     forall s, strong_local_fairness s -> weak_local_fairness s.
-  Proof.
+  Proof using.
   intros [e s].
   unfold strong_local_fairness, weak_local_fairness, inf_enabled, cont_enabled.
   intros H_str l H_cont.
@@ -325,7 +325,7 @@ Section Dynamic.
 
   Lemma lb_execution_invar :
     forall x s, lb_execution (Cons x s) -> lb_execution s.
-  Proof.
+  Proof using.
     intros x s e. change (lb_execution (tl (Cons x s))).
     destruct e; simpl. assumption.
   Qed.
@@ -334,7 +334,7 @@ Section Dynamic.
     forall gst l gst',
       labeled_step_dynamic gst l gst' ->
       step_dynamic gst gst'.
-  Proof.
+  Proof using timeout_handler_labeling recv_handler_labeling.
     intuition.
     match goal with
       | H: labeled_step_dynamic _ _ _ |- _ =>
@@ -359,7 +359,7 @@ Section Dynamic.
   Lemma list_neq_cons :
     forall A (l : list A) x,
       x :: l <> l.
-  Proof.
+  Proof using.
     intuition.
     symmetry in H.
     induction l;
@@ -371,7 +371,7 @@ Section Dynamic.
       step_dynamic gst gst' ->
       ((exists l, labeled_step_dynamic gst l gst') /\ ~ churn_between gst gst') \/
       ((~ exists l, labeled_step_dynamic gst l gst') /\ churn_between gst gst').
-  Proof.
+  Proof using timeout_handler_labeling recv_handler_labeling.
     intuition.
     match goal with
       | H: step_dynamic _ _ |- _ =>

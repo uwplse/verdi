@@ -33,7 +33,7 @@ Section ChordLabeled.
   | Timeout : addr -> timeout -> label.
 
   Definition label_eq_dec : forall x y : label, {x = y} + {x <> y}.
-  Proof.
+  Proof using.
     decide equality; eauto using addr_eq_dec, payload_eq_dec, timeout_eq_dec.
   Defined.
 
@@ -56,7 +56,7 @@ Section ChordLabeled.
       (forall l,
           recv_handler_l src dst st p = (r, l) ->
           recv_handler src dst st p = r).
-  Proof.
+  Proof using.
     unfold recv_handler_l.
     intuition.
     - find_rewrite.
@@ -92,7 +92,7 @@ Section ChordLabeled.
       In (src, (dst, m)) (msgs (occ_gst e)) ->
       sigma (occ_gst e) dst = Some d ->
       l_enabled (RecvMsg src dst m) e.
-  Proof.
+  Proof using.
   move => e src dst m d H_in_n H_in_f H_in H_s.
   find_apply_lem_hyp in_split.
   break_exists.
@@ -138,7 +138,7 @@ Section ChordLabeled.
   Lemma sigma_ahr_updates :
     forall gst n st ms nts cts e,
       sigma (apply_handler_result n (st, ms, nts, cts) e gst) n = Some st.
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     unfold apply_handler_result.
     simpl.
     intuition.
@@ -150,7 +150,7 @@ Section ChordLabeled.
       n <> h ->
       sigma gst h = Some d ->
       sigma (apply_handler_result n (st, ms, nts, cts) e gst) h = Some d.
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     unfold apply_handler_result.
     simpl.
     intuition.
@@ -164,7 +164,7 @@ Section ChordLabeled.
       labeled_step_dynamic gst l gst' ->
       exists d',
         sigma gst' h = Some d'.
-  Proof.
+  Proof using.
     intuition.
     break_labeled_step;
       match goal with
@@ -181,7 +181,7 @@ Section ChordLabeled.
       In a l ->
       a <> b ->
       In a (xs ++ ys).
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     intuition.
     subst_max.
     do_in_app.
@@ -195,7 +195,7 @@ Section ChordLabeled.
     forall m d st ms nts cts src dst p,
       recv_handler_l (fst m) (fst (snd m)) d (snd (snd m)) = (st, ms, nts, cts, RecvMsg src dst p) ->
       (m = (src, (dst, p)) /\ fst m = src /\ fst (snd m) = dst /\ snd (snd m) = p).
-  Proof.
+  Proof using.
     unfold recv_handler_l.
     intuition;
       now tuple_inversion.
@@ -220,7 +220,7 @@ Section ChordLabeled.
                                      (st', ms, newts, clearedts)
                                      [e_recv (src, (dst, p))]
                                      (update_msgs gst (xs ++ ys))).
-  Proof.
+  Proof using.
     intuition.
     inv_labeled_step.
     recover_msg_from_recv_step_equality.
@@ -234,7 +234,7 @@ Section ChordLabeled.
       In (from, (to, m)) (msgs gst) ->
       (from, (to, m)) <> (src, (dst, p)) ->
       In (from, (to, m)) (msgs gst').
-  Proof.
+  Proof using.
     intuition.
     inv_labeled_step.
     apply in_or_app.
@@ -258,7 +258,7 @@ Section ChordLabeled.
       (exists st, sigma gst to = Some st) ->
       In (from, (to, p)) (msgs gst) ->
       enabled (RecvMsg from to p) gst.
-  Proof.
+  Proof using.
     intuition.
     find_apply_lem_hyp in_split.
     break_exists.
@@ -279,7 +279,7 @@ Section ChordLabeled.
       labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
       exists st,
         sigma gst' dst = Some st.
-  Proof.
+  Proof using.
     intuition.
     invc_labeled_step.
     invc_labeled_step.
@@ -297,7 +297,7 @@ Section ChordLabeled.
     forall gst gst' src dst p,
       labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
       In (src, (dst, p)) (msgs gst).
-  Proof.
+  Proof using.
     intuition.
     invc_labeled_step.
     recover_msg_from_recv_step_equality_clear.
@@ -311,7 +311,7 @@ Section ChordLabeled.
       labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
       (src, (dst, m)) <> (from, (to, p)) ->
       In (src, (dst, m)) (msgs gst').
-  Proof.
+  Proof using.
     intuition.
     eapply irrelevant_message_not_removed.
     - eauto.
@@ -346,7 +346,7 @@ Section ChordLabeled.
     forall gst gst' src dst p,
       labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
        In dst (nodes gst).
-  Proof.
+  Proof using.
     intuition.
     invc_labeled_step.
   Qed.
@@ -355,7 +355,7 @@ Section ChordLabeled.
     forall gst gst' src dst p,
       labeled_step_dynamic gst (RecvMsg src dst p) gst' ->
       ~ In dst (failed_nodes gst).
-  Proof.
+  Proof using.
     intuition.
     invc_labeled_step.
   Qed.
@@ -365,7 +365,7 @@ Section ChordLabeled.
       labeled_step_dynamic gst l gst' ->
       ~ In h (failed_nodes gst) ->
       ~ In h (failed_nodes gst').
-  Proof.
+  Proof using.
     intuition.
     now invc_labeled_step.
   Qed.
@@ -375,7 +375,7 @@ Section ChordLabeled.
       labeled_step_dynamic gst l gst' ->
       In h (failed_nodes gst) ->
       In h (failed_nodes gst').
-  Proof.
+  Proof using.
     intuition.
     now invc_labeled_step.
   Qed.
@@ -385,7 +385,7 @@ Section ChordLabeled.
       labeled_step_dynamic gst l gst' ->
       In h (failed_nodes gst') ->
       In h (failed_nodes gst).
-  Proof.
+  Proof using.
     intuition.
     now invc_labeled_step.
   Qed.
@@ -396,7 +396,7 @@ Section ChordLabeled.
       labeled_step_dynamic gst l gst' ->
       In h (nodes gst) ->
       In h (nodes gst').
-  Proof.
+  Proof using.
     intuition.
     match goal with
     | H: labeled_step_dynamic _ _ _ |- _ => destruct H eqn:?H
@@ -410,7 +410,7 @@ Section ChordLabeled.
       labeled_step_dynamic gst (RecvMsg from to m) gst'' ->
       m <> p ->
       enabled (RecvMsg from to m) gst'.
-  Proof.
+  Proof using.
     intuition.
     apply when_RecvMsg_enabled.
     - eauto using recv_implies_node_in, nodes_never_removed.
@@ -428,7 +428,7 @@ Section ChordLabeled.
       labeled_step_dynamic gst (RecvMsg src to m) gst'' ->
       src <> from ->
       enabled (RecvMsg src to m) gst'.
-  Proof.
+  Proof using.
     intuition.
     apply when_RecvMsg_enabled.
     - eauto using recv_implies_node_in, nodes_never_removed.
@@ -446,7 +446,7 @@ Section ChordLabeled.
       labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
       dst <> to ->
       enabled (RecvMsg src dst m) gst'.
-  Proof.
+  Proof using.
     intuition.
     apply when_RecvMsg_enabled.
     - eauto using recv_implies_node_in, nodes_never_removed.
@@ -464,7 +464,7 @@ Section ChordLabeled.
       labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
       exists st,
         sigma gst' dst = Some st.
-  Proof.
+  Proof using.
     intuition.
     invc_labeled_step.
     invc_labeled_step.
@@ -484,7 +484,7 @@ Section ChordLabeled.
     labeled_step_dynamic gst (Timeout h t) gst' ->
     labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
     In (src, (dst, m)) (msgs gst').
-  Proof.
+  Proof using.
     intuition.
     find_copy_eapply_lem_hyp recv_implies_msg_in_before.
     invc_labeled_step.
@@ -500,7 +500,7 @@ Section ChordLabeled.
     labeled_step_dynamic gst (Timeout h t) gst' ->
     labeled_step_dynamic gst (RecvMsg src dst m) gst'' ->
     enabled (RecvMsg src dst m) gst'.
-  Proof.
+  Proof using.
     intuition.
     apply when_RecvMsg_enabled.
     - eauto using recv_implies_node_in, nodes_never_removed.
@@ -515,7 +515,7 @@ Section ChordLabeled.
         weak_until (now (l_enabled (RecvMsg src dst m)))
               (now (occurred (RecvMsg src dst m)))
               s.
-  Proof.
+  Proof using.
     cofix c.
     case => /=.
     case => /= gst.
@@ -579,7 +579,7 @@ Section ChordLabeled.
            In (src, (dst, m)) (msgs (occ_gst (hd s))) ->
            sigma (occ_gst (hd s)) dst = Some d ->
            eventually (now (occurred (RecvMsg src dst m))) s.
-  Proof.
+  Proof using.
     move => s H_exec H_fair src dst m d H_in_n H_in_f H_in_m H_s.
     have H_un := RecvMsg_enabled_until_occurred _ H_exec src dst m.
     apply weak_until_until_or_always in H_un; last by apply: l_enabled_RecvMsg_In_msgs; eauto.
@@ -595,7 +595,7 @@ Section ChordLabeled.
     forall gst h t gst',
       labeled_step_dynamic gst (Timeout h t) gst' ->
       timeout_constraint gst h t.
-  Proof.
+  Proof using.
     move => gst h t gst' H_step.
     now invc_labeled_step.
   Qed.
@@ -608,7 +608,7 @@ Section ChordLabeled.
       In t (timeouts gst h) ->
       timeout_constraint gst h t ->
       enabled (Timeout h t) gst.
-  Proof.
+  Proof using.
     move => h t st gst H_in H_live H_st H_t H_constraint.
     unfold enabled.
     case H_r: (timeout_handler_l h st t) => [[[[st' ms] nts] cts] l].
@@ -629,7 +629,7 @@ Section ChordLabeled.
     forall gst h t gst',
       labeled_step_dynamic gst (Timeout h t) gst' ->
       In h (nodes gst).
-  Proof.
+  Proof using.
     intuition.
     invc_labeled_step.
   Qed.
@@ -638,7 +638,7 @@ Section ChordLabeled.
     forall gst h t gst',
       labeled_step_dynamic gst (Timeout h t) gst' ->
       ~ In h (failed_nodes gst).
-  Proof.
+  Proof using.
     intuition.
     invc_labeled_step.
   Qed.
@@ -648,7 +648,7 @@ Section ChordLabeled.
       labeled_step_dynamic gst (Timeout h t) gst' ->
       exists st,
         sigma gst h = Some st.
-  Proof.
+  Proof using.
     intuition.
     invc_labeled_step.
     unfold timeout_handler_l in *.
@@ -662,7 +662,7 @@ Section ChordLabeled.
       sigma gst h = Some st ->
       exists d,
         sigma gst' h = Some d.
-  Proof.
+  Proof using.
     move => gst gst' h st src dst p H_step H_st.
     invc_labeled_step.
     recover_msg_from_recv_step_equality_clear.
@@ -686,7 +686,7 @@ Section ChordLabeled.
     forall gst gst' h t,
       labeled_step_dynamic gst (Timeout h t) gst' ->
       In t (timeouts gst h).
-  Proof.
+  Proof using.
     intuition.
     invc_labeled_step.
   Qed.
@@ -695,7 +695,7 @@ Section ChordLabeled.
     forall src st p st' ms nts cts,
       handle_query_req_busy src st p = (st', ms, nts, cts) ->
       cts = nil.
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     unfold handle_query_req_busy.
     intuition.
     repeat break_match;
@@ -705,7 +705,7 @@ Section ChordLabeled.
   Lemma timeouts_in_never_has_Tick :
     forall st,
       ~ In Tick (timeouts_in st).
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     unfold timeouts_in.
     intuition.
     repeat break_match.
@@ -718,7 +718,7 @@ Section ChordLabeled.
     forall src dst st p q st' ms nts cts,
       handle_query_res SUCC_LIST_LEN hash src dst st q p = (st', ms, nts, cts) ->
       ~ In Tick cts.
-  Proof.
+  Proof using.
     unfold handle_query_res.
     intuition.
     (* takes care of nil cases *)
@@ -732,7 +732,7 @@ Section ChordLabeled.
     forall src dst st p ms st' nts cts,
       recv_handler src dst st p = (st', ms, nts, cts) ->
       ~ In Tick cts.
-  Proof.
+  Proof using.
     unfold recv_handler.
     intuition.
     repeat break_match.
@@ -782,7 +782,7 @@ Section ChordLabeled.
       cur_request st = Some (dst, q, m) ->
       a = addr_of dst ->
       In (Request a m) (timeouts_in st).
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     unfold timeouts_in.
     intuition.
     repeat find_rewrite.
@@ -798,7 +798,7 @@ Section ChordLabeled.
     forall a,
     exists p,
       addr_of p = a.
-  Proof.
+  Proof using hash.
     move => a.
     by exists (make_pointer a).
   Qed.
@@ -821,7 +821,7 @@ Section ChordLabeled.
       In (dst, (h, p)) (msgs gst) ->
       handle_query_res SUCC_LIST_LEN hash dst h st q p = (st', ms, nts, cts) ->
       In (Request dst req) nts \/ ~ In (Request dst req) cts.
-  Proof.
+  Proof using.
     unfold handle_query_res.
     intuition.
     assert (exists q,
@@ -840,7 +840,7 @@ Section ChordLabeled.
   Definition request_response_pair_dec :
     forall p q,
       {request_response_pair p q} + {~ request_response_pair p q}.
-  Proof.
+  Proof using.
     destruct p;
     destruct q;
     now eauto using pair_GetSuccList, pair_GetBestPredecessor, pair_GetPredAndSuccs, pair_Ping || right; intro H; inv H.
@@ -851,7 +851,7 @@ Section ChordLabeled.
       is_safe p = false ->
       is_request p = false ->
       response_payload p.
-  Proof.
+  Proof using hash SUCC_LIST_LEN.
     intuition.
     destruct p;
       try (simpl in *; discriminate);
@@ -892,7 +892,7 @@ Section ChordLabeled.
       In (src, (h, p)) (msgs gst) ->
       recv_handler src h st p = (st', ms, nts, cts) ->
       In (Request dst req) nts \/ ~ In (Request dst req) cts.
-  Proof.
+  Proof using.
     unfold recv_handler.
     intuition.
     repeat break_match.
@@ -901,7 +901,7 @@ Section ChordLabeled.
   Lemma reassembled_msg_still_eq :
     forall (m : msg),
       (fst m, (fst (snd m), snd (snd m))) = m.
-  Proof.
+  Proof using.
     move => m.
     destruct m as [a [b c]].
     easy.
@@ -915,7 +915,7 @@ Section ChordLabeled.
      timeout_constraint gst h t ->
      t <> KeepaliveTick ->
      In t (timeouts gst' h).
-  Proof.
+  Proof using base.
     intuition.
     inv_labeled_step.
     simpl.
@@ -951,7 +951,7 @@ Section ChordLabeled.
     request_response_pair p q ->
     ~ In (dst, (h, q)) (msgs gst) ->
     ~ In (dst, (h, q)) (msgs gst').
-  Proof.
+  Proof using.
     move => gst from to m gst' h dst p gst'' q.
   Admitted.
 
@@ -962,7 +962,7 @@ Section ChordLabeled.
       labeled_step_dynamic gst (RecvMsg a b m) gst' ->
       labeled_step_dynamic gst (Timeout h t) gst'' ->
       enabled (Timeout h t) gst'.
-  Proof.
+  Proof using base.
     move => gst gst' gst'' a b m h t H_inv H_notkeepalive H_recv H_timeout.
     find_copy_apply_lem_hyp timeout_step_satisfies_constraint.
     find_copy_apply_lem_hyp timeout_implies_state_exists.
@@ -1017,7 +1017,7 @@ Section ChordLabeled.
     forall s,
       satisfies_invariant s ->
       inductive_invariant SUCC_LIST_LEN (occ_gst (hd s)).
-  Proof.
+  Proof using.
     intros.
     now destruct s.
   Qed.
@@ -1026,7 +1026,7 @@ Section ChordLabeled.
     forall o s,
       always satisfies_invariant (Cons o s) ->
       inductive_invariant SUCC_LIST_LEN (occ_gst o).
-  Proof.
+  Proof using hash.
     intuition.
     find_eapply_lem_hyp always_now.
     now find_eapply_lem_hyp satisfies_invariant_inv.
@@ -1041,7 +1041,7 @@ Section ChordLabeled.
       weak_until (now (l_enabled (Timeout h t)))
                  (now (occurred (Timeout h t)))
               s.
-  Proof.
+  Proof using base.
     cofix c.
     case => /=.
     case => /= gst.
@@ -1102,7 +1102,7 @@ Section ChordLabeled.
       sigma (occ_gst e) h = Some st ->
       timeout_constraint (occ_gst e) h t ->
       l_enabled (Timeout h t) e.
-  Proof.
+  Proof using.
     move => h t e st H_node H_live H_t H_st.
     unfold l_enabled, enabled.
     set (gst := occ_gst e) in *.
@@ -1132,7 +1132,7 @@ Section ChordLabeled.
         sigma (occ_gst (hd s)) h = Some st ->
         timeout_constraint (occ_gst (hd s)) h t ->
         eventually (now (occurred (Timeout h t))) s.
-  Proof.
+  Proof using base.
     move => s H_exec H_fair H_inv h st t H_nkt H_in_n H_in_f H_in_m H_s H_constraint.
     have H_un := Timeout_enabled_until_occurred _ h t H_nkt H_inv H_exec.
     apply weak_until_until_or_always in H_un;
@@ -1177,7 +1177,7 @@ Section ChordLabeled.
       ~ In dst (failed_nodes gst) \/
       exists m,
         request_response_pair p m /\ In (dst, (src, m)) (msgs gst).
-  Proof.
+  Proof using.
     move => gst src dst p H_ntc.
     destruct (In_dec addr_eq_dec dst (failed_nodes gst)).
     - right.
@@ -1222,7 +1222,7 @@ Section ChordLabeled.
       ~ timeout_constraint (occ_gst o) src (Request dst p) ->
       ~ timeout_constraint (occ_gst o') src (Request dst p) \/
       clears_timeout src (Request dst p) o.
-  Proof.
+  Proof using.
     move => o o' src dst p H_uniqr H_res H_req H_step H_nt.
     inv_labeled_step.
     - left.
@@ -1325,7 +1325,7 @@ Section ChordLabeled.
       ~ timeout_constraint (occ_gst (hd s)) src (Request dst p) ->
       eventually (now (occurred (RecvMsg dst src m))) s ->
       eventually (now (clears_timeout src (Request dst p))) s.
-  Proof.
+  Proof using base.
     move => s p m dst src H_exec H_inv H_pair H_t H_const H_recv.
     induction H_recv as [ | o s'].
     - apply E0.
@@ -1391,7 +1391,7 @@ Section ChordLabeled.
         ~ timeout_constraint (occ_gst (hd s)) src (Request dst p) ->
         In (Request dst p) (timeouts (occ_gst (hd s)) src) ->
         eventually (now (clears_timeout src (Request dst p))) s.
-  Proof.
+  Proof using base.
     intuition.
     find_copy_eapply_lem_hyp requests_eventually_get_responses; eauto.
     break_exists_name m'.
@@ -1415,7 +1415,7 @@ Section ChordLabeled.
         sigma (occ_gst (hd s)) h = Some st ->
         ~ timeout_constraint (occ_gst (hd s)) h t ->
         eventually (now (clears_timeout h t)) s.
-  Proof.
+  Proof using base.
     move => s H_exec H_fair H_inv H_tmsg H_reqnode H_res H_uniqm h st t H_t H_node H_live H_st H_constraint.
     destruct t.
     - (* Tick case is.. impossible *)
@@ -1440,7 +1440,7 @@ Lemma always_in_nodes :
   forall s, lb_execution s ->
        forall h, In h (nodes (occ_gst (hd s))) ->
        always (now (fun o => In h (nodes (occ_gst o)))) s.
-Proof.
+Proof using.
 cofix c.
 case => /= o; case => o' s H_exec h H_in_f.
 inversion H_exec; subst.
@@ -1455,7 +1455,7 @@ Lemma always_not_failed :
   forall s, lb_execution s ->
        forall h, ~ In h (failed_nodes (occ_gst (hd s))) ->
        always (now (fun o => ~ In h (failed_nodes (occ_gst o)))) s.
-Proof.
+Proof using.
 cofix c.
 case => /= o; case => o' s H_exec h H_in_f.
 inversion H_exec; subst.

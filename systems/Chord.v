@@ -22,7 +22,7 @@ Section Chord.
 
   Definition pointer_eq_dec : forall x y : pointer,
       {x = y} + {x <> y}.
-  Proof.
+  Proof using.
     repeat decide equality.
   Defined.
 
@@ -43,13 +43,13 @@ Section Chord.
   Lemma option_eq_dec : forall A : Type,
     (forall x y : A, {x = y} + {x <> y}) ->
     forall a b : option A, {a = b} + {a <> b}.
-  Proof.
+  Proof using.
     decide equality.
   Defined.
 
   Definition payload_eq_dec : forall x y : payload,
       {x = y} + {x <> y}.
-  Proof.
+  Proof using.
     repeat decide equality.
   Defined.
 
@@ -60,7 +60,7 @@ Section Chord.
 
   Definition timeout_eq_dec : forall x y : timeout,
       {x = y} + {x <> y}.
-  Proof.
+  Proof using.
     repeat decide equality.
   Defined.
 
@@ -247,7 +247,7 @@ Section Chord.
   Definition send_eq_dec :
     forall x y : addr * payload,
       {x = y} + {x <> y}.
-  Proof.
+  Proof using.
     repeat decide equality.
   Qed.
 
