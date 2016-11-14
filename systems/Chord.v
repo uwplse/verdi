@@ -2,6 +2,7 @@ Require Import Arith.
 Require Import List.
 Import ListNotations.
 Require Import StructTact.Dedup.
+Require Import StructTact.RemoveAll.
 
 Section Chord.
   Variable SUCC_LIST_LEN : nat.
@@ -418,7 +419,9 @@ Section Chord.
     let '(st, ms1, nts1, cts1) := handle_msg src dst st msg in
     let '(st, ms2, nts2, cts2) := do_delayed_queries dst st in
     let '(st, ms3, nts3, cts3) := do_rectify dst st in
-    (st, ms1 ++ ms2 ++ ms3, nts1 ++ nts2 ++ nts3, cts1 ++ cts2 ++ cts3).
+    let nts := nts3 ++ remove_all timeout_eq_dec cts3
+                    (nts2 ++ remove_all timeout_eq_dec cts2 nts1) in
+    (st, ms3 ++ ms2 ++ ms1, nts, cts1 ++ cts2 ++ cts3).
 
   Definition pi {A B C D : Type} (t : A * B * C * D) : A * B * C :=
     let '(a, b, c, d) := t in (a, b, c).
