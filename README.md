@@ -9,23 +9,32 @@ Requirements
 ------------
 
  - [`Coq 8.5`](https://coq.inria.fr/download)
- - [`Mathematical Components 1.6`](http://math-comp.github.io/math-comp/)
+ - [`Mathematical Components 1.6`](http://math-comp.github.io/math-comp/) (`ssreflect` library)
  - [`StructTact`](https://github.com/uwplse/StructTact)
  - [`InfSeqExt`](https://github.com/palmskog/InfSeqExt)
 
 Building
 --------
 
-First run `./configure` in the Verdi root directory.  This will check
+We recommend installing Coq and `ssreflect` via [OPAM](https://coq.inria.fr/opam/www/using.html).
+Be sure to use the package `coq-mathcomp-ssreflect` from the Coq OPAM repository.
+
+Run `./configure` in the Verdi root directory.  This will check
 for the appropriate version of Coq and ensure all necessary
-dependencies can be located. By default, it checks for `StructTact`
+dependencies can be located. By default, the script checks for `StructTact`
 and `InfSeqExt` in the current parent directory, but this can be 
 overridden by setting the `StructTact_PATH` and/or `InfSeqExt_PATH` 
 environment variables.
 
 Then run `make` in the Verdi root directory.  This will compile the
 specifications and proofs of the core Verdi framework, as well as some
-simple examples.
+simple example systems and their correctness proofs.
+
+Documentation
+-------------
+
+In addition to the example verified systems listed below, see the
+scientific papers and blog posts listed at the [Verdi website](http://verdi.uwplse.org).
 
 Files
 -----
@@ -51,6 +60,11 @@ Files
       primary-backup replication
       - `VarDPrimaryBackup.v`, the primary-backup transformer applied to the
         key-value store
+- Extraction-related files:
+  - `Shim.ml`: OCaml shim for extracted systems verified against a network
+    semantics with _unordered_ message passing, implemented using UDP
+  - `OrderedShim.ml`: OCaml shim for extracted systems verified against a
+    network semantics with _ordered_ message passing, implemented using TCP
 
 Projects using Verdi
 --------------------
