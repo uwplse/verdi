@@ -27,6 +27,8 @@ Section Dynamic.
   Variable timeout_handler : addr -> data -> timeout -> res.
   Variable recv_handler_l : addr -> addr -> data -> payload -> (res * label).
   Variable timeout_handler_l : addr -> data -> timeout -> (res * label).
+  Variable label_input : addr -> addr -> payload -> label.
+  Variable label_output : addr -> addr -> payload -> label.
 
   Variable recv_handler_labeling :
     forall src dst st p r,
@@ -229,7 +231,9 @@ Section Dynamic.
       forall gst gst' m h d xs ys ms st newts clearedts,
         msgs gst = xs ++ m :: ys ->
         h = fst (snd m) ->
-        live_with_state gst h d ->
+        In h (nodes gst) ->
+        ~ In h (failed_nodes gst) ->
+        sigma gst h = Some d ->
         recv_handler (fst m) h d (snd (snd m)) = (st, ms, newts, clearedts) ->
         gst' = apply_handler_result
                  h
@@ -280,13 +284,13 @@ Section Dynamic.
                  (st, ms, newts, clearedts)
                  [e_recv m]
                  (update_msgs gst (xs ++ ys)) ->
-        labeled_step_dynamic gst lb gst'.
-  (*
+        labeled_step_dynamic gst lb gst'
   | LInput :
       forall gst gst' h i to m l,
         client_addr h ->
         client_payload i ->
         m = send h (to, i) ->
+        l = label_input h to i ->
         gst' = update_msgs_and_trace gst (m :: msgs gst) (e_send m) ->
         labeled_step_dynamic gst l gst'
   | LDeliver_client :
@@ -294,8 +298,9 @@ Section Dynamic.
         client_addr h ->
         msgs gst = xs ++ m :: ys ->
         h = fst (snd m) ->
+        l = label_output (fst m) h (snd (snd m)) ->
         gst' = update_msgs_and_trace gst (xs ++ ys) (e_recv m) ->
-        labeled_step_dynamic gst l gst'. *)
+        labeled_step_dynamic gst l gst'.
 
   Record occurrence := { occ_gst : global_state ; occ_label : label }.
 
@@ -382,9 +387,9 @@ Section Dynamic.
         invc H
     end.
     - find_apply_lem_hyp timeout_handler_labeling.
-      eauto using Timeout, timeout_handler_labeling.
+      eapply Timeout; eauto.
     - find_apply_lem_hyp recv_handler_labeling.
-      eauto using Deliver_node.
+      eapply Deliver_node; eauto.
   Qed.
 
   Inductive churn_between (gst gst' : global_state) : Prop :=
