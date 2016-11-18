@@ -1,5 +1,3 @@
-open Str
-
 let raw_bytes_of_int (x : int) : bytes =
   let buf = Bytes.make 4 '\x00' in
   Bytes.set buf 0 (char_of_int (x land 0xff));
