@@ -3,7 +3,7 @@ set -ev
 opam init --yes --no-setup
 eval $(opam config env)
 opam repo add coq-released https://coq.inria.fr/opam/released
-opam install coq coq-mathcomp-ssreflect --yes --verbose
+opam install coq.$COQ_VERSION coq-mathcomp-ssreflect.$SSREFLECT_VERSION --yes --verbose
 
 pushd ..
   git clone -b $STRUCTTACT_BRANCH 'http://github.com/uwplse/StructTact'
