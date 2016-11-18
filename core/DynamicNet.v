@@ -8,9 +8,11 @@ Import ListNotations.
 
 Section Dynamic.
   Variable addr : Type. (* must be finite, decidable *)
+  Variable client_addr : addr -> Prop.
   Variable addr_eq_dec : forall x y : addr, {x = y} + {x <> y}.
   Variable payload : Type. (* must be serializable *)
   Variable payload_eq_dec : forall x y : payload, {x = y} + {x <> y}.
+  Variable client_payload : payload -> Prop. (* holds for payloads that clients can send *)
   Variable data : Type.
   Variable timeout : Type.
   Variable timeout_eq_dec : forall x y : timeout, {x = y} + {x <> y}.
@@ -34,7 +36,7 @@ Section Dynamic.
       (forall l,
           recv_handler_l src dst st p = (r, l) ->
           recv_handler src dst st p = r).
-
+  
   Variable timeout_handler_labeling :
     forall h st t r,
       (timeout_handler h st t = r ->
@@ -77,8 +79,6 @@ Section Dynamic.
 
   Definition nil_state : addr -> option data := fun _ => None.
   Definition nil_timeouts : addr -> list timeout := fun _ => [].
-  Definition init :=
-    {| nodes := []; failed_nodes := []; timeouts := nil_timeouts; sigma := nil_state; msgs := []; trace := [] |}.
 
   Definition clear_timeouts (ts : list timeout) (cts : list timeout) : list timeout :=
     remove_all timeout_eq_dec cts ts.
@@ -180,10 +180,24 @@ Section Dynamic.
     now rewrite update_diff.
   Qed.
 
+  Definition live_with_state (gst : global_state) (h : addr) (st : data) :=
+    In h (nodes gst) /\
+    ~ In h (failed_nodes gst) /\
+    sigma gst h = Some st.
+
+  Definition update_msgs_and_trace (gst : global_state) (ms : list msg) (e : event) : global_state :=
+    {| nodes := nodes gst;
+       failed_nodes := failed_nodes gst;
+       timeouts := timeouts gst;
+       sigma := sigma gst;
+       msgs := ms;
+       trace := trace gst ++ [e] |}.
+
   Inductive step_dynamic : global_state -> global_state -> Prop :=
   | Start :
       forall h gst gst' k,
         ~ In h (nodes gst) ->
+        ~ client_addr h ->
         (* hypotheses on the list of known nodes *)
         In k (nodes gst) ->
         ~ In k (failed_nodes gst) ->
@@ -215,15 +229,27 @@ Section Dynamic.
       forall gst gst' m h d xs ys ms st newts clearedts,
         msgs gst = xs ++ m :: ys ->
         h = fst (snd m) ->
-        In h (nodes gst) ->
-        ~ In h (failed_nodes gst) ->
-        sigma gst h = Some d ->
+        live_with_state gst h d ->
         recv_handler (fst m) h d (snd (snd m)) = (st, ms, newts, clearedts) ->
         gst' = apply_handler_result
                  h
                  (st, ms, newts, clearedts)
                  [e_recv m]
                  (update_msgs gst (xs ++ ys)) ->
+        step_dynamic gst gst'
+  | Input :
+      forall gst gst' h i to m,
+        client_addr h ->
+        client_payload i ->
+        m = send h (to, i) ->
+        gst' = update_msgs_and_trace gst (m :: msgs gst) (e_send m) ->
+        step_dynamic gst gst'
+  | Deliver_client :
+      forall gst gst' h xs m ys,
+        client_addr h ->
+        msgs gst = xs ++ m :: ys ->
+        h = fst (snd m) ->
+        gst' = update_msgs_and_trace gst (xs ++ ys) (e_recv m) ->
         step_dynamic gst gst'.
 
   Inductive labeled_step_dynamic : global_state -> label -> global_state -> Prop :=
@@ -255,6 +281,21 @@ Section Dynamic.
                  [e_recv m]
                  (update_msgs gst (xs ++ ys)) ->
         labeled_step_dynamic gst lb gst'.
+  (*
+  | LInput :
+      forall gst gst' h i to m l,
+        client_addr h ->
+        client_payload i ->
+        m = send h (to, i) ->
+        gst' = update_msgs_and_trace gst (m :: msgs gst) (e_send m) ->
+        labeled_step_dynamic gst l gst'
+  | LDeliver_client :
+      forall gst gst' h xs m ys l,
+        client_addr h ->
+        msgs gst = xs ++ m :: ys ->
+        h = fst (snd m) ->
+        gst' = update_msgs_and_trace gst (xs ++ ys) (e_recv m) ->
+        labeled_step_dynamic gst l gst'. *)
 
   Record occurrence := { occ_gst : global_state ; occ_label : label }.
 
