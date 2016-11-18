@@ -422,3 +422,23 @@ Section Dynamic.
   Qed.
 
 End Dynamic.
+
+Ltac break_step :=
+  match goal with
+  | [ H : step_dynamic
+            ?addr
+            ?addr_eq_dec
+            ?payload
+            ?data
+            ?timeout
+            ?timeout_eq_dec
+            ?start_handler
+            ?recv_handler
+            ?timeout_handler
+            ?timeout_constraint
+            ?failure_constraint
+            ?gst
+            ?gst'
+      |- _ ] =>
+    induction H
+  end; subst.

@@ -2,15 +2,25 @@ Require Import List.
 Import ListNotations.
 
 Require Import StructTact.StructTactics.
+Require Import StructTact.Update.
 Require Import Verdi.Chord.
 Require Import Verdi.ChordLocalProps.
-
+Require Import Verdi.DynamicNet.
 
 Ltac expand_def :=
   repeat (try break_or_hyp; try break_and; try break_exists);
   subst_max;
   try tuple_inversion;
   try (exfalso; tauto).
+
+Ltac smash_handler :=
+  match goal with
+  | [H : context[?f ?h] |- _] =>
+    match type of (f h) with
+    | Chord.res => destruct (f h) as [[[?st ?ms] ?newts] ?clearedts] eqn:?H
+    | _ => fail
+    end
+  end.
 
 Section ChordDefinitionLemmas.
   Variable SUCC_LIST_LEN : nat.
@@ -27,6 +37,19 @@ Section ChordDefinitionLemmas.
   Notation handle_stabilize := (handle_stabilize SUCC_LIST_LEN hash).
   Notation do_rectify := (do_rectify hash).
   Notation make_succs := (make_succs SUCC_LIST_LEN).
+  Notation update_for_start := (update_for_start addr addr_eq_dec payload data timeout).
+  Notation init_state_join := (init_state_join hash).
+  Notation nodes := (nodes addr payload data timeout).
+  Notation failed_nodes := (failed_nodes addr payload data timeout).
+  Notation sigma := (sigma addr payload data timeout).
+  Notation timeouts := (timeouts addr payload data timeout).
+  Notation msgs := (msgs addr payload data timeout).
+  Notation trace := (trace addr payload data timeout).
+  Notation send := (send addr payload).
+  Notation e_send := (e_send addr payload timeout).
+  Notation e_recv := (e_recv addr payload timeout).
+  Notation e_timeout := (e_timeout addr payload timeout).
+  Notation e_fail := (e_fail addr payload timeout).
 
   (* Definition lemmas *)
   Lemma handle_query_req_busy_definition :
@@ -308,5 +331,45 @@ Section ChordDefinitionLemmas.
     intros.
     rewrite between_between_bool_equiv.
   Admitted.
+
+  Lemma update_for_start_definition :
+    forall gst gst' h st ms newts,
+      gst' = update_for_start gst h (st, ms, newts) ->
+      nodes gst' = h :: nodes gst /\
+      failed_nodes gst' = failed_nodes gst /\
+      timeouts gst' = update addr_eq_dec (timeouts gst) h newts /\
+      sigma gst' = update addr_eq_dec (sigma gst) h (Some st) /\
+      msgs gst' = (map (send h) ms) ++ (msgs gst) /\
+      trace gst' = trace gst ++ map e_send (map (send h) ms).
+  Proof using.
+    intros.
+    subst.
+    repeat split.
+  Qed.
+
+  Lemma pi_definition :
+    forall A B C D a b c d,
+      @pi A B C D (a, b, c, d) = (a, b, c).
+  Proof.
+    intros.
+    tauto.
+  Qed.
+
+  Lemma start_handler_definition :
+    forall h k st ms newts,
+      start_handler h [k] = (st, ms, newts) ->
+      exists clearedts,
+        start_query
+          h
+          (init_state_join h k)
+          (Join (make_pointer k)) = (st, ms, newts, clearedts).
+  Proof.
+    unfold start_handler.
+    intros.
+    smash_handler.
+    find_rewrite_lem pi_definition.
+    tuple_inversion.
+    eexists; eauto.
+  Qed.
 
 End ChordDefinitionLemmas.
