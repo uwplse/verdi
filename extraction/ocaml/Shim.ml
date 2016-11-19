@@ -1,8 +1,6 @@
 open Printf
 open Unix
 
-module M = Marshal
-
 let _CLOG = "clog.bin"
 let _SNAP = "snapshot.bin"
                
@@ -14,15 +12,19 @@ module type ARRANGEMENT = sig
   type msg
   type res = (output list * state) * ((name * msg) list)
   type request_id
+  val systemName : string
   val init : name -> state
   val reboot : state -> state
   val handleIO : name -> input -> state -> res
   val handleNet : name -> name -> msg -> state -> res
   val handleTimeout : name -> state -> res
   val setTimeout : name -> state -> float
-  val deserialize : string -> ((request_id *  input) option)
-  val serialize : output -> (request_id * string)
+  val deserializeMsg : string -> msg
+  val serializeMsg : msg -> string
+  val deserializeInput : string -> (request_id * input) option
+  val serializeOutput : output -> (request_id * string)
   val debug : bool
+  val debugInput : state -> input -> unit
   val debugRecv : state -> (name * msg) -> unit
   val debugSend : state -> (name * msg) -> unit
   val debugTimeout : state -> unit
@@ -67,14 +69,14 @@ module Shim (A: ARRANGEMENT) = struct
   let denote (env : env) (name : A.name) : sockaddr =
     List.assoc name env.nodes
 
-  (* Translate UDP socket ddress to node name. *)
+  (* Translate UDP socket address to node name. *)
   let undenote (env : env) (addr : sockaddr) : A.name =
     let flip = function (x, y) -> (y, x) in
     List.assoc addr (List.map flip env.nodes)
 
   (* Return state with a single entry from the log applied to the given state. *)
   let update_state_from_log_entry (log : in_channel) (name : A.name) (state : A.state) : A.state =
-    let op = ((M.from_channel log) : log_step) in
+    let op = ((Marshal.from_channel log) : log_step) in
     (snd (fst (match op with
                | LogInput inp -> A.handleIO name inp state
                | LogNet (src, msg) -> A.handleNet name src msg state
@@ -91,7 +93,7 @@ module Shim (A: ARRANGEMENT) = struct
   let get_initial_state (cfg : cfg) : A.state =
     try
       let snapshot = open_in (snapshot_path cfg) in
-      let (restored_state : A.state) = M.from_channel snapshot in
+      let (restored_state : A.state) = Marshal.from_channel snapshot in
       close_in snapshot;
       restored_state
     with
@@ -157,7 +159,7 @@ module Shim (A: ARRANGEMENT) = struct
       print_newline ()
 
   let send env ((nm : A.name), (msg : A.msg)) =
-    sendto env.usock (M.to_string msg []) (denote env nm)
+    sendto env.usock (A.serializeMsg msg) (denote env nm)
 
   let respond_to_client env client msg =
     try
@@ -166,25 +168,22 @@ module Shim (A: ARRANGEMENT) = struct
       disconnect env client ("Error from send: " ^ (error_message err))
 
   let output env o =
-    let (id, msg) = A.serialize o in
+    let (id, msg) = A.serializeOutput o in
     let clients = Hashtbl.find_all env.outstanding id in
     match clients with
     | client :: _ ->
        respond_to_client env client msg;
        Hashtbl.remove env.outstanding id
     | [] -> ()
-                   
-  let unpack_msg buf : A.msg =
-    M.from_string buf 0
 
   let save env (step : log_step) (st : A.state)  =
     if (env.saves > 0 && env.saves mod 1000 = 0) then begin
       print_endline "snapshotting";
       let csnap = out_channel_of_descr (openfile (snapshot_path env.cfg) [O_WRONLY ; O_TRUNC ; O_CREAT ; O_DSYNC] 0o640) in
-      M.to_channel csnap st []; flush csnap; close_out csnap;
+      Marshal.to_channel csnap st []; flush csnap; close_out csnap;
       ftruncate (descr_of_out_channel env.command_log) 0
     end;
-    M.to_channel env.command_log step [];
+    Marshal.to_channel env.command_log step [];
     flush env.command_log;
     env.saves <- env.saves + 1
 
@@ -226,12 +225,16 @@ module Shim (A: ARRANGEMENT) = struct
   let input_step (client : client) (env : env) (name : A.name) (state : A.state) =
     let len = 1024 in
     let buf = read_from_socket client.sock len in
-    let d = A.deserialize buf in
+    let d = A.deserializeInput buf in
     match d with
     | Some (id, inp) ->
        save env (LogInput inp) state;
        Hashtbl.replace env.outstanding id client;
-       respond env (A.handleIO name inp state)
+       let state' = respond env (A.handleIO name inp state) in
+       if A.debug then begin
+	 A.debugInput state' inp
+       end;
+       state'
     | None ->
        raise (Disconnect_client (S_error, "received invalid input"))
 
@@ -239,7 +242,7 @@ module Shim (A: ARRANGEMENT) = struct
     let len = 65536 in
     let buf = String.make len '\x00' in
     let (_, from) = recvfrom env.usock buf 0 len [] in
-    let (src, msg) = (undenote env from, unpack_msg buf) in
+    let (src, msg) = (undenote env from, A.deserializeMsg buf) in
     save env (LogNet (src, msg)) state;
     let state' = respond env (A.handleNet env.cfg.me src msg state) in
     if A.debug then begin
@@ -282,8 +285,9 @@ module Shim (A: ARRANGEMENT) = struct
     eloop env state'
 
   let main (cfg : cfg) : unit =
-    print_endline "Unordered shim running setup";
+    printf "unordered shim running setup for %s" A.systemName;
+    print_newline ();
     let (env, initial_state) = setup cfg in
-    print_endline "Unordered shim ready for action";
+    print_endline "unordered shim ready for action";
     eloop env initial_state
 end

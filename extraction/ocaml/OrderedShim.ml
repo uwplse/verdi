@@ -258,7 +258,7 @@ module Shim (A: ARRANGEMENT) = struct
       try ignore (get_node_write_fd env nm)
       with e -> printf "respond moving on after exception: %s" (Printexc.to_string e);
                 print_newline () in
-    List.iter go (List.filter (fun (nm,_) -> not (List.mem nm env.failed_nodes)) env.cfg.cluster)
+    List.iter go (List.filter (fun (nm,_) -> not (List.mem nm env.failed_nodes) && nm != env.cfg.me) env.cfg.cluster)
 
   let input_step (fd : file_descr) (env : env) (name : A.name) (state : A.state) =
     let buf = receive_chunk env fd (close_and_fail_client env fd) in
@@ -326,7 +326,8 @@ module Shim (A: ARRANGEMENT) = struct
     eloop env !state
 
   let main (cfg : cfg) : unit =
-    print_endline "ordered shim running setup";
+    printf "ordered shim running setup for %s" A.systemName;
+    print_newline ();
     let (env, initial_state) = setup cfg in
     print_endline "ordered shim ready for action";
     eloop env initial_state
