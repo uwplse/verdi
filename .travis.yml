@@ -12,7 +12,7 @@ env:
   global:
     - COQ_VERSION=8.5.3
     - SSREFLECT_VERSION=1.6
-    - VERDI_RAFT_BRANCH=master
+    - VERDI_RAFT_BRANCH=adapt-vard-arrangement
     - STRUCTTACT_BRANCH=master
   matrix:
     - DOWNSTREAM=none
