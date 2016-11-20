@@ -17,6 +17,9 @@ Section ChordValidPointersInvariant.
   Variable hash_inj :
     forall a b,
       hash a = hash b -> a = b.
+  Variable client_addr : addr -> Prop.
+  Variable client_addr_dec : forall a : addr,
+      {client_addr a} + {~ client_addr a}.
 
   Notation start_handler := (start_handler SUCC_LIST_LEN hash).
   Notation recv_handler := (recv_handler SUCC_LIST_LEN hash).
@@ -30,7 +33,6 @@ Section ChordValidPointersInvariant.
   Notation send := (send addr payload).
 
   Notation global_state := (global_state addr payload data timeout).
-  Notation nil_timeouts := (nil_timeouts addr timeout).
   Notation nodes := (nodes addr payload data timeout).
   Notation failed_nodes := (failed_nodes addr payload data timeout).
   Notation sigma := (sigma addr payload data timeout).
@@ -55,8 +57,8 @@ Section ChordValidPointersInvariant.
   Notation e_fail := (e_fail addr payload timeout).
 
   Notation failure_constraint := (failure_constraint SUCC_LIST_LEN).
-  Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler timeout_constraint failure_constraint).
-  Notation reachable_st := (reachable_st SUCC_LIST_LEN N hash hash_inj).
+  Notation step_dynamic := (step_dynamic addr client_addr addr_eq_dec payload client_payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler timeout_constraint failure_constraint).
+  Notation reachable_st := (reachable_st SUCC_LIST_LEN N hash hash_inj client_addr client_addr_dec).
   Notation chord_start_invariant := (chord_start_invariant SUCC_LIST_LEN hash).
   Notation chord_fail_invariant := (chord_fail_invariant SUCC_LIST_LEN hash).
   Notation chord_tick_invariant := (chord_tick_invariant hash).
@@ -614,7 +616,10 @@ Section ChordValidPointersInvariant.
         find_apply_lem_hyp valid_ptrs_global_elim.
         break_and.
         find_apply_lem_hyp valid_ptrs_timeouts_elim; eauto.
-        inversion H7; subst_max.
+        match goal with
+        | [H: valid_ptr_timeout _ (Request _ _) |- _] =>
+          inv H; subst_max
+        end.
         eapply valid_ptr_payload_nodes_subset; simpl; eauto.
     - eauto using valid_ptrs_timeouts_nodes_timeouts.
     - apply valid_ptrs_timeouts_intro; intros.
@@ -633,7 +638,9 @@ Section ChordValidPointersInvariant.
         eauto using valid_ptrs_global_recv_handler,
                     valid_ptr_timeout_nodes,
                     valid_ptrs_timeouts_elim.
-  Qed.
+    - admit.
+    - admit.
+  Admitted.
 
   Lemma valid_ptrs_global_sigma :
     forall gst gst',

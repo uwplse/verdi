@@ -9,10 +9,12 @@ Import ListNotations.
 Section Dynamic.
   Variable addr : Type. (* must be finite, decidable *)
   Variable client_addr : addr -> Prop.
+  Variable client_addr_dec : forall a : addr, {client_addr a} + {~ client_addr a}.
   Variable addr_eq_dec : forall x y : addr, {x = y} + {x <> y}.
   Variable payload : Type. (* must be serializable *)
   Variable payload_eq_dec : forall x y : payload, {x = y} + {x <> y}.
   Variable client_payload : payload -> Prop. (* holds for payloads that clients can send *)
+  Variable client_payload_dec : forall p : payload, {client_payload p} + {~ client_payload p}.
   Variable data : Type.
   Variable timeout : Type.
   Variable timeout_eq_dec : forall x y : timeout, {x = y} + {x <> y}.
@@ -50,10 +52,12 @@ Section Dynamic.
 
   (* msgs *)
   Definition msg := (addr * (addr * payload))%type.
-  Definition msg_eq_dec : forall x y : msg, {x = y} + {x <> y}.
-    decide equality; destruct b, p.
-    decide equality; eauto using addr_eq_dec, payload_eq_dec.
+  Definition msg_eq_dec :
+    forall x y : msg, {x = y} + {x <> y}.
+  Proof.
+    repeat decide equality.
   Defined.
+
   Definition send (a : addr) (p : addr * payload) : msg :=
     (a, p).
 
@@ -79,12 +83,6 @@ Section Dynamic.
      the failure. *)
   Variable failure_constraint : global_state -> addr -> global_state -> Prop.
 
-  Definition nil_state : addr -> option data := fun _ => None.
-  Definition nil_timeouts : addr -> list timeout := fun _ => [].
-
-  Definition clear_timeouts (ts : list timeout) (cts : list timeout) : list timeout :=
-    remove_all timeout_eq_dec cts ts.
-
   Definition update_msgs (gst : global_state) (ms : list msg) : global_state :=
     {| nodes := nodes gst;
        failed_nodes := failed_nodes gst;
@@ -106,7 +104,7 @@ Section Dynamic.
   Definition apply_handler_result (h : addr) (r : res) (es : list event) (gst : global_state) : global_state :=
     let '(st, ms, nts, cts) := r in
     let sends := map (send h) ms in
-    let ts' := nts ++ clear_timeouts (timeouts gst h) cts in
+    let ts' := nts ++ remove_all timeout_eq_dec cts (timeouts gst h) in
     {| nodes := nodes gst;
        failed_nodes := failed_nodes gst;
        timeouts := update addr_eq_dec (timeouts gst) h ts';
@@ -390,6 +388,8 @@ Section Dynamic.
       eapply Timeout; eauto.
     - find_apply_lem_hyp recv_handler_labeling.
       eapply Deliver_node; eauto.
+    - eapply Input; eauto.
+    - eapply Deliver_client; eauto.
   Qed.
 
   Inductive churn_between (gst gst' : global_state) : Prop :=
@@ -429,7 +429,7 @@ Section Dynamic.
         break_exists.
         invc_lstep;
           find_apply_lem_hyp update_for_start_nodes;
-          find_rewrite_lem apply_handler_result_nodes;
+          try find_rewrite_lem apply_handler_result_nodes;
           eapply list_neq_cons; eauto.
       * apply join_churn.
         rewrite update_for_start_nodes_eq.
@@ -440,10 +440,9 @@ Section Dynamic.
       * intuition.
         break_exists.
         invc_lstep;
-          unfold apply_handler_result in *;
+          unfold apply_handler_result, update_msgs_and_trace in *;
           find_inversion;
-          eapply list_neq_cons;
-          eauto.
+          eapply list_neq_cons; eauto.
       * eauto using fail_churn, list_neq_cons.
     - left.
       split.
@@ -465,7 +464,9 @@ Section Dynamic.
         | H: churn_between _ _ |- _ =>
           inversion H; eauto
         end.
-  Qed.
+    - admit.
+    - admit.
+  Admitted.
 
 End Dynamic.
 
@@ -473,8 +474,10 @@ Ltac break_step :=
   match goal with
   | [ H : step_dynamic
             ?addr
+            ?client_addr
             ?addr_eq_dec
             ?payload
+            ?client_payload
             ?data
             ?timeout
             ?timeout_eq_dec

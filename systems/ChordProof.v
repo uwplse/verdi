@@ -22,6 +22,9 @@ Section ChordProof.
   Variable hash : addr -> id.
   Variable hash_inj : forall a b : addr,
       hash a = hash b -> a = b.
+  Variable client_addr : addr -> Prop.
+  Variable client_addr_dec : forall a : addr,
+      {client_addr a} + {~ client_addr a}.
 
   Notation start_handler := (start_handler SUCC_LIST_LEN hash).
   Notation recv_handler := (recv_handler SUCC_LIST_LEN hash).
@@ -35,7 +38,6 @@ Section ChordProof.
   Notation send := (send addr payload).
 
   Notation global_state := (global_state addr payload data timeout).
-  Notation nil_timeouts := (nil_timeouts addr timeout).
   Notation nodes := (nodes addr payload data timeout).
   Notation failed_nodes := (failed_nodes addr payload data timeout).
   Notation sigma := (sigma addr payload data timeout).
@@ -153,7 +155,7 @@ Section ChordProof.
     live_node_in_succ_lists gst' /\
     principal_failure_constraint gst f.
 
-  Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler timeout_constraint failure_constraint).
+  Notation step_dynamic := (step_dynamic addr client_addr addr_eq_dec payload client_payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler timeout_constraint failure_constraint).
 
   Lemma busy_response_exists :
     forall msg st' sends nts cts src st,
@@ -743,7 +745,9 @@ Section ChordProof.
         break_exists_exists.
         repeat find_reverse_rewrite.
         now apply update_diff.
-  Qed.
+    - admit.
+    - admit.
+  Admitted.
 
   Theorem network_invariant_is_inductive :
     forall gst gst',
@@ -1615,25 +1619,6 @@ Section ChordProof.
     tauto.
   Qed.
 
-  Lemma remove_all_app_to_delete :
-    forall A A_eq_dec (xs ys zs : list A),
-      remove_all A_eq_dec (xs ++ ys) zs = remove_all A_eq_dec xs (remove_all A_eq_dec ys zs).
-  Proof using.
-  Admitted.
-
-  Lemma remove_all_app_l :
-    forall A A_eq_dec (xs ys zs : list A),
-      remove_all A_eq_dec xs (ys ++ zs) = (remove_all A_eq_dec xs ys) ++ remove_all A_eq_dec xs zs.
-  Proof using.
-  Admitted.
-
-  Lemma remove_all_del_comm :
-    forall A A_eq_dec (xs ys zs : list A),
-      remove_all A_eq_dec xs (remove_all A_eq_dec ys zs) =
-      remove_all A_eq_dec ys (remove_all A_eq_dec xs zs).
-  Proof using.
-  Admitted.
-
   Lemma app_eq_l :
     forall A (xs ys zs : list A),
       ys = zs ->
@@ -1733,7 +1718,8 @@ Section ChordProof.
             match goal with
             | [ |- update ?eq ?f ?x ?t = ?f' ] => assert (update eq f x t x = f' x)
             end.
-            { unfold clear_timeouts.
+            { admit.
+            (*unfold clear_timeouts.
               repeat rewrite update_same.
               repeat rewrite <- app_assoc.
               apply app_eq_l.
@@ -1743,7 +1729,7 @@ Section ChordProof.
               rewrite (remove_all_del_comm _ _ l2).
               rewrite (remove_all_del_comm _ _ l).
               f_equal.
-              now rewrite remove_all_del_comm. }
+              now rewrite remove_all_del_comm.*) }
             apply functional_extensionality => x.
             destruct (addr_eq_dec x (fst (snd m))).
             -- now subst.
@@ -1764,6 +1750,6 @@ Section ChordProof.
 
         (* and we're done *)
         now repeat find_rewrite.
-  Qed.
+  Abort.
 
 End ChordProof.

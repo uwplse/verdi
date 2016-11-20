@@ -30,8 +30,10 @@ Section DynamicShed.
   Notation e_timeout := (e_timeout addr payload timeout).
   Notation fail_node := (fail_node addr payload data timeout).
   Variable addr_eq_dec : forall x y : addr, {x = y} + {x <> y}.
+  Variable client_addr : addr -> Prop.
   Variable payload_eq_dec : forall x y : payload, {x = y} + {x <> y}.
   Notation msg_eq_dec := (msg_eq_dec addr addr_eq_dec payload payload_eq_dec).
+  Variable client_payload : payload -> Prop.
   Variable timeout_eq_dec : forall x y : timeout, {x = y} + {x <> y}.
   Notation apply_handler_result := (apply_handler_result addr addr_eq_dec payload data timeout timeout_eq_dec).
   Variable start_handler : addr -> list addr -> data * list (addr * payload) * list timeout.
@@ -43,7 +45,8 @@ Section DynamicShed.
   Variable failure_constraint : global_state -> addr -> global_state -> Prop.
   Variable failure_constraint_dec : forall gst h gst',
       {failure_constraint gst h gst'} + {~ failure_constraint gst h gst'}.
-  Notation step_dynamic := (step_dynamic addr addr_eq_dec payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler timeout_constraint failure_constraint).
+
+  Notation step_dynamic := (step_dynamic addr client_addr addr_eq_dec payload client_payload data timeout timeout_eq_dec start_handler recv_handler timeout_handler timeout_constraint failure_constraint).
   Inductive operation :=
   | op_start : addr -> list addr -> operation
   | op_fail : addr -> operation

@@ -40,6 +40,10 @@ Section Chord.
   | Ping : payload
   | Pong : payload.
 
+  Inductive client_payload : payload -> Prop :=
+  | CPGetBestPredecessor : forall p, client_payload (GetBestPredecessor p)
+  | CPGetSuccList : client_payload GetSuccList.
+
   Lemma option_eq_dec : forall A : Type,
     (forall x y : A, {x = y} + {x <> y}) ->
     forall a b : option A, {a = b} + {a <> b}.
