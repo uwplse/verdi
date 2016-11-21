@@ -57,6 +57,7 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     in
     setsockopt env.listen_sock SO_REUSEADDR true;
     bind env.listen_sock (mk_addr_inet nm);
+    listen env.listen_sock 20;
     env
 
   let connect_to nm =
@@ -74,16 +75,19 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
 
   let rec find_conn_and_send_all env nm buf =
     if Hashtbl.mem env.conns nm
-    then let conn = Hashtbl.find env.conns nm in
+    then (print_endline (sprintf "already have a connection to %d" (Obj.magic nm));
+          let conn = Hashtbl.find env.conns nm in
          try send_all conn buf with
          | Unix_error _ ->
             (* remove this connection and try again *)
             Hashtbl.remove env.conns nm;
-            find_conn_and_send_all env nm buf
+            find_conn_and_send_all env nm buf)
     else try (let conn = connect_to nm in
-              send_all conn buf;
+              send_all (connect_to nm) buf;
               Hashtbl.add env.conns nm conn) with
-         | Unix_error _ -> ()
+         | Unix_error (errno, fn, arg) ->
+            print_endline (sprintf "could not connect to %d: %s(%s): %s"
+                                   (Obj.magic nm) fn arg (error_message errno))
 
   let send env ((nm : A.name), (msg : A.msg)) =
     let serialized = pack_msg msg in
@@ -115,14 +119,16 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     ensure_conn_shutdown env nm;
     Hashtbl.replace env.conns nm sock
 
+  let sockaddr_to_name =
+    function
+    | ADDR_UNIX _ -> failwith "UNEXPECTED MESSAGE FROM UNIX ADDR"
+    | ADDR_INET (addr, port) -> A.name_of_addr (string_of_inet_addr addr, port)
+
   let recv_step env nm s ts sock =
     let len = 4096 in
     let buf = String.make len '\x00' in
     let (_, from) = recvfrom sock buf 0 len [] in
-    let src =
-      (match from with
-       | ADDR_UNIX _ -> failwith "UNEXPECTED MESSAGE FROM UNIX ADDR"
-       | ADDR_INET (addr,port) -> A.name_of_addr (string_of_inet_addr addr, port)) in
+    let src = sockaddr_to_name from in
     switch_to_conn env src sock;
     let m = unpack_msg buf in
     let (s', ts') = respond env ts (A.handleNet src nm s m) in
@@ -161,10 +167,17 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     let now = gettimeofday () in
     max A.default_timeout ((min_of_list now (List.map fst ts)) -. now)
 
+  let accept_connection env =
+    let conn, sa = accept env.listen_sock in
+    switch_to_conn env (sockaddr_to_name sa) conn
+
   let rec eloop env nm (s, ts) =
     let (fds, _, _) = my_select (socks_in_env env) [] [] (free_time ts) in
+    printf "%d: %d fds open\n" (Obj.magic nm) (List.length fds);
     let (s', ts') = if List.length fds > 0
-                    then recv_step env nm s ts (List.hd fds)
+                    then if List.hd fds = env.listen_sock
+                         then (accept_connection env; (s, ts))
+                         else recv_step env nm s ts (List.hd fds)
                     else (s, ts) in
     let (s'', ts'') = timeout_step env nm s' ts' in
     eloop env nm (s'', ts'')
@@ -179,7 +192,6 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     (st, sends, nts, [])
 
   let main nm knowns =
-    print_endline "running setup";
     let env = setup nm in
     print_endline "starting";
     eloop env nm (respond env [] (init nm knowns));
