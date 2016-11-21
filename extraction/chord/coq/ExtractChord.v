@@ -6,7 +6,7 @@ Require Import ExtrOcamlString.
 Require Import Verdi.Chord.
 Require Import Verdi.ChordShed.
 
-Definition SUCC_LIST_LEN := 2.
+Definition SUCC_LIST_LEN := 3.
 
 Definition hash (a : addr) : id :=
   a mod 256.
@@ -33,6 +33,8 @@ Definition chord_tracepred := tracepred SUCC_LIST_LEN hash.
 Definition chord_mk_init_state := mk_init_state SUCC_LIST_LEN hash.
 Definition const_true_tracepred := tp_const_true SUCC_LIST_LEN hash.
 Definition chord_plan_deliver_or_timeout := plan_deliver_or_timeout SUCC_LIST_LEN hash.
+
+Extract Constant Nat.modulo => "fun n m -> m mod n".
 
 Extraction "extraction/chord/coq/ExtractedChord.ml" init handleNet handleTick handleTimeout is_request closes_request.
 

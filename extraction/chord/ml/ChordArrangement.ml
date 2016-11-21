@@ -1,8 +1,9 @@
 open ExtractedChord
 open Printf
+open Str
 (* open Random *)
 
-let chord_port=8000
+let chord_port = 8000
 
 let log level s =
   let now = Unix.gettimeofday () in
@@ -16,8 +17,39 @@ let dbg = log "DEBUG"
 
 let info = log "INFO"
 
+let octets_to_ip o1 o2 o3 o4 =
+  o1 lsl 24 + o2 lsl 16 + o3 lsl 8 + o4
+
+let weak_ip_regexp =
+  regexp "\\([0-9]?[0-9]?[0-9]\\)\\.\
+          \\([0-9]?[0-9]?[0-9]\\)\\.\
+          \\([0-9]?[0-9]?[0-9]\\)\\.\
+          \\([0-9]?[0-9]?[0-9]\\)$"
+
+let int_of_ip s =
+  if string_match weak_ip_regexp s 0
+  then
+    let int_of_kth_group k = int_of_string (matched_group k s) in
+    let numbers = map int_of_kth_group [1; 2; 3; 4] in
+    match numbers with
+    | [o1; o2; o3; o4] ->
+       if List.for_all (fun x -> 0 <= x && x <= 255) numbers
+       then octets_to_ip o1 o2 o3 o4
+       else invalid_arg s
+    | _ -> invalid_arg s
+  else invalid_arg s
+
+let ip_of_int i =
+  if i > 1 lsl 32
+  then invalid_arg (string_of_int i)
+  else let octets = [(i land (1 lsl 32 - 1 lsl 24)) lsr 24;
+                     (i land (1 lsl 24 - 1 lsl 16)) lsr 16;
+                     (i land (1 lsl 16 - 1 lsl 8)) lsr 8;
+                     i land (1 lsl 8 - 1)] in
+       String.concat "." (map string_of_int octets)
+
 let show_addr a =
-  string_of_int a
+  ip_of_int a
 
 let caps_bool b =
   if b then "True" else "False"
@@ -93,10 +125,10 @@ let log_timeout st = function
         ^ " to " ^ show_addr dead ^ " timed out")
 
 let set_timeout = function
-  | Tick -> 15.0 +. Random.float 10.0
+  | Tick -> 0.0 +. Random.float 10.0
   (* must be less than the request timeout *)
-  | KeepaliveTick -> 10.0 +. Random.float 10.0
-  | Request (a, b) -> 30.0
+  | KeepaliveTick -> 0.0 +. Random.float 10.0
+  | Request (a, b) -> 20.0
 
 let rebracket4 (((a, b), c), d) = (a, b, c, d)
 let rebracket3 ((a, b), c) = (a, b, c)
@@ -107,11 +139,10 @@ module ChordDebugArrangement = struct
   type msg = payload
   type timeout = ExtractedChord.timeout
   type res = state * (name * msg) list * (timeout list) * (timeout list)
-  (* should put these two in coq so i can prove (name_of_addr (addr_of_name n)) = n *)
   let addr_of_name n =
-      ("127.0.0." ^ (string_of_int n), chord_port)
+    (ip_of_int n, chord_port)
   let name_of_addr (s, p) =
-      int_of_string (List.nth (Str.split (Str.regexp "\\.") s) 3)
+    int_of_ip s
   let init n ks =
     rebracket3 (init n ks)
   let handleNet s d m st =

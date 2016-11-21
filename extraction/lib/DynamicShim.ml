@@ -23,61 +23,107 @@ module type DYNAMIC_ARRANGEMENT = sig
   val debugTimeout : state -> timeout -> unit
 end
 module Shim (A: DYNAMIC_ARRANGEMENT) = struct
-  (* assoc list of start times mapping to (name, msg) pairs *)
-
   type env =
     {
-      usock : file_descr;
+      listen_sock : file_descr;
+      conns : (A.name, file_descr) Hashtbl.t;
       mutable last_tick : float
     }
 
-  let setup nm =
-    Random.self_init ();
-    let ip, port = A.addr_of_name nm in
-    let env =
-      { usock = socket PF_INET SOCK_DGRAM 0;
-        last_tick = Unix.gettimeofday ()
-      }
-    in
-    setsockopt env.usock SO_REUSEADDR true;
-    bind env.usock (ADDR_INET ((inet_addr_of_string ip), port));
-    env
+  let values_of_hashtbl h =
+    let add_value_to_list _ v l = v :: l in
+    Hashtbl.fold add_value_to_list h []
 
-  let sendto sock buf addr =
-    ignore (Unix.sendto sock buf 0 (String.length buf) [] addr)
+  let socks_in_env env =
+    values_of_hashtbl env.conns @ [env.listen_sock]
 
-  let send env ((nm : A.name), (msg : A.msg)) =
-    let (ip, port) = A.addr_of_name nm in
-    sendto env.usock (M.to_string msg []) (ADDR_INET (inet_addr_of_string ip, port))
-
-  let respond_to_client sock r =
-    ignore (Unix.send sock (r ^ "\n") 0 (String.length r) [])
+  let pack_msg buf =
+    M.to_string buf [M.Compat_32]
 
   let unpack_msg buf : A.msg =
     M.from_string buf 0
+
+  let mk_addr_inet nm =
+    let ip, port = A.addr_of_name nm in
+    ADDR_INET ((inet_addr_of_string ip), port)
+
+  let setup nm =
+    Random.self_init ();
+    let env =
+      { listen_sock = socket PF_INET SOCK_STREAM 0;
+        conns = Hashtbl.create ~random:true 256;
+        last_tick = gettimeofday ()
+      }
+    in
+    setsockopt env.listen_sock SO_REUSEADDR true;
+    bind env.listen_sock (mk_addr_inet nm);
+    env
+
+  let connect_to nm =
+    let sock = socket PF_INET SOCK_STREAM 0 in
+    connect sock (mk_addr_inet nm);
+    sock
+
+  let send_all sock buf =
+    let rec send_chunk sock buf i l =
+      let sent = send sock buf i l [] in
+      if sent < l
+      then send_chunk sock buf (i + sent) (l - sent)
+      else () in
+    send_chunk sock buf 0 (String.length buf)
+
+  let rec find_conn_and_send_all env nm buf =
+    if Hashtbl.mem env.conns nm
+    then let conn = Hashtbl.find env.conns nm in
+         try send_all conn buf with
+         | Unix_error _ ->
+            (* remove this connection and try again *)
+            Hashtbl.remove env.conns nm;
+            find_conn_and_send_all env nm buf
+    else try (let conn = connect_to nm in
+              send_all conn buf;
+              Hashtbl.add env.conns nm conn) with
+         | Unix_error _ -> ()
+
+  let send env ((nm : A.name), (msg : A.msg)) =
+    let serialized = pack_msg msg in
+    find_conn_and_send_all env nm serialized
 
   let respond_one env s p =
     (if A.debug then A.debugSend s p);
     send env p
 
   let add_time t =
-    let now = Unix.gettimeofday () in
+    let now = gettimeofday () in
     (now +. A.setTimeout t, t)
 
   let respond env ts (s, ps, newts, clearedts) =
-    let ts' = (List.filter (fun (_, t) -> not (List.mem t clearedts)) ts)
+    let ts' = (List.filter (fun (_, t) -> not (List.mem t clearedts))
+                           ts)
               @ (List.map add_time newts) in
     List.iter (respond_one env s) ps;
     s, ts'
 
-  let recv_step env nm s ts =
+  let ensure_conn_shutdown env nm =
+    try
+      shutdown (Hashtbl.find env.conns nm) SHUTDOWN_ALL
+    with
+    | Not_found -> ()
+    | Unix_error _ -> ()
+
+  let switch_to_conn env nm sock =
+    ensure_conn_shutdown env nm;
+    Hashtbl.replace env.conns nm sock
+
+  let recv_step env nm s ts sock =
     let len = 4096 in
     let buf = String.make len '\x00' in
-    let (_, from) = recvfrom env.usock buf 0 len [] in
+    let (_, from) = recvfrom sock buf 0 len [] in
     let src =
-    (match from with
-     | ADDR_UNIX _ -> failwith "UNEXPECTED MESSAGE FROM UNIX ADDR"
-     | ADDR_INET (addr,port) -> A.name_of_addr (string_of_inet_addr addr, port)) in
+      (match from with
+       | ADDR_UNIX _ -> failwith "UNEXPECTED MESSAGE FROM UNIX ADDR"
+       | ADDR_INET (addr,port) -> A.name_of_addr (string_of_inet_addr addr, port)) in
+    switch_to_conn env src sock;
     let m = unpack_msg buf in
     let (s', ts') = respond env ts (A.handleNet src nm s m) in
     (if A.debug then A.debugRecv s' (src, m));
@@ -103,7 +149,7 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     else (s, sends, newts, clearedts)
     
   let timeout_step env nm s ts =
-    let now = Unix.gettimeofday () in
+    let now = gettimeofday () in
     let live = List.filter (fun (d, _) -> now > d) ts in
     let (s, sends, newts, clearedts) = List.fold_left (do_timeout env nm) (s, [], [], []) live in
     respond env ts (s, sends, newts, uniqappend clearedts (List.map snd live))
@@ -112,15 +158,14 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     List.fold_left (fun acc x -> min acc x) default l
 
   let free_time ts =
-    let now = Unix.gettimeofday () in
+    let now = gettimeofday () in
     max A.default_timeout ((min_of_list now (List.map fst ts)) -. now)
 
   let rec eloop env nm (s, ts) =
-    let (fds, _, _) = my_select [env.usock] [] [] (free_time ts) in
-    let (s', ts') = if List.mem env.usock fds
-             then (try (recv_step env nm s ts) with
-                   | _ -> (s, ts))
-             else (s, ts) in
+    let (fds, _, _) = my_select (socks_in_env env) [] [] (free_time ts) in
+    let (s', ts') = if List.length fds > 0
+                    then recv_step env nm s ts (List.hd fds)
+                    else (s, ts) in
     let (s'', ts'') = timeout_step env nm s' ts' in
     eloop env nm (s'', ts'')
 
