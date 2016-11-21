@@ -1,5 +1,4 @@
 open Printf
-open Unix
 open Sys
 
 module M = Marshal
@@ -25,8 +24,8 @@ end
 module Shim (A: DYNAMIC_ARRANGEMENT) = struct
   type env =
     {
-      listen_sock : file_descr;
-      conns : (A.name, file_descr) Hashtbl.t;
+      listen_sock : Unix.file_descr;
+      conns : (A.name, Unix.file_descr) Hashtbl.t;
       mutable last_tick : float
     }
 
@@ -38,36 +37,46 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     values_of_hashtbl env.conns @ [env.listen_sock]
 
   let pack_msg buf =
-    M.to_string buf [M.Compat_32]
+    M.to_string buf []
 
   let unpack_msg buf : A.msg =
     M.from_string buf 0
 
   let mk_addr_inet nm =
     let ip, port = A.addr_of_name nm in
-    ADDR_INET ((inet_addr_of_string ip), port)
+    try
+      print_endline (sprintf "mk_addr_inet \"%s\" %d = %d" ip port (Obj.magic (Unix.inet_addr_of_string ip)));
+      Unix.ADDR_INET ((Unix.inet_addr_of_string ip), port)
+    with
+      Unix.Unix_error (a, b, c) -> print_endline (sprintf "Could not make addr inet for %s:%d" ip port);
+                                   raise (Unix.Unix_error (a, b, c))
 
   let setup nm =
     Random.self_init ();
+    Hashtbl.randomize ();
     let env =
-      { listen_sock = socket PF_INET SOCK_STREAM 0;
-        conns = Hashtbl.create ~random:true 256;
-        last_tick = gettimeofday ()
+      { listen_sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0;
+        conns = Hashtbl.create 256;
+        last_tick = Unix.gettimeofday ()
       }
     in
-    setsockopt env.listen_sock SO_REUSEADDR true;
-    bind env.listen_sock (mk_addr_inet nm);
-    listen env.listen_sock 20;
+    (try
+      Unix.setsockopt env.listen_sock Unix.SO_REUSEADDR true;
+      Unix.bind env.listen_sock (mk_addr_inet nm);
+      Unix.listen env.listen_sock 20;
+    with Unix.Unix_error (errno, fn, arg) ->
+       print_endline (sprintf "could not listen at port %d: %s(%s): %s"
+                              8000 fn arg (Unix.error_message errno)));
     env
 
   let connect_to nm =
-    let sock = socket PF_INET SOCK_STREAM 0 in
-    connect sock (mk_addr_inet nm);
+    let sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+    Unix.connect sock (mk_addr_inet nm);
     sock
 
   let send_all sock buf =
     let rec send_chunk sock buf i l =
-      let sent = send sock buf i l [] in
+      let sent = Unix.send sock buf i l [] in
       if sent < l
       then send_chunk sock buf (i + sent) (l - sent)
       else () in
@@ -77,17 +86,18 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     if Hashtbl.mem env.conns nm
     then (print_endline (sprintf "already have a connection to %d" (Obj.magic nm));
           let conn = Hashtbl.find env.conns nm in
-         try send_all conn buf with
-         | Unix_error _ ->
+          try send_all conn buf
+          with Unix.Unix_error _ ->
             (* remove this connection and try again *)
             Hashtbl.remove env.conns nm;
             find_conn_and_send_all env nm buf)
     else try (let conn = connect_to nm in
+              print_endline (sprintf "successfully connected to %d: fd = %d" (Obj.magic nm) (Obj.magic conn));
               send_all (connect_to nm) buf;
-              Hashtbl.add env.conns nm conn) with
-         | Unix_error (errno, fn, arg) ->
+              Hashtbl.add env.conns nm conn)
+         with Unix.Unix_error (errno, fn, arg) ->
             print_endline (sprintf "could not connect to %d: %s(%s): %s"
-                                   (Obj.magic nm) fn arg (error_message errno))
+                                   (Obj.magic nm) fn arg (Unix.error_message errno))
 
   let send env ((nm : A.name), (msg : A.msg)) =
     let serialized = pack_msg msg in
@@ -98,7 +108,7 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     send env p
 
   let add_time t =
-    let now = gettimeofday () in
+    let now = Unix.gettimeofday () in
     (now +. A.setTimeout t, t)
 
   let respond env ts (s, ps, newts, clearedts) =
@@ -109,26 +119,44 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     s, ts'
 
   let ensure_conn_shutdown env nm =
+    print_endline "killing connection";
     try
-      shutdown (Hashtbl.find env.conns nm) SHUTDOWN_ALL
+      Unix.shutdown (Hashtbl.find env.conns nm) Unix.SHUTDOWN_ALL
     with
     | Not_found -> ()
-    | Unix_error _ -> ()
+    | Unix.Unix_error (errno, fn, arg) ->
+       print_endline (sprintf "could not shut down %d: %s(%s): %s"
+                              (Obj.magic nm) fn arg (Unix.error_message errno))
 
   let switch_to_conn env nm sock =
-    ensure_conn_shutdown env nm;
-    Hashtbl.replace env.conns nm sock
+    if Hashtbl.mem env.conns nm
+    then if Hashtbl.find env.conns nm = sock
+         then ()
+         else (ensure_conn_shutdown env nm;
+               Hashtbl.replace env.conns nm sock)
+    else Hashtbl.add env.conns nm sock
 
   let sockaddr_to_name =
     function
-    | ADDR_UNIX _ -> failwith "UNEXPECTED MESSAGE FROM UNIX ADDR"
-    | ADDR_INET (addr, port) -> A.name_of_addr (string_of_inet_addr addr, port)
+    | Unix.ADDR_UNIX _ -> failwith "UNEXPECTED MESSAGE FROM UNIX ADDR"
+    | Unix.ADDR_INET (addr, port) -> A.name_of_addr (Unix.string_of_inet_addr addr, port)
+
+  let recv_all sock =
+    let rec aux bufs =
+      let len = 4096 in
+      let buf = String.make len '\x00' in
+      try 
+        let count = Unix.recv sock buf 0 len [] in
+        if count = 0
+        then bufs
+        else aux bufs @ [buf]
+      with Unix.Unix_error _ ->
+        bufs in
+    String.concat "" (aux [])
 
   let recv_step env nm s ts sock =
-    let len = 4096 in
-    let buf = String.make len '\x00' in
-    let (_, from) = recvfrom sock buf 0 len [] in
-    let src = sockaddr_to_name from in
+    let buf = recv_all sock in
+    let src = sockaddr_to_name (Unix.getpeername sock) in
     switch_to_conn env src sock;
     let m = unpack_msg buf in
     let (s', ts') = respond env ts (A.handleNet src nm s m) in
@@ -136,8 +164,8 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     s', ts'
 
   let rec my_select rs ws es t =
-    try select rs ws es t
-    with Unix_error (err, fn, arg) ->
+    try Unix.select rs ws es t
+    with Unix.Unix_error (err, fn, arg) ->
       my_select rs ws es t
 
   let rec uniqappend l =
@@ -155,7 +183,7 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     else (s, sends, newts, clearedts)
     
   let timeout_step env nm s ts =
-    let now = gettimeofday () in
+    let now = Unix.gettimeofday () in
     let live = List.filter (fun (d, _) -> now > d) ts in
     let (s, sends, newts, clearedts) = List.fold_left (do_timeout env nm) (s, [], [], []) live in
     respond env ts (s, sends, newts, uniqappend clearedts (List.map snd live))
@@ -164,11 +192,11 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     List.fold_left (fun acc x -> min acc x) default l
 
   let free_time ts =
-    let now = gettimeofday () in
+    let now = Unix.gettimeofday () in
     max A.default_timeout ((min_of_list now (List.map fst ts)) -. now)
 
   let accept_connection env =
-    let conn, sa = accept env.listen_sock in
+    let conn, sa = Unix.accept env.listen_sock in
     switch_to_conn env (sockaddr_to_name sa) conn
 
   let rec eloop env nm (s, ts) =
