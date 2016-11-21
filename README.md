@@ -8,10 +8,10 @@ A framework for formally verifying distributed systems implementations in Coq.
 Requirements
 ------------
 
- - [`Coq 8.5`](https://coq.inria.fr/download)
- - [`Mathematical Components 1.6`](http://math-comp.github.io/math-comp/) (`ssreflect` library)
- - [`StructTact`](https://github.com/uwplse/StructTact)
- - [`InfSeqExt`](https://github.com/palmskog/InfSeqExt)
+- [`Coq 8.5`](https://coq.inria.fr/download)
+- [`Mathematical Components 1.6`](http://math-comp.github.io/math-comp/) (`ssreflect` library)
+- [`StructTact`](https://github.com/uwplse/StructTact)
+- [`InfSeqExt`](https://github.com/DistributedComponents/InfSeqExt)
 
 Building
 --------
@@ -52,19 +52,13 @@ Files
     - `LiveLockServ.v`: lock server with proof of liveness
     - `VarD.v`: `vard`, a key-value store
 - Verified system transformers:
-    - `SeqNum.v` and `SeqNumCorrect.v`, a system transformer
-      implementing sequence numbering
-      - `LockServSeqNum.v`, the sequence numbering transformer
-         applied to the lock server
-    - `PrimaryBackup.v`, a system transformer implementing asynchronous
-      primary-backup replication
-      - `VarDPrimaryBackup.v`, the primary-backup transformer applied to the
-        key-value store
+    - `SeqNum.v` and `SeqNumCorrect.v`, a system transformer implementing sequence numbering
+        - `LockServSeqNum.v`, the sequence numbering transformer applied to the lock server
+    - `PrimaryBackup.v`, a system transformer implementing asynchronous primary-backup replication
+        - `VarDPrimaryBackup.v`, the primary-backup transformer applied to the key-value store
 - Extraction-related files:
-  - `Shim.ml`: OCaml shim for extracted systems verified against a network
-    semantics with _unordered_ message passing, implemented using UDP
-  - `OrderedShim.ml`: OCaml shim for extracted systems verified against a
-    network semantics with _ordered_ message passing, implemented using TCP
+    - `Shim.ml`: OCaml shim for extracted systems verified against a network semantics with _unordered_ message passing, implemented using UDP
+    - `OrderedShim.ml`: OCaml shim for extracted systems verified against a network semantics with _ordered_ message passing, implemented using TCP
 
 Projects using Verdi
 --------------------

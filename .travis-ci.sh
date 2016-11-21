@@ -6,12 +6,12 @@ opam repo add coq-released https://coq.inria.fr/opam/released
 opam install coq.$COQ_VERSION coq-mathcomp-ssreflect.$SSREFLECT_VERSION --yes --verbose
 
 pushd ..
-  git clone -b $STRUCTTACT_BRANCH 'http://github.com/uwplse/StructTact'
+  git clone -b $STRUCTTACT_BRANCH 'https://github.com/uwplse/StructTact.git'
   pushd StructTact
     ./build.sh
   popd
 
-  git clone 'http://github.com/palmskog/InfSeqExt'
+  git clone 'https://github.com/DistributedComponents/InfSeqExt.git'
   pushd InfSeqExt
     ./build.sh
   popd
