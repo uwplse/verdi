@@ -11,6 +11,8 @@ Definition SUCC_LIST_LEN := 3.
 Definition hash (a : addr) : id :=
   a mod 256.
 
+Extract Constant Nat.modulo => "fun n m -> n mod m".
+
 Definition handleNet : addr -> addr -> data -> payload -> res :=
   recv_handler SUCC_LIST_LEN hash.
 
@@ -33,8 +35,6 @@ Definition chord_tracepred := tracepred SUCC_LIST_LEN hash.
 Definition chord_mk_init_state := mk_init_state SUCC_LIST_LEN hash.
 Definition const_true_tracepred := tp_const_true SUCC_LIST_LEN hash.
 Definition chord_plan_deliver_or_timeout := plan_deliver_or_timeout SUCC_LIST_LEN hash.
-
-Extract Constant Nat.modulo => "fun n m -> m mod n".
 
 Extraction "extraction/chord/coq/ExtractedChord.ml" init handleNet handleTick handleTimeout is_request closes_request.
 
