@@ -39,12 +39,13 @@ module Shim (A: ARRANGEMENT) = struct
       }
 
   type env =
-      { cfg : cfg
+      { cluster : (A.name, string * int) Hashtbl.t
+      ; port : int
+      ; me : A.name
       ; listen_fd : file_descr
       ; input_fd : file_descr
       ; node_read_fds : (file_descr, A.name) Hashtbl.t
       ; node_write_fds : (A.name, file_descr) Hashtbl.t
-      ; mutable failed_nodes : A.name list
       ; mutable fail_msg_queue : A.name list
       ; client_read_fds : (file_descr, A.client_id) Hashtbl.t
       ; client_write_fds : (A.client_id, file_descr) Hashtbl.t
@@ -57,13 +58,13 @@ module Shim (A: ARRANGEMENT) = struct
   exception NodeDisconnect of (severity * string)
   exception ClientDisconnect of (severity * string)
 
-  let get_node_from_name cfg nm : string * int =
-    try List.assoc nm cfg.cluster
-    with Not_found -> failwith (sprintf "Unknown node name %s" (A.serializeName nm))
+  let sock_of_name (env : env) (node_name : A.name) : string * int =
+    try Hashtbl.find env.cluster node_name
+    with Not_found -> failwith (sprintf "node %s is not in cluster" (A.serializeName node_name))
 
   (* Translate node name to TCP socket address *)
-  let denote_node (env : env) (name : A.name) : file_descr =
-    Hashtbl.find env.node_write_fds name
+  let denote_node (env : env) (node_name : A.name) : file_descr =
+    Hashtbl.find env.node_write_fds node_name
 
   (* Translate TCP socket address to node name *)
   let undenote_node (env : env) (fd : file_descr) : A.name =
@@ -78,30 +79,31 @@ module Shim (A: ARRANGEMENT) = struct
     Hashtbl.find env.client_read_fds fd
 
   (* Gets state from the most recent snapshot, or the initial state from the arrangement. *)
-  let get_initial_state (cfg : cfg) : A.state =
-    A.init (cfg.me)
+  let get_initial_state (env : env) : A.state =
+    A.init env.me
 
   (* Initialize environment, and start server. *)
   let setup (cfg : cfg) : (env * A.state) =
-    Random.self_init ();
-    let port = snd (get_node_from_name cfg cfg.me) in
-    let initial_state = get_initial_state cfg in
     let env =
-      { cfg = cfg
+      { cluster = Hashtbl.create (List.length cfg.cluster)
+      ; port = cfg.port
+      ; me = cfg.me
       ; listen_fd = socket PF_INET SOCK_STREAM 0
       ; input_fd = socket PF_INET SOCK_STREAM 0
       ; node_read_fds = Hashtbl.create 17
       ; node_write_fds = Hashtbl.create 17
-      ; failed_nodes = []
       ; fail_msg_queue = []
       ; client_read_fds = Hashtbl.create 17
       ; client_write_fds = Hashtbl.create 17
       }
     in
+    List.iter (fun (n, s) -> Hashtbl.add env.cluster n s) cfg.cluster;
+    let port = snd (Hashtbl.find env.cluster env.me) in
+    let initial_state = get_initial_state env in
     setsockopt env.listen_fd SO_REUSEADDR true;
     setsockopt env.input_fd SO_REUSEADDR true;
     bind env.listen_fd (ADDR_INET (inet_addr_any, port));
-    bind env.input_fd (ADDR_INET (inet_addr_any, cfg.port));
+    bind env.input_fd (ADDR_INET (inet_addr_any, env.port));
     listen env.listen_fd 8;
     listen env.input_fd 8;
     (env, initial_state)
@@ -115,7 +117,7 @@ module Shim (A: ARRANGEMENT) = struct
     let n = undenote_node env fd in
     Hashtbl.remove env.node_read_fds fd;
     Hashtbl.remove env.node_write_fds n;
-    env.failed_nodes <- n :: env.failed_nodes;
+    Hashtbl.remove env.cluster n;
     env.fail_msg_queue <- n :: env.fail_msg_queue;
     Unix.close fd
 
@@ -175,7 +177,11 @@ module Shim (A: ARRANGEMENT) = struct
     print_newline ();
     let write_fd = socket PF_INET SOCK_STREAM 0 in
     connect write_fd node_addr;
-    send_chunk write_fd (A.serializeName env.cfg.me) (close_and_fail_node env write_fd);
+    printf "sending me\n";
+    send_chunk write_fd (A.serializeName env.me) (close_and_fail_node env write_fd);
+    let (ip, port) = sock_of_name env env.me in
+    printf "sending sock\n";
+    send_chunk write_fd (sprintf "%s:%d" ip port) (close_and_fail_node env write_fd);
     begin match A.newMsg with
           | Some m -> send_on_fd write_fd m (close_and_fail_node env write_fd)
           | None -> ()
@@ -187,9 +193,8 @@ module Shim (A: ARRANGEMENT) = struct
   let get_node_write_fd env node_name =
     try denote_node env node_name
     with Not_found ->
-      if not (List.mem node_name env.failed_nodes)
-      then
-        let (ip, port) = get_node_from_name env.cfg node_name in
+      if Hashtbl.mem env.cluster node_name then
+        let (ip, port) = sock_of_name env node_name in
         let entry = gethostbyname ip in
         let node_addr = ADDR_INET (Array.get entry.h_addr_list 0, port) in
         add_write_fd env node_name node_addr
@@ -219,7 +224,7 @@ module Shim (A: ARRANGEMENT) = struct
     s
 
   let deliver_msg env state src msg : A.state =
-    let state' = respond env (A.handleNet env.cfg.me src msg state) in
+    let state' = respond env (A.handleNet env.me src msg state) in
     if A.debug then A.debugRecv state' (src, msg);
     state'
 
@@ -235,15 +240,21 @@ module Shim (A: ARRANGEMENT) = struct
     printf "new node connection";
     print_newline ();
     let (node_fd, node_addr) = accept env.listen_fd in
-    let buf = receive_chunk env node_fd (close_and_fail_node env node_fd) in
-    match A.deserializeName buf with
+    let name_buf = receive_chunk env node_fd (close_and_fail_node env node_fd) in
+    match A.deserializeName name_buf with
     | Some node_name ->
       Hashtbl.add env.node_read_fds node_fd node_name;
+      let sock_buf = receive_chunk env node_fd (close_and_fail_node env node_fd) in
+      let sock =
+	try Scanf.sscanf sock_buf "%[^:]:%d" (fun i p -> (i, p))
+	with _ -> failwith (sprintf "sscanf error %s" sock_buf)
+      in
+      Hashtbl.add env.cluster node_name sock;
       ignore (get_node_write_fd env node_name);
-      printf "done processing new connection from node %s" buf;
+      printf "done processing new connection from node %s" (A.serializeName node_name);
       print_newline ()
     | None ->
-      printf "failed to deserialize name %s, closing connection" buf;
+      printf "failed to deserialize name %s, closing connection" name_buf;
       Unix.close node_fd
 
   let new_client_conn env =
@@ -255,11 +266,11 @@ module Shim (A: ARRANGEMENT) = struct
     print_newline ()
 
   let connect_to_nodes env =
-    let go (nm, _) =
+    let go nm =
       try ignore (get_node_write_fd env nm)
       with e -> printf "respond moving on after exception: %s" (Printexc.to_string e);
                 print_newline () in
-    List.iter go (List.filter (fun (nm,_) -> not (List.mem nm env.failed_nodes) && nm != env.cfg.me) env.cfg.cluster)
+    List.iter go (Hashtbl.fold (fun nm _ acc -> if nm != env.me then nm :: acc else acc) env.cluster [])
 
   let input_step (fd : file_descr) (env : env) (name : A.name) (state : A.state) =
     let buf = receive_chunk env fd (close_and_fail_client env fd) in
@@ -276,7 +287,7 @@ module Shim (A: ARRANGEMENT) = struct
     let client_read_fds = Hashtbl.fold (fun fd _ acc -> fd :: acc) env.client_read_fds [] in
     let node_read_fds = Hashtbl.fold (fun fd _ acc -> fd :: acc) env.node_read_fds [] in
     let all_fds = env.input_fd :: env.listen_fd :: List.append client_read_fds node_read_fds in
-    let (ready_fds, _, _) = select all_fds [] [] (A.setTimeout env.cfg.me state) in
+    let (ready_fds, _, _) = select all_fds [] [] (A.setTimeout env.me state) in
     let state = ref state in
     begin
       try
@@ -289,7 +300,7 @@ module Shim (A: ARRANGEMENT) = struct
 	  new_client_conn env
 	| (_, _, fd :: _) ->
 	  if Hashtbl.mem env.client_read_fds fd then
-	    state := input_step fd env env.cfg.me !state
+	    state := input_step fd env env.me !state
 	  else
 	    state := recv_step env fd !state
 	| _ ->
