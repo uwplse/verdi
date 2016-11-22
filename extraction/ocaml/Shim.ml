@@ -1,5 +1,6 @@
 open Printf
 open Unix
+open Util
 
 let _CLOG = "clog.bin"
 let _SNAP = "snapshot.bin"
@@ -143,11 +144,6 @@ module Shim (A: ARRANGEMENT) = struct
     bind env.isock (ADDR_INET (inet_addr_any, cfg.port));
     listen env.isock 8;
     (env, initial_state)
-
-  let string_of_sockaddr (saddr : sockaddr) : string =
-    match saddr with
-    | ADDR_UNIX path -> (sprintf "unix://%s" path)
-    | ADDR_INET (addr, port) -> (sprintf "%s:%d" (string_of_inet_addr addr) port)
 
   let disconnect env fd reason =
     let c = undenote_client env fd in
