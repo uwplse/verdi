@@ -183,9 +183,10 @@ module Shim (A: ARRANGEMENT) = struct
     let (ip, port) = sock_of_name env env.me in
     printf "sending sock\n";
     send_chunk write_fd (sprintf "%s:%d" ip port) (close_and_fail_node env write_fd);
-    begin match A.newMsg with
-          | Some m -> send_on_fd write_fd m (close_and_fail_node env write_fd)
-          | None -> ()
+    begin
+      match A.newMsg with
+      | Some m -> send_on_fd write_fd m (close_and_fail_node env write_fd)
+      | None -> ()
     end;
     print_endline "...connected!";
     Hashtbl.replace env.node_write_fds node_name write_fd;
@@ -210,7 +211,8 @@ module Shim (A: ARRANGEMENT) = struct
     let (c, out) = A.serializeOutput o in
     let fd =
       try denote_client env c
-      with Not_found -> failwith "output: failed to find destination" in
+      with Not_found -> failwith "output: failed to find destination"
+    in
     send_chunk fd out (close_and_fail_client env fd)
 
   let respond env ((os, s), ps) =
@@ -231,9 +233,10 @@ module Shim (A: ARRANGEMENT) = struct
 
   let recv_step (env : env) (fd : file_descr) (state : A.state) : A.state =
     let buf = receive_chunk env fd (close_and_fail_node env fd) in
-    let src = try undenote_node env fd
-              with Not_found ->
-                failwith ("recv_step: failed to find source for message (it has probably been marked failed)") in
+    let src =
+      try undenote_node env fd
+      with Not_found -> failwith "recv_step: failed to find source for message (it has probably been marked failed)"
+    in
     let msg = A.deserializeMsg buf in
     deliver_msg env state src msg
 
