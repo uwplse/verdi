@@ -109,11 +109,6 @@ module Shim (A: ARRANGEMENT) = struct
     listen env.input_fd 8;
     (env, initial_state)
 
-  let string_of_sockaddr (saddr : sockaddr) : string =
-    match saddr with
-    | ADDR_UNIX path -> (sprintf "unix://%s" path)
-    | ADDR_INET (addr, port) -> (sprintf "%s:%d" (string_of_inet_addr addr) port)
-
   let close_node_conn env fd =
     let n = undenote_node env fd in
     Hashtbl.remove env.node_read_fds fd;

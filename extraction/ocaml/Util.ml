@@ -23,3 +23,8 @@ let string_of_char_list l =
     | [] -> res
     | c :: l -> res.[i] <- c; imp (i + 1) l in
   imp 0 l
+
+let string_of_sockaddr (saddr : Unix.sockaddr) : string =
+  match saddr with
+  | Unix.ADDR_UNIX path -> (Printf.sprintf "unix://%s" path)
+  | Unix.ADDR_INET (addr, port) -> (Printf.sprintf "%s:%d" (Unix.string_of_inet_addr addr) port)
