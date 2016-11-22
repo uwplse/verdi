@@ -23,7 +23,8 @@ module type DYNAMIC_ARRANGEMENT = sig
 end
 module Shim (A: DYNAMIC_ARRANGEMENT) = struct
   type env =
-    { listen_sock : Unix.file_descr
+    { bound_addr : string * int
+    ; listen_sock : Unix.file_descr
     ; recv_conns : (Unix.file_descr, A.name) Hashtbl.t
     ; send_conns : (A.name, Unix.file_descr) Hashtbl.t
     ; mutable last_tick : float
@@ -64,26 +65,36 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
 
   let mk_addr_inet nm =
     let ip, port = A.addr_of_name nm in
-    Unix.ADDR_INET ((Unix.inet_addr_of_string ip), port)
+    Unix.ADDR_INET (Unix.inet_addr_of_string ip, port)
+
+  let mk_addr_inet_random_port env =
+    let ip, _ = env.bound_addr in
+    Unix.ADDR_INET (Unix.inet_addr_of_string ip, 0)
+
+  let mk_sock_and_listen nm =
+    let sa = mk_addr_inet nm in
+    let sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+    Unix.setsockopt sock Unix.SO_REUSEADDR true;
+    Unix.bind sock sa;
+    Unix.listen sock 20;
+    sock
 
   let setup nm =
-    Random.self_init ();
     Hashtbl.randomize ();
-    let env =
-      { listen_sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0
-      ; recv_conns = Hashtbl.create 64
-      ; send_conns = Hashtbl.create 64
-      ; last_tick = Unix.gettimeofday ()
-      }
-    in
-    Unix.setsockopt env.listen_sock Unix.SO_REUSEADDR true;
-    Unix.bind env.listen_sock (mk_addr_inet nm);
-    Unix.listen env.listen_sock 20;
-    env
+    Random.self_init ();
+    let sock = mk_sock_and_listen nm in
+    { bound_addr = A.addr_of_name nm
+    ; listen_sock = sock
+    ; recv_conns = Hashtbl.create 64
+    ; send_conns = Hashtbl.create 64
+    ; last_tick = Unix.gettimeofday ()
+    }
 
-  let connect_to nm =
+  let connect_to env remote =
     let sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-    Unix.connect sock (mk_addr_inet nm);
+    let sa = mk_addr_inet_random_port env in
+    Unix.bind sock sa;
+    Unix.connect sock (mk_addr_inet remote);
     sock
 
   let send_all sock buf =
@@ -101,19 +112,18 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
       try
         send_all conn buf;
       with Unix.Unix_error (errno, fn, arg) ->
-        debug_unix_error "find_conn_and_send_all" errno fn arg;
+        debug_unix_error "find_conn_and_send_all (found conn)" errno fn arg;
         (* close this connection and try again *)
         Hashtbl.remove env.send_conns nm;
         find_conn_and_send_all env nm buf
     else
       try
-        let conn = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-        Unix.connect conn (mk_addr_inet nm);
+        let conn = connect_to env nm in
         send_all conn buf;
         Hashtbl.replace env.send_conns nm conn
       with Unix.Unix_error (errno, fn, arg) ->
         (* this should do something different if errno = EAGAIN, etc *)
-        debug_unix_error "!!! find_conn_and_send_all" errno fn arg
+        debug_unix_error "find_conn_and_send_all (made conn)" errno fn arg
 
   let respond_one env st (dst, msg) =
     debug_send st (dst, msg);
@@ -244,9 +254,9 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     match read_and_unpack sock with
     | Some m ->
        let src = Hashtbl.find env.recv_conns sock in
-       let (s', ts') = respond env ts (A.handleNet src nm s m) in
+       let (s', ms, newts, clearedts) = A.handleNet src nm s m in
        debug_recv s' (src, m);
-       s', ts'
+       respond env ts (s', ms, newts, clearedts)
     | None ->
        s, ts
 
