@@ -174,10 +174,8 @@ module Shim (A: ARRANGEMENT) = struct
     print_newline ();
     let write_fd = socket PF_INET SOCK_STREAM 0 in
     connect write_fd node_addr;
-    printf "sending me\n";
     send_chunk write_fd (A.serializeName env.me) (close_and_fail_node env write_fd);
     let (ip, port) = sock_of_name env env.me in
-    printf "sending sock\n";
     send_chunk write_fd (sprintf "%s:%d" ip port) (close_and_fail_node env write_fd);
     begin
       match A.newMsg with
