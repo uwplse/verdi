@@ -95,14 +95,15 @@ module Shim (A: ARRANGEMENT) = struct
       ; fail_msg_queue = []
       ; client_read_fds = Hashtbl.create 17
       ; client_write_fds = Hashtbl.create 17
-      }
-    in
-    List.iter (fun (n, s) -> Hashtbl.add env.cluster n s) cfg.cluster;
-    let port = snd (Hashtbl.find env.cluster env.me) in
+      } in
     let initial_state = get_initial_state env in
+    List.iter (fun (n, s) -> Hashtbl.add env.cluster n s) cfg.cluster;
+    let (ip, port) = Hashtbl.find env.cluster env.me in
+    let entry = gethostbyname ip in
+    let listen_addr = Array.get entry.h_addr_list 0 in
     setsockopt env.listen_fd SO_REUSEADDR true;
     setsockopt env.input_fd SO_REUSEADDR true;
-    bind env.listen_fd (ADDR_INET (inet_addr_any, port));
+    bind env.listen_fd (ADDR_INET (listen_addr, port));
     bind env.input_fd (ADDR_INET (inet_addr_any, env.port));
     listen env.listen_fd 8;
     listen env.input_fd 8;
@@ -187,7 +188,7 @@ module Shim (A: ARRANGEMENT) = struct
           | None -> ()
     end;
     print_endline "...connected!";
-    Hashtbl.add env.node_write_fds node_name write_fd;
+    Hashtbl.replace env.node_write_fds node_name write_fd;
     write_fd
 
   let get_node_write_fd env node_name =
@@ -243,13 +244,13 @@ module Shim (A: ARRANGEMENT) = struct
     let name_buf = receive_chunk env node_fd (close_and_fail_node env node_fd) in
     match A.deserializeName name_buf with
     | Some node_name ->
-      Hashtbl.add env.node_read_fds node_fd node_name;
       let sock_buf = receive_chunk env node_fd (close_and_fail_node env node_fd) in
       let sock =
 	try Scanf.sscanf sock_buf "%[^:]:%d" (fun i p -> (i, p))
 	with _ -> failwith (sprintf "sscanf error %s" sock_buf)
       in
-      Hashtbl.add env.cluster node_name sock;
+      Hashtbl.replace env.node_read_fds node_fd node_name;
+      Hashtbl.replace env.cluster node_name sock;
       ignore (get_node_write_fd env node_name);
       printf "done processing new connection from node %s" (A.serializeName node_name);
       print_newline ()
@@ -260,8 +261,8 @@ module Shim (A: ARRANGEMENT) = struct
   let new_client_conn env =
     let (client_fd, client_addr) = accept env.input_fd in
     let c = A.createClientId () in
-    Hashtbl.add env.client_read_fds client_fd c;
-    Hashtbl.add env.client_write_fds c client_fd;
+    Hashtbl.replace env.client_read_fds client_fd c;
+    Hashtbl.replace env.client_write_fds c client_fd;
     printf "client connected on %s" (string_of_sockaddr client_addr);
     print_newline ()
 
