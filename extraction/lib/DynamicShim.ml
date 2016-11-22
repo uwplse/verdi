@@ -96,7 +96,7 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
 
   let rec find_conn_and_send_all env nm buf =
     if Hashtbl.mem env.send_conns nm
-    then 
+    then
       let conn = Hashtbl.find env.send_conns nm in
       try
         send_all conn buf;
@@ -198,7 +198,7 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
       debug_timeout s' t;
       (s', sends @ sends', newts @ newts', uniqappend clearedts clearedts')
     else (s, sends, newts, clearedts)
-    
+
   let timeout_step env nm s ts =
     let now = Unix.gettimeofday () in
     let active = List.filter (fun (deadline, _) -> now > deadline) ts in
