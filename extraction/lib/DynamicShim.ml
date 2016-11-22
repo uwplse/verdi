@@ -29,6 +29,26 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     ; mutable last_tick : float
     }
 
+  let debug_log s =
+    if A.debug then print_endline s else ()
+
+  let debug_timeout s' t =
+    if A.debug
+    then A.debugTimeout s' t
+
+  let debug_recv st packet =
+    if A.debug
+    then A.debugRecv st packet
+
+  let debug_send st packet =
+    if A.debug
+    then A.debugSend st packet
+
+  let debug_unix_error prefix errno fn arg =
+    let err_msg = Unix.error_message errno in
+    let full_msg = sprintf "in %s - %s(%s): %s" prefix fn arg err_msg in
+    debug_log full_msg
+
   let unpack_msg buf : A.msg =
     M.from_string buf 0
 
@@ -68,46 +88,37 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
 
   let send_all sock buf =
     let rec send_chunk sock buf i l =
-      print_endline (sprintf "sending %d bytes..." l);
       let sent = Unix.send sock buf i l [] in
       if sent < l
       then send_chunk sock buf (i + sent) (l - sent)
       else () in
-    send_chunk sock buf 0 (String.length buf);
-    print_endline "sent buf successfully"
+    send_chunk sock buf 0 (String.length buf)
 
   let rec find_conn_and_send_all env nm buf =
-    print_endline "entering find_conn_and_send_all";
     if Hashtbl.mem env.send_conns nm
     then 
       let conn = Hashtbl.find env.send_conns nm in
       try
         send_all conn buf;
-        print_endline "sent buf successfully"
       with Unix.Unix_error (errno, fn, arg) ->
-        print_endline "couldn't send ... reconnecting";
+        debug_unix_error "find_conn_and_send_all" errno fn arg;
         (* close this connection and try again *)
         Hashtbl.remove env.send_conns nm;
         find_conn_and_send_all env nm buf
     else
       try
-        print_endline (sprintf "connecting to %s" (fst (A.addr_of_name nm)));
         let conn = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
         Unix.connect conn (mk_addr_inet nm);
-        print_endline (sprintf "connected to %s" (fst (A.addr_of_name nm)));
         send_all conn buf;
         Hashtbl.replace env.send_conns nm conn
       with Unix.Unix_error (errno, fn, arg) ->
         (* this should do something different if errno = EAGAIN, etc *)
-        print_endline (sprintf "find_conn_and_send_all: %s(%s): %s" fn arg (Unix.error_message errno))
+        debug_unix_error "!!! find_conn_and_send_all" errno fn arg
 
-  let send env ((nm : A.name), (msg : A.msg)) =
+  let respond_one env st (dst, msg) =
+    debug_send st (dst, msg);
     let serialized = M.to_string msg [] in
-    find_conn_and_send_all env nm serialized
-
-  let respond_one env s p =
-    (if A.debug then A.debugSend s p);
-    send env p
+    find_conn_and_send_all env dst serialized
 
   let filter_cleared clearedts ts =
     let not_cleared (_, t) = not (List.mem t clearedts) in
@@ -124,14 +135,12 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     s, ts'
 
   let ensure_conn_shutdown env nm =
-    print_endline "killing connection";
     try
       Unix.shutdown (Hashtbl.find env.send_conns nm) Unix.SHUTDOWN_ALL
     with
     | Not_found -> ()
     | Unix.Unix_error (errno, fn, arg) ->
-       print_endline (sprintf "could not shut down %d: %s(%s): %s"
-                              (Obj.magic nm) fn arg (Unix.error_message errno))
+       debug_unix_error "ensure_conn_shutdown" errno fn arg
 
   let sockaddr_to_name =
     function
@@ -141,88 +150,71 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
   (* Read exactly len bytes from sock.
      Return (Some buf), where buf has length len, if everything works.
      Return None otherwise. *)
-  let rec recv_len sock len =
-    print_endline (sprintf "trying to read %d bytes" len);
-    if len == 0
-    then Some ""
-    else 
+  let recv_len sock len =
+    let rec aux sock acc len =
       let buf = String.make len '\x00' in
-      try 
-        let count = Unix.recv sock buf 0 len [] in
-        print_endline (sprintf "got %d bytes" count);
-        if count == 0
-        then None
-        else
-          if count < len
-          then
-            match recv_len sock (len - count) with 
-            | Some buf' -> Some (buf ^ buf')
-            | None -> None
-          else Some buf
-      with Unix.Unix_error (errno, fn, arg) ->
-        print_endline (sprintf "%s(%s): %s" fn arg (Unix.error_message errno));
-        None
+      let count = Unix.recv sock buf 0 len [] in
+      let acc' = acc ^ buf in
+      if count == 0
+      then None
+      else if count == len
+      then Some acc'
+      else aux sock acc' (len - count) in
+    try
+      aux sock "" len
+    with Unix.Unix_error (errno, fn, arg) ->
+      debug_unix_error "recv_len" errno fn arg;
+      None
 
   let read_and_unpack sock : A.msg option =
     let read = recv_len sock in
-    let explode s =
-      let rec exp i l =
-        if i < 0 then l else exp (i - 1) (s.[i] :: l) in
-      exp (String.length s - 1) [] in
     match read M.header_size with
-    | Some header ->
-       print_endline "header:";
-       (List.iter (fun c -> printf "%x " (Char.code c)) (explode header));
-       print_endline "";
-       let data_len = M.data_size header 0 in
-       begin
-         match read data_len with
-         | Some body ->
-            (print_endline (sprintf "%d" (String.length body)));
-            (List.iter (fun c -> printf "%x " (Char.code c)) (explode (header ^ body))); print_endline "";
-            (List.iter (fun c -> printf "%x " (Char.code c)) (explode (String.concat "" [header; body]))); print_endline "";
-            Some (M.from_string (header ^ body) 0) 
-         | None -> None
-       end
     | None -> None
+    | Some header ->
+       let data_len = M.data_size header 0 in
+       match read data_len with
+       | Some body -> Some (unpack_msg (header ^ body))
+       | None -> None
 
   let rec iterated_select rs t =
-    try Unix.select rs [] [] t
+    try
+      Unix.select rs [] [] t
     with Unix.Unix_error (errno, fn, arg) ->
-      print_endline (sprintf "iterated_select: %s(%s): %s" fn arg (Unix.error_message errno));
+      debug_unix_error "iterated_select" errno fn arg;
       iterated_select rs t
 
   let rec uniqappend l =
     function
     | [] -> l
-    | (h :: rest) ->
+    | h :: rest ->
        if List.mem h l
        then uniqappend l rest
        else uniqappend (l @ [h]) rest
 
   let do_timeout env nm (s, sends, newts, clearedts) (deadline, t) =
     if not (List.mem t clearedts)
-    then let (s', sends', newts', clearedts') = (A.handleTimeout nm s t) in
-         (if A.debug then A.debugTimeout s' t);
-         (s', sends @ sends', newts @ newts', uniqappend clearedts clearedts')
+    then
+      let (s', sends', newts', clearedts') = A.handleTimeout nm s t in
+      debug_timeout s' t;
+      (s', sends @ sends', newts @ newts', uniqappend clearedts clearedts')
     else (s, sends, newts, clearedts)
     
   let timeout_step env nm s ts =
-    print_endline "timeout_step";
     let now = Unix.gettimeofday () in
     let active = List.filter (fun (deadline, _) -> now > deadline) ts in
-    let (s, sends, newts, clearedts) =
-      List.fold_left (do_timeout env nm)
-                     (s, [], [], [])
-                     active in
-    respond env ts (s, sends, newts, uniqappend clearedts (List.map snd active))
+    let do_t = do_timeout env nm in
+    let res = (s, [], [], []) in
+    let (s, sends, newts, clearedts) = List.fold_left do_t res active in
+    let cts = uniqappend clearedts (List.map snd active) in
+    respond env ts (s, sends, newts, cts)
 
   let min_of_list default l =
     List.fold_left (fun acc x -> min acc x) default l
 
   let free_time ts =
     let now = Unix.gettimeofday () in
-    max A.default_timeout ((min_of_list now (List.map fst ts)) -. now)
+    let min_deadline = min_of_list now (List.map fst ts) in
+    max A.default_timeout (min_deadline -. now)
 
   let accept_connection env =
     let conn, sa = Unix.accept env.listen_sock in
@@ -232,16 +224,16 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
     try
       ignore (Unix.getpeername fd);
       Some fd
-    with Unix.Unix_error (errno, fn, args) ->
-      print_endline (sprintf "%s(%s): %s" fn args (Unix.error_message errno));
+    with Unix.Unix_error (errno, fn, arg) ->
+      debug_unix_error "send_connected_filter" errno fn arg;
       None
 
   let recv_connected_filter fd nm =
     try
       ignore (Unix.getpeername fd);
       Some nm
-    with Unix.Unix_error (errno, fn, args) ->
-      print_endline (sprintf "%s(%s): %s" fn args (Unix.error_message errno));
+    with Unix.Unix_error (errno, fn, arg) ->
+      debug_unix_error "recv_connected_filter" errno fn arg;
       None
 
   let prune_conns env =
@@ -251,24 +243,20 @@ module Shim (A: DYNAMIC_ARRANGEMENT) = struct
   let recv_step env nm s ts sock =
     match read_and_unpack sock with
     | Some m ->
-       print_endline (sprintf "successfully got a message %x" (Obj.magic m));
        let src = Hashtbl.find env.recv_conns sock in
-       print_endline (sprintf "and it was from %s" (fst (A.addr_of_name src)));
        let (s', ts') = respond env ts (A.handleNet src nm s m) in
-       (if A.debug then A.debugRecv s' (src, m));
+       debug_recv s' (src, m);
        s', ts'
     | None ->
-       let ip, port = A.addr_of_name (Hashtbl.find env.recv_conns sock) in
-       printf "could not recv from node at %s:%d" ip port;
        s, ts
 
   let handle_readable_fds env nm s ts fds =
     if List.length fds > 0
     then
       if List.mem env.listen_sock fds
-      then (print_endline "got new connection!"; accept_connection env; (s, ts))
+      then (accept_connection env; s, ts)
       else recv_step env nm s ts (List.hd fds)
-    else (s, ts)
+    else s, ts
 
   let rec eloop env nm (s, ts) =
     prune_conns env;
