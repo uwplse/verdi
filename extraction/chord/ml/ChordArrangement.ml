@@ -1,7 +1,6 @@
 open ExtractedChord
 open Printf
 open Str
-(* open Random *)
 
 let chord_port = 8000
 
@@ -125,10 +124,10 @@ let log_timeout st = function
         ^ " to " ^ show_addr dead ^ " timed out")
 
 let set_timeout = function
-  | Tick -> 0.0 +. Random.float 10.0
-  (* must be less than the request timeout *)
-  | KeepaliveTick -> 0.0 +. Random.float 10.0
-  | Request (a, b) -> 20.0
+ | Tick -> 15.0 +. Random.float 10.0
+ (* must be less than the request timeout *)
+ | KeepaliveTick -> 5.0
+ | Request (a, b) -> 30.0
 
 let rebracket4 (((a, b), c), d) = (a, b, c, d)
 let rebracket3 ((a, b), c) = (a, b, c)
@@ -144,13 +143,14 @@ module ChordDebugArrangement = struct
   let name_of_addr (s, p) =
     int_of_ip s
   let init n ks =
+    Random.self_init ();
     rebracket3 (init n ks)
   let handleNet s d m st =
     rebracket4 (handleNet s d m st)
   let handleTimeout n s t =
     rebracket4 (handleTimeout n s t)
   let setTimeout = set_timeout
-  let default_timeout = 5.0
+  let default_timeout = 1.0
   let debug = true
   let debugRecv st (src, msg) = log_st st; log_recv st src msg
   let debugSend st (dst, msg) = log_st st; log_send st dst msg
