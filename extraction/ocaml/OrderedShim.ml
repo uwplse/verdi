@@ -84,6 +84,7 @@ module Shim (A: ARRANGEMENT) = struct
 
   (* Initialize environment, and start server. *)
   let setup (cfg : cfg) : (env * A.state) =
+    Random.self_init ();
     let env =
       { cluster = Hashtbl.create (List.length cfg.cluster)
       ; port = cfg.port
