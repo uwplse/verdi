@@ -277,7 +277,7 @@ module Shim (A: ARRANGEMENT) = struct
     let state' =
       match ready_fds with
       | [] -> timeout_step env state
-      | _ -> List.fold_left (fun st fd -> process_fd env st fd) state ready_fds in
+      | _ -> List.fold_left (process_fd env) state ready_fds in
     eloop env state'
 
   let main (cfg : cfg) : unit =
