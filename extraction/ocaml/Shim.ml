@@ -189,7 +189,7 @@ module Shim (A: ARRANGEMENT) = struct
 
   let respond env ((os, s), ps) =
     List.iter (output env) os;
-    List.iter (fun p -> (if A.debug then A.debugSend s p); send env p) ps;
+    List.iter (fun p -> if A.debug then A.debugSend s p; send env p) ps;
     s
 
   let new_conn env =
@@ -227,9 +227,7 @@ module Shim (A: ARRANGEMENT) = struct
     | Some inp ->
       save env (LogInput inp) state;
       let state' = respond env (A.handleIO env.cfg.me inp state) in
-      if A.debug then begin
-	 A.debugInput state' inp
-      end;
+      if A.debug then A.debugInput state' inp;
       state'
     | None ->
       raise (Disconnect_client (S_error, "received invalid input"))
@@ -241,16 +239,12 @@ module Shim (A: ARRANGEMENT) = struct
     let (src, msg) = (undenote env from, A.deserializeMsg buf) in
     save env (LogNet (src, msg)) state;
     let state' = respond env (A.handleNet env.cfg.me src msg state) in
-    if A.debug then begin
-      A.debugRecv state' (src, msg)
-    end;
+    if A.debug then A.debugRecv state' (src, msg);
     state'
 
   let timeout_step (env : env) (state : A.state) : A.state =
     save env LogTimeout state;
-    if A.debug then begin
-      A.debugTimeout state
-    end;
+    if A.debug then A.debugTimeout state;
     let x = A.handleTimeout env.cfg.me state in
     respond env x
 
