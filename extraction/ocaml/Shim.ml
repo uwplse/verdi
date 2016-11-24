@@ -220,13 +220,13 @@ module Shim (A: ARRANGEMENT) = struct
     with
       Not_found -> raise (Disconnect_client (S_error, "client became invalid"))
 
-  let input_step (fd : file_descr) (env : env) (name : A.name) (state : A.state) =
+  let input_step (fd : file_descr) (env : env) (state : A.state) =
     let buf = read_from_socket fd 1024 in
     let c = undenote_client env fd in
     match A.deserializeInput buf c with
     | Some inp ->
       save env (LogInput inp) state;
-      let state' = respond env (A.handleIO name inp state) in
+      let state' = respond env (A.handleIO env.cfg.me inp state) in
       if A.debug then begin
 	 A.debugInput state' inp
       end;
@@ -259,25 +259,31 @@ module Shim (A: ARRANGEMENT) = struct
     with Unix_error (err, fn, arg) ->
       my_select rs ws es t
 
+  let process_fd env state fd : A.state =
+    if fd = env.isock then
+      begin new_conn env; state end
+    else if fd = env.usock then
+      recv_step env state
+    else
+      begin
+	try input_step fd env state
+	with
+	| Unix_error (err, fn, arg) ->
+          disconnect env fd (sprintf "%s failed: %s" fn (error_message err));
+          state
+	| Disconnect_client (sev, msg) ->
+          disconnect env fd msg;
+          state
+      end
+
   let rec eloop (env : env) (state : A.state) : unit =
     let client_fds = Hashtbl.fold (fun fd _ acc -> fd :: acc) env.client_read_fds [] in
     let all_fds = env.usock :: env.isock :: client_fds in
     let (ready_fds, _, _) = my_select all_fds [] [] (A.setTimeout env.cfg.me state) in
     let state' =
-      match (List.mem env.isock ready_fds, List.mem env.usock ready_fds, ready_fds) with
-      | (true, _, _) -> new_conn env ; state
-      | (_, true, _) -> recv_step env state
-      | (_, _, fd :: _) -> begin
-          try input_step fd env env.cfg.me state
-          with
-            Unix_error (err, fn, arg) ->
-              disconnect env fd (sprintf "%s failed: %s" fn (error_message err));
-              state
-          | Disconnect_client (sev, msg) ->
-              disconnect env fd msg;
-              state
-      end
-      | _ -> timeout_step env state in
+      match ready_fds with
+      | [] -> timeout_step env state
+      | _ -> List.fold_left (fun st fd -> process_fd env st fd) state ready_fds in
     eloop env state'
 
   let main (cfg : cfg) : unit =
