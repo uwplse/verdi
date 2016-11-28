@@ -42,8 +42,8 @@ module Shim (A: ARRANGEMENT) = struct
       { cluster : (A.name, string * int) Hashtbl.t
       ; port : int
       ; me : A.name
-      ; listen_fd : file_descr
-      ; input_fd : file_descr
+      ; node_fd : file_descr
+      ; client_fd : file_descr
       ; node_read_fds : (file_descr, A.name) Hashtbl.t
       ; node_write_fds : (A.name, file_descr) Hashtbl.t
       ; mutable fail_msg_queue : A.name list
@@ -89,8 +89,8 @@ module Shim (A: ARRANGEMENT) = struct
       { cluster = Hashtbl.create (List.length cfg.cluster)
       ; port = cfg.port
       ; me = cfg.me
-      ; listen_fd = socket PF_INET SOCK_STREAM 0
-      ; input_fd = socket PF_INET SOCK_STREAM 0
+      ; node_fd = socket PF_INET SOCK_STREAM 0
+      ; client_fd = socket PF_INET SOCK_STREAM 0
       ; node_read_fds = Hashtbl.create 17
       ; node_write_fds = Hashtbl.create 17
       ; fail_msg_queue = []
@@ -102,12 +102,12 @@ module Shim (A: ARRANGEMENT) = struct
     let (ip, port) = Hashtbl.find env.cluster env.me in
     let entry = gethostbyname ip in
     let listen_addr = Array.get entry.h_addr_list 0 in
-    setsockopt env.listen_fd SO_REUSEADDR true;
-    setsockopt env.input_fd SO_REUSEADDR true;
-    bind env.listen_fd (ADDR_INET (listen_addr, port));
-    bind env.input_fd (ADDR_INET (inet_addr_any, env.port));
-    listen env.listen_fd 8;
-    listen env.input_fd 8;
+    setsockopt env.node_fd SO_REUSEADDR true;
+    setsockopt env.client_fd SO_REUSEADDR true;
+    bind env.node_fd (ADDR_INET (listen_addr, port));
+    bind env.client_fd (ADDR_INET (inet_addr_any, env.port));
+    listen env.node_fd 8;
+    listen env.client_fd 8;
     (env, initial_state)
 
   let close_node_conn env fd =
@@ -237,7 +237,7 @@ module Shim (A: ARRANGEMENT) = struct
   let new_node_conn env =
     printf "new node connection";
     print_newline ();
-    let (node_fd, node_addr) = accept env.listen_fd in
+    let (node_fd, node_addr) = accept env.node_fd in
     let name_buf = receive_chunk env node_fd (close_and_fail_node env node_fd) in
     match A.deserializeName name_buf with
     | Some node_name ->
@@ -256,7 +256,7 @@ module Shim (A: ARRANGEMENT) = struct
       Unix.close node_fd
 
   let new_client_conn env =
-    let (client_fd, client_addr) = accept env.input_fd in
+    let (client_fd, client_addr) = accept env.client_fd in
     let c = A.createClientId () in
     Hashtbl.replace env.client_read_fds client_fd c;
     Hashtbl.replace env.client_write_fds c client_fd;
@@ -281,41 +281,46 @@ module Shim (A: ARRANGEMENT) = struct
     | None ->
       failwith (sprintf "input_step could not deserialize: %s" buf)
 
+  let process_fd env state fd : A.state =
+    try
+      begin
+	if fd = env.node_fd then
+	  begin new_node_conn env; state end
+	else if fd = env.client_fd then
+	  begin new_client_conn env; state end
+	else if Hashtbl.mem env.client_read_fds fd then
+	  input_step fd env env.me state
+	else
+	  recv_step env fd state
+      end
+    with
+    | NodeDisconnect (S_info, reason) ->
+      printf "node info: %s" reason;
+      print_newline ();
+      state
+    | NodeDisconnect (S_error, reason) ->
+      printf "node error: %s" reason;
+      print_newline ();
+      state
+    | ClientDisconnect (S_info, reason) ->
+      printf "client info: %s" reason;
+      print_newline ();
+      state
+    | ClientDisconnect (S_error, reason) ->
+      printf "client error: %s" reason;
+      print_newline ();
+      state
+
   let rec eloop (env : env) (state : A.state) : unit =
     let client_read_fds = Hashtbl.fold (fun fd _ acc -> fd :: acc) env.client_read_fds [] in
     let node_read_fds = Hashtbl.fold (fun fd _ acc -> fd :: acc) env.node_read_fds [] in
-    let all_fds = env.input_fd :: env.listen_fd :: List.append client_read_fds node_read_fds in
+    let all_fds = env.client_fd :: env.node_fd :: client_read_fds @ node_read_fds in
     let (ready_fds, _, _) = select all_fds [] [] (A.setTimeout env.me state) in
     let state = ref state in
     begin
-      try
-	match (List.mem env.listen_fd ready_fds,
-	       List.mem env.input_fd ready_fds,
-	       ready_fds) with
-	| (true, _, _) ->
-	  new_node_conn env
-	| (_, true, _) ->
-	  new_client_conn env
-	| (_, _, fd :: _) ->
-	  if Hashtbl.mem env.client_read_fds fd then
-	    state := input_step fd env env.me !state
-	  else
-	    state := recv_step env fd !state
-	| _ ->
-	  connect_to_nodes env
-      with
-      | ClientDisconnect (S_info, reason) ->
-	printf "client info: %s" reason;
-	print_newline ()
-      | ClientDisconnect (S_error, reason) ->
-	printf "client error: %s" reason;
-	print_newline ()
-      | NodeDisconnect (S_info, reason) ->
-	printf "node info: %s" reason;
-	print_newline ()
-      | NodeDisconnect (S_error, reason) ->
-	printf "node error: %s" reason;
-	print_newline ()
+      match ready_fds with
+      | [] -> connect_to_nodes env
+      | _ -> List.iter (fun fd -> state := process_fd env !state fd) ready_fds
     end;
     begin
       match A.failMsg with
