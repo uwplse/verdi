@@ -248,10 +248,15 @@ module Shim (A: ARRANGEMENT) = struct
     let x = A.handleTimeout env.cfg.me state in
     respond env x
 
-  let rec my_select rs ws es t =
+  let rec select_unintr rs ws es t =
     try select rs ws es t
-    with Unix_error (err, fn, arg) ->
-      my_select rs ws es t
+    with
+    | Unix_error (EINTR, fn, arg) ->
+      select_unintr rs ws es t
+    | Unix_error (e, _, _) ->
+      printf "select error: %s" (error_message e);
+      print_newline ();
+      select_unintr rs ws es t
 
   let process_fd env state fd : A.state =
     if fd = env.isock then
@@ -273,7 +278,7 @@ module Shim (A: ARRANGEMENT) = struct
   let rec eloop (env : env) (state : A.state) : unit =
     let client_fds = Hashtbl.fold (fun fd _ acc -> fd :: acc) env.client_read_fds [] in
     let all_fds = env.usock :: env.isock :: client_fds in
-    let (ready_fds, _, _) = my_select all_fds [] [] (A.setTimeout env.cfg.me state) in
+    let (ready_fds, _, _) = select_unintr all_fds [] [] (A.setTimeout env.cfg.me state) in
     let state' =
       match ready_fds with
       | [] -> timeout_step env state
