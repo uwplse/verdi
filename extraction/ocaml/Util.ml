@@ -82,3 +82,7 @@ let log level s =
 let dbg = log "DEBUG"
 
 let info = log "INFO"
+
+let keys_of_hashtbl h =
+  let cons k _ l = k :: l in
+  Hashtbl.fold cons h []
