@@ -1,6 +1,7 @@
 open Printf
 open Unix
 open Util
+open Daemon
 
 module type ARRANGEMENT = sig
   type name
@@ -46,21 +47,14 @@ module Shim (A: ARRANGEMENT) = struct
       ; client_fd : file_descr
       ; node_read_fds : (file_descr, A.name) Hashtbl.t
       ; node_write_fds : (A.name, file_descr) Hashtbl.t
-      ; mutable fail_msg_queue : A.name list
       ; client_read_fds : (file_descr, A.client_id) Hashtbl.t
       ; client_write_fds : (A.client_id, file_descr) Hashtbl.t
       }
 
-  type severity =
-    | S_info
-    | S_error
-
-  exception NodeDisconnect of (severity * string)
-  exception ClientDisconnect of (severity * string)
+  exception Connection of string
 
   let sock_of_name (env : env) (node_name : A.name) : string * int =
-    try Hashtbl.find env.cluster node_name
-    with Not_found -> failwith (sprintf "node %s is not in cluster" (A.serializeName node_name))
+    Hashtbl.find env.cluster node_name
 
   (* Translate node name to TCP socket address *)
   let denote_node (env : env) (node_name : A.name) : file_descr =
@@ -93,7 +87,6 @@ module Shim (A: ARRANGEMENT) = struct
       ; client_fd = socket PF_INET SOCK_STREAM 0
       ; node_read_fds = Hashtbl.create 17
       ; node_write_fds = Hashtbl.create 17
-      ; fail_msg_queue = []
       ; client_read_fds = Hashtbl.create 17
       ; client_write_fds = Hashtbl.create 17
       } in
@@ -110,76 +103,39 @@ module Shim (A: ARRANGEMENT) = struct
     listen env.client_fd 8;
     (env, initial_state)
 
-  let close_node_conn env fd =
-    let n = undenote_node env fd in
-    Hashtbl.remove env.node_read_fds fd;
-    Hashtbl.remove env.node_write_fds n;
-    Hashtbl.remove env.cluster n;
-    env.fail_msg_queue <- n :: env.fail_msg_queue;
-    Unix.close fd
-
-  let close_client_conn env fd =
-    let c = undenote_client env fd in
-    Hashtbl.remove env.client_read_fds fd;
-    Hashtbl.remove env.client_write_fds c;
-    Unix.close fd
-
-  let close_and_fail_node env fd reason =
-    begin
-      try close_node_conn env fd
-      with e -> raise (NodeDisconnect (S_error, sprintf "close_node_conn threw: %s" (Printexc.to_string e)))
-    end;
-    raise (NodeDisconnect (S_info, sprintf "disconnected with reason: %s" reason))
-
-  let close_and_fail_client env fd reason =
-    begin
-      try close_client_conn env fd
-      with e -> raise (ClientDisconnect (S_error, sprintf "close_client_conn threw: %s" (Printexc.to_string e)))
-    end;
-    raise (ClientDisconnect (S_info, sprintf "disconnected with reason: %s" reason))
-
-  let send_chunk (fd : file_descr) (buf : string) fail_handler : unit =
+  let send_chunk (fd : file_descr) (buf : string) : unit =
     let len = String.length buf in
     let n = Unix.send fd (raw_bytes_of_int len) 0 4 [] in
-    if n < 4 then
-      fail_handler "send_chunk: message header failed to send all at once";
+    if n < 4 then raise (Connection "send_chunk: message header failed to send all at once");
     let n = Unix.send fd buf 0 len [] in
-    if n < len then
-      fail_handler (sprintf "send_chunk: message of length %d failed to send all at once" len);
-    ()
+    if n < len then raise (Connection (sprintf "send_chunk: message of length %d failed to send all at once" len))
 
-  let recv_or_close fd buf offs len flags fail_handler =
+  let recv_or_raise fd buf offs len flags =
     let n = recv fd buf offs len flags in
-    if n = 0 then
-      fail_handler "recv_or_close: other side closed connection.";
+    if n = 0 then raise (Connection "recv_or_close: other side closed connection");
     n
 
-  let receive_chunk env (fd : file_descr) fail_handler : bytes =
+  let receive_chunk env (fd : file_descr) : bytes =
     let buf4 = Bytes.make 4 '\x00' in
-    let n = recv_or_close fd buf4 0 4 [] fail_handler in
-    if n < 4 then
-      fail_handler "receive_chunk: message header did not arrive all at once";
+    let n = recv_or_raise fd buf4 0 4 [] in
+    if n < 4 then raise (Connection "receive_chunk: message header did not arrive all at once");
     let len = int_of_raw_bytes buf4 in
     let buf = Bytes.make len '\x00' in
-    let n = recv_or_close fd buf 0 len [] fail_handler in
-    if n < len then
-      fail_handler (sprintf "receive_chunk: message of length %d did not arrive all at once" len);
+    let n = recv_or_raise fd buf 0 len [] in
+    if n < len then raise (Connection (sprintf "receive_chunk: message of length %d did not arrive all at once" len));
     buf
-
-  let send_on_fd (fd : file_descr) (msg : A.msg) fail_handler : unit =
-    send_chunk fd (A.serializeMsg msg) fail_handler
 
   let add_write_fd env node_name node_addr =
     printf "connecting to %s for the first time..." (A.serializeName node_name);
     print_newline ();
     let write_fd = socket PF_INET SOCK_STREAM 0 in
     connect write_fd node_addr;
-    send_chunk write_fd (A.serializeName env.me) (close_and_fail_node env write_fd);
+    send_chunk write_fd (A.serializeName env.me);
     let (ip, port) = sock_of_name env env.me in
-    send_chunk write_fd (sprintf "%s:%d" ip port) (close_and_fail_node env write_fd);
+    send_chunk write_fd (sprintf "%s:%d" ip port);
     begin
       match A.newMsg with
-      | Some m -> send_on_fd write_fd m (close_and_fail_node env write_fd)
+      | Some m -> send_chunk write_fd (A.serializeMsg m)
       | None -> ()
     end;
     print_endline "...connected!";
@@ -199,15 +155,15 @@ module Shim (A: ARRANGEMENT) = struct
 
   let send env ((nm : A.name), (msg : A.msg)) : unit =
     let fd = get_node_write_fd env nm in
-    send_on_fd fd msg (close_and_fail_node env fd)
+    send_chunk fd (A.serializeMsg msg)
 
   let output env o =
     let (c, out) = A.serializeOutput o in
     let fd =
       try denote_client env c
-      with Not_found -> failwith "output: failed to find destination"
+      with Not_found -> failwith "output: failed to find destination client"
     in
-    send_chunk fd out (close_and_fail_client env fd)
+    send_chunk fd out
 
   let respond env ((os, s), ps) =
     let go p =
@@ -226,7 +182,7 @@ module Shim (A: ARRANGEMENT) = struct
     state'
 
   let recv_step (env : env) (fd : file_descr) (state : A.state) : A.state =
-    let buf = receive_chunk env fd (close_and_fail_node env fd) in
+    let buf = receive_chunk env fd in
     let src =
       try undenote_node env fd
       with Not_found -> failwith "recv_step: failed to find source for message (it has probably been marked failed)"
@@ -238,22 +194,22 @@ module Shim (A: ARRANGEMENT) = struct
     printf "new node connection";
     print_newline ();
     let (node_fd, node_addr) = accept env.node_fd in
-    let name_buf = receive_chunk env node_fd (close_and_fail_node env node_fd) in
+    let name_buf = receive_chunk env node_fd in
     match A.deserializeName name_buf with
     | Some node_name ->
-      let sock_buf = receive_chunk env node_fd (close_and_fail_node env node_fd) in
+      let sock_buf = receive_chunk env node_fd in
       let sock =
 	try Scanf.sscanf sock_buf "%[^:]:%d" (fun i p -> (i, p))
-	with _ -> failwith (sprintf "sscanf error %s" sock_buf)
+	with _ -> failwith (sprintf "new_node_conn: sscanf error %s" sock_buf)
       in
       Hashtbl.replace env.node_read_fds node_fd node_name;
       Hashtbl.replace env.cluster node_name sock;
       ignore (get_node_write_fd env node_name);
       printf "done processing new connection from node %s" (A.serializeName node_name);
-      print_newline ()
+      print_newline ();
+      node_fd
     | None ->
-      printf "failed to deserialize name %s, closing connection" name_buf;
-      Unix.close node_fd
+      failwith (sprintf "new_node_conn: failed to deserialize name %s" name_buf)
 
   let new_client_conn env =
     let (client_fd, client_addr) = accept env.client_fd in
@@ -261,90 +217,138 @@ module Shim (A: ARRANGEMENT) = struct
     Hashtbl.replace env.client_read_fds client_fd c;
     Hashtbl.replace env.client_write_fds c client_fd;
     printf "client connected on %s" (string_of_sockaddr client_addr);
-    print_newline ()
+    print_newline ();
+    client_fd
 
   let connect_to_nodes env =
     let go nm =
       try ignore (get_node_write_fd env nm)
-      with e -> printf "respond moving on after exception: %s" (Printexc.to_string e);
+      with e -> printf "connect_to_nodes: moving on after exception %s" (Printexc.to_string e);
                 print_newline () in
     List.iter go (Hashtbl.fold (fun nm _ acc -> if nm != env.me then nm :: acc else acc) env.cluster [])
 
-  let input_step (fd : file_descr) (env : env) (name : A.name) (state : A.state) =
-    let buf = receive_chunk env fd (close_and_fail_client env fd) in
+  let input_step (fd : file_descr) (env : env) (state : A.state) =
+    let buf = receive_chunk env fd in
     let c = undenote_client env fd in
     match A.deserializeInput buf c with
     | Some inp ->
-      let state' = respond env (A.handleIO name inp state) in
+      let state' = respond env (A.handleIO env.me inp state) in
       if A.debug then A.debugInput state' inp;
       state'
     | None ->
-      failwith (sprintf "input_step could not deserialize: %s" buf)
+      failwith (sprintf "input_step: could not deserialize %s" buf)
 
-  let process_fd env state fd : A.state =
-    try
-      begin
-	if fd = env.node_fd then
-	  begin new_node_conn env; state end
-	else if fd = env.client_fd then
-	  begin new_client_conn env; state end
-	else if Hashtbl.mem env.client_read_fds fd then
-	  input_step fd env env.me state
-	else
-	  recv_step env fd state
-      end
-    with
-    | NodeDisconnect (S_info, reason) ->
-      printf "node info: %s" reason;
-      print_newline ();
-      state
-    | NodeDisconnect (S_error, reason) ->
-      printf "node error: %s" reason;
-      print_newline ();
-      state
-    | ClientDisconnect (S_info, reason) ->
-      printf "client info: %s" reason;
-      print_newline ();
-      state
-    | ClientDisconnect (S_error, reason) ->
-      printf "client error: %s" reason;
-      print_newline ();
-      state
+  let node_read_task fd =
+    { fd = fd
+    ; select_on = true
+    ; wake_time = None
+    ; process_read =
+	(fun t env state ->
+	  try
+	    let state' = recv_step env t.fd state in
+	    (false, [], state')
+	  with Connection s ->
+	    printf "node connection: %s" s;
+	    print_newline ();
+	    (true, [], state))
+    ; process_wake = (fun t env state -> (false, [], state))
+    ; finalize =
+	(fun t env state ->
+	  let n = undenote_node env t.fd in
+	  printf "closing connection to node %s" (A.serializeName n);
+	  print_newline ();
+	  Hashtbl.remove env.node_read_fds t.fd;
+	  Hashtbl.remove env.node_write_fds n;
+	  Hashtbl.remove env.cluster n;
+	  Unix.close t.fd;
+	  match A.failMsg with
+          | Some m -> deliver_msg env state n m
+          | None -> state)
+    }
 
-  let rec eloop (env : env) (state : A.state) : unit =
-    let client_read_fds = Hashtbl.fold (fun fd _ acc -> fd :: acc) env.client_read_fds [] in
-    let node_read_fds = Hashtbl.fold (fun fd _ acc -> fd :: acc) env.node_read_fds [] in
-    let all_fds = env.client_fd :: env.node_fd :: client_read_fds @ node_read_fds in
-    let (ready_fds, _, _) = select all_fds [] [] (A.setTimeout env.me state) in
-    let state = ref state in
-    begin
-      match ready_fds with
-      | [] -> connect_to_nodes env
-      | _ -> List.iter (fun fd -> state := process_fd env !state fd) ready_fds
-    end;
-    begin
-      match A.failMsg with
-      | Some m ->
-	begin
-	  try List.iter (fun nm -> state := deliver_msg env !state nm m) env.fail_msg_queue
-	  with
-	  | NodeDisconnect (S_info, reason) ->
-	    printf "node info: %s" reason;
-	    print_newline ()
-	  | NodeDisconnect (S_error, reason) ->
-	    printf "node error: %s" reason;
-	    print_newline ()
-	end
-      | None -> ()
-    end;
-    env.fail_msg_queue <- [];
-    eloop env !state
+  let client_read_task fd =
+    { fd = fd
+    ; select_on = true
+    ; wake_time = None
+    ; process_read =
+	(fun t env state ->
+	  try
+	    let state' = input_step t.fd env state in
+	    (false, [], state')
+	  with Connection s ->
+	    printf "client connection: %s" s;
+	    print_newline ();
+	    (true, [], state))
+    ; process_wake = (fun t env state -> (false, [], state))
+    ; finalize =
+	(fun t env state ->
+	  let c = undenote_client env t.fd in
+	  printf "closing client connection";
+	  print_newline ();
+	  Hashtbl.remove env.client_read_fds t.fd;
+	  Hashtbl.remove env.client_write_fds c;
+	  Unix.close t.fd;
+	  state)
+    }
 
   let main (cfg : cfg) : unit =
     printf "ordered shim running setup for %s" A.systemName;
     print_newline ();
     let (env, initial_state) = setup cfg in
+    let tasks = Hashtbl.create 10 in
+    let t_conn_nd = (* connect to neighbors in cluster *)
+      { fd = Unix.dup env.node_fd
+      ; select_on = false
+      ; wake_time = Some 1.0
+      ; process_read = (fun t env state -> (false, [], state))
+      ; process_wake =
+	  (fun t env state ->
+	    begin
+	      try connect_to_nodes env
+	      with Connection s ->
+		printf "node connection: %s" s;
+		print_newline ()
+	    end;
+	    t.wake_time <- Some 1.0;
+	    (false, [], state))
+      ; finalize = (fun t env state -> Unix.close t.fd; state)
+      } in
+    let t_nd_conn = (* listen to neighbors connecting *)
+      { fd = env.node_fd
+      ; select_on = true
+      ; wake_time = None
+      ; process_read =
+	  (fun t env state ->
+	    try
+	      let node_fd = new_node_conn env in
+	      (false, [node_read_task node_fd], state)
+	    with Connection s ->
+	      printf "node connection: %s" s;
+	      print_newline ();
+	      (false, [], state))
+      ; process_wake = (fun t env state -> (false, [], state))
+      ; finalize = (fun t env state -> Unix.close t.fd; state)
+      } in
+    let t_cl_conn = (* listen to clients connecting *)
+      { fd = env.client_fd
+      ; select_on = true
+      ; wake_time = None
+      ; process_read =
+	  (fun t env state ->
+	    try
+	      let client_fd = new_client_conn env in
+	      (false, [client_read_task client_fd], state)
+	    with Connection s ->
+	      printf "client connection: %s" s;
+	      print_newline ();
+	      (false, [], state))
+      ; process_wake = (fun t env state -> (false, [], state))
+      ; finalize = (fun t env state -> Unix.close t.fd; state)
+      } in
+    Hashtbl.add tasks t_conn_nd.fd t_conn_nd;
+    Hashtbl.add tasks t_nd_conn.fd t_nd_conn;
+    Hashtbl.add tasks t_cl_conn.fd t_cl_conn;
     print_endline "ordered shim ready for action";
-    eloop env initial_state
+    eloop 2.0 (Unix.gettimeofday ()) tasks env initial_state
 
 end

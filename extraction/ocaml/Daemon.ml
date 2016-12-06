@@ -8,9 +8,9 @@ type ('env, 'state) task  =
     finalize : ('env, 'state) task -> 'env -> 'state -> 'state ;
   }
 
-let process f t hts env state =
+let process process_f t hts env state =
   let state = ref state in
-  let (finished, ts, state') = f t env !state in
+  let (finished, ts, state') = process_f t env !state in
   state := state';
   if finished then begin 
     Hashtbl.remove hts t.fd; 
@@ -19,9 +19,8 @@ let process f t hts env state =
   List.iter (fun t' -> Hashtbl.add hts t'.fd t') ts;
   !state
 
-let rec eloop default_timeout hts env state =
+let rec eloop default_timeout old_timestamp hts env state =
   let state = ref state in
-  let start_time = Unix.gettimeofday () in
   let (select_fds, min_timeout) = 
     Hashtbl.fold
       (fun fd t (fds, timeout) ->
@@ -37,7 +36,8 @@ let rec eloop default_timeout hts env state =
     (fun fd -> 
       let t = Hashtbl.find hts fd in 
       state := process t.process_read t hts env !state) ready_fds;
-  let elapsed_time = Unix.gettimeofday () -. start_time in
+  let new_timestamp = Unix.gettimeofday () in
+  let elapsed_time = new_timestamp -. old_timestamp in
   let wake_tasks =
     Hashtbl.fold
       (fun fd t ts ->
@@ -50,4 +50,4 @@ let rec eloop default_timeout hts env state =
 	    (t.wake_time <- Some (wake_time -. elapsed_time); ts))
       hts [] in
   List.iter (fun t -> state := process t.process_wake t hts env !state) wake_tasks;
-  eloop default_timeout hts env !state
+  eloop default_timeout new_timestamp hts env !state
