@@ -17,7 +17,6 @@ module type ARRANGEMENT = sig
   val init : name -> state
   val handleIO : name -> input -> state -> res
   val handleNet : name -> name -> msg -> state -> res
-  val setTimeout : name -> state -> float
   val deserializeMsg : string -> msg
   val serializeMsg : msg -> string
   val deserializeInput : string -> client_id -> input option
@@ -30,6 +29,7 @@ module type ARRANGEMENT = sig
   val debugSend : state -> (name * msg) -> unit
   val debugTimeout : state -> unit
   val createClientId : unit -> client_id
+  val serializeClientId : client_id -> string
 end
 
 module Shim (A: ARRANGEMENT) = struct
@@ -216,7 +216,7 @@ module Shim (A: ARRANGEMENT) = struct
     let c = A.createClientId () in
     Hashtbl.replace env.client_read_fds client_fd c;
     Hashtbl.replace env.client_write_fds c client_fd;
-    printf "client connected on %s" (string_of_sockaddr client_addr);
+    printf "client %s connected on %s" (A.serializeClientId c) (string_of_sockaddr client_addr);
     print_newline ();
     client_fd
 
@@ -238,6 +238,7 @@ module Shim (A: ARRANGEMENT) = struct
     | None ->
       failwith (sprintf "input_step: could not deserialize %s" buf)
 
+  (* task: read node message *)
   let node_read_task fd =
     { fd = fd
     ; select_on = true
@@ -248,7 +249,7 @@ module Shim (A: ARRANGEMENT) = struct
 	    let state' = recv_step env t.fd state in
 	    (false, [], state')
 	  with Connection s ->
-	    printf "node connection: %s" s;
+	    printf "connection to node %s: %s" (A.serializeName (undenote_node env t.fd)) s;
 	    print_newline ();
 	    (true, [], state))
     ; process_wake = (fun t env state -> (false, [], state))
@@ -266,6 +267,7 @@ module Shim (A: ARRANGEMENT) = struct
           | None -> state)
     }
 
+  (* task: read client input *)
   let client_read_task fd =
     { fd = fd
     ; select_on = true
@@ -276,14 +278,14 @@ module Shim (A: ARRANGEMENT) = struct
 	    let state' = input_step t.fd env state in
 	    (false, [], state')
 	  with Connection s ->
-	    printf "client connection: %s" s;
+	    printf "connection to client %s: %s" (A.serializeClientId (undenote_client env t.fd)) s;
 	    print_newline ();
 	    (true, [], state))
     ; process_wake = (fun t env state -> (false, [], state))
     ; finalize =
 	(fun t env state ->
 	  let c = undenote_client env t.fd in
-	  printf "closing client connection";
+	  printf "closing connection to client %s" (A.serializeClientId c);
 	  print_newline ();
 	  Hashtbl.remove env.client_read_fds t.fd;
 	  Hashtbl.remove env.client_write_fds c;
@@ -306,7 +308,7 @@ module Shim (A: ARRANGEMENT) = struct
 	    begin
 	      try connect_to_nodes env
 	      with Connection s ->
-		printf "node connection: %s" s;
+		printf "connecting to nodes in cluster: %s" s;
 		print_newline ()
 	    end;
 	    t.wake_time <- Some 1.0;
@@ -323,7 +325,7 @@ module Shim (A: ARRANGEMENT) = struct
 	      let node_fd = new_node_conn env in
 	      (false, [node_read_task node_fd], state)
 	    with Connection s ->
-	      printf "node connection: %s" s;
+	      printf "incoming node connection: %s" s;
 	      print_newline ();
 	      (false, [], state))
       ; process_wake = (fun t env state -> (false, [], state))
@@ -339,7 +341,7 @@ module Shim (A: ARRANGEMENT) = struct
 	      let client_fd = new_client_conn env in
 	      (false, [client_read_task client_fd], state)
 	    with Connection s ->
-	      printf "client connection: %s" s;
+	      printf "incoming client connection: %s" s;
 	      print_newline ();
 	      (false, [], state))
       ; process_wake = (fun t env state -> (false, [], state))
