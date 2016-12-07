@@ -30,6 +30,7 @@ module type ARRANGEMENT = sig
   val debugSend : state -> (name * msg) -> unit
   val debugTimeout : state -> unit
   val createClientId : unit -> client_id
+  val serializeClientId : client_id -> string
 end
 
 module Shim (A: ARRANGEMENT) = struct
@@ -43,8 +44,8 @@ module Shim (A: ARRANGEMENT) = struct
   type env =
       { cfg : cfg
       ; command_log : out_channel
-      ; usock : file_descr
-      ; isock : file_descr
+      ; nodes_fd : file_descr
+      ; clients_fd : file_descr
       ; nodes : (A.name * sockaddr) list
       ; client_read_fds : (file_descr, A.client_id) Hashtbl.t
       ; client_write_fds : (A.client_id, file_descr) Hashtbl.t
@@ -63,11 +64,11 @@ module Shim (A: ARRANGEMENT) = struct
   | LogTimeout
 
   (* Translate node name to UDP socket address. *)
-  let denote (env : env) (name : A.name) : sockaddr =
+  let denote_node (env : env) (name : A.name) : sockaddr =
     List.assoc name env.nodes
 
   (* Translate UDP socket address to node name. *)
-  let undenote (env : env) (addr : sockaddr) : A.name =
+  let undenote_node (env : env) (addr : sockaddr) : A.name =
     let flip = function (x, y) -> (y, x) in
     List.assoc addr (List.map flip env.nodes)
 
@@ -130,27 +131,27 @@ module Shim (A: ARRANGEMENT) = struct
     let env =
       { cfg = cfg
       ; command_log = out_channel_of_descr (openfile (command_log_path cfg) [O_WRONLY ; O_APPEND ; O_CREAT ; O_DSYNC] 0o640)
-      ; usock = socket PF_INET SOCK_DGRAM 0
-      ; isock = socket PF_INET SOCK_STREAM 0
+      ; nodes_fd = socket PF_INET SOCK_DGRAM 0
+      ; clients_fd = socket PF_INET SOCK_STREAM 0
       ; nodes = List.map addressify cfg.cluster
       ; client_read_fds = Hashtbl.create 17
       ; client_write_fds = Hashtbl.create 17
       ; saves = 0
       }
     in
-    setsockopt env.isock SO_REUSEADDR true;
-    setsockopt env.usock SO_REUSEADDR true;
-    bind env.usock (ADDR_INET (inet_addr_any, port));
-    bind env.isock (ADDR_INET (inet_addr_any, cfg.port));
-    listen env.isock 8;
+    setsockopt env.clients_fd SO_REUSEADDR true;
+    setsockopt env.nodes_fd SO_REUSEADDR true;
+    bind env.nodes_fd (ADDR_INET (inet_addr_any, port));
+    bind env.clients_fd (ADDR_INET (inet_addr_any, cfg.port));
+    listen env.clients_fd 8;
     (env, initial_state)
 
-  let disconnect env fd reason =
+  let disconnect_client env fd reason =
     let c = undenote_client env fd in
     Hashtbl.remove env.client_read_fds fd;
     Hashtbl.remove env.client_write_fds c;
     close fd;
-    printf "Client disconnected (%s)" reason;
+    printf "Client %s disconnected: %s" (A.serializeClientId c) reason;
     print_newline ()
 
   let sendto sock buf addr =
@@ -161,13 +162,13 @@ module Shim (A: ARRANGEMENT) = struct
       print_newline ()
 
   let send env ((nm : A.name), (msg : A.msg)) =
-    sendto env.usock (A.serializeMsg msg) (denote env nm)
+    sendto env.nodes_fd (A.serializeMsg msg) (denote_node env nm)
 
   let respond_to_client env fd msg =
     try
       ignore (Unix.send fd (msg ^ "\n") 0 (String.length msg) [])
     with Unix_error (err, fn, arg) ->
-      disconnect env fd ("Error from send: " ^ (error_message err))
+      disconnect_client env fd ("Error from send: " ^ (error_message err))
 
   let output env o =
     let (c, out) = A.serializeOutput o in
@@ -192,12 +193,12 @@ module Shim (A: ARRANGEMENT) = struct
     List.iter (fun p -> if A.debug then A.debugSend s p; send env p) ps;
     s
 
-  let new_conn env =
-    let (client_fd, client_addr) = accept env.isock in
+  let new_client_conn env =
+    let (client_fd, client_addr) = accept env.clients_fd in
     let c = A.createClientId () in
     Hashtbl.add env.client_read_fds client_fd c;
     Hashtbl.add env.client_write_fds c client_fd;
-    printf "Client connected on %s" (string_of_sockaddr client_addr);
+    printf "Client %s connected on %s" (A.serializeClientId c) (string_of_sockaddr client_addr);
     print_newline ()
 
   type severity =
@@ -210,7 +211,7 @@ module Shim (A: ARRANGEMENT) = struct
     let buf = String.make len '\x00' in
     try
       let bytes_read = recv sock buf 0 len [MSG_PEEK] in
-      if bytes_read == 0 then begin
+      if bytes_read = 0 then begin
         raise (Disconnect_client (S_info, "client closed socket"))
       end;
       let msg_len = (String.index buf '\n') + 1 in
@@ -235,8 +236,8 @@ module Shim (A: ARRANGEMENT) = struct
   let recv_step (env : env) (state : A.state) : A.state =
     let len = 65536 in
     let buf = String.make len '\x00' in
-    let (_, from) = recvfrom env.usock buf 0 len [] in
-    let (src, msg) = (undenote env from, A.deserializeMsg buf) in
+    let (_, from) = recvfrom env.nodes_fd buf 0 len [] in
+    let (src, msg) = (undenote_node env from, A.deserializeMsg buf) in
     save env (LogNet (src, msg)) state;
     let state' = respond env (A.handleNet env.cfg.me src msg state) in
     if A.debug then A.debugRecv state' (src, msg);
@@ -259,25 +260,25 @@ module Shim (A: ARRANGEMENT) = struct
       select_unintr rs ws es t
 
   let process_fd env state fd : A.state =
-    if fd = env.isock then
-      begin new_conn env; state end
-    else if fd = env.usock then
+    if fd = env.clients_fd then
+      begin new_client_conn env; state end
+    else if fd = env.nodes_fd then
       recv_step env state
     else
       begin
 	try input_step fd env state
 	with
 	| Unix_error (err, fn, arg) ->
-          disconnect env fd (sprintf "%s failed: %s" fn (error_message err));
+          disconnect_client env fd (sprintf "%s failed: %s" fn (error_message err));
           state
 	| Disconnect_client (sev, msg) ->
-          disconnect env fd msg;
+          disconnect_client env fd msg;
           state
       end
 
   let rec eloop (env : env) (state : A.state) : unit =
     let client_fds = Hashtbl.fold (fun fd _ acc -> fd :: acc) env.client_read_fds [] in
-    let all_fds = env.usock :: env.isock :: client_fds in
+    let all_fds = env.nodes_fd :: env.clients_fd :: client_fds in
     let (ready_fds, _, _) = select_unintr all_fds [] [] (A.setTimeout env.cfg.me state) in
     let state' =
       match ready_fds with
