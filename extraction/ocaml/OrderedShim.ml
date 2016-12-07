@@ -11,6 +11,8 @@ module type ARRANGEMENT = sig
   type msg
   type client_id
   type res = (output list * state) * ((name * msg) list)
+  type task_handler = name -> state -> res
+  type timeout_setter = name -> state -> float
   val systemName : string
   val serializeName : name -> string
   val deserializeName : string -> name option
@@ -30,6 +32,7 @@ module type ARRANGEMENT = sig
   val debugTimeout : state -> unit
   val createClientId : unit -> client_id
   val serializeClientId : client_id -> string
+  val timeoutTasks : (task_handler * timeout_setter) list
 end
 
 module Shim (A: ARRANGEMENT) = struct
@@ -225,7 +228,8 @@ module Shim (A: ARRANGEMENT) = struct
       try ignore (get_node_write_fd env nm)
       with e -> printf "connect_to_nodes: moving on after exception %s" (Printexc.to_string e);
                 print_newline () in
-    List.iter go (Hashtbl.fold (fun nm _ acc -> if nm != env.me then nm :: acc else acc) env.cluster [])
+    let ns = Hashtbl.fold (fun nm _ acc -> if nm != env.me then nm :: acc else acc) env.cluster [] in
+    List.iter go ns
 
   let input_step (fd : file_descr) (env : env) (state : A.state) =
     let buf = receive_chunk env fd in
@@ -350,6 +354,20 @@ module Shim (A: ARRANGEMENT) = struct
     Hashtbl.add tasks t_conn_nd.fd t_conn_nd;
     Hashtbl.add tasks t_nd_conn.fd t_nd_conn;
     Hashtbl.add tasks t_cl_conn.fd t_cl_conn;
+    List.iter (fun (handler, setter) ->
+      let t_hnd =
+	{ fd = Unix.dup env.client_fd
+	; select_on = false
+	; wake_time = Some (setter env.me initial_state)
+	; process_read = (fun t env state -> (false, [], state))
+	; process_wake =
+	    (fun t env state ->
+	      let state' = respond env (handler env.me state) in
+	      t.wake_time <- Some (setter env.me state');
+	      (false, [], state'))
+	; finalize = (fun t env state -> Unix.close t.fd; state)
+	}
+      in Hashtbl.add tasks t_hnd.fd t_hnd) A.timeoutTasks;
     print_endline "ordered shim ready for action";
     eloop 2.0 (Unix.gettimeofday ()) tasks env initial_state
 
