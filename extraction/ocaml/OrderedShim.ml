@@ -260,12 +260,15 @@ module Shim (A: ARRANGEMENT) = struct
     ; finalize =
 	(fun t env state ->
 	  let n = undenote_node env t.fd in
-	  printf "closing connection to node %s" (A.serializeName n);
+	  let read_fd = t.fd in
+	  let write_fd = denote_node env n in
+	  printf "closing connections to node %s" (A.serializeName n);
 	  print_newline ();
-	  Hashtbl.remove env.node_read_fds t.fd;
+	  Hashtbl.remove env.node_read_fds read_fd;
 	  Hashtbl.remove env.node_write_fds n;
 	  Hashtbl.remove env.cluster n;
-	  Unix.close t.fd;
+	  Unix.close read_fd;
+	  Unix.close write_fd;
 	  match A.failMsg with
           | Some m -> deliver_msg env state n m
           | None -> state)
