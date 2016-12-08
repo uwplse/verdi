@@ -151,31 +151,30 @@ module Shim (A: ARRANGEMENT) = struct
     Hashtbl.remove env.client_read_fds fd;
     Hashtbl.remove env.client_write_fds c;
     close fd;
-    printf "Client %s disconnected: %s" (A.serializeClientId c) reason;
+    printf "client %s disconnected: %s" (A.serializeClientId c) reason;
     print_newline ()
 
   let sendto sock buf addr =
     try
       ignore (Unix.sendto sock buf 0 (String.length buf) [] addr)
     with Unix_error (err, fn, arg) ->
-      printf "Error from sendto: %s, dropping message" (error_message err);
+      printf "error in sendto: %s, dropping message" (error_message err);
       print_newline ()
 
   let send env ((nm : A.name), (msg : A.msg)) =
     sendto env.nodes_fd (A.serializeMsg msg) (denote_node env nm)
 
-  let respond_to_client env fd msg =
-    try
-      ignore (Unix.send fd (msg ^ "\n") 0 (String.length msg) [])
+  let send_to_client env fd out =
+    try ignore (Unix.send fd (out ^ "\n") 0 (String.length out) [])
     with Unix_error (err, fn, arg) ->
-      disconnect_client env fd ("Error from send: " ^ (error_message err))
+      disconnect_client env fd ("error in send: " ^ (error_message err))
 
   let output env o =
     let (c, out) = A.serializeOutput o in
     let fd =
       try denote_client env c
-      with Not_found -> failwith "output: failed to find destination" in
-    respond_to_client env fd out
+      with Not_found -> failwith "output: failed to find destination client" in
+    send_to_client env fd out
 
   let save env (step : log_step) (st : A.state)  =
     if (env.saves > 0 && env.saves mod 1000 = 0) then begin
@@ -198,40 +197,42 @@ module Shim (A: ARRANGEMENT) = struct
     let c = A.createClientId () in
     Hashtbl.add env.client_read_fds client_fd c;
     Hashtbl.add env.client_write_fds c client_fd;
-    printf "Client %s connected on %s" (A.serializeClientId c) (string_of_sockaddr client_addr);
+    printf "client %s connected on %s" (A.serializeClientId c) (string_of_sockaddr client_addr);
     print_newline ()
 
-  type severity =
-    | S_info
-    | S_error
+  exception Disconnect_client of string
 
-  exception Disconnect_client of (severity * string)
-
-  let read_from_socket sock len =
+  let read_from_client fd len =
     let buf = String.make len '\x00' in
-    try
-      let bytes_read = recv sock buf 0 len [MSG_PEEK] in
-      if bytes_read = 0 then begin
-        raise (Disconnect_client (S_info, "client closed socket"))
-      end;
-      let msg_len = (String.index buf '\n') + 1 in
-      let buf2 = String.make msg_len '\x00' in
-      let _ = recv sock buf2 0 msg_len [] in
-      buf
-    with
-      Not_found -> raise (Disconnect_client (S_error, "client became invalid"))
+    let bytes_read = recv fd buf 0 len [MSG_PEEK] in
+    if bytes_read = 0 then raise (Disconnect_client "client closed socket");
+    let msg_len =
+      try (String.index buf '\n') + 1
+      with Not_found -> raise (Disconnect_client "invalid data from client") in
+    let buf2 = String.make msg_len '\x00' in
+    ignore (recv fd buf2 0 msg_len []);
+    buf
 
   let input_step (fd : file_descr) (env : env) (state : A.state) =
-    let buf = read_from_socket fd 1024 in
-    let c = undenote_client env fd in
-    match A.deserializeInput buf c with
-    | Some inp ->
-      save env (LogInput inp) state;
-      let state' = respond env (A.handleIO env.cfg.me inp state) in
-      if A.debug then A.debugInput state' inp;
-      state'
-    | None ->
-      raise (Disconnect_client (S_error, "received invalid input"))
+    try
+      let buf = read_from_client fd 1024 in
+      let c = undenote_client env fd in
+      match A.deserializeInput buf c with
+      | Some inp ->
+        save env (LogInput inp) state;
+        let state' = respond env (A.handleIO env.cfg.me inp state) in
+        if A.debug then A.debugInput state' inp;
+        state'
+      | None ->
+	disconnect_client env fd "input deserialization failed";
+	state
+    with
+    | Disconnect_client s ->
+      disconnect_client env fd s;
+      state
+    | Unix_error (err, fn, _) ->
+      disconnect_client env fd (sprintf "error in %s: %s" fn (error_message err));
+      state
 
   let recv_step (env : env) (state : A.state) : A.state =
     let len = 65536 in
@@ -265,16 +266,7 @@ module Shim (A: ARRANGEMENT) = struct
     else if fd = env.nodes_fd then
       recv_step env state
     else
-      begin
-	try input_step fd env state
-	with
-	| Unix_error (err, fn, arg) ->
-          disconnect_client env fd (sprintf "%s failed: %s" fn (error_message err));
-          state
-	| Disconnect_client (sev, msg) ->
-          disconnect_client env fd msg;
-          state
-      end
+      input_step fd env state
 
   let rec eloop (env : env) (state : A.state) : unit =
     let client_fds = Hashtbl.fold (fun fd _ acc -> fd :: acc) env.client_read_fds [] in
