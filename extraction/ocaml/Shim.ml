@@ -167,12 +167,14 @@ module Shim (A: ARRANGEMENT) = struct
   let send_to_client env fd out =
     try ignore (Unix.send fd (out ^ "\n") 0 (String.length out) [])
     with Unix_error (err, fn, arg) ->
-      disconnect_client env fd ("error in send: " ^ (error_message err))
+      disconnect_client env fd (sprintf "error in send_to_client: %s" (error_message err))
 
   let output env o =
     let (c, out) = A.serializeOutput o in
     try send_to_client env (denote_client env c) out
-    with Not_found -> printf "output: failed to find socket for client %s" (A.serializeClientId c)
+    with Not_found ->
+      printf "output: failed to find socket for client %s" (A.serializeClientId c);
+      print_newline ()
 
   let save env (step : log_step) (st : A.state)  =
     if (env.saves > 0 && env.saves mod 1000 = 0) then begin
