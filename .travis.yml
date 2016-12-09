@@ -13,7 +13,7 @@ env:
   global:
     - COQ_VERSION=8.5.3
     - SSREFLECT_VERSION=1.6
-    - VERDI_RAFT_BRANCH=refactored-shim-compatible
+    - VERDI_RAFT_BRANCH=compatible-unordered-shim
     - STRUCTTACT_BRANCH=master
   matrix:
     - DOWNSTREAM=none
