@@ -52,9 +52,8 @@ module Shim (A: ARRANGEMENT) = struct
       ; node_write_fds : (A.name, file_descr) Hashtbl.t
       ; client_read_fds : (file_descr, A.client_id) Hashtbl.t
       ; client_write_fds : (A.client_id, file_descr) Hashtbl.t
+      ; tasks : (file_descr, (env, A.state) task) Hashtbl.t
       }
-
-  exception Connection of string
 
   let sock_of_name (env : env) (node_name : A.name) : string * int =
     Hashtbl.find env.cluster node_name
@@ -92,6 +91,7 @@ module Shim (A: ARRANGEMENT) = struct
       ; node_write_fds = Hashtbl.create 17
       ; client_read_fds = Hashtbl.create 17
       ; client_write_fds = Hashtbl.create 17
+      ; tasks = Hashtbl.create 17
       } in
     let initial_state = get_initial_state env in
     List.iter (fun (n, s) -> Hashtbl.add env.cluster n s) cfg.cluster;
@@ -106,26 +106,28 @@ module Shim (A: ARRANGEMENT) = struct
     listen env.client_fd 8;
     (env, initial_state)
 
+  exception Disconnect of string
+
   let send_chunk (fd : file_descr) (buf : string) : unit =
     let len = String.length buf in
     let n = Unix.send fd (raw_bytes_of_int len) 0 4 [] in
-    if n < 4 then raise (Connection "send_chunk: message header failed to send all at once");
+    if n < 4 then raise (Disconnect "send_chunk: message header failed to send all at once");
     let n = Unix.send fd buf 0 len [] in
-    if n < len then raise (Connection (sprintf "send_chunk: message of length %d failed to send all at once" len))
+    if n < len then raise (Disconnect (sprintf "send_chunk: message of length %d failed to send all at once" len))
 
-  let recv_or_raise fd buf offs len flags =
+  let receive_or_raise fd buf offs len flags =
     let n = recv fd buf offs len flags in
-    if n = 0 then raise (Connection "recv_or_close: other side closed connection");
+    if n = 0 then raise (Disconnect "receive_or_raise: other side closed connection");
     n
 
   let receive_chunk env (fd : file_descr) : bytes =
     let buf4 = Bytes.make 4 '\x00' in
-    let n = recv_or_raise fd buf4 0 4 [] in
-    if n < 4 then raise (Connection "receive_chunk: message header did not arrive all at once");
+    let n = receive_or_raise fd buf4 0 4 [] in
+    if n < 4 then raise (Disconnect "receive_chunk: message header did not arrive all at once");
     let len = int_of_raw_bytes buf4 in
     let buf = Bytes.make len '\x00' in
-    let n = recv_or_raise fd buf 0 len [] in
-    if n < len then raise (Connection (sprintf "receive_chunk: message of length %d did not arrive all at once" len));
+    let n = receive_or_raise fd buf 0 len [] in
+    if n < len then raise (Disconnect (sprintf "receive_chunk: message of length %d did not arrive all at once" len));
     buf
 
   let add_write_fd env node_name node_addr =
@@ -156,17 +158,31 @@ module Shim (A: ARRANGEMENT) = struct
       else
         failwith "get_node_write_fd: cannot find name"
 
-  let send env ((nm : A.name), (msg : A.msg)) : unit =
-    let fd = get_node_write_fd env nm in
-    send_chunk fd (A.serializeMsg msg)
+  let schedule_finalize_task t =
+    t.select_on <- false;
+    t.wake_time <- Some 0.5;
+    t.process_read <- (fun t env state -> (true, [], state));
+    t.process_wake <- (fun t env state -> (true, [], state))
 
   let output env o =
     let (c, out) = A.serializeOutput o in
-    let fd =
-      try denote_client env c
-      with Not_found -> failwith "output: failed to find destination client"
-    in
-    send_chunk fd out
+    try send_chunk (denote_client env c) out
+    with
+    | Not_found ->
+      printf "output: failed to find socket for client %s" (A.serializeClientId c);
+      print_newline ()
+    | Disconnect s ->
+      printf "output: failed send to client %s: %s" (A.serializeClientId c) s;
+      print_newline ();
+      schedule_finalize_task (Hashtbl.find env.tasks (denote_client env c))
+    | Unix_error (err, fn, _) ->
+      printf "error in output: %s" (error_message err);
+      print_newline ();
+      schedule_finalize_task (Hashtbl.find env.tasks (denote_client env c))
+
+  let send env ((nm : A.name), (msg : A.msg)) : unit =
+    let fd = get_node_write_fd env nm in
+    send_chunk fd (A.serializeMsg msg)
 
   let respond env ((os, s), ps) =
     let go p =
@@ -252,7 +268,7 @@ module Shim (A: ARRANGEMENT) = struct
 	  try
 	    let state' = recv_step env t.fd state in
 	    (false, [], state')
-	  with Connection s ->
+	  with Disconnect s ->
 	    printf "connection to node %s: %s" (A.serializeName (undenote_node env t.fd)) s;
 	    print_newline ();
 	    (true, [], state))
@@ -284,7 +300,7 @@ module Shim (A: ARRANGEMENT) = struct
 	  try
 	    let state' = input_step t.fd env state in
 	    (false, [], state')
-	  with Connection s ->
+	  with Disconnect s ->
 	    printf "connection to client %s: %s" (A.serializeClientId (undenote_client env t.fd)) s;
 	    print_newline ();
 	    (true, [], state))
@@ -304,7 +320,6 @@ module Shim (A: ARRANGEMENT) = struct
     printf "ordered shim running setup for %s" A.systemName;
     print_newline ();
     let (env, initial_state) = setup cfg in
-    let tasks = Hashtbl.create 10 in
     let t_conn_nd = (* connect to neighbors in cluster *)
       { fd = Unix.dup env.node_fd
       ; select_on = false
@@ -314,7 +329,7 @@ module Shim (A: ARRANGEMENT) = struct
 	  (fun t env state ->
 	    begin
 	      try connect_to_nodes env
-	      with Connection s ->
+	      with Disconnect s ->
 		printf "connecting to nodes in cluster: %s" s;
 		print_newline ()
 	    end;
@@ -331,7 +346,7 @@ module Shim (A: ARRANGEMENT) = struct
 	    try
 	      let node_fd = new_node_conn env in
 	      (false, [node_read_task node_fd], state)
-	    with Connection s ->
+	    with Disconnect s ->
 	      printf "incoming node connection: %s" s;
 	      print_newline ();
 	      (false, [], state))
@@ -347,16 +362,16 @@ module Shim (A: ARRANGEMENT) = struct
 	    try
 	      let client_fd = new_client_conn env in
 	      (false, [client_read_task client_fd], state)
-	    with Connection s ->
+	    with Disconnect s ->
 	      printf "incoming client connection: %s" s;
 	      print_newline ();
 	      (false, [], state))
       ; process_wake = (fun t env state -> (false, [], state))
       ; finalize = (fun t env state -> Unix.close t.fd; state)
       } in
-    Hashtbl.add tasks t_conn_nd.fd t_conn_nd;
-    Hashtbl.add tasks t_nd_conn.fd t_nd_conn;
-    Hashtbl.add tasks t_cl_conn.fd t_cl_conn;
+    Hashtbl.add env.tasks t_conn_nd.fd t_conn_nd;
+    Hashtbl.add env.tasks t_nd_conn.fd t_nd_conn;
+    Hashtbl.add env.tasks t_cl_conn.fd t_cl_conn;
     List.iter (fun (handler, setter) ->
       let t_hnd =
 	{ fd = Unix.dup env.client_fd
@@ -370,8 +385,7 @@ module Shim (A: ARRANGEMENT) = struct
 	      (false, [], state'))
 	; finalize = (fun t env state -> Unix.close t.fd; state)
 	}
-      in Hashtbl.add tasks t_hnd.fd t_hnd) A.timeoutTasks;
+      in Hashtbl.add env.tasks t_hnd.fd t_hnd) A.timeoutTasks;
     print_endline "ordered shim ready for action";
-    eloop 2.0 (Unix.gettimeofday ()) tasks env initial_state
-
+    eloop 2.0 (Unix.gettimeofday ()) env.tasks env initial_state
 end
