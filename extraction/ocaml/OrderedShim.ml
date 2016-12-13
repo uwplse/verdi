@@ -23,8 +23,8 @@ module type ARRANGEMENT = sig
   val serializeMsg : msg -> string
   val deserializeInput : string -> client_id -> input option
   val serializeOutput : output -> client_id * string
-  val failMsg : msg
-  val newMsg : msg
+  val failMsg : msg option
+  val newMsg : msg option
   val debug : bool
   val debugInput : state -> input -> unit
   val debugRecv : state -> (name * msg) -> unit
@@ -332,7 +332,9 @@ module Shim (A: ARRANGEMENT) = struct
 	  Hashtbl.remove env.cluster node_name;
 	  Unix.close read_fd;
 	  Unix.close write_fd;
-          deliver_msg env state node_name A.failMsg)
+	  match A.failMsg with
+          | None -> state
+          | Some m -> deliver_msg env state node_name m)
     }
 
   let client_read_task fd =
@@ -387,7 +389,11 @@ module Shim (A: ARRANGEMENT) = struct
 	(fun t env state ->
 	  try
 	    let node_fd = new_node_conn env in
-	    let state' = deliver_msg env state (Hashtbl.find env.node_read_fds node_fd) A.newMsg in
+	    let state' =
+	      match A.newMsg with
+	      | None -> state
+              | Some m -> deliver_msg env state (Hashtbl.find env.node_read_fds node_fd) m
+	    in
 	    (false, [node_read_task node_fd], state')
 	  with Disconnect s ->
 	    printf "incoming node connection error: %s" s;
