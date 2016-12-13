@@ -327,6 +327,7 @@ module Shim (A: ARRANGEMENT) = struct
 	  printf "closing connections for node %s" (A.serializeName node_name);
 	  print_newline ();
 	  Hashtbl.remove env.node_read_fds read_fd;
+	  Hashtbl.remove env.node_fds_read node_name;
 	  Hashtbl.remove env.node_write_fds node_name;
 	  Hashtbl.remove env.cluster node_name;
 	  Unix.close read_fd;
