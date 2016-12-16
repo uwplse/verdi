@@ -30,6 +30,7 @@ module type ARRANGEMENT = sig
   val debugSend : state -> (name * msg) -> unit
   val debugTimeout : state -> unit
   val createClientId : unit -> client_id
+  val serializeClientId : client_id -> string
 end
 
 module Shim (A: ARRANGEMENT) = struct
@@ -43,8 +44,8 @@ module Shim (A: ARRANGEMENT) = struct
   type env =
       { cfg : cfg
       ; command_log : out_channel
-      ; usock : file_descr
-      ; isock : file_descr
+      ; nodes_fd : file_descr
+      ; clients_fd : file_descr
       ; nodes : (A.name * sockaddr) list
       ; client_read_fds : (file_descr, A.client_id) Hashtbl.t
       ; client_write_fds : (A.client_id, file_descr) Hashtbl.t
@@ -63,11 +64,11 @@ module Shim (A: ARRANGEMENT) = struct
   | LogTimeout
 
   (* Translate node name to UDP socket address. *)
-  let denote (env : env) (name : A.name) : sockaddr =
+  let denote_node (env : env) (name : A.name) : sockaddr =
     List.assoc name env.nodes
 
   (* Translate UDP socket address to node name. *)
-  let undenote (env : env) (addr : sockaddr) : A.name =
+  let undenote_node (env : env) (addr : sockaddr) : A.name =
     let flip = function (x, y) -> (y, x) in
     List.assoc addr (List.map flip env.nodes)
 
@@ -130,51 +131,50 @@ module Shim (A: ARRANGEMENT) = struct
     let env =
       { cfg = cfg
       ; command_log = out_channel_of_descr (openfile (command_log_path cfg) [O_WRONLY ; O_APPEND ; O_CREAT ; O_DSYNC] 0o640)
-      ; usock = socket PF_INET SOCK_DGRAM 0
-      ; isock = socket PF_INET SOCK_STREAM 0
+      ; nodes_fd = socket PF_INET SOCK_DGRAM 0
+      ; clients_fd = socket PF_INET SOCK_STREAM 0
       ; nodes = List.map addressify cfg.cluster
       ; client_read_fds = Hashtbl.create 17
       ; client_write_fds = Hashtbl.create 17
       ; saves = 0
       }
     in
-    setsockopt env.isock SO_REUSEADDR true;
-    setsockopt env.usock SO_REUSEADDR true;
-    bind env.usock (ADDR_INET (inet_addr_any, port));
-    bind env.isock (ADDR_INET (inet_addr_any, cfg.port));
-    listen env.isock 8;
+    setsockopt env.clients_fd SO_REUSEADDR true;
+    setsockopt env.nodes_fd SO_REUSEADDR true;
+    bind env.nodes_fd (ADDR_INET (inet_addr_any, port));
+    bind env.clients_fd (ADDR_INET (inet_addr_any, cfg.port));
+    listen env.clients_fd 8;
     (env, initial_state)
 
-  let disconnect env fd reason =
+  let disconnect_client env fd reason =
     let c = undenote_client env fd in
     Hashtbl.remove env.client_read_fds fd;
     Hashtbl.remove env.client_write_fds c;
     close fd;
-    printf "Client disconnected (%s)" reason;
+    printf "client %s disconnected: %s" (A.serializeClientId c) reason;
     print_newline ()
 
   let sendto sock buf addr =
     try
       ignore (Unix.sendto sock buf 0 (String.length buf) [] addr)
     with Unix_error (err, fn, arg) ->
-      printf "Error from sendto: %s, dropping message" (error_message err);
+      printf "error in sendto: %s, dropping message" (error_message err);
       print_newline ()
 
   let send env ((nm : A.name), (msg : A.msg)) =
-    sendto env.usock (A.serializeMsg msg) (denote env nm)
+    sendto env.nodes_fd (A.serializeMsg msg) (denote_node env nm)
 
-  let respond_to_client env fd msg =
-    try
-      ignore (Unix.send fd (msg ^ "\n") 0 (String.length msg) [])
+  let send_to_client env fd out =
+    try ignore (Unix.send fd (out ^ "\n") 0 (String.length out) [])
     with Unix_error (err, fn, arg) ->
-      disconnect env fd ("Error from send: " ^ (error_message err))
+      disconnect_client env fd (sprintf "error in send_to_client: %s" (error_message err))
 
   let output env o =
     let (c, out) = A.serializeOutput o in
-    let fd =
-      try denote_client env c
-      with Not_found -> failwith "output: failed to find destination" in
-    respond_to_client env fd out
+    try send_to_client env (denote_client env c) out
+    with Not_found ->
+      printf "output: failed to find socket for client %s" (A.serializeClientId c);
+      print_newline ()
 
   let save env (step : log_step) (st : A.state)  =
     if (env.saves > 0 && env.saves mod 1000 = 0) then begin
@@ -189,95 +189,93 @@ module Shim (A: ARRANGEMENT) = struct
 
   let respond env ((os, s), ps) =
     List.iter (output env) os;
-    List.iter (fun p -> (if A.debug then A.debugSend s p); send env p) ps;
+    List.iter (fun p -> if A.debug then A.debugSend s p; send env p) ps;
     s
 
-  let new_conn env =
-    let (client_fd, client_addr) = accept env.isock in
+  let new_client_conn env =
+    let (client_fd, client_addr) = accept env.clients_fd in
     let c = A.createClientId () in
     Hashtbl.add env.client_read_fds client_fd c;
     Hashtbl.add env.client_write_fds c client_fd;
-    printf "Client connected on %s" (string_of_sockaddr client_addr);
+    printf "client %s connected on %s" (A.serializeClientId c) (string_of_sockaddr client_addr);
     print_newline ()
 
-  type severity =
-    | S_info
-    | S_error
+  exception Disconnect_client of string
 
-  exception Disconnect_client of (severity * string)
-
-  let read_from_socket sock len =
+  let read_from_client fd len =
     let buf = String.make len '\x00' in
-    try
-      let bytes_read = recv sock buf 0 len [MSG_PEEK] in
-      if bytes_read == 0 then begin
-        raise (Disconnect_client (S_info, "client closed socket"))
-      end;
-      let msg_len = (String.index buf '\n') + 1 in
-      let buf2 = String.make msg_len '\x00' in
-      let _ = recv sock buf2 0 msg_len [] in
-      buf
-    with
-      Not_found -> raise (Disconnect_client (S_error, "client became invalid"))
+    let bytes_read = recv fd buf 0 len [MSG_PEEK] in
+    if bytes_read = 0 then raise (Disconnect_client "client closed socket");
+    let msg_len =
+      try (String.index buf '\n') + 1
+      with Not_found -> raise (Disconnect_client "invalid data from client") in
+    let buf2 = String.make msg_len '\x00' in
+    ignore (recv fd buf2 0 msg_len []);
+    buf
 
-  let input_step (fd : file_descr) (env : env) (name : A.name) (state : A.state) =
-    let buf = read_from_socket fd 1024 in
-    let c = undenote_client env fd in
-    match A.deserializeInput buf c with
-    | Some inp ->
-      save env (LogInput inp) state;
-      let state' = respond env (A.handleIO name inp state) in
-      if A.debug then begin
-	 A.debugInput state' inp
-      end;
-      state'
-    | None ->
-      raise (Disconnect_client (S_error, "received invalid input"))
+  let input_step (fd : file_descr) (env : env) (state : A.state) =
+    try
+      let buf = read_from_client fd 1024 in
+      let c = undenote_client env fd in
+      match A.deserializeInput buf c with
+      | Some inp ->
+        save env (LogInput inp) state;
+        let state' = respond env (A.handleIO env.cfg.me inp state) in
+        if A.debug then A.debugInput state' inp;
+        state'
+      | None ->
+	disconnect_client env fd "input deserialization failed";
+	state
+    with
+    | Disconnect_client s ->
+      disconnect_client env fd s;
+      state
+    | Unix_error (err, fn, _) ->
+      disconnect_client env fd (sprintf "error in %s: %s" fn (error_message err));
+      state
 
   let recv_step (env : env) (state : A.state) : A.state =
     let len = 65536 in
     let buf = String.make len '\x00' in
-    let (_, from) = recvfrom env.usock buf 0 len [] in
-    let (src, msg) = (undenote env from, A.deserializeMsg buf) in
+    let (_, from) = recvfrom env.nodes_fd buf 0 len [] in
+    let (src, msg) = (undenote_node env from, A.deserializeMsg buf) in
     save env (LogNet (src, msg)) state;
     let state' = respond env (A.handleNet env.cfg.me src msg state) in
-    if A.debug then begin
-      A.debugRecv state' (src, msg)
-    end;
+    if A.debug then A.debugRecv state' (src, msg);
     state'
 
   let timeout_step (env : env) (state : A.state) : A.state =
     save env LogTimeout state;
-    if A.debug then begin
-      A.debugTimeout state
-    end;
+    if A.debug then A.debugTimeout state;
     let x = A.handleTimeout env.cfg.me state in
     respond env x
 
-  let rec my_select rs ws es t =
+  let rec select_unintr rs ws es t =
     try select rs ws es t
-    with Unix_error (err, fn, arg) ->
-      my_select rs ws es t
+    with
+    | Unix_error (EINTR, fn, arg) ->
+      select_unintr rs ws es t
+    | Unix_error (e, _, _) ->
+      printf "select error: %s" (error_message e);
+      print_newline ();
+      select_unintr rs ws es t
+
+  let process_fd env state fd : A.state =
+    if fd = env.clients_fd then
+      begin new_client_conn env; state end
+    else if fd = env.nodes_fd then
+      recv_step env state
+    else
+      input_step fd env state
 
   let rec eloop (env : env) (state : A.state) : unit =
     let client_fds = Hashtbl.fold (fun fd _ acc -> fd :: acc) env.client_read_fds [] in
-    let all_fds = env.usock :: env.isock :: client_fds in
-    let (ready_fds, _, _) = my_select all_fds [] [] (A.setTimeout env.cfg.me state) in
+    let all_fds = env.nodes_fd :: env.clients_fd :: client_fds in
+    let (ready_fds, _, _) = select_unintr all_fds [] [] (A.setTimeout env.cfg.me state) in
     let state' =
-      match (List.mem env.isock ready_fds, List.mem env.usock ready_fds, ready_fds) with
-      | (true, _, _) -> new_conn env ; state
-      | (_, true, _) -> recv_step env state
-      | (_, _, fd :: _) -> begin
-          try input_step fd env env.cfg.me state
-          with
-            Unix_error (err, fn, arg) ->
-              disconnect env fd (sprintf "%s failed: %s" fn (error_message err));
-              state
-          | Disconnect_client (sev, msg) ->
-              disconnect env fd msg;
-              state
-      end
-      | _ -> timeout_step env state in
+      match ready_fds with
+      | [] -> timeout_step env state
+      | _ -> List.fold_left (process_fd env) state ready_fds in
     eloop env state'
 
   let main (cfg : cfg) : unit =
