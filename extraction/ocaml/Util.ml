@@ -24,6 +24,16 @@ let string_of_char_list l =
     | c :: l -> res.[i] <- c; imp (i + 1) l in
   imp 0 l
 
+let rec select_unintr rs ws es t =
+  try Unix.select rs ws es t
+  with
+  | Unix.Unix_error (Unix.EINTR, fn, arg) ->
+    select_unintr rs ws es t
+  | Unix.Unix_error (e, _, _) ->
+    Printf.printf "select error: %s" (Unix.error_message e);
+    print_newline ();
+    select_unintr rs ws es t
+
 let mk_addr_inet (ip, port) =
   Unix.ADDR_INET (Unix.inet_addr_of_string ip, port)
 
