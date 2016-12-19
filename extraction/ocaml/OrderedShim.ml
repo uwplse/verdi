@@ -419,9 +419,22 @@ module Shim (A: ARRANGEMENT) = struct
     ; process_wake = (fun t env state -> (false, [], state))
     ; finalize = (fun t env state -> Unix.close t.fd; state)
     }
+
+  let timeout_task env curr_state handler setter =
+    { fd = Unix.dup env.clients_fd
+    ; select_on = false
+    ; wake_time = Some (setter env.me curr_state)
+    ; process_read = (fun t env state -> (false, [], state))
+    ; process_wake =
+	(fun t env state ->
+	  let state' = respond env (handler env.me state) in
+	  t.wake_time <- Some (setter env.me state');
+	  (false, [], state'))
+    ; finalize = (fun t env state -> Unix.close t.fd; state)
+    }
  
   let main (cfg : cfg) : unit =
-    printf "ordered dynamic shim running setup for %s" A.systemName;
+    printf "ordered shim running setup for %s" A.systemName;
     print_newline ();
     let (env, initial_state) = setup cfg in
     let t_conn_nd = connect_to_nodes_task env in
@@ -430,20 +443,9 @@ module Shim (A: ARRANGEMENT) = struct
     Hashtbl.add env.tasks t_conn_nd.fd t_conn_nd;
     Hashtbl.add env.tasks t_nd_conn.fd t_nd_conn;
     Hashtbl.add env.tasks t_cl_conn.fd t_cl_conn;
-    List.iter (fun (handler, setter) ->
-      let t_hnd =
-	{ fd = Unix.dup env.clients_fd
-	; select_on = false
-	; wake_time = Some (setter env.me initial_state)
-	; process_read = (fun t env state -> (false, [], state))
-	; process_wake =
-	    (fun t env state ->
-	      let state' = respond env (handler env.me state) in
-	      t.wake_time <- Some (setter env.me state');
-	      (false, [], state'))
-	; finalize = (fun t env state -> Unix.close t.fd; state)
-	}
-      in Hashtbl.add env.tasks t_hnd.fd t_hnd) A.timeoutTasks;
-    print_endline "ordered dynamic shim ready for action";
+    List.iter (fun (h, s) ->
+      let t = timeout_task env initial_state h s in
+      Hashtbl.add env.tasks t.fd t) A.timeoutTasks;
+    print_endline "ordered shim ready for action";
     eloop 2.0 (Unix.gettimeofday ()) env.tasks env initial_state
 end

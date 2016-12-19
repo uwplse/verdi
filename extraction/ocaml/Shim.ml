@@ -250,16 +250,6 @@ module Shim (A: ARRANGEMENT) = struct
     let x = A.handleTimeout env.cfg.me state in
     respond env x
 
-  let rec select_unintr rs ws es t =
-    try select rs ws es t
-    with
-    | Unix_error (EINTR, fn, arg) ->
-      select_unintr rs ws es t
-    | Unix_error (e, _, _) ->
-      printf "select error: %s" (error_message e);
-      print_newline ();
-      select_unintr rs ws es t
-
   let process_fd env state fd : A.state =
     if fd = env.clients_fd then
       begin new_client_conn env; state end

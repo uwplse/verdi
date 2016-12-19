@@ -1,11 +1,10 @@
 type ('env, 'state) task  = 
-  {
-    fd : Unix.file_descr ;
-    mutable select_on : bool ;
-    mutable wake_time : float option ;
-    mutable process_read : ('env, 'state) task -> 'env -> 'state -> bool * ('env, 'state) task list * 'state ;
-    mutable process_wake : ('env, 'state) task -> 'env -> 'state -> bool * ('env, 'state) task list * 'state ;
-    finalize : ('env, 'state) task -> 'env -> 'state -> 'state ;
+  { fd : Unix.file_descr
+  ; mutable select_on : bool
+  ; mutable wake_time : float option
+  ; mutable process_read : ('env, 'state) task -> 'env -> 'state -> bool * ('env, 'state) task list * 'state
+  ; mutable process_wake : ('env, 'state) task -> 'env -> 'state -> bool * ('env, 'state) task list * 'state
+  ; finalize : ('env, 'state) task -> 'env -> 'state -> 'state
   }
 
 let process process_f t hts env state =
@@ -31,7 +30,7 @@ let rec eloop default_timeout old_timestamp hts env state =
 	  | Some wake_time -> min timeout wake_time 
 	in (fds', timeout'))
       hts ([], default_timeout) in
-  let (ready_fds, _, _) = Unix.select select_fds [] [] min_timeout in
+  let (ready_fds, _, _) = Util.select_unintr select_fds [] [] min_timeout in
   List.iter
     (fun fd -> 
       let t = Hashtbl.find hts fd in 
