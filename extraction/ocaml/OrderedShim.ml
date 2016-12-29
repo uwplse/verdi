@@ -145,12 +145,15 @@ module Shim (A: ARRANGEMENT) = struct
     try send_chunk (denote_client env c) out
     with
     | Not_found ->
-      eprintf "output: failed to find socket for client %s\n" (A.serializeClientId c)
+      eprintf "output: failed to find socket for client %s" (A.serializeClientId c);
+      prerr_newline ()
     | Disconnect s ->
-      eprintf "output: failed send to client %s: %s\n" (A.serializeClientId c) s;
+      eprintf "output: failed send to client %s: %s" (A.serializeClientId c) s;
+      prerr_newline ();
       schedule_finalize_task (Hashtbl.find env.tasks (denote_client env c))
     | Unix_error (err, fn, _) ->
-      eprintf "output: error %s\n" (error_message err);
+      eprintf "output: error %s" (error_message err);
+      prerr_newline ();
       schedule_finalize_task (Hashtbl.find env.tasks (denote_client env c))
   
   (* throws Unix_error *)
@@ -159,19 +162,28 @@ module Shim (A: ARRANGEMENT) = struct
     let c = A.createClientId () in
     Hashtbl.replace env.client_read_fds client_fd c;
     Hashtbl.replace env.client_write_fds c client_fd;
-    if A.debug then printf "[%s] client %s connected on %s\n" (timestamp ()) (A.serializeClientId c) (string_of_sockaddr client_addr);
+    if A.debug then begin
+      printf "[%s] client %s connected on %s" (timestamp ()) (A.serializeClientId c) (string_of_sockaddr client_addr);
+      print_newline ()
+    end;
     client_fd
 
   (* throws Disconnect *)
   let add_write_node_fd env node_name node_addr =
-    if A.debug then printf "[%s] connecting to %s for the first time...\n" (timestamp ()) (A.serializeName node_name);
+    if A.debug then begin
+      printf "[%s] connecting to %s for the first time..." (timestamp ()) (A.serializeName node_name);
+      print_newline ()
+    end;
     let write_fd = Unix.socket PF_INET SOCK_STREAM 0 in
     try
       Unix.connect write_fd node_addr;
       send_chunk write_fd (A.serializeName env.me);
       let (ip, port) = sock_of_name env env.me in
       send_chunk write_fd (sprintf "%s:%d" ip port);
-      if A.debug then printf "[%s] ...connected!\n" (timestamp ());
+      if A.debug then begin
+	printf "[%s] ...connected!" (timestamp ());
+	print_newline ()
+      end;
       Hashtbl.replace env.node_write_fds node_name write_fd;
       write_fd
     with
@@ -192,7 +204,10 @@ module Shim (A: ARRANGEMENT) = struct
 
   (* throws Disconnect *)
   let new_node_conn env =
-    if A.debug then printf "[%s] new incoming node connection\n" (timestamp ());
+    if A.debug then begin
+      printf "[%s] new incoming node connection" (timestamp ());
+      print_newline ()
+    end;
     let (node_read_fd, node_addr) = accept env.nodes_fd in
     let name_buf = 
       try receive_chunk env node_read_fd
@@ -222,7 +237,10 @@ module Shim (A: ARRANGEMENT) = struct
       end;
       Hashtbl.replace env.node_read_fds node_read_fd node_name;
       Hashtbl.replace env.node_fds_read node_name node_read_fd;
-      if A.debug then printf "[%s] done processing new connection from node %s\n" (timestamp ()) (A.serializeName node_name);
+      if A.debug then begin
+	printf "[%s] done processing new connection from node %s" (timestamp ()) (A.serializeName node_name);
+	print_newline ()
+      end;
       node_read_fd
 
   (* throws nothing *)
@@ -230,7 +248,8 @@ module Shim (A: ARRANGEMENT) = struct
     let go node_name =
       try ignore (get_write_node_fd env node_name)
       with Disconnect s -> 
-	eprintf "connect_to_nodes: moving on after error for node %s: %s\n" (A.serializeName node_name) s;
+	eprintf "connect_to_nodes: moving on after error for node %s: %s" (A.serializeName node_name) s;
+	prerr_newline ()
     in
     let ns = Hashtbl.fold (fun n _ acc -> if n != env.me then n :: acc else acc) env.cluster [] in
     List.iter go ns
@@ -249,11 +268,13 @@ module Shim (A: ARRANGEMENT) = struct
       try if A.debug then A.debugSend s (node_name, msg); send_msg env node_name msg
       with
       | Disconnect s ->
-	eprintf "respond: error for node %s: %s\n" (A.serializeName node_name) s;
+	eprintf "respond: error for node %s: %s" (A.serializeName node_name) s;
+	prerr_newline ();
 	let task_fd = Hashtbl.find env.node_fds_read node_name in
 	schedule_finalize_task (Hashtbl.find env.tasks task_fd)
       | Unix_error (err, fn, _) ->
-	eprintf "respond: error for node %s: %s\n" (A.serializeName node_name) (error_message err);
+	eprintf "respond: error for node %s: %s" (A.serializeName node_name) (error_message err);
+	prerr_newline ();
 	let task_fd = Hashtbl.find env.node_fds_read node_name in
 	schedule_finalize_task (Hashtbl.find env.tasks task_fd)
     in
@@ -300,10 +321,12 @@ module Shim (A: ARRANGEMENT) = struct
 	    (false, [], state')
 	  with 
 	  | Disconnect s ->
-	    eprintf "connection error for node %s: %s\n" (A.serializeName (undenote_node env t.fd)) s;
+	    eprintf "connection error for node %s: %s" (A.serializeName (undenote_node env t.fd)) s;
+	    prerr_newline ();
 	    (true, [], state)
 	  | Unix_error (err, fn, _) ->
-	    eprintf "error for node %s: %s\n" (A.serializeName (undenote_node env t.fd)) (error_message err);
+	    eprintf "error for node %s: %s" (A.serializeName (undenote_node env t.fd)) (error_message err);
+	    prerr_newline ();
 	    (true, [], state))
     ; process_wake = (fun t env state -> (false, [], state))
     ; finalize =
@@ -311,7 +334,10 @@ module Shim (A: ARRANGEMENT) = struct
 	  let read_fd = t.fd in
 	  let node_name = undenote_node env read_fd in
 	  let write_fd = denote_node env node_name in (* assumed to never throw Not_found *)
-	  if A.debug then printf "[%s] closing connections for node %s\n" (timestamp ()) (A.serializeName node_name);
+	  if A.debug then begin
+	    printf "[%s] closing connections for node %s" (timestamp ()) (A.serializeName node_name);
+	    print_newline ();
+	  end;
 	  Hashtbl.remove env.node_read_fds read_fd;
 	  Hashtbl.remove env.node_fds_read node_name;
 	  Hashtbl.remove env.node_write_fds node_name;
@@ -334,17 +360,22 @@ module Shim (A: ARRANGEMENT) = struct
 	    (false, [], state')
 	  with 
 	  | Disconnect s ->
-	    eprintf "connection error for client %s: %s\n" (A.serializeClientId (undenote_client env t.fd)) s;
+	    eprintf "connection error for client %s: %s" (A.serializeClientId (undenote_client env t.fd)) s;
+	    prerr_newline ();
 	    (true, [], state)
 	  | Unix_error (err, fn, _) ->
-	    eprintf "error for client %s: %s\n" (A.serializeClientId (undenote_client env t.fd)) (error_message err);
+	    eprintf "error for client %s: %s" (A.serializeClientId (undenote_client env t.fd)) (error_message err);
+	    prerr_newline ();
 	    (true, [], state))
     ; process_wake = (fun t env state -> (false, [], state))
     ; finalize =
 	(fun t env state ->
 	  let client_fd = t.fd in
 	  let c = undenote_client env client_fd in
-	  if A.debug then printf "[%s] closing connection to client %s" (timestamp ()) (A.serializeClientId c);
+	  if A.debug then begin
+	    printf "[%s] closing connection to client %s" (timestamp ()) (A.serializeClientId c);
+	    print_newline ();
+	  end;
 	  Hashtbl.remove env.client_read_fds client_fd;
 	  Hashtbl.remove env.client_write_fds c;
 	  Unix.close client_fd;
@@ -379,7 +410,8 @@ module Shim (A: ARRANGEMENT) = struct
 	    in
 	    (false, [node_read_task node_fd], state')
 	  with Disconnect s ->
-	    eprintf "incoming node connection error: %s\n" s;
+	    eprintf "incoming node connection error: %s" s;
+	    prerr_newline ();
 	    (false, [], state))
     ; process_wake = (fun t env state -> (false, [], state))
     ; finalize = (fun t env state -> Unix.close t.fd; state)
@@ -395,7 +427,8 @@ module Shim (A: ARRANGEMENT) = struct
 	    let client_fd = new_client_conn env in
 	    (false, [client_read_task client_fd], state)
 	  with Unix_error (err, fn, _) ->
-	    eprintf "incoming client connection error in %s: %s\n" fn (error_message err);
+	    eprintf "incoming client connection error in %s: %s" fn (error_message err);
+	    prerr_newline ();
 	    (false, [], state))
     ; process_wake = (fun t env state -> (false, [], state))
     ; finalize = (fun t env state -> Unix.close t.fd; state)
@@ -415,7 +448,8 @@ module Shim (A: ARRANGEMENT) = struct
     }
  
   let main (cfg : cfg) : unit =
-    printf "ordered shim running setup for %s\n" A.systemName;
+    printf "ordered shim running setup for %s" A.systemName;
+    print_newline ();
     let (env, initial_state) = setup cfg in
     let t_conn_nd = connect_to_nodes_task env in
     let t_nd_conn = node_connections_task env in
@@ -426,6 +460,7 @@ module Shim (A: ARRANGEMENT) = struct
     List.iter (fun (h, s) ->
       let t = timeout_task env initial_state h s in
       Hashtbl.add env.tasks t.fd t) A.timeoutTasks;
-    printf "ordered shim ready for action\n";
+    printf "ordered shim ready for %s" A.systemName;
+    print_newline ();
     eloop 2.0 (Unix.gettimeofday ()) env.tasks env initial_state
 end
