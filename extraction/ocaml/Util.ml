@@ -85,6 +85,12 @@ let map_default f d = function
   | None -> d
   | Some v -> f v
 
+let timestamp () =
+  let open Unix in
+  let tm = gmtime (gettimeofday ()) in
+  Printf.sprintf "%i-%i-%iT%.2i:%.2i:%.2iZ"
+    (tm.tm_year+1900) (tm.tm_mon+1) tm.tm_mday tm.tm_hour tm.tm_min tm.tm_sec
+
 let log level s =
   let now = Unix.gettimeofday () in
   Printf.printf "%f - %s: %s\n" now level s
