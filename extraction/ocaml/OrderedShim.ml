@@ -29,7 +29,6 @@ module type ARRANGEMENT = sig
   val debugInput : state -> input -> unit
   val debugRecv : state -> (name * msg) -> unit
   val debugSend : state -> (name * msg) -> unit
-  val debugTimeout : state -> unit
   val createClientId : unit -> client_id
   val serializeClientId : client_id -> string
   val timeoutTasks : (task_handler * timeout_setter) list
