@@ -86,10 +86,12 @@ let map_default f d = function
   | Some v -> f v
 
 let timestamp () =
-  let open Unix in
-  let tm = gmtime (gettimeofday ()) in
-  Printf.sprintf "%i-%i-%iT%.2i:%.2i:%.2iZ"
-    (tm.tm_year+1900) (tm.tm_mon+1) tm.tm_mday tm.tm_hour tm.tm_min tm.tm_sec
+  let (fr_sec, time) = modf (Unix.gettimeofday ()) in
+  let tm = Unix.gmtime time in
+  let frs = String.sub (string_of_float fr_sec) 2 3 in
+  Printf.sprintf "%i-%i-%iT%.2i:%.2i:%.2i.%sZ"
+    Unix.(tm.tm_year+1900) Unix.(tm.tm_mon+1) Unix.(tm.tm_mday)
+    Unix.(tm.tm_hour) Unix.(tm.tm_min) Unix.(tm.tm_sec) frs
 
 let log level s =
   let now = Unix.gettimeofday () in
