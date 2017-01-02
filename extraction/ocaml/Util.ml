@@ -17,12 +17,15 @@ let char_list_of_string s =
     if i < 0 then l else exp (i - 1) (s.[i] :: l) in
   exp (String.length s - 1) []
 
-let string_of_char_list l =
-  let res = String.create (List.length l) in
+let bytes_of_char_list l =
+  let res = Bytes.create (List.length l) in
   let rec imp i = function
     | [] -> res
-    | c :: l -> res.[i] <- c; imp (i + 1) l in
+    | c :: l -> Bytes.set res i c; imp (i + 1) l in
   imp 0 l
+
+let string_of_char_list l =
+  Bytes.to_string (bytes_of_char_list l)
 
 let rec select_unintr rs ws es t =
   try Unix.select rs ws es t
@@ -30,8 +33,8 @@ let rec select_unintr rs ws es t =
   | Unix.Unix_error (Unix.EINTR, fn, arg) ->
     select_unintr rs ws es t
   | Unix.Unix_error (e, _, _) ->
-    Printf.printf "select error: %s" (Unix.error_message e);
-    print_newline ();
+    Printf.eprintf "select error: %s" (Unix.error_message e);
+    prerr_newline ();
     select_unintr rs ws es t
 
 let mk_addr_inet (ip, port) =
@@ -89,7 +92,7 @@ let timestamp () =
   let (fr_sec, time) = modf (Unix.gettimeofday ()) in
   let tm = Unix.gmtime time in
   let frs = String.sub (string_of_float fr_sec) 2 3 in
-  Printf.sprintf "%i-%i-%iT%.2i:%.2i:%.2i.%sZ"
+  Printf.sprintf "%.4i-%.2i-%.2iT%.2i:%.2i:%.2i.%sZ"
     Unix.(tm.tm_year+1900) Unix.(tm.tm_mon+1) Unix.(tm.tm_mday)
     Unix.(tm.tm_hour) Unix.(tm.tm_min) Unix.(tm.tm_sec) frs
 
