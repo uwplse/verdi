@@ -33,7 +33,7 @@
 *)
 
 Require Import Equivalence EquivDec.
-Require Import Coqlib.
+Require Import Verdi.Coqlib.
 Require Import StructTact.StructTactics.
 Require Import StructTact.Util.
 

@@ -1,7 +1,7 @@
 Require Import Verdi.Verdi.
 
 Require Import String.
-Require Import StringMap.
+Require Import Verdi.StringMap.
 
 Require Import Verdi.StateMachineHandlerMonad.
 
