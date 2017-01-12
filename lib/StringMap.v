@@ -4,9 +4,9 @@ Require Import NArith.
 Require Import PArith.
 Require Import String.
 
-Require Import Coqlib.
+Require Import Verdi.Coqlib.
 Require Import StructTact.StructTactics.
-Require Export Maps.
+Require Export Verdi.Maps.
 
 Module ITree(X: INDEXED_TYPE) <: TREE.
 
