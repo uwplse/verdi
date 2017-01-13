@@ -11,7 +11,7 @@ build: [
   [ make "-j%{jobs}%" ]
 ]
 install: [ make "install" ]
-remove: [ "sh" "-c" "rm -rf '%{lib}%/coq/user-contrib/Verdi" ]
+remove: [ "sh" "-c" "rm -rf '%{lib}%/coq/user-contrib/Verdi'" ]
 depends: [
   "coq" {>= "8.5" & < "8.6~"}
   "coq-mathcomp-ssreflect" {>= "1.6"}
