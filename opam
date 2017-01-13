@@ -1,0 +1,22 @@
+opam-version: "1.2"
+name: "Verdi"
+version: "dev"
+maintainer: "palmskog@gmail.com"
+homepage: "https://github.com/uwplse/verdi"
+dev-repo: "https://github.com/uwplse/verdi.git"
+bug-reports: "https://github.com/uwplse/verdi/issues"
+license: "BSD"
+build: [
+  [ "./configure" ]
+  [ make "-j%{jobs}%" ]
+]
+install: [ make "install" ]
+remove: [ "sh" "-c" "rm -rf '%{lib}%/coq/user-contrib/Verdi" ]
+depends: [
+  "coq" {>= "8.5" & < "8.6~"}
+  "coq-mathcomp-ssreflect" {>= "1.6"}
+  "InfSeqExt" {>= "1.0.1"}
+  "StructTact" {>= "1.0"}
+]
+tags: [ "keyword:infinite transition systems" "date:2017-01-12"]
+authors: [ "James Wilcox <>" "Doug Woos <>" "Pavel Panchekha <>" "Zachary Tatlock <>" "Steve Anton <>" "Karl Palmskog <>" "Ryan Doenges <>" ]

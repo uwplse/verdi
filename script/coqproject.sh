@@ -30,18 +30,20 @@ function dep_dirs_lines(){
 }
 for dep in ${DEPS[@]}; do
     path_var="$dep"_PATH
-    path=${!path_var:="../$dep"}
-    if [ ! -d "$path" ]; then
-        echo "$dep not found at $path."
-        exit 1
+    if [ ! "x${!path_var}" = "x" ]; then
+	path=${!path_var}
+	if [ ! -d "$path" ]; then
+            echo "$dep not found at $path."
+            exit 1
+	fi
+
+	pushd "$path" > /dev/null
+	path=$(pwd)
+	popd > /dev/null
+	echo "$dep found at $path"
+
+	dep_dirs_lines $path $dep
     fi
-
-    pushd "$path" > /dev/null
-    path=$(pwd)
-    popd > /dev/null
-    echo "$dep found at $path"
-
-    dep_dirs_lines $path $dep
 done
 
 COQTOP="coqtop $(cat $COQPROJECT_TMP)"
