@@ -2,9 +2,13 @@ set -ev
 
 opam init --yes --no-setup
 eval $(opam config env)
+
 opam repo add coq-released https://coq.inria.fr/opam/released
 opam repo add distributedcomponents http://opam.distributedcomponents.net
-opam install coq.$COQ_VERSION coq-mathcomp-ssreflect.$SSREFLECT_VERSION StructTact InfSeqExt uuidm.0.9.6 --yes --verbose
+
+opam pin add coq $COQ_VERSION --yes --verbose
+opam pin add coq-mathcomp-ssreflect $SSREFLECT_VERSION --yes --verbose
+opam install StructTact InfSeqExt --yes --verbose
 
 ./build.sh
 
