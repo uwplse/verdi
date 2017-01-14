@@ -4,10 +4,10 @@
 
 ## Configuration options for coqproject.sh
 DEPS=(StructTact InfSeqExt)
-DIRS=(core lib systems extraction/coq)
+DIRS=(core lib systems extraction)
 CANARIES=("mathcomp.ssreflect.ssreflect" "Verdi requires mathcomp to be installed" "StructTact.StructTactics" "Build StructTact before building Verdi" "InfSeqExt.infseq" "Build InfSeqExt before building Verdi")
 NAMESPACE_core="Verdi"
 NAMESPACE_lib="Verdi"
 NAMESPACE_systems="Verdi"
-NAMESPACE_extraction_coq="Verdi"
+NAMESPACE_extraction="Verdi"
 source script/coqproject.sh
