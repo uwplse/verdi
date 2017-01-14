@@ -18,5 +18,18 @@ depends: [
   "InfSeqExt" {>= "1.0.1"}
   "StructTact" {>= "1.0"}
 ]
-tags: [ "keyword:infinite transition systems" "date:2017-01-12"]
-authors: [ "James Wilcox <>" "Doug Woos <>" "Pavel Panchekha <>" "Zachary Tatlock <>" "Steve Anton <>" "Karl Palmskog <>" "Ryan Doenges <>" ]
+tags: [
+  "category:Computer Science/Concurrent Systems and Protocols/Theory of concurrent systems"
+  "keyword:program verification"
+  "keyword:distributed algorithms"
+  "date:2017-01-13"
+]
+authors: [
+  "James Wilcox <>"
+  "Doug Woos <>"
+  "Pavel Panchekha <>"
+  "Zachary Tatlock <>"
+  "Steve Anton <>"
+  "Karl Palmskog <>"
+  "Ryan Doenges <>"
+]
