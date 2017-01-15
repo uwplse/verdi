@@ -4,7 +4,7 @@ opam init --yes --no-setup
 eval $(opam config env)
 
 opam repo add coq-released https://coq.inria.fr/opam/released
-opam repo add distributedcomponents http://opam.distributedcomponents.net
+opam repo add distributedcomponents-dev http://opam-dev.distributedcomponents.net
 
 opam pin add coq $COQ_VERSION --yes --verbose
 opam pin add coq-mathcomp-ssreflect $SSREFLECT_VERSION --yes --verbose
@@ -16,7 +16,7 @@ case $DOWNSTREAM in
 verdi-raft)
   opam install verdi-runtime --yes --verbose
   pushd ..
-    git clone -b $VERDI_RAFT_BRANCH 'http://github.com/uwplse/verdi-raft'
+    git clone -b $VERDI_RAFT_BRANCH 'https://github.com/uwplse/verdi-raft.git'
     pushd verdi-raft
       Verdi_PATH=../verdi ./build.sh
     popd
