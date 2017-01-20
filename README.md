@@ -8,18 +8,26 @@ A framework for formally verifying distributed systems implementations in Coq.
 Requirements
 ------------
 
+Framework:
+
 - [`Coq 8.5`](https://coq.inria.fr/download)
 - [`Mathematical Components 1.6`](http://math-comp.github.io/math-comp/) (`ssreflect` library)
 - [`StructTact`](https://github.com/uwplse/StructTact)
 - [`InfSeqExt`](https://github.com/DistributedComponents/InfSeqExt)
 
+Runtime:
+
+- [`OCaml 4.02.3`](https://ocaml.org/docs/install.html)
+- [`verdi-runtime`](https://github.com/DistributedComponents/verdi-runtime)
+
 Building
 --------
 
-We recommend installing Verdi via [OPAM](https://coq.inria.fr/opam/www/using.html),
+We recommend installing Verdi via [OPAM](http://opam.ocaml.org/doc/Install.html),
 which will automatically build and install its dependencies.
 
 ```
+opam repo add coq-released https://coq.inria.fr/opam/released
 opam repo add distributedcomponents http://opam.distributedcomponents.net
 opam install verdi
 ```
@@ -37,6 +45,21 @@ environment variables.
 Finally, run `make` in the Verdi root directory.  This will compile the
 framework's core specifications and proofs, as well as some
 simple example systems and their correctness proofs.
+
+Runtime Library
+---------------
+
+To run Verdi systems on real hardware, event handler code must be extracted
+to OCaml and linked with one of the shims in the Verdi
+[runtime library](https://github.com/DistributedComponents/verdi-runtime)
+that handles low-level network communication.
+
+To install the runtime library via OPAM, make sure the `distributedcomponents`
+repo has been added as above and use the following command:
+
+```
+opam install verdi-runtime
+```
 
 Documentation
 -------------
@@ -64,21 +87,6 @@ Files
         - `LockServSeqNum.v`, the sequence numbering transformer applied to the lock server
     - `PrimaryBackup.v`, a system transformer implementing asynchronous primary-backup replication
         - `VarDPrimaryBackup.v`, the primary-backup transformer applied to the key-value store
-
-Runtime Library
----------------
-
-To run Verdi systems on real hardware, event handler code must be extracted
-to OCaml and linked with one of the shims in the Verdi
-[runtime library](https://github.com/DistributedComponents/verdi-runtime)
-that handles low-level network communication.
-
-To install the runtime library via OPAM, make sure the `distributedcomponents`
-repo has been added as above and use the command below.
-
-```
-opam install verdi-runtime
-```
 
 Projects using Verdi
 --------------------
