@@ -29,11 +29,11 @@ End FinName.
 
 Module Type NameOrderedTypeCompat (Import NT : NameType) <: OrderedType.
   Definition t := name.
-  Definition eq := eq (A := name).
+  Definition eq := @eq name.
   Parameter lt : name -> name -> Prop.
-  Definition eq_refl := eq_refl (A := name).
-  Definition eq_sym := eq_sym (A := name).
-  Definition eq_trans := eq_trans (A := name).
+  Definition eq_refl := @eq_refl name.
+  Definition eq_sym := @eq_sym name.
+  Definition eq_trans := @eq_trans name.
   Parameter lt_trans : forall x y z : t, lt x y -> lt y z -> lt x z.
   Parameter lt_not_eq : forall x y : t, lt x y -> ~ eq x y.
   Parameter compare : forall x y : t, Compare lt eq x y.
@@ -46,8 +46,8 @@ Require Import MSetInterface.
 
 Module Type NameOrderedType (Import NT : NameType) <: OrderedType.
   Definition t := name.
-  Definition eq := eq (A := name).
-  Definition eq_equiv := eq_equivalence (A := name).
+  Definition eq := @eq name.
+  Definition eq_equiv := @eq_equivalence name.
   Parameter lt : name -> name -> Prop.
   Parameter lt_strorder : StrictOrder lt.
   Parameter lt_compat : Proper (eq==>eq==>iff) lt.
