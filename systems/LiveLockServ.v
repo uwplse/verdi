@@ -1420,7 +1420,7 @@ Section LockServ.
   Definition message_enables_label p l :=
     forall net,
       In p (nwPackets net) ->
-      enabled lb_step_async l net.
+      lb_step_ex lb_step_async l net.
   
   Lemma Lock_enables_MsgLock :
     forall i,
@@ -1488,7 +1488,7 @@ Section LockServ.
       forall s,
       lb_step_execution lb_step_async s ->
       In p (nwPackets (evt_a (hd s))) ->
-      weak_until (now (l_enabled lb_step_async l))
+      weak_until (now (enabled lb_step_async l))
                  (now (occurred l))
                  s.
   Proof using.
@@ -1504,7 +1504,7 @@ Section LockServ.
     - apply W_tl.
       + simpl.
         unfold message_enables_label in *.
-        unfold l_enabled. simpl. now auto.
+        unfold enabled. simpl. now auto.
       + simpl.
         apply c; auto.
         simpl.
@@ -1522,7 +1522,7 @@ Section LockServ.
       message_enables_label p l ->
       message_delivered_label p l ->
       forall s,
-        weak_local_fairness lb_step_async label_silent s ->
+        weak_fairness lb_step_async label_silent s ->
         lb_step_execution lb_step_async s ->
         In p (nwPackets (evt_a (hd s))) ->
         eventually (now (occurred l)) s.
@@ -1533,7 +1533,7 @@ Section LockServ.
     intuition.
     - now eauto using until_eventually.
     - find_apply_lem_hyp always_continuously.
-      eapply_prop_hyp weak_local_fairness continuously; auto.
+      eapply_prop_hyp weak_fairness continuously; auto.
       destruct s.
       now find_apply_lem_hyp always_now.
   Qed.
@@ -1710,7 +1710,7 @@ Section LockServ.
   Lemma Unlock_in_network_eventually_MsgUnlock :
     forall c s,
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       In (mkPacket c Server Unlock) (nwPackets (evt_a (hd s))) ->
       eventually (now (occurred MsgUnlock)) s.
   Proof using.
@@ -1773,11 +1773,11 @@ Section LockServ.
   Lemma InputUnlock_enabled :
     forall s c,
       lb_step_execution lb_step_async s ->
-      now (l_enabled lb_step_async (InputUnlock c)) s.
+      now (enabled lb_step_async (InputUnlock c)) s.
   Proof using.
     intros.
     destruct s. simpl.
-    unfold l_enabled, enabled.
+    unfold enabled, enabled.
     pose proof (InputHandler_Client_Unlock c (nwState (evt_a e) (Client c))).
     break_exists.
     repeat eexists.
@@ -1857,19 +1857,19 @@ Section LockServ.
   Lemma held_eventually_InputUnlock :
     forall c s,
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       eventually (now (occurred (InputUnlock c))) s.
   Proof using.
     intros.
     pose proof (@InputUnlock_continuously_enabled s c). intuition.
-    eapply_prop_hyp weak_local_fairness cont_enabled; [|now unfold label_silent].
+    eapply_prop_hyp weak_fairness cont_enabled; [|now unfold label_silent].
     solve_by_inversion.
   Qed.
     
   Lemma held_eventually_Unlock :
     forall s c,
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       held (nwState (evt_a (hd s)) (Client c)) = true ->
       eventually (fun s => In (mkPacket (Client c) Server Unlock)
                            (nwPackets (evt_a (hd s)))) s.
@@ -1889,7 +1889,7 @@ Section LockServ.
     - intros. unfold and_tl in *. intuition.
       eapply InputUnlock_held; eauto.
     - apply weak_until_always; eauto using lb_step_execution_invar, always_inv.
-      apply weak_until_always; eauto using weak_local_fairness_invar, always_inv.
+      apply weak_until_always; eauto using weak_fairness_invar, always_inv.
       eauto using held_until_Unlock.
   Qed.
     
@@ -1927,7 +1927,7 @@ Section LockServ.
   Lemma Locked_in_network_eventually_MsgLocked :
     forall i s,
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       In (mkPacket Server (Client i) Locked) (nwPackets (evt_a (hd s))) ->
       eventually (now (occurred (MsgLocked i))) s.
   Proof using.
@@ -1967,7 +1967,7 @@ Section LockServ.
     forall n c s,
       event_step_star step_async step_async_init (hd s) ->
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
       exists c,
         eventually (fun s => In (mkPacket c Server Unlock) (nwPackets (evt_a (hd s)))) s.
@@ -1984,18 +1984,18 @@ Section LockServ.
          the same as the next case. *)
       eapply eventually_trans
       with (inv := lb_step_execution lb_step_async /\_
-                   weak_local_fairness
+                   weak_fairness
                      (lb_step_async(labeled_multi_params := LockServ_LabeledParams))
                      Silent)
              (P := now (occurred (MsgLocked holder))).
       all:unfold and_tl in *; intuition.
       + eauto using lb_step_execution_invar.
-      + eauto using weak_local_fairness_invar.
+      + eauto using weak_fairness_invar.
       + (* need `now (MsgLocked i) -> held i = true`, then identical to next case below. *)
         find_apply_lem_hyp MsgLocked_held; eauto.
         destruct s.
         simpl in *.
-        eauto using lb_step_execution_invar, weak_local_fairness_invar,
+        eauto using lb_step_execution_invar, weak_fairness_invar,
           E_next, held_eventually_Unlock.
       + apply Locked_in_network_eventually_MsgLocked; auto.
     - eauto using held_eventually_Unlock.
@@ -2006,7 +2006,7 @@ Section LockServ.
     forall n c s,
       event_step_star step_async step_async_init (hd s) ->
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
       eventually (now (occurred MsgUnlock)) s.
   Proof using.
@@ -2024,7 +2024,7 @@ Section LockServ.
     2:intros; eapply Unlock_in_network_eventually_MsgUnlock.
     all:unfold and_tl in *; intuition eauto.
     - eauto using lb_step_execution_invar.
-    - simpl. eauto using weak_local_fairness_invar.
+    - simpl. eauto using weak_fairness_invar.
   Qed.
   
     
@@ -2039,7 +2039,7 @@ Section LockServ.
     forall n c s,
       event_step_star step_async step_async_init (hd s) ->
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
       eventually (fun s => Nth (queue (nwState (evt_a (hd s)) Server)) n c
                         /\ (n = 0 -> In (mkPacket Server (Client c) Locked)
@@ -2059,7 +2059,7 @@ Section LockServ.
     - intros. unfold and_tl in *. intuition.
       eapply MsgUnlock_moves_client; eauto.
     - apply weak_until_always; eauto using lb_step_execution_invar, always_inv.
-      apply weak_until_always; eauto using weak_local_fairness_invar, always_inv.
+      apply weak_until_always; eauto using weak_fairness_invar, always_inv.
       eauto using clients_only_move_up_in_queue.
   Qed.
 
@@ -2068,7 +2068,7 @@ Section LockServ.
       n' <= n ->
       event_step_star step_async step_async_init (hd s) ->
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       (Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c
        /\ (S n = 0 -> In (mkPacket Server (Client c) Locked)
                                      (nwPackets (evt_a (hd s))))) ->
@@ -2096,7 +2096,7 @@ Section LockServ.
           try solve [unfold and_tl in *; intuition]; [idtac].
         eapply eventually_trans. 4:eauto.
         3:apply Hand. all:unfold and_tl in *.
-        all:intuition eauto using lb_step_execution_invar, weak_local_fairness_invar.
+        all:intuition eauto using lb_step_execution_invar, weak_fairness_invar.
         find_apply_lem_hyp step_async_star_lb_step_execution; auto.
         destruct s0. simpl in *.
         find_apply_lem_hyp always_Cons.
@@ -2111,7 +2111,7 @@ Section LockServ.
     forall n c s,
       event_step_star step_async step_async_init (hd s) ->
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       Nth (queue (nwState (evt_a (hd s)) Server)) (S n) c ->
       eventually (fun s =>
                     In (mkPacket Server (Client c) Locked)
@@ -2155,7 +2155,7 @@ Section LockServ.
   Lemma Lock_in_network_eventually_MsgLock :
     forall c s,
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       In (mkPacket (Client c) Server Lock) (nwPackets (evt_a (hd s))) ->
       eventually (now (occurred (MsgLock c))) s.
   Proof using.
@@ -2168,7 +2168,7 @@ Section LockServ.
   Lemma InputLock_eventually_MsgLock :
     forall c s,
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       now (occurred (InputLock c)) s ->
       eventually (now (occurred (MsgLock c))) s.
   Proof using.
@@ -2177,7 +2177,7 @@ Section LockServ.
     destruct s.
     simpl in *.
     eauto using E_next, Lock_in_network_eventually_MsgLock,
-       lb_step_execution_invar, weak_local_fairness_invar.
+       lb_step_execution_invar, weak_fairness_invar.
   Qed.
 
   Lemma Nth_snoc :
@@ -2191,7 +2191,7 @@ Section LockServ.
   Lemma MsgLock_in_queue_or_Locked :
     forall c s,
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       now (occurred (MsgLock c)) s ->
       next (fun s =>
               In (mkPacket Server (Client c) Locked)
@@ -2232,7 +2232,7 @@ Section LockServ.
     forall c s,
       event_step_star step_async step_async_init (hd s) ->
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       now (occurred (MsgLock c)) s ->
       eventually
         (fun s => In (mkPacket Server (Client c) Locked)
@@ -2247,7 +2247,7 @@ Section LockServ.
       apply E_next.
       eapply clients_get_lock_messages;
         eauto using lb_step_execution_invar,
-                    weak_local_fairness_invar.
+                    weak_fairness_invar.
       find_apply_lem_hyp step_async_star_lb_step_execution; auto.
       destruct s. simpl.
       do 2 (find_apply_lem_hyp always_Cons; intuition).
@@ -2257,7 +2257,7 @@ Section LockServ.
     forall c s,
       event_step_star step_async step_async_init (hd s) ->
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       now (occurred (MsgLock c)) s ->
       eventually (now (occurred (MsgLocked c))) s.
   Proof using.
@@ -2274,7 +2274,7 @@ Section LockServ.
     eapply eventually_trans.
     4:eapply MsgLock_Locked; eauto; unfold and_tl in *; intuition.
     3:apply Hand. all:unfold and_tl in *.
-    all:intuition eauto using lb_step_execution_invar, weak_local_fairness_invar.
+    all:intuition eauto using lb_step_execution_invar, weak_fairness_invar.
     - find_apply_lem_hyp step_async_star_lb_step_execution; auto.
       destruct s0. simpl in *.
       find_apply_lem_hyp always_Cons.
@@ -2289,7 +2289,7 @@ Section LockServ.
     forall c s,
       event_step_star step_async step_async_init (hd s) ->
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       now (occurred (InputLock c)) s ->
       eventually (now (occurred (MsgLocked c))) s.
   Proof using.
@@ -2306,7 +2306,7 @@ Section LockServ.
     eapply eventually_trans.
     4:eapply InputLock_eventually_MsgLock; eauto; unfold and_tl in *; intuition.
     3:apply Hand. all:unfold and_tl in *.
-    all:intuition eauto using lb_step_execution_invar, weak_local_fairness_invar.
+    all:intuition eauto using lb_step_execution_invar, weak_fairness_invar.
     - find_apply_lem_hyp step_async_star_lb_step_execution; auto.
       destruct s0. simpl in *.
       find_apply_lem_hyp always_Cons.
@@ -2321,7 +2321,7 @@ Section LockServ.
     forall c s,
       event_step_star step_async step_async_init (hd s) ->
       lb_step_execution lb_step_async s ->
-      weak_local_fairness lb_step_async label_silent s ->
+      weak_fairness lb_step_async label_silent s ->
       now (occurred (InputLock c)) s ->
       eventually (fun s => held (nwState (evt_a (hd s)) (Client c)) = true) s.
   Proof using.
