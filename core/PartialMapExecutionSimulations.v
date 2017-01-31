@@ -470,35 +470,35 @@ Qed.
 Hypothesis lb_step_ordered_failure_strong_fairness_enabled_pt_map_onet_eventually :
   forall l, tot_map_label l <> label_silent ->
     forall s, lb_step_execution lb_step_ordered_failure s ->
-    strong_local_fairness lb_step_ordered_failure label_silent s ->        
-    l_enabled lb_step_ordered_failure (tot_map_label l) (pt_map_onet_event (hd s)) ->
-    eventually (now (l_enabled lb_step_ordered_failure l)) s.
+    strong_fairness lb_step_ordered_failure label_silent s ->
+    enabled lb_step_ordered_failure (tot_map_label l) (pt_map_onet_event (hd s)) ->
+    eventually (now (enabled lb_step_ordered_failure l)) s.
 
 Lemma pt_map_onet_tot_map_labeled_event_inf_often_enabled :
   forall l, tot_map_label l <> label_silent ->
     forall s, lb_step_execution lb_step_ordered_failure s ->
-    strong_local_fairness lb_step_ordered_failure label_silent s ->
-    inf_often (now (l_enabled lb_step_ordered_failure (tot_map_label l))) (map pt_map_onet_event s) ->
-    inf_often (now (l_enabled lb_step_ordered_failure l)) s.
+    strong_fairness lb_step_ordered_failure label_silent s ->
+    inf_often (now (enabled lb_step_ordered_failure (tot_map_label l))) (map pt_map_onet_event s) ->
+    inf_often (now (enabled lb_step_ordered_failure l)) s.
 Proof using lb_step_ordered_failure_strong_fairness_enabled_pt_map_onet_eventually.
 move => l H_neq s H_exec H_fair.
-have H_a: ((lb_step_execution lb_step_ordered_failure) /\_ (strong_local_fairness lb_step_ordered_failure label_silent)) s by auto.
+have H_a: ((lb_step_execution lb_step_ordered_failure) /\_ (strong_fairness lb_step_ordered_failure label_silent)) s by auto.
 move: H_a {H_exec H_fair}.
 apply: always_map_conv_ext => {s}.
   rewrite /and_tl /=.
   move => x s0 [H_e H_w].
   apply lb_step_execution_invar in H_e.
-  by apply strong_local_fairness_invar in H_w.
+  by apply strong_fairness_invar in H_w.
 apply: eventually_map_conv_ext.
 - exact: extensional_now.
 - exact: extensional_now.
 - apply extensional_and_tl.
   * exact: lb_step_execution_extensional.
-  * exact: strong_local_fairness_extensional.
+  * exact: strong_fairness_extensional.
 - rewrite /and_tl /=.
   move => x s [H_e H_w].
   apply lb_step_execution_invar in H_e.
-  by apply strong_local_fairness_invar in H_w.
+  by apply strong_fairness_invar in H_w.
 - rewrite /and_tl.
   case => /= x s [H_a H_w] H_en.
   exact: lb_step_ordered_failure_strong_fairness_enabled_pt_map_onet_eventually.
@@ -507,19 +507,19 @@ Qed.
 Hypothesis lb_step_ordered_failure_weak_fairness_always_enabled_pt_map_onet_continuously : 
   forall l, tot_map_label l <> label_silent -> 
     forall s, lb_step_execution lb_step_ordered_failure s ->
-    weak_local_fairness lb_step_ordered_failure label_silent s ->
-    always (now (l_enabled lb_step_ordered_failure (tot_map_label l))) (map pt_map_onet_event s) ->
-    continuously (now (l_enabled lb_step_ordered_failure l)) s.
+    weak_fairness lb_step_ordered_failure label_silent s ->
+    always (now (enabled lb_step_ordered_failure (tot_map_label l))) (map pt_map_onet_event s) ->
+    continuously (now (enabled lb_step_ordered_failure l)) s.
 
 Lemma pt_map_onet_tot_map_labeled_event_state_continuously_enabled :
   forall l, tot_map_label l <> label_silent ->    
     forall s, lb_step_execution lb_step_ordered_failure s ->
-    weak_local_fairness lb_step_ordered_failure label_silent s ->
-    continuously (now (l_enabled lb_step_ordered_failure (tot_map_label l))) (map pt_map_onet_event s) ->
-    continuously (now (l_enabled lb_step_ordered_failure l)) s.
+    weak_fairness lb_step_ordered_failure label_silent s ->
+    continuously (now (enabled lb_step_ordered_failure (tot_map_label l))) (map pt_map_onet_event s) ->
+    continuously (now (enabled lb_step_ordered_failure l)) s.
 Proof using lb_step_ordered_failure_weak_fairness_always_enabled_pt_map_onet_continuously.
 move => l H_neq s H_exec H_fair.
-have H_a: ((lb_step_execution lb_step_ordered_failure) /\_ (weak_local_fairness lb_step_ordered_failure label_silent)) s by auto.
+have H_a: ((lb_step_execution lb_step_ordered_failure) /\_ (weak_fairness lb_step_ordered_failure label_silent)) s by auto.
 move: H_a {H_exec H_fair}.
 apply: eventually_map_conv_ext => {s}.
 - apply extensional_always.
@@ -528,23 +528,23 @@ apply: eventually_map_conv_ext => {s}.
   exact: extensional_now.
 - apply extensional_and_tl.
   * exact: lb_step_execution_extensional.
-  * exact: weak_local_fairness_extensional.
+  * exact: weak_fairness_extensional.
 - rewrite /and_tl /=.
   move => x s [H_e H_w].
   apply lb_step_execution_invar in H_e.
-  by apply weak_local_fairness_invar in H_w.
+  by apply weak_fairness_invar in H_w.
 - case => x s [H_a H_w] H_al.
   simpl in *.
   exact: lb_step_ordered_failure_weak_fairness_always_enabled_pt_map_onet_continuously.
 Qed.
 
-Lemma pt_map_onet_tot_map_label_event_strong_local_fairness : 
+Lemma pt_map_onet_tot_map_label_event_strong_fairness :
   forall s, lb_step_execution lb_step_ordered_failure s ->
-       strong_local_fairness lb_step_ordered_failure label_silent s ->
-       strong_local_fairness lb_step_ordered_failure label_silent (map pt_map_onet_event s).
+       strong_fairness lb_step_ordered_failure label_silent s ->
+       strong_fairness lb_step_ordered_failure label_silent (map pt_map_onet_event s).
 Proof using multi_map_lb_congr lb_step_ordered_failure_strong_fairness_enabled_pt_map_onet_eventually label_tot_mapped.
 move => s.
-rewrite /strong_local_fairness => H_exec H_fair l H_neq H_en.
+rewrite /strong_fairness => H_exec H_fair l H_neq H_en.
 have [l' H_l] := label_tot_mapped l.
 rewrite H_l.
 apply pt_map_onet_tot_map_label_event_inf_often_occurred.
@@ -556,13 +556,13 @@ move => H_eq.
 by rewrite -H_l in H_eq.
 Qed.
 
-Lemma pt_map_onet_tot_map_label_event_state_weak_local_fairness : 
+Lemma pt_map_onet_tot_map_label_event_state_weak_fairness :
   forall s, lb_step_execution lb_step_ordered_failure s ->
-       weak_local_fairness lb_step_ordered_failure label_silent s ->
-       weak_local_fairness lb_step_ordered_failure label_silent (map pt_map_onet_event s).
+       weak_fairness lb_step_ordered_failure label_silent s ->
+       weak_fairness lb_step_ordered_failure label_silent (map pt_map_onet_event s).
 Proof using multi_map_lb_congr lb_step_ordered_failure_weak_fairness_always_enabled_pt_map_onet_continuously label_tot_mapped.
 move => s.
-rewrite /weak_local_fairness => H_exec H_fair l H_neq H_en.
+rewrite /weak_fairness => H_exec H_fair l H_neq H_en.
 have [l' H_l] := label_tot_mapped l.
 rewrite H_l.
 apply pt_map_onet_tot_map_label_event_inf_often_occurred.
@@ -853,35 +853,35 @@ Qed.
 Hypothesis lb_step_ordered_dynamic_failure_strong_fairness_enabled_pt_map_onet_eventually :
   forall l, tot_map_label l <> label_silent ->
     forall s, lb_step_execution lb_step_ordered_dynamic_failure s ->
-    strong_local_fairness lb_step_ordered_dynamic_failure label_silent s ->
-    l_enabled lb_step_ordered_dynamic_failure (tot_map_label l) (pt_map_odnet_event (hd s)) ->
-    eventually (now (l_enabled lb_step_ordered_dynamic_failure l)) s.
+    strong_fairness lb_step_ordered_dynamic_failure label_silent s ->
+    enabled lb_step_ordered_dynamic_failure (tot_map_label l) (pt_map_odnet_event (hd s)) ->
+    eventually (now (enabled lb_step_ordered_dynamic_failure l)) s.
 
 Lemma pt_map_odnet_tot_map_labeled_event_inf_often_enabled :
   forall l, tot_map_label l <> label_silent ->
     forall s, lb_step_execution lb_step_ordered_dynamic_failure s ->
-    strong_local_fairness lb_step_ordered_dynamic_failure label_silent s ->
-    inf_often (now (l_enabled lb_step_ordered_dynamic_failure (tot_map_label l))) (map pt_map_odnet_event s) ->
-    inf_often (now (l_enabled lb_step_ordered_dynamic_failure l)) s.
+    strong_fairness lb_step_ordered_dynamic_failure label_silent s ->
+    inf_often (now (enabled lb_step_ordered_dynamic_failure (tot_map_label l))) (map pt_map_odnet_event s) ->
+    inf_often (now (enabled lb_step_ordered_dynamic_failure l)) s.
 Proof using lb_step_ordered_dynamic_failure_strong_fairness_enabled_pt_map_onet_eventually.
 move => l H_neq s H_exec H_fair.
-have H_a: ((lb_step_execution lb_step_ordered_dynamic_failure) /\_ (strong_local_fairness lb_step_ordered_dynamic_failure label_silent)) s by auto.
+have H_a: ((lb_step_execution lb_step_ordered_dynamic_failure) /\_ (strong_fairness lb_step_ordered_dynamic_failure label_silent)) s by auto.
 move: H_a {H_exec H_fair}.
 apply: always_map_conv_ext => {s}.
   rewrite /and_tl /=.
   move => x s0 [H_e H_w].
   apply lb_step_execution_invar in H_e.
-  by apply strong_local_fairness_invar in H_w.
+  by apply strong_fairness_invar in H_w.
 apply: eventually_map_conv_ext.
 - exact: extensional_now.
 - exact: extensional_now.
 - apply extensional_and_tl.
   * exact: lb_step_execution_extensional.
-  * exact: strong_local_fairness_extensional.
+  * exact: strong_fairness_extensional.
 - rewrite /and_tl /=.
   move => x s [H_e H_w].
   apply lb_step_execution_invar in H_e.
-  by apply strong_local_fairness_invar in H_w.
+  by apply strong_fairness_invar in H_w.
 - rewrite /and_tl.
   case => /= x s [H_a H_w] H_en.
   exact: lb_step_ordered_dynamic_failure_strong_fairness_enabled_pt_map_onet_eventually.
@@ -890,19 +890,19 @@ Qed.
 Hypothesis lb_step_ordered_dynamic_failure_weak_fairness_always_enabled_pt_map_onet_continuously : 
   forall l, tot_map_label l <> label_silent -> 
     forall s, lb_step_execution lb_step_ordered_dynamic_failure s ->
-    weak_local_fairness lb_step_ordered_dynamic_failure label_silent s ->
-    always (now (l_enabled lb_step_ordered_dynamic_failure (tot_map_label l))) (map pt_map_odnet_event s) ->
-    continuously (now (l_enabled lb_step_ordered_dynamic_failure l)) s.
+    weak_fairness lb_step_ordered_dynamic_failure label_silent s ->
+    always (now (enabled lb_step_ordered_dynamic_failure (tot_map_label l))) (map pt_map_odnet_event s) ->
+    continuously (now (enabled lb_step_ordered_dynamic_failure l)) s.
 
 Lemma pt_map_odnet_tot_map_labeled_event_state_continuously_enabled :
   forall l, tot_map_label l <> label_silent ->    
     forall s, lb_step_execution lb_step_ordered_dynamic_failure s ->
-    weak_local_fairness lb_step_ordered_dynamic_failure label_silent s ->
-    continuously (now (l_enabled lb_step_ordered_dynamic_failure (tot_map_label l))) (map pt_map_odnet_event s) ->
-    continuously (now (l_enabled lb_step_ordered_dynamic_failure l)) s.
+    weak_fairness lb_step_ordered_dynamic_failure label_silent s ->
+    continuously (now (enabled lb_step_ordered_dynamic_failure (tot_map_label l))) (map pt_map_odnet_event s) ->
+    continuously (now (enabled lb_step_ordered_dynamic_failure l)) s.
 Proof using lb_step_ordered_dynamic_failure_weak_fairness_always_enabled_pt_map_onet_continuously.
 move => l H_neq s H_exec H_fair.
-have H_a: ((lb_step_execution lb_step_ordered_dynamic_failure) /\_ (weak_local_fairness lb_step_ordered_dynamic_failure label_silent)) s by auto.
+have H_a: ((lb_step_execution lb_step_ordered_dynamic_failure) /\_ (weak_fairness lb_step_ordered_dynamic_failure label_silent)) s by auto.
 move: H_a {H_exec H_fair}.
 apply: eventually_map_conv_ext => {s}.
 - apply extensional_always.
@@ -911,23 +911,23 @@ apply: eventually_map_conv_ext => {s}.
   exact: extensional_now.
 - apply extensional_and_tl.
   * exact: lb_step_execution_extensional.
-  * exact: weak_local_fairness_extensional.
+  * exact: weak_fairness_extensional.
 - rewrite /and_tl /=.
   move => x s [H_e H_w].
   apply lb_step_execution_invar in H_e.
-  by apply weak_local_fairness_invar in H_w.
+  by apply weak_fairness_invar in H_w.
 - case => x s [H_a H_w] H_al.
   simpl in *.
   exact: lb_step_ordered_dynamic_failure_weak_fairness_always_enabled_pt_map_onet_continuously.
 Qed.
 
-Lemma pt_map_odnet_tot_map_label_event_strong_local_fairness :
+Lemma pt_map_odnet_tot_map_label_event_strong_fairness :
   forall s, lb_step_execution lb_step_ordered_dynamic_failure s ->
-       strong_local_fairness lb_step_ordered_dynamic_failure label_silent s ->
-       strong_local_fairness lb_step_ordered_dynamic_failure label_silent (map pt_map_odnet_event s).
+       strong_fairness lb_step_ordered_dynamic_failure label_silent s ->
+       strong_fairness lb_step_ordered_dynamic_failure label_silent (map pt_map_odnet_event s).
 Proof using multi_map_lb_congr lb_step_ordered_dynamic_failure_strong_fairness_enabled_pt_map_onet_eventually label_tot_mapped.
 move => s.
-rewrite /strong_local_fairness => H_exec H_fair l H_neq H_en.
+rewrite /strong_fairness => H_exec H_fair l H_neq H_en.
 have [l' H_l] := label_tot_mapped l.
 rewrite H_l.
 apply pt_map_odnet_tot_map_label_event_inf_often_occurred.
@@ -939,13 +939,13 @@ move => H_eq.
 by rewrite -H_l in H_eq.
 Qed.
 
-Lemma pt_map_odnet_tot_map_label_event_state_weak_local_fairness : 
+Lemma pt_map_odnet_tot_map_label_event_state_weak_fairness :
   forall s, lb_step_execution lb_step_ordered_dynamic_failure s ->
-       weak_local_fairness lb_step_ordered_dynamic_failure label_silent s ->
-       weak_local_fairness lb_step_ordered_dynamic_failure label_silent (map pt_map_odnet_event s).
+       weak_fairness lb_step_ordered_dynamic_failure label_silent s ->
+       weak_fairness lb_step_ordered_dynamic_failure label_silent (map pt_map_odnet_event s).
 Proof using multi_map_lb_congr lb_step_ordered_dynamic_failure_weak_fairness_always_enabled_pt_map_onet_continuously label_tot_mapped.
 move => s.
-rewrite /weak_local_fairness => H_exec H_fair l H_neq H_en.
+rewrite /weak_fairness => H_exec H_fair l H_neq H_en.
 have [l' H_l] := label_tot_mapped l.
 rewrite H_l.
 apply pt_map_odnet_tot_map_label_event_inf_often_occurred.

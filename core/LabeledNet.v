@@ -56,37 +56,37 @@ Section LabeledStepExecution.
 
   Definition lb_step_relation := A -> L -> A -> list trace -> Prop.
 
-  Record event := { evt_a : A ; evt_l : L ; evt_trace : list trace }.
-
-  Definition enabled (step : lb_step_relation) (l : L) (a : A) : Prop :=
+  Definition lb_step_ex (step : lb_step_relation) (l : L) (a : A) : Prop :=
   exists a' tr, step a l a' tr.
 
-  Definition l_enabled (step : lb_step_relation) (l : L) (e : event) : Prop :=
-  enabled step l (evt_a e).
+  Record event := { evt_a : A ; evt_l : L ; evt_trace : list trace }.
+
+  Definition enabled (step : lb_step_relation) (l : L) (e : event) : Prop :=
+    lb_step_ex step l (evt_a e).
 
   Definition occurred (l : L) (e : event) : Prop := l = evt_l e.
 
   Definition inf_enabled (step : lb_step_relation) (l : L) (s : infseq event) : Prop :=
-    inf_often (now (l_enabled step l)) s.
+    inf_often (now (enabled step l)) s.
 
   Definition cont_enabled (step : lb_step_relation) (l : L) (s : infseq event) : Prop :=
-    continuously (now (l_enabled step l)) s.
+    continuously (now (enabled step l)) s.
 
   Definition inf_occurred (l : L) (s : infseq event) : Prop :=
     inf_often (now (occurred l)) s.
 
-  Definition strong_local_fairness (step : lb_step_relation) (silent : L) (s : infseq event) : Prop :=
+  Definition strong_fairness (step : lb_step_relation) (silent : L) (s : infseq event) : Prop :=
     forall l : L, l <> silent -> inf_enabled step l s -> inf_occurred l s.
 
-  Definition weak_local_fairness (step : lb_step_relation) (silent : L) (s : infseq event) : Prop :=
+  Definition weak_fairness (step : lb_step_relation) (silent : L) (s : infseq event) : Prop :=
     forall l : L, l <> silent -> cont_enabled step l s -> inf_occurred l s.
 
-  Lemma strong_local_fairness_invar :
-    forall step e silent s, strong_local_fairness step silent (Cons e s) -> strong_local_fairness step silent s.
+  Lemma strong_fairness_invar :
+    forall step e silent s, strong_fairness step silent (Cons e s) -> strong_fairness step silent s.
   Proof using. 
-    unfold strong_local_fairness. unfold inf_enabled, inf_occurred, inf_often. 
+    unfold strong_fairness. unfold inf_enabled, inf_occurred, inf_often.
     intros step e silent s fair l neq alev. 
-    assert (alevt_es: always (eventually (now (l_enabled step l))) (Cons e s)).
+    assert (alevt_es: always (eventually (now (enabled step l))) (Cons e s)).
     constructor. 
     constructor 2. destruct alev; assumption. 
     simpl. assumption.
@@ -94,11 +94,11 @@ Section LabeledStepExecution.
     intro fair; case (always_Cons fair); trivial.
   Qed.
 
-  Lemma strong_local_fairness_extensional :
-    forall step silent, extensional (strong_local_fairness step silent).
+  Lemma strong_fairness_extensional :
+    forall step silent, extensional (strong_fairness step silent).
   Proof using.
     move => step silent.
-    rewrite /extensional /strong_local_fairness /inf_enabled /inf_occurred /=.
+    rewrite /extensional /strong_fairness /inf_enabled /inf_occurred /=.
     move => s1 s2 H_eq H_s1 l' H_neq' H_en.
     have H_s1l := H_s1 l'.
     move: H_s1l.
@@ -114,12 +114,12 @@ Section LabeledStepExecution.
     exact: extensional_now.
   Qed.
 
-  Lemma weak_local_fairness_invar :
-    forall step e silent s, weak_local_fairness step silent (Cons e s) -> weak_local_fairness step silent s.
+  Lemma weak_fairness_invar :
+    forall step e silent s, weak_fairness step silent (Cons e s) -> weak_fairness step silent s.
   Proof using.
-    unfold weak_local_fairness. unfold cont_enabled, inf_occurred, continuously, inf_often.
+    unfold weak_fairness. unfold cont_enabled, inf_occurred, continuously, inf_often.
     intros step e silent s fair a neq eval.
-    assert (eval_es: eventually (always (now (l_enabled step a))) (Cons e s)).
+    assert (eval_es: eventually (always (now (enabled step a))) (Cons e s)).
       apply E_next. assumption.
     apply fair in eval_es.
     apply always_invar in eval_es.
@@ -127,11 +127,11 @@ Section LabeledStepExecution.
     assumption.
   Qed.
 
-  Lemma weak_local_fairness_extensional :
-    forall step silent, extensional (weak_local_fairness step silent).
+  Lemma weak_fairness_extensional :
+    forall step silent, extensional (weak_fairness step silent).
   Proof using.
   move => step silent.
-  rewrite /extensional /weak_local_fairness /cont_enabled /inf_occurred /=.
+  rewrite /extensional /weak_fairness /cont_enabled /inf_occurred /=.
   move => s1 s2 H_eq H_s1 l' H_neq' H_en.
   have H_s1l := H_s1 l'.
   move: H_s1l.
@@ -147,12 +147,12 @@ Section LabeledStepExecution.
   exact: extensional_now.
   Qed.
 
-  Lemma strong_local_fairness_weak :
-    forall step silent s, strong_local_fairness step silent s -> weak_local_fairness step silent s.
+  Lemma strong_fairness_weak :
+    forall step silent s, strong_fairness step silent s -> weak_fairness step silent s.
   Proof using.
   move => step silent.
   case => e s.
-  rewrite /strong_local_fairness /weak_local_fairness /inf_enabled /cont_enabled.
+  rewrite /strong_fairness /weak_fairness /inf_enabled /cont_enabled.
   move => H_str l neq H_cont.
   apply: H_str; first by [].
   exact: continuously_inf_often.
