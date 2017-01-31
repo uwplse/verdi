@@ -24,7 +24,7 @@ Type Classes
 * one space between end of field declaration and semicolon
 
 Example:
-```
+```coq
 Class GhostFailureParams `(P : FailureParams) :=
   {
     ghost_data : Type;
@@ -45,7 +45,7 @@ Type Class Instances
 * one space between end of field declaration and semicolon
 
 Example:
-```
+```coq
 Instance base_params : BaseParams :=
   {
     data := raft_data ;
@@ -64,7 +64,7 @@ Theorems and Lemmas
 * proof script indented by two spaces
 
 Example:
-```  
+```coq
 Theorem inverse_trace_relations_work :
   forall s tr,
     refl_trans_1n_trace step init s tr ->
@@ -90,7 +90,7 @@ Step Relation Definitions
 * body of a case is indented by four spaces
 
 Example:
-```
+```coq
 Inductive step_async : step_relation network (name * (input + list output)) :=
 | StepAsync_deliver : forall net net' p xs ys out d l,
     nwPackets net = xs ++ p :: ys ->

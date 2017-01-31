@@ -24,7 +24,7 @@
   common to reason forward with them. thus, for each commonly used
   eliminator lemma `foo_elim : foo x = true -> P x /\ Q x` , define a
   corresponding `do_foo_elim` tactic of the form
-```ocaml
+```coq
 match goal with
   | [ H : foo _ = true |- _ ] => apply foo_elim in H; break_and
 end.
