@@ -10,7 +10,7 @@ Requirements
 
 Framework:
 
-- [`Coq 8.5`](https://coq.inria.fr/download)
+- [`Coq 8.5`](https://coq.inria.fr/coq-85)
 - [`Mathematical Components 1.6`](http://math-comp.github.io/math-comp/) (`ssreflect` library)
 - [`StructTact`](https://github.com/uwplse/StructTact)
 - [`InfSeqExt`](https://github.com/DistributedComponents/InfSeqExt)
@@ -28,7 +28,7 @@ which will automatically build and install its dependencies.
 
 ```
 opam repo add coq-released https://coq.inria.fr/opam/released
-opam repo add distributedcomponents http://opam.distributedcomponents.net
+opam repo add distributedcomponents-dev http://opam-dev.distributedcomponents.net
 opam install verdi
 ```
 
@@ -54,7 +54,7 @@ to OCaml and linked with one of the shims in the Verdi
 [runtime library](https://github.com/DistributedComponents/verdi-runtime)
 that handles low-level network communication.
 
-To install the runtime library via OPAM, make sure the `distributedcomponents`
+To install the runtime library via OPAM, make sure the `distributedcomponents-dev`
 repo has been added as above and use the following command:
 
 ```
