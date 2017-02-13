@@ -70,7 +70,7 @@ Theorem lb_step_failure_pt_mapped_simulation_1_non_silent :
   forall net net' failed failed' lb tr,
     tot_map_label lb <> label_silent ->
     @lb_step_failure _ labeled_multi_fst (failed, net) lb (failed', net') tr ->
-    @lb_step_failure _ labeled_multi_snd (List.map tot_map_name failed, pt_map_net net) (tot_map_label lb) (List.map tot_map_name failed', pt_map_net net') (pt_map_trace tr).
+    @lb_step_failure _ labeled_multi_snd (List.map tot_map_name failed, pt_map_net net) (tot_map_label lb) (List.map tot_map_name failed', pt_map_net net') (filterMap pt_map_trace_occ tr).
 Proof using name_map_bijective multi_map_lb_congr multi_map_congr.
 move => net net' failed failed' lb tr H_neq H_step.
 have H_neq': lb <> label_silent.
@@ -92,10 +92,10 @@ invcs H_step => //=.
     break_match => //.
     by find_injection.
   rewrite H_eq_n.
-  apply (@LabeledStepFailure_deliver _ _ _ _ _ _ (pt_map_packets xs) (pt_map_packets ys) (pt_map_outputs out) (pt_map_data d) (@pt_map_name_msgs _ _ _ _ _ msg_map l)).
+  apply (@LabeledStepFailure_deliver _ _ _ _ _ _ (filterMap pt_map_packet xs) (filterMap pt_map_packet ys) (filterMap pt_map_output out) (pt_map_data d) (filterMap (@pt_map_name_msg _ _ _ _ _ msg_map) l)).
   * rewrite /pt_map_net /=.
     find_rewrite.
-    by rewrite pt_map_packets_app_distr /= H_m.
+    by rewrite filterMap_app /= H_m.
   * rewrite -H_eq_n.
     exact: not_in_failed_not_in.
   * rewrite /pt_map_net /= -{2}H_eq_n tot_map_name_inv_inverse.
@@ -113,14 +113,14 @@ invcs H_step => //=.
     repeat break_let.
     break_and.
     by repeat tuple_inversion.
-  * rewrite /pt_map_net /= 2!pt_map_packets_app_distr.
-    by rewrite (pt_map_packet_map_eq_some _ _ H_m) (pt_map_update_eq_some _ _ _ H_m).
+  * rewrite /pt_map_net /= 2!filterMap_app.
+    by rewrite (filterMap_pt_map_packet_map_eq_some _ _ H_m) (pt_map_update_eq_some _ _ _ H_m).
 - case H_i: pt_map_input => [inp'|]; last first.
     have H_q := @pt_lb_input_handlers_none _ _ _ _ _ _ _ _ multi_map_lb_congr h _ (nwState net h) H_i.
     rewrite /tot_mapped_lb_input_handlers_label /= in H_q.
     repeat break_let.
     by tuple_inversion.
-  apply (@LabeledStepFailure_input _ _ _ _ _ _ _ _ (pt_map_data d) (@pt_map_name_msgs _ _ _ _ _ msg_map l)).
+  apply (@LabeledStepFailure_input _ _ _ _ _ _ _ _ (pt_map_data d) (filterMap (@pt_map_name_msg _ _ _ _ _ msg_map) l)).
   * exact: not_in_failed_not_in.
   * have H_q := @pt_input_handlers_some _ _ _ _ _ _ _ multi_map_congr h _ (nwState net h) _ H_i.
     rewrite /pt_mapped_input_handlers /input_handlers /= /unlabeled_input_handlers in H_q.
@@ -133,7 +133,7 @@ invcs H_step => //=.
     repeat tuple_inversion.
     by rewrite /pt_map_net /= tot_map_name_inv_inverse.
   * rewrite /pt_map_net /=.
-    rewrite pt_map_packets_app_distr pt_map_packet_map_eq.
+    rewrite filterMap_app filterMap_pt_map_packet_map_eq.
     by rewrite -(@pt_map_update_eq  _ _ _ _ _ _ name_map_bijective).
 Qed.
 
@@ -141,7 +141,7 @@ Theorem lb_step_failure_pt_mapped_simulation_1_silent :
   forall net net' failed failed' lb tr,
     tot_map_label lb = label_silent ->
     @lb_step_failure _ labeled_multi_fst (failed, net) lb (failed', net') tr ->
-    @lb_step_failure _ labeled_multi_snd (List.map tot_map_name failed, pt_map_net net) label_silent (List.map tot_map_name failed', pt_map_net net') [] /\ pt_trace_remove_empty_out (pt_map_trace tr) = [].
+    @lb_step_failure _ labeled_multi_snd (List.map tot_map_name failed, pt_map_net net) label_silent (List.map tot_map_name failed', pt_map_net net') [] /\ filterMap pt_trace_remove_empty_out (filterMap pt_map_trace_occ tr) = [].
 Proof using multi_map_lb_congr multi_map_congr.
 move => net net' failed failed' lb tr H_eq H_step.
 invcs H_step => //=.
@@ -173,12 +173,12 @@ invcs H_step => //=.
   repeat break_let.
   repeat tuple_inversion.
   rewrite /pt_map_net /=.
-  rewrite pt_map_packets_app_distr.
-  rewrite pt_map_name_msgs_empty_eq //=.
+  rewrite filterMap_app.
+  rewrite filterMap_pt_map_name_msg_empty_eq //=.
   rewrite H3.
-  rewrite pt_map_packets_app_distr /=.
+  rewrite filterMap_app /=.
   repeat break_match => //.
-  rewrite -pt_map_packets_app_distr.
+  rewrite -filterMap_app.
   set s1 := fun _ => _.
   set s2 := fun _ => _.
   have H_eq_s: s1 = s2.
@@ -210,8 +210,8 @@ invcs H_step => //=.
   repeat break_let.
   repeat tuple_inversion.
   rewrite /pt_map_net /=.
-  rewrite pt_map_packets_app_distr.
-  rewrite pt_map_name_msgs_empty_eq //=.
+  rewrite filterMap_app.
+  rewrite filterMap_pt_map_name_msg_empty_eq //=.
   set s1 := fun _ => _.
   set s2 := fun _ => _.
   have H_eq_s: s1 = s2.
@@ -231,7 +231,7 @@ Theorem lb_step_ordered_failure_pt_mapped_simulation_1_non_silent :
   forall net net' failed failed' lb tr,
     tot_map_label lb <> label_silent ->
     @lb_step_ordered_failure _ labeled_multi_fst (failed, net) lb (failed', net') tr ->
-    @lb_step_ordered_failure _ labeled_multi_snd (List.map tot_map_name failed, pt_map_onet net) (tot_map_label lb) (List.map tot_map_name failed', pt_map_onet net') (pt_map_traces tr).
+    @lb_step_ordered_failure _ labeled_multi_snd (List.map tot_map_name failed, pt_map_onet net) (tot_map_label lb) (List.map tot_map_name failed', pt_map_onet net') (filterMap pt_map_trace_ev tr).
 Proof using name_map_bijective multi_map_lb_congr multi_map_congr.
 move => net net' failed failed' lb tr H_neq H_step.
 have H_neq': lb <> label_silent.
@@ -245,7 +245,7 @@ invcs H_step => //=.
     rewrite /tot_mapped_lb_net_handlers_label in H_q.
     repeat break_let.
     by tuple_inversion.
-  apply (@LabeledStepOrderedFailure_deliver _ _ _ _ _ _ m' (@pt_map_msgs _ _ _ _ msg_map ms) (pt_map_outputs out) (pt_map_data d) (@pt_map_name_msgs _ _ _ _ _ msg_map l) (@tot_map_name _ _ _ _ name_map from) (@tot_map_name _ _ _ _ name_map to)).
+  apply (@LabeledStepOrderedFailure_deliver _ _ _ _ _ _ m' (filterMap (@pt_map_msg _ _ _ _ msg_map) ms) (filterMap pt_map_output out) (pt_map_data d) (filterMap (@pt_map_name_msg _ _ _ _ _ msg_map) l) (@tot_map_name _ _ _ _ name_map from) (@tot_map_name _ _ _ _ name_map to)).
   * by rewrite /= 2!tot_map_name_inv_inverse /= H3 /= H_m.
   * exact: not_in_failed_not_in.
   * rewrite /pt_map_onet /= tot_map_name_inv_inverse.
@@ -268,14 +268,14 @@ invcs H_step => //=.
       break_if; break_if => //=; first by rewrite -e tot_map_name_inverse_inv in n0.
       by rewrite e tot_map_name_inv_inverse in n0.
     by rewrite H_eq_f.
-  * by rewrite pt_map_traces_outputs_eq.
+  * by rewrite -filterMap_pt_map_trace_ev_outputs_eq.
 - rewrite {2}/pt_map_onet /=.
   case H_i: pt_map_input => [inp'|]; last first.
     have H_q := @pt_lb_input_handlers_none _ _ _ _ _ _ _ _ multi_map_lb_congr h inp (onwState net h) H_i.
     rewrite /tot_mapped_lb_input_handlers_label in H_q.
     repeat break_let.
     by tuple_inversion.
-  apply (@LabeledStepOrderedFailure_input _ _ (@tot_map_name _ _ _ _ name_map h) _ _ _ _ (pt_map_outputs out) inp' (pt_map_data d) (@pt_map_name_msgs _ _ _ _ _ msg_map l)).
+  apply (@LabeledStepOrderedFailure_input _ _ (@tot_map_name _ _ _ _ name_map h) _ _ _ _ (filterMap pt_map_output out) inp' (pt_map_data d) (filterMap (@pt_map_name_msg _ _ _ _ _ msg_map) l)).
   * exact: not_in_failed_not_in.
   * rewrite /pt_map_onet /= tot_map_name_inv_inverse.
     have H_q := @pt_input_handlers_some _ _ _ _ _ _ _ multi_map_congr h inp (onwState net h) _ H_i.
@@ -298,14 +298,14 @@ invcs H_step => //=.
       break_if; break_if => //=; first by rewrite -e tot_map_name_inverse_inv in n0.
       by rewrite e tot_map_name_inv_inverse in n0.
     by rewrite H_eq_f.
-  * by rewrite pt_map_traces_outputs_eq.
+  * by rewrite -(@filterMap_pt_map_trace_ev_outputs_eq _ _ _ _ _ name_map out h).
 Qed.
      
 Theorem lb_step_ordered_failure_pt_mapped_simulation_1_silent :
   forall net net' failed failed' lb tr,
     tot_map_label lb = label_silent ->
     @lb_step_ordered_failure _ labeled_multi_fst (failed, net) lb (failed', net') tr ->
-    @lb_step_ordered_failure _ labeled_multi_snd (List.map tot_map_name failed, pt_map_onet net) label_silent (List.map tot_map_name failed', pt_map_onet net') [] /\ pt_map_traces tr = [].
+    @lb_step_ordered_failure _ labeled_multi_snd (List.map tot_map_name failed, pt_map_onet net) label_silent (List.map tot_map_name failed', pt_map_onet net') [] /\ filterMap pt_map_trace_ev tr = [].
 Proof using name_map_bijective multi_map_lb_congr multi_map_congr.
 move => net net' failed failed' lb tr H_eq H_step.
 invcs H_step => //=.
@@ -351,7 +351,7 @@ invcs H_step => //=.
     by rewrite H e.
   rewrite H_eq_p H_eq_s.
   split; first exact: LabeledStepOrderedFailure_stutter.
-  rewrite pt_map_traces_outputs_eq.
+  rewrite (@filterMap_pt_map_trace_ev_outputs_eq _ _ _ _ _ name_map out to).
   by repeat find_rewrite.
 - case H_i: (pt_map_input inp) => [inp'|].
     have H_q := @pt_input_handlers_some _ _ _ _ _ _ _ multi_map_congr h _ (onwState net h) _ H_i.
@@ -384,15 +384,15 @@ invcs H_step => //=.
     by break_if; first by rewrite H e.
   rewrite -H_eq_s /s1 {s1 s2 H_eq_s}.
   split; first exact: LabeledStepOrderedFailure_stutter.
-  rewrite pt_map_traces_outputs_eq.
+  rewrite (@filterMap_pt_map_trace_ev_outputs_eq _ _ _ _ _ name_map).
   by repeat find_rewrite.
-- split => //; exact: LabeledStepOrderedFailure_stutter.
+- by split => //; exact: LabeledStepOrderedFailure_stutter.
 Qed.
 
 Definition pt_map_onet_event e :=
 {| evt_a := (List.map tot_map_name (fst e.(evt_a)), pt_map_onet (snd e.(evt_a))) ;
    evt_l := tot_map_label e.(evt_l) ;
-   evt_trace := pt_map_traces e.(evt_trace) |}.
+   evt_trace := filterMap pt_map_trace_ev e.(evt_trace) |}.
 
 Lemma pt_map_onet_event_Map_unfold : forall s,
  Cons (pt_map_onet_event (hd s)) (map pt_map_onet_event (tl s)) = map pt_map_onet_event s.
@@ -421,7 +421,7 @@ case (label_eq_dec (tot_map_label (evt_l e)) label_silent) => H_eq.
     apply (lb_step_ordered_failure_pt_mapped_simulation_1_silent H_eq) in H.
     break_and.
     simpl in *.
-    rewrite H0 pt_map_traces_app.
+    rewrite H0 filterMap_app.
     by aggressive_rewrite_goal.
   - pose s' := Cons e' s0.
     rewrite (pt_map_onet_event_Map_unfold s').
@@ -431,7 +431,7 @@ apply: Cons_lb_step_exec => /=.
   destruct evt_a, evt_a0.
   simpl in *.
   by eapply lb_step_ordered_failure_pt_mapped_simulation_1_non_silent; eauto.
-- by rewrite H0 pt_map_traces_app.
+- by rewrite H0 filterMap_app.
 - pose s' := Cons e' s0.
   rewrite (pt_map_onet_event_Map_unfold s').
   exact: c.
@@ -610,7 +610,7 @@ Theorem lb_step_ordered_dynamic_failure_pt_mapped_simulation_1_non_silent :
   forall net net' failed failed' lb tr,
     tot_map_label lb <> label_silent ->
     @lb_step_ordered_dynamic_failure _ labeled_multi_fst (failed, net) lb (failed', net') tr ->
-    @lb_step_ordered_dynamic_failure _ labeled_multi_snd (List.map tot_map_name failed, pt_map_odnet net) (tot_map_label lb) (List.map tot_map_name failed', pt_map_odnet net') (pt_map_traces tr).
+    @lb_step_ordered_dynamic_failure _ labeled_multi_snd (List.map tot_map_name failed, pt_map_odnet net) (tot_map_label lb) (List.map tot_map_name failed', pt_map_odnet net') (filterMap pt_map_trace_ev tr).
 Proof using name_map_bijective multi_map_lb_congr multi_map_congr.
 move => net net' failed failed' lb tr H_neq H_step.
 have H_neq': lb <> label_silent.
@@ -624,7 +624,7 @@ invcs H_step => //=.
     rewrite /tot_mapped_lb_net_handlers_label in H_q.
     repeat break_let.
     by tuple_inversion.
-  apply (@LabeledStepOrderedDynamicFailure_deliver _ _ _ _ _ _ m' (@pt_map_msgs _ _ _ _ msg_map ms) (pt_map_outputs out) (pt_map_data d) (pt_map_data d') (@pt_map_name_msgs _ _ _ _ _ msg_map l) (@tot_map_name _ _ _ _ name_map from) (@tot_map_name _ _ _ _ name_map to)).
+  apply (@LabeledStepOrderedDynamicFailure_deliver _ _ _ _ _ _ m' (filterMap (@pt_map_msg _ _ _ _ msg_map) ms) (filterMap pt_map_output out) (pt_map_data d) (pt_map_data d') (filterMap (@pt_map_name_msg _ _ _ _ _ msg_map) l) (@tot_map_name _ _ _ _ name_map from) (@tot_map_name _ _ _ _ name_map to)).
   * exact: not_in_failed_not_in.
   * exact: in_failed_in. 
   * by rewrite /pt_map_odnet /= tot_map_name_inv_inverse H5.
@@ -649,14 +649,14 @@ invcs H_step => //=.
       break_if; break_if => //=; first by rewrite -e tot_map_name_inverse_inv in n0.
       by rewrite e tot_map_name_inv_inverse in n0.
     by rewrite H_eq_f.
-  * by rewrite pt_map_traces_outputs_eq.
+  * by rewrite (@filterMap_pt_map_trace_ev_outputs_eq _ _ _ _ _ name_map).
 - rewrite {2}/pt_map_odnet /=.
   case H_i: pt_map_input => [inp'|]; last first.
     have H_q := @pt_lb_input_handlers_none _ _ _ _ _ _ _ _ multi_map_lb_congr h inp d H_i.
     rewrite /tot_mapped_lb_input_handlers_label in H_q.
     repeat break_let.
     by tuple_inversion.
-  apply (@LabeledStepOrderedDynamicFailure_input _ _ (@tot_map_name _ _ _ _ name_map h) _ _ _ _ (pt_map_outputs out) inp' (pt_map_data d) (pt_map_data d') (@pt_map_name_msgs _ _ _ _ _ msg_map l)).
+  apply (@LabeledStepOrderedDynamicFailure_input _ _ (@tot_map_name _ _ _ _ name_map h) _ _ _ _ (filterMap pt_map_output out) inp' (pt_map_data d) (pt_map_data d') (filterMap (@pt_map_name_msg _ _ _ _ _ msg_map) l)).
   * exact: not_in_failed_not_in.
   * exact: in_failed_in.
   * by rewrite /pt_map_odnet /= tot_map_name_inv_inverse H5.
@@ -680,14 +680,14 @@ invcs H_step => //=.
       break_if; break_if => //=; first by rewrite -e tot_map_name_inverse_inv in n0.
       by rewrite e tot_map_name_inv_inverse in n0.
     by rewrite H_eq_f.
-  * by rewrite pt_map_traces_outputs_eq.
+  * by rewrite (@filterMap_pt_map_trace_ev_outputs_eq _ _ _ _ _ name_map).
 Qed.
 
 Theorem lb_step_ordered_dynamic_failure_pt_mapped_simulation_1_silent :
   forall net net' failed failed' lb tr,
     tot_map_label lb = label_silent ->
     @lb_step_ordered_dynamic_failure _ labeled_multi_fst (failed, net) lb (failed', net') tr ->
-    @lb_step_ordered_dynamic_failure _ labeled_multi_snd (List.map tot_map_name failed, pt_map_odnet net) label_silent (List.map tot_map_name failed', pt_map_odnet net') [] /\ pt_map_traces tr = [].
+    @lb_step_ordered_dynamic_failure _ labeled_multi_snd (List.map tot_map_name failed, pt_map_odnet net) label_silent (List.map tot_map_name failed', pt_map_odnet net') [] /\ filterMap pt_map_trace_ev tr = [].
 Proof using name_map_bijective multi_map_lb_congr multi_map_congr.
 move => net net' failed failed' lb tr H_eq H_step.
 invcs H_step => //=.
@@ -733,7 +733,7 @@ invcs H_step => //=.
     by rewrite e H5 H.
   rewrite H_eq_p H_eq_s.
   split; first exact: LabeledStepOrderedDynamicFailure_stutter.
-  rewrite pt_map_traces_outputs_eq.
+  rewrite (@filterMap_pt_map_trace_ev_outputs_eq _ _ _ _ _ name_map).
   by repeat find_rewrite.
 - case H_i: (pt_map_input inp) => [inp'|].
     have H_q := @pt_input_handlers_some _ _ _ _ _ _ _ multi_map_congr h _ d _ H_i.
@@ -766,7 +766,7 @@ invcs H_step => //=.
     by break_if; first by rewrite e H5 H.
   rewrite -H_eq_s /s1 {s1 s2 H_eq_s}.
   split; first exact: LabeledStepOrderedDynamicFailure_stutter.
-  rewrite pt_map_traces_outputs_eq.
+  rewrite (@filterMap_pt_map_trace_ev_outputs_eq _ _ _ _ _ name_map).
   by repeat find_rewrite.
 - split => //; exact: LabeledStepOrderedDynamicFailure_stutter.
 Qed.
@@ -774,7 +774,7 @@ Qed.
 Definition pt_map_odnet_event e :=
 {| evt_a := (List.map tot_map_name (fst e.(evt_a)), pt_map_odnet (snd e.(evt_a))) ;
    evt_l := tot_map_label e.(evt_l) ;
-   evt_trace := pt_map_traces e.(evt_trace) |}.
+   evt_trace := filterMap pt_map_trace_ev e.(evt_trace) |}.
 
 Lemma pt_map_odnet_event_Map_unfold : forall s,
  Cons (pt_map_odnet_event (hd s)) (map pt_map_odnet_event (tl s)) = map pt_map_odnet_event s.
@@ -804,7 +804,7 @@ case (label_eq_dec (tot_map_label (evt_l e)) label_silent) => H_eq.
     apply (lb_step_ordered_dynamic_failure_pt_mapped_simulation_1_silent H_eq) in H.
     break_and.
     simpl in *.
-    rewrite H0 pt_map_traces_app.
+    rewrite H0 filterMap_app.
     by aggressive_rewrite_goal.
   - pose s' := Cons e' s0.
     rewrite (pt_map_odnet_event_Map_unfold s').
@@ -814,7 +814,7 @@ apply: Cons_lb_step_exec => /=.
   destruct evt_a, evt_a0.
   simpl in *.
   by eapply lb_step_ordered_dynamic_failure_pt_mapped_simulation_1_non_silent; eauto.
-- by rewrite H0 pt_map_traces_app.
+- by rewrite H0 filterMap_app.
 - pose s' := Cons e' s0.
   rewrite (pt_map_odnet_event_Map_unfold s').
   exact: c.
