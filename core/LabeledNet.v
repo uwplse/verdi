@@ -398,6 +398,71 @@ Section LabeledStepOrderFailure.
   Qed.
 End LabeledStepOrderFailure.
 
+Section LabeledStepOrderDynamic.
+  Context `{labeled_multi_params : LabeledMultiParams}.
+
+  Inductive lb_step_ordered_dynamic : lb_step_relation ordered_dynamic_network label (name * (input + output)) :=
+  | LabeledStepOrderedDynamic_deliver : forall net net' tr m ms out d d' l from to lb,
+      In to (odnwNodes net) ->
+      odnwState net to = Some d ->
+      odnwPackets net from to = m :: ms ->
+      lb_net_handlers to from m d = (lb, out, d', l) ->
+      net' = {| odnwNodes := odnwNodes net;
+                odnwPackets := collate name_eq_dec to (update2 name_eq_dec (odnwPackets net) from to ms) l;
+                odnwState := update name_eq_dec (odnwState net) to (Some d') |} ->
+      tr = map2fst to (map inr out) ->
+      lb_step_ordered_dynamic net lb net' tr
+  | LabeledStepOrderedDynamic_input : forall h net net' tr out inp d d' l lb,
+      In h (odnwNodes net) ->
+      odnwState net h = Some d ->
+      lb_input_handlers h inp d = (lb, out, d', l) ->
+      net' = {| odnwNodes := odnwNodes net;
+                odnwPackets := collate name_eq_dec h (odnwPackets net) l;
+                odnwState := update name_eq_dec (odnwState net) h (Some d') |} ->
+      tr = (h, inl inp) :: map2fst h (map inr out) ->
+      lb_step_ordered_dynamic net lb net' tr
+  | LabeledStepOrderedDynamic_stutter : forall net,
+      lb_step_ordered_dynamic net label_silent net [].
+
+  Context {overlay_params : NameOverlayParams unlabeled_multi_params}.
+  Context {new_msg_params : NewMsgParams unlabeled_multi_params}.
+
+  Lemma step_ordered_dynamic_star_lb_step_reachable :
+    step_star_lb_step_reachable lb_step_ordered_dynamic step_ordered_dynamic step_ordered_dynamic_init.
+  Proof using.
+    rewrite /step_star_lb_step_reachable.
+    move => net l.
+    move => net' tr tr' H_star H_st.
+    invcs H_st.
+    - set net' := {| odnwNodes := _ ; odnwPackets := _ ; odnwState := _ |}.
+      apply (@refl_trans_1n_trace_trans _ _ _ _ net) => //.
+      rewrite (app_nil_end (map2fst _ _)).
+      apply: (@RT1nTStep _ _ _ _ net'); last exact: RT1nTBase.
+      apply: (StepOrderedDynamic_deliver _ _ _ H0 H1) => //.
+      rewrite /net_handlers /= /unlabeled_net_handlers /=.
+      repeat break_let.
+      by tuple_inversion.
+    - set net' := {| odnwNodes := _ ; odnwPackets := _ ; odnwState := _ |}.
+      apply (@refl_trans_1n_trace_trans _ _ _ _ net) => //.
+      rewrite (app_nil_end (_ :: _)).
+      apply: (@RT1nTStep _ _ _ _ net'); last exact: RT1nTBase.
+      apply: (StepOrderedDynamic_input _ _ H0) => //.
+      rewrite /input_handlers /= /unlabeled_input_handlers /=.
+      repeat break_let.
+      by tuple_inversion.
+    - by have ->: tr' ++ [] = tr' by auto with datatypes.
+  Qed.
+
+  Lemma step_ordered_dynamic_star_lb_step_execution :
+    forall s, event_step_star step_ordered_dynamic step_ordered_dynamic_init (hd s) ->
+         lb_step_execution lb_step_ordered_dynamic s ->
+         always (now (event_step_star step_ordered_dynamic step_ordered_dynamic_init)) s.
+  Proof using.
+    apply: step_star_lb_step_execution.
+    exact: step_ordered_dynamic_star_lb_step_reachable.
+  Qed.
+End LabeledStepOrderDynamic.
+
 Section LabeledStepOrderDynamicFailure.
   Context `{labeled_multi_params : LabeledMultiParams}.
 
