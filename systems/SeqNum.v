@@ -7,11 +7,10 @@ Section SeqNum.
   Context {orig_multi_params : MultiParams orig_base_params}.
 
   Record seq_num_data := mkseq_num_data { tdNum  : nat;
-                            tdSeen : name -> list nat;
+                            tdSeen : list (name * list nat);
                             tdData : data }.
 
-  Record seq_num_msg := mkseq_num_msg { tmNum : nat;
-                          tmMsg : msg }.
+  Record seq_num_msg := mkseq_num_msg { tmNum : nat; tmMsg : msg }.
 
   Definition seq_num_msg_eq_dec (x y : seq_num_msg) : {x = y} + {x <> y}.
     decide equality.
@@ -26,22 +25,18 @@ Section SeqNum.
                    (n' + 1, (fst p, mkseq_num_msg n' (snd p)) :: pkts)
     end.
 
-
   Definition seq_num_init_handlers (n : name) :=
-    mkseq_num_data 0 (fun _ => []) (init_handlers n).
+    mkseq_num_data 0 [] (init_handlers n).
 
-  Definition seq_num_net_handlers
-             (dst : name)
-             (src : name)
-             (m : seq_num_msg)
-             (state : seq_num_data) :
+  Definition seq_num_net_handlers (dst : name) (src : name) (m : seq_num_msg) (state : seq_num_data) :
     (list output) * seq_num_data * list (name * seq_num_msg) :=
-    if (member (tmNum m) (tdSeen state src)) then
+    let seen_src := assoc_default name_eq_dec (tdSeen state) src [] in
+    if (member (tmNum m) seen_src) then
       ([], state, [])
     else
       let '(out, data', pkts) := (net_handlers dst src (tmMsg m) (tdData state)) in
       let (n', tpkts) := processPackets (tdNum state) pkts in
-      (out, mkseq_num_data n' (update name_eq_dec (tdSeen state) src (tmNum m :: tdSeen state src)) data', tpkts).
+      (out, mkseq_num_data n' (assoc_set name_eq_dec (tdSeen state) src (tmNum m :: seen_src)) data', tpkts).
 
   Definition seq_num_input_handlers
              (h : name)

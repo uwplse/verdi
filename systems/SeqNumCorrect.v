@@ -130,11 +130,9 @@ Section SeqNumCorrect.
     mkNetwork
       (map revertPacket
            (filter (fun (p : seq_num_packet) =>
-                      if member (tmNum (pBody p)) (tdSeen (nwState net (pDst p))
-                                                          (pSrc p))
+                      if member (tmNum (pBody p)) (assoc_default name_eq_dec (tdSeen (nwState net (pDst p))) (pSrc p) [])
                       then false else true)
-                   (dedup pkt_eq_dec
-                          (nwPackets net))))
+                   (dedup pkt_eq_dec (nwPackets net))))
       (fun h => (tdData (nwState net h))).
 
   Lemma network_eq (net net' : orig_network) :
@@ -195,7 +193,7 @@ Section SeqNumCorrect.
 
   Definition sequence_seen (net : seq_num_network) :=
     forall h h' n,
-      In n (tdSeen (nwState net h') h) ->
+      In n (assoc_default name_eq_dec (tdSeen (nwState net h')) h []) ->
       n < (tdNum (nwState net h)).
 
   Lemma reachable_seen :
@@ -215,6 +213,38 @@ Section SeqNumCorrect.
       end;
       try break_if; simpl in *; intuition; subst; eauto;
       repeat find_rewrite; (eapply lt_le_trans; [|eauto]; eauto).
+      * case (name_eq_dec (pSrc p) (pDst p)); intro.
+        + rewrite <- e in H2.
+          rewrite get_set_same_default in H2.
+          rewrite e in H2.
+          case H2; intro.
+          -- rewrite <- H.
+             rewrite <- e.
+             eapply H0.
+             apply in_or_app.
+             right; left.
+             auto.
+          -- eapply H1; eauto.
+        + match goal with
+          | [H: In _ (assoc_default _ (assoc_set _ _ _ _) _ _) |- _ ] =>
+            rewrite get_set_diff_default in H
+          end; eauto.
+      * case (name_eq_dec (pSrc p) h); intro.
+        + rewrite <- e in H2.
+          rewrite get_set_same_default in H2.
+          rewrite e in H2.
+          case H2; intro.
+          -- rewrite <- H.
+             rewrite <- e.
+             eapply H0.
+             apply in_or_app.
+             right; left.
+             auto.
+          -- eapply H1; eauto.
+        + match goal with
+          | [H: In _ (assoc_default _ (assoc_set _ _ _ _) _ _) |- _ ] =>
+            rewrite get_set_diff_default in H
+          end; eauto.
     - unfold seq_num_input_handlers in *.
       repeat (break_match; try find_inversion; simpl in *; eauto);
       match goal with
@@ -307,7 +337,7 @@ Section SeqNumCorrect.
   Lemma revertNetwork_In :
     forall net (p : seq_num_packet),
       In p (nwPackets net) ->
-      ~ In (tmNum (pBody p)) (tdSeen (nwState net (pDst p)) (pSrc p)) ->
+      ~ In (tmNum (pBody p)) (assoc_default name_eq_dec (tdSeen (nwState net (pDst p))) (pSrc p) []) ->
       In (revertPacket p) (nwPackets (revertNetwork net)).
   Proof using.
     intros. unfold revertNetwork. simpl in *.
@@ -319,7 +349,7 @@ Section SeqNumCorrect.
 
   Lemma revertNetwork_packets :
     forall xs net (p : seq_num_packet) ys,
-      ~ In (tmNum (pBody p)) (tdSeen (nwState net (pDst p)) (pSrc p)) ->
+      ~ In (tmNum (pBody p)) (assoc_default name_eq_dec (tdSeen (nwState net (pDst p))) (pSrc p) []) ->
       nwPackets net = xs ++ p :: ys ->
       exists xs' ys',
         nwPackets (revertNetwork net) =
@@ -364,7 +394,7 @@ Section SeqNumCorrect.
       sequence_seen st ->
       sequence_equality st ->
       nwPackets st = xs ++ p :: ys ->
-      ~ In (tmNum (pBody p)) (tdSeen (nwState st (pDst p)) (pSrc p)) ->
+      ~ In (tmNum (pBody p)) (assoc_default name_eq_dec (tdSeen (nwState st (pDst p))) (pSrc p) []) ->
       processPackets (tdNum (nwState st (pDst p))) l = (n, l') ->
       exists xs' ys',
         nwPackets (revertNetwork st) = xs' ++ revertPacket p :: ys' /\
@@ -377,12 +407,9 @@ Section SeqNumCorrect.
                       (update name_eq_dec (nwState st) (pDst p)
                               (@mkseq_num_data _ orig_multi_params
                                                n
-                                               (fun nm : name =>
-                                                  if name_eq_dec nm (pSrc p)
-                                                  then
-                                                    tmNum (pBody p)
-                                                          :: tdSeen (nwState st (pDst p)) (pSrc p)
-                                                  else tdSeen (nwState st (pDst p)) nm)
+                                               (assoc_set name_eq_dec
+                                                  (tdSeen (nwState st (pDst p))) (pSrc p)
+                                                  (tmNum (pBody p) :: assoc_default name_eq_dec (tdSeen (nwState st (pDst p))) (pSrc p) []))
                                                d)))
         = {|
           nwPackets := (@send_packets _ orig_multi_params (pDst p) l) ++ xs' ++ ys';
@@ -440,22 +467,58 @@ Section SeqNumCorrect.
                 (eapply_prop sequence_sane; find_rewrite; in_crush)
         end.
         repeat (break_if; simpl in *; repeat find_rewrite; intuition);
-          unfold sequence_seen in *; find_apply_hyp_hyp; omega.
+          unfold sequence_seen in *.
+        -- case (name_eq_dec (pSrc p) (pDst p)); intro.
+           ++ rewrite <- e0 in i.
+             rewrite get_set_same_default in i.
+             rewrite e0 in i.
+             case i; intro.
+             ** rewrite <- H12 in H11.
+                rewrite <- e0 in H11.
+                omega.
+             ** pose proof (H0 _ _ _ H12).
+                omega.
+           ++ match goal with
+             | [H: In _ (assoc_default _ (assoc_set _ _ _ _) _ _) |- _ ] =>
+               rewrite get_set_diff_default in H
+             end; auto.
+             pose proof (H0 _ _ _ i).
+             omega.
+        -- pose proof (H0 _ _ _ i).
+           omega.
     - rewrite <- filter_except_one
       with (f := (fun p0 : seq_num_packet =>
-                    if member (tmNum (pBody p0)) (tdSeen (nwState st (pDst p0)) (pSrc p0))
-                    then false
-                    else true)) (x := p) (A_eq_dec := pkt_eq_dec).
+                   if member (tmNum (pBody p0)) (assoc_default name_eq_dec (tdSeen (nwState st (pDst p0))) (pSrc p0) [])
+                   then false
+                   else true)) (x := p) (A_eq_dec := pkt_eq_dec).
       + unfold seq_num_packet in *. repeat find_rewrite.
         rewrite filter_app.
         find_apply_lem_hyp filter_partition; intuition.
         repeat find_rewrite. eauto using map_app.
       + intros. repeat (break_if; simpl in *; repeat find_rewrite; intuition).
-        exfalso.
-        match goal with H : _ = _ -> False |- _ => apply H end.
-        eapply_prop sequence_equality; repeat find_rewrite; in_crush.
-        find_apply_lem_hyp in_dedup_was_in. in_crush.
+        -- contradict n0.
+           case (name_eq_dec (pSrc p) (pSrc y)); intro.
+           ** rewrite <- e0.
+              rewrite get_set_same_default.
+              right.
+              rewrite e0.
+              auto.
+           ** rewrite get_set_diff_default; auto.
+        -- exfalso.
+           match goal with H : _ = _ -> False |- _ => apply H end.
+           eapply_prop sequence_equality; repeat find_rewrite; in_crush.
+           ** find_apply_lem_hyp in_dedup_was_in. in_crush.
+           ** case (name_eq_dec (pSrc p) (pSrc y)); intro.
+              ++ rewrite e0 in i.
+                rewrite get_set_same_default in i.
+                case i; intro; intuition.
+              ++ rewrite get_set_diff_default in i; intuition.
+           ** case (name_eq_dec (pSrc p) (pSrc y)); intro; auto.
+              rewrite get_set_diff_default in i; intuition.
       + repeat (break_if; simpl in *; intuition).
+        contradict n0.
+        rewrite get_set_same_default.
+        left; auto.
     - apply functional_extensionality. intros; repeat break_if; simpl in *; intuition.
   Qed.
 
@@ -587,5 +650,4 @@ Section SeqNumCorrect.
     - break_exists. eauto.
     - repeat find_rewrite. auto.
   Qed.
-
 End SeqNumCorrect.
