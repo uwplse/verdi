@@ -61,6 +61,18 @@ repo has been added as above and use the following command:
 opam install verdi-runtime
 ```
 
+Getting Started
+---------------
+
+To set up your own Verdi-based distributed systems verification project, we recommend
+forking [Verdi LockServ](https://github.com/DistributedComponents/verdi-lockserv).
+
+Verdi LockServ contains a minimalistic implementation of a message-passing lock server
+and a proof that it maintains mutual exclusion between client nodes. At build time,
+extracted OCaml code is linked to a runtime library shim to produce an executable
+program that can be run in a cluster. There is also a simple script to interface
+with cluster nodes.
+
 Documentation
 -------------
 
