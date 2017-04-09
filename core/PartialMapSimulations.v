@@ -475,16 +475,8 @@ invcs H_step.
 - rewrite remove_tot_map_eq /=.
   left.
   rewrite {2}/pt_map_net /=.
-  apply: (StepFailure_reboot (tot_map_name h)) => //; first exact: in_failed_in.
-  set nwS1 := fun _ => _.
-  set nwS2 := fun _ => _.
-  suff H_suff: nwS1 = nwS2 by rewrite H_suff.
-  rewrite /nwS1 /nwS2.
-  apply functional_extensionality => n.
-  break_if; break_if => //.
-  * by rewrite /pt_map_net /= pt_reboot_eq.
-  * by rewrite -e tot_map_name_inverse_inv in n0.
-  * by rewrite e tot_map_name_inv_inverse in n0.
+  eapply (@StepFailure_reboot _ _ _ (tot_map_name h)) => //; first exact: in_failed_in.
+  by rewrite pt_map_update_eq /pt_map_net pt_reboot_eq /= tot_map_name_inv_inverse.
 Qed.
 
 Corollary step_failure_pt_mapped_simulation_star_1 :

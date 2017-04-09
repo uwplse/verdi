@@ -418,10 +418,7 @@ Section StepFailure.
       In h failed ->
       failed' = remove name_eq_dec h failed ->
       net' = mkNetwork (nwPackets net)
-                       (fun nm => if name_eq_dec nm h then
-                                   (reboot (nwState net nm))
-                                 else
-                                   (nwState net nm)) ->
+                       (update name_eq_dec (nwState net) h (reboot (nwState net h))) ->
       step_failure (failed, net) (failed', net') [].
 
   Definition step_failure_star : step_relation (list name * network) (name * (input + list output)) :=
