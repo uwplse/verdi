@@ -497,30 +497,6 @@ repeat break_if => //.
 - by rewrite /= IH.
 Qed.
 
-Lemma tot_map_reboot_eq :
-forall h net,
-    (fun n : name => 
-      tot_map_data 
-        (match name_eq_dec (tot_map_name_inv n) h with
-         | left _ => reboot (nwState net (tot_map_name_inv n))
-         | right _ => nwState net (tot_map_name_inv n)
-        end)) =
-    (fun nm : name =>
-       match name_eq_dec nm (tot_map_name h) with
-       | left _ => reboot (tot_map_data (nwState net (tot_map_name_inv nm)))
-       | right _ => tot_map_data (nwState net (tot_map_name_inv nm))
-       end).
-Proof using name_map_bijective fail_map_congr.
-move => h net.
-apply: functional_extensionality => n.
-repeat break_if => //.
-- by rewrite tot_reboot_eq.
-- find_reverse_rewrite.
-  by find_rewrite_lem tot_map_name_inverse_inv.
-- find_rewrite.
-  by find_rewrite_lem tot_map_name_inv_inverse.
-Qed.
-
 Theorem step_failure_tot_mapped_simulation_1 :
   forall net net' failed failed' tr,
     @step_failure _ _ fail_fst (failed, net) (failed', net') tr ->
@@ -566,10 +542,10 @@ invcs H_step.
     by rewrite map_app.
   * by rewrite /tot_map_net /= map_app.
 - exact: StepFailure_fail.
-- apply: (StepFailure_reboot (tot_map_name h)).
+- eapply (@StepFailure_reboot _ _ _ (tot_map_name h)).
   * exact: in_failed_in.
   * by rewrite remove_tot_map_eq.
-  * by rewrite /tot_map_net /= tot_map_reboot_eq.
+  * by rewrite /tot_map_net /= tot_map_update_eq tot_reboot_eq tot_map_name_inv_inverse.
 Qed.
 
 Corollary step_failure_tot_mapped_simulation_star_1 :
@@ -821,10 +797,7 @@ invcs H_step.
   end.
   destruct mns2 => //.
   exists {| nwPackets := nwPackets mnet ; 
-       nwState := (fun nm => match name_eq_dec nm n with
-                           | left _ => (reboot (nwState mnet nm)) 
-                           | right _ => (nwState mnet nm) 
-                           end) |}.
+       nwState := update name_eq_dec (nwState mnet) n (reboot (nwState mnet n)) |}.
   split.
   * apply (@StepFailure_reboot _ _ _ n) => //.
     + rewrite H_eq_mns.
@@ -844,19 +817,7 @@ invcs H_step.
       by find_apply_lem_hyp map_eq_name_eq_eq.
   * rewrite /tot_map_net /=.
     inversion H_eq_mns2.
-    set nwS1 := fun _ => _.
-    set nwS2 := fun _ => _.
-    have H_eq_sw: nwS1 = nwS2.
-      rewrite /nwS1 /nwS2 {nwS1 nwS2}.
-      apply functional_extensionality => n'.
-      repeat break_if => //.
-      + by rewrite tot_reboot_eq.
-      + by find_reverse_rewrite; find_rewrite_lem tot_map_name_inverse_inv.
-      + match goal with
-        | H: n' = _ , H': tot_map_name_inv n' <> _ |- _ => rewrite H in H'
-        end.
-        by find_rewrite_lem tot_map_name_inv_inverse.
-    by rewrite H_eq_sw.
+    by rewrite tot_map_update_eq tot_map_name_inv_inverse tot_reboot_eq.
 Qed.
 
 Lemma nodup_to_map_name :
