@@ -10,7 +10,7 @@ Requirements
 
 Framework:
 
-- [`Coq 8.5`](https://coq.inria.fr/coq-85)
+- [`Coq 8.5`](https://coq.inria.fr/coq-85) or [`Coq 8.6`](https://coq.inria.fr/coq-86)
 - [`Mathematical Components 1.6`](http://math-comp.github.io/math-comp/) (`ssreflect` library)
 - [`StructTact`](https://github.com/uwplse/StructTact)
 - [`InfSeqExt`](https://github.com/DistributedComponents/InfSeqExt)

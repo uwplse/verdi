@@ -1,7 +1,7 @@
-COQVERSION := $(shell coqc --version|grep "version 8.5")
+COQVERSION := $(shell coqc --version|egrep "version (8\\.5|8\\.6)")
 
 ifeq "$(COQVERSION)" ""
-$(error "Verdi is only compatible with Coq version 8.5")
+$(error "Verdi is only compatible with Coq version 8.5 or 8.6")
 endif
 
 COQPROJECT_EXISTS=$(wildcard _CoqProject)
