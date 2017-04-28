@@ -169,7 +169,7 @@ Section dup_drop_reorder.
         eapply dup_drop_step_star_step_1.
         apply DDS_dup; auto.
       + pose proof dup_drop_in l _ a ltac:(eauto).
-        concludes.
+        try concludes. (* Only needed in Coq 8.5 *)
         eapply dup_drop_step_star_step_n1 in H0; [| eapply DDS_drop with (xs := [])].
         simpl in *.
         apply IHl' in H0; auto.

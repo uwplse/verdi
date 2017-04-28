@@ -10,14 +10,14 @@ Requirements
 
 Framework:
 
-- [`Coq 8.5`](https://coq.inria.fr/coq-85)
-- [`Mathematical Components 1.6`](http://math-comp.github.io/math-comp/) (`ssreflect` library)
+- [`Coq 8.5`](https://coq.inria.fr/coq-85) or [`Coq 8.6`](https://coq.inria.fr/coq-86)
+- [`mathcomp-ssreflect 1.6`](http://math-comp.github.io/math-comp/) or [`mathcomp-ssreflect 1.6.1`](http://math-comp.github.io/math-comp/)
 - [`StructTact`](https://github.com/uwplse/StructTact)
 - [`InfSeqExt`](https://github.com/DistributedComponents/InfSeqExt)
 
 Runtime:
 
-- [`OCaml 4.02.3`](https://ocaml.org/docs/install.html)
+- [`OCaml 4.02.3`](https://ocaml.org/docs/install.html) (or later)
 - [`verdi-runtime`](https://github.com/DistributedComponents/verdi-runtime)
 
 Building

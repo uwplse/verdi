@@ -2119,6 +2119,7 @@ Section LockServ.
   Proof using.
     intros.
     pose proof (@clients_move_way_up_in_queue n 0 c s).
+    pose proof (Nat.le_0_l n).
     repeat concludes. conclude_using ltac:(intuition; congruence).
     eapply eventually_monotonic_simple; [|eauto].
     intros. simpl in *. intuition.

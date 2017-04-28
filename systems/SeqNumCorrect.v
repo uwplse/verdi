@@ -50,6 +50,8 @@ Section SeqNumCorrect.
       + specialize (IHl n0 l0). apply IHl; auto.
   Qed.
 
+  Unset Regular Subst Tactic.
+  
   Lemma processPackets_nums_unique :
     forall n l n' l' p p',
       processPackets n l = (n', l') ->
@@ -70,6 +72,7 @@ Section SeqNumCorrect.
       + apply IHl with n0 l0 p p'; intuition.
   Qed.
 
+  Set Regular Subst Tactic.
   
   Lemma processPackets_seq_eq :
     forall n l n' l' x y,
