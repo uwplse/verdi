@@ -580,7 +580,7 @@ rewrite pt_map_msg_update2 /= filterMap_app /=.
 case H_m': (pt_map_msg _) => [m'|]; first by rewrite H_m' in H_m.
 rewrite -app_nil_end.
 set f1 := update2 _ _ _ _ _.
-set f2 := fun _ _ => _.
+set f2 := fun _ _ => _ _.
 have H_eq_f: f1 = f2.
   rewrite /f1 /f2 {f1 f2}.
   apply functional_extensionality => src.
@@ -1286,7 +1286,7 @@ invcs H_step.
   split => //.
   rewrite /pt_map_odnet /= collate_pt_map_update2_eq H_ms /=.
   set nwP1 := update2 _ _ _ _ _.
-  set nwP2 := fun _ _ => _.
+  set nwP2 := fun _ _ => _ _.
   set nwS1 := fun _ => _.
   set nwS2 := fun _ => _.
   have H_eq_s: nwS1 = nwS2.
