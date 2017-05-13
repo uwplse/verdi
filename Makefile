@@ -1,4 +1,4 @@
-COQVERSION := $(shell coqc --version|egrep "version (8\\.5|8\\.6)")
+COQVERSION := $(shell coqc --version|egrep "version (8\\.5|8\\.6|trunk)")
 
 ifeq "$(COQVERSION)" ""
 $(error "Verdi is only compatible with Coq version 8.5 or 8.6")
