@@ -11,7 +11,7 @@ Require Import mathcomp.ssreflect.ssreflect.
 
 Set Implicit Arguments.
 
-Class GhostFailureParams `(P : FailureParams) :=
+Class GhostMultiParams `(P : MultiParams) :=
   {
     ghost_data : Type;
     ghost_init : ghost_data ;
@@ -26,7 +26,7 @@ Section GhostVars.
 Context {base_params : BaseParams}.
 Context {multi_params : MultiParams base_params}.
 Context {failure_params : FailureParams multi_params}.
-Context {params : GhostFailureParams failure_params}.
+Context {ghost_params : GhostMultiParams multi_params}.
 
 Definition refined_net_handlers me src m st :=
   let '(out, st', ps) :=
@@ -34,15 +34,14 @@ Definition refined_net_handlers me src m st :=
   (out, (ghost_net_handlers me src m st, st'), ps).
 
 Definition refined_input_handlers me inp st :=
-  let '(out, st', ps) :=
-      input_handlers me inp (snd st) in
+  let '(out, st', ps) := input_handlers me inp (snd st) in
   (out, (ghost_input_handlers me inp st, st'), ps).
-
-Definition refined_reboot (st : ghost_data * data) :=
-  (fst st , reboot (snd st)).
 
 Definition refined_init_handlers (n : name) : ghost_data * data :=
   (ghost_init, init_handlers n).
+
+Definition refined_reboot (st : ghost_data * data) :=
+  (fst st , reboot (snd st)).
 
 Instance refined_base_params : BaseParams :=
   {
@@ -301,7 +300,7 @@ Qed.
 
 End GhostVars.
 
-Class MsgGhostFailureParams `(P : FailureParams) :=
+Class MsgGhostMultiParams `(P : MultiParams) :=
   {
     ghost_msg : Type;
     ghost_msg_eq_dec : forall x y : ghost_msg, {x = y} + {x <> y} ;
@@ -315,20 +314,18 @@ Section MsgGhostVars.
 Context {base_params : BaseParams}.
 Context {multi_params : MultiParams base_params}.
 Context {failure_params : FailureParams multi_params}.
-Context {params : MsgGhostFailureParams failure_params}.
+Context {msg_ghost_params : MsgGhostMultiParams multi_params}.
 
 Definition add_ghost_msg (me : name) (st : data) (ps : list (name * msg)) :
                                                     list (name * (ghost_msg * msg)) :=
   map (fun m => (fst m, (write_ghost_msg me st, snd m))) ps.
 
 Definition mgv_refined_net_handlers me src (m : ghost_msg * msg) st :=
-  let '(out, st', ps) :=
-      net_handlers me src (snd m) st in
+  let '(out, st', ps) := net_handlers me src (snd m) st in
   (out, st', add_ghost_msg me st' ps).
 
 Definition mgv_refined_input_handlers me inp st :=
-  let '(out, st', ps) :=
-      input_handlers me inp st in
+  let '(out, st', ps) := input_handlers me inp st in
   (out, st', add_ghost_msg me st' ps).
 
 Definition mgv_msg_eq_dec :
@@ -599,8 +596,8 @@ Proof using.
 Qed.
 
 End MsgGhostVars.
-Arguments deghost_packet /_ _ _ _ _.
-Arguments ghost_packet /_ _ _ _ _.
+Arguments deghost_packet /_ _ _ _.
+Arguments ghost_packet /_ _ _ _.
 
-Arguments mgv_deghost_packet /_ _ _ _ _.
-Arguments mgv_ghost_packet /_ _ _ _ _.
+Arguments mgv_deghost_packet /_ _ _ _.
+Arguments mgv_ghost_packet /_ _ _ _.
