@@ -46,32 +46,32 @@ Set Implicit Arguments.
 (** * The abstract signatures of trees *)
 
 Module Type TREE.
-  Variable elt: Type.
-  Variable elt_eq: forall (a b: elt), {a = b} + {a <> b}.
-  Variable t: Type -> Type.
-  Variable empty: forall (A: Type), t A.
-  Variable get: forall (A: Type), elt -> t A -> option A.
-  Variable set: forall (A: Type), elt -> A -> t A -> t A.
-  Variable remove: forall (A: Type), elt -> t A -> t A.
+  Parameter elt: Type.
+  Parameter elt_eq: forall (a b: elt), {a = b} + {a <> b}.
+  Parameter t: Type -> Type.
+  Parameter empty: forall (A: Type), t A.
+  Parameter get: forall (A: Type), elt -> t A -> option A.
+  Parameter set: forall (A: Type), elt -> A -> t A -> t A.
+  Parameter remove: forall (A: Type), elt -> t A -> t A.
 
   (** The ``good variables'' properties for trees, expressing
     commutations between [get], [set] and [remove]. *)
-  Hypothesis gempty:
+  Parameter gempty:
     forall (A: Type) (i: elt), get i (empty A) = None.
-  Hypothesis gss:
+  Parameter gss:
     forall (A: Type) (i: elt) (x: A) (m: t A), get i (set i x m) = Some x.
-  Hypothesis gso:
+  Parameter gso:
     forall (A: Type) (i j: elt) (x: A) (m: t A),
     i <> j -> get i (set j x m) = get i m.
-  Hypothesis gsspec:
+  Parameter gsspec:
     forall (A: Type) (i j: elt) (x: A) (m: t A),
     get i (set j x m) = if elt_eq i j then Some x else get i m.
-  Hypothesis grs:
+  Parameter grs:
     forall (A: Type) (i: elt) (m: t A), get i (remove i m) = None.
-  Hypothesis gro:
+  Parameter gro:
     forall (A: Type) (i j: elt) (m: t A),
     i <> j -> get i (remove j m) = get i m.
-  Hypothesis grspec:
+  Parameter grspec:
     forall (A: Type) (i j: elt) (m: t A),
     get i (remove j m) = if elt_eq i j then None else get i m.
 End TREE.
@@ -86,8 +86,8 @@ Module PTree <: TREE.
     | Leaf : tree A
     | Node : tree A -> option A -> tree A -> tree A.
 
-  Implicit Arguments Leaf [A].
-  Implicit Arguments Node [A].
+  Arguments Leaf [A].
+  Arguments Node [A].
   Scheme tree_ind := Induction for tree Sort Prop.
 
   Definition t := tree.
@@ -251,10 +251,10 @@ Module PTree <: TREE.
 End PTree.
 
 Module Type INDEXED_TYPE.
-  Variable t: Type.
-  Variable index: t -> positive.
-  Hypothesis index_inj: forall (x y: t), index x = index y -> x = y.
-  Variable eq: forall (x y: t), {x = y} + {x <> y}.
+  Parameter t: Type.
+  Parameter index: t -> positive.
+  Parameter index_inj: forall (x y: t), index x = index y -> x = y.
+  Parameter eq: forall (x y: t), {x = y} + {x <> y}.
 End INDEXED_TYPE.
 
 
@@ -298,8 +298,8 @@ End NIndexed.
 (** * An implementation of maps over any type with decidable equality *)
 
 Module Type EQUALITY_TYPE.
-  Variable t: Type.
-  Variable eq: forall (x y: t), {x = y} + {x <> y}.
+  Parameter t: Type.
+  Parameter eq: forall (x y: t), {x = y} + {x <> y}.
 End EQUALITY_TYPE.
 
 Module ETree(X: EQUALITY_TYPE) <: TREE.
