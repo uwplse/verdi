@@ -8,18 +8,11 @@ opam repo add distributedcomponents-dev http://opam-dev.distributedcomponents.ne
 
 opam pin add coq $COQ_VERSION --yes --verbose
 opam pin add coq-mathcomp-ssreflect $SSREFLECT_VERSION --yes --verbose
-opam install StructTact InfSeqExt --yes --verbose
 
-./build.sh
+opam pin add verdi . --yes --verbose
 
 case $DOWNSTREAM in
 verdi-raft)
-  opam install verdi-runtime --yes --verbose
-  pushd ..
-    git clone -b $VERDI_RAFT_BRANCH 'https://github.com/uwplse/verdi-raft.git'
-    pushd verdi-raft
-      Verdi_PATH=../verdi ./build.sh
-    popd
-  popd
+  opam install verdi-raft --yes --verbose
   ;;
 esac
