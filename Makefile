@@ -1,10 +1,12 @@
-COQVERSION := $(shell coqc --version|egrep "version (8\\.5|8\\.6|trunk)")
+# sets COQVERSION
+include Makefile.detect-coq-version
 
-ifeq "$(COQVERSION)" ""
-$(error "Verdi is only compatible with Coq version 8.5 or 8.6")
+ifeq (,$(filter $(COQVERSION),8.5 8.6 8.7 trunk))
+$(error "Verdi is only compatible with Coq version 8.5 or later")
 endif
 
-COQPROJECT_EXISTS=$(wildcard _CoqProject)
+COQPROJECT_EXISTS := $(wildcard _CoqProject)
+
 ifeq "$(COQPROJECT_EXISTS)" ""
 $(error "Run ./configure before running make")
 endif
