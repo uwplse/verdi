@@ -11,6 +11,8 @@ Require Import RelationClasses.
 
 Require Export Verdi.VerdiHints.
 
+Require Import Cheerios.Cheerios.
+
 Set Implicit Arguments.
 
 Class BaseParams :=
@@ -32,6 +34,8 @@ Class SingleParams (P : BaseParams) :=
     input_handler : input -> data -> (list output * data)
   }.
 
+Definition disk := IOStreamWriter.wire.
+
 Class MultiParams (P : BaseParams) :=
   {
     name : Type ;
@@ -42,13 +46,14 @@ Class MultiParams (P : BaseParams) :=
     all_names_nodes : forall n, In n nodes ;
     no_dup_nodes : NoDup nodes ;
     init_handlers : name -> data;
-    net_handlers : name -> name -> msg -> data -> (list output) * data * list (name * msg) ;
-    input_handlers : name -> input -> data -> (list output) * data * list (name * msg)
+    init_disk : name -> disk;
+    net_handlers : name -> name -> msg -> data -> (list output) * data * list (name * msg) * disk ;
+    input_handlers : name -> input -> data -> (list output) * data * list (name * msg) * disk
   }.
 
 Class FailureParams `(P : MultiParams) :=
   {
-    reboot : data -> data
+    reboot : disk -> option data
   }.
 
 Class NameOverlayParams `(P : MultiParams) :=
@@ -291,23 +296,26 @@ Section StepAsync.
   Defined.
 
   Record network := mkNetwork { nwPackets : list packet ;
-                               nwState   : name -> data }.
+                                nwState   : name -> data ;
+                                nwDisk    : name -> disk}.
 
   Definition step_async_init : network :=
-    mkNetwork [] init_handlers.
+    mkNetwork [] init_handlers init_disk.
 
   Inductive step_async : step_relation network (name * (input + list output)) :=
-  | StepAsync_deliver : forall net net' p xs ys out d l,
+  | StepAsync_deliver : forall net net' p xs ys out d l w,
       nwPackets net = xs ++ p :: ys ->
-      net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
+      net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l, w) ->
       net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
-                       (update name_eq_dec (nwState net) (pDst p) d) ->
+                       (update name_eq_dec (nwState net) (pDst p) d)
+                       (update name_eq_dec (nwDisk net) (pDst p) w) ->
       step_async net net' [(pDst p, inr out)]
   (* inject a message (f inp) into host h. analogous to step_1 *delivery* *)
-  | StepAsync_input : forall h net net' out inp d l,
-      input_handlers h inp (nwState net h) = (out, d, l) ->
+  | StepAsync_input : forall h net net' out inp d l w,
+      input_handlers h inp (nwState net h) = (out, d, l, w) ->
       net' = mkNetwork (send_packets h l ++ nwPackets net)
-                       (update name_eq_dec (nwState net) h d) ->
+                       (update name_eq_dec (nwState net) h d)
+                       (update name_eq_dec (nwDisk net) h w) ->
       step_async net net' [(h, inl inp); (h, inr out)].
 
   Definition step_async_star := refl_trans_1n_trace step_async.
@@ -337,21 +345,23 @@ Section StepDup.
 
   Inductive step_dup : step_relation network (name * (input + list output)) :=
   (* just like step_async *)
-  | StepDup_deliver : forall net net' p xs ys out d l,
+  | StepDup_deliver : forall net net' p xs ys out d l w,
       nwPackets net = xs ++ p :: ys ->
-      net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
+      net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l, w) ->
       net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
-                       (update name_eq_dec (nwState net) (pDst p) d) ->
+                       (update name_eq_dec (nwState net) (pDst p) d)
+                       (update name_eq_dec (nwDisk net) (pDst p) w) ->
       step_dup net net' [(pDst p, inr out)]
   (* inject a message (f inp) into host h *)
-  | StepDup_input : forall h net net' out inp d l,
-      input_handlers h inp (nwState net h) = (out, d, l) ->
+  | StepDup_input : forall h net net' out inp d l w,
+      input_handlers h inp (nwState net h) = (out, d, l, w) ->
       net' = mkNetwork (send_packets h l ++ nwPackets net)
-                       (update name_eq_dec (nwState net) h d) ->
+                       (update name_eq_dec (nwState net) h d)
+                       (update name_eq_dec (nwDisk net) h w) ->
       step_dup net net' [(h, inl inp); (h, inr out)]
   | StepDup_dup : forall net net' p xs ys,
       nwPackets net = xs ++ p :: ys ->
-      net' = mkNetwork (p :: xs ++ p :: ys) (nwState net) ->
+      net' = mkNetwork (p :: xs ++ p :: ys) (nwState net) (nwDisk net) ->
       step_dup net net' [].
 
   Definition step_dup_star := refl_trans_1n_trace step_dup.
@@ -362,20 +372,22 @@ Section StepDrop.
   Context `{params : MultiParams}.
 
   Inductive step_drop : step_relation network (name * (input + list output)) :=
-  | StepDrop_deliver : forall net net' p xs ys out d l,
+  | StepDrop_deliver : forall net net' p xs ys out d l w,
       nwPackets net = xs ++ p :: ys ->
-      net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
+      net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l, w) ->
       net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
-                       (update name_eq_dec (nwState net) (pDst p) d) ->
+                       (update name_eq_dec (nwState net) (pDst p) d)
+                       (update name_eq_dec (nwDisk net) (pDst p) w) ->
       step_drop net net' [(pDst p, inr out)]
   | StepDrop_drop : forall net net' p xs ys,
       nwPackets net = xs ++ p :: ys ->
-      net' = mkNetwork (xs ++ ys) (nwState net) ->
+      net' = mkNetwork (xs ++ ys) (nwState net) (nwDisk net) ->
       step_drop net net' []
-  | StepDrop_input : forall h net net' out inp d l,
-      input_handlers h inp (nwState net h) = (out, d, l) ->
+  | StepDrop_input : forall h net net' out inp d l w,
+      input_handlers h inp (nwState net h) = (out, d, l, w) ->
       net' = mkNetwork (send_packets h l ++ nwPackets net)
-                       (update name_eq_dec (nwState net) h d) ->
+                       (update name_eq_dec (nwState net) h d)
+                       (update name_eq_dec (nwDisk net) h w) ->
       step_drop net net' [(h, inl inp); (h, inr out)].
 
   Definition step_drop_star := refl_trans_1n_trace step_drop.
@@ -387,38 +399,42 @@ Section StepFailure.
   (* this step relation transforms a list of failed hosts (list name * network), but does not transform handlers (H : hosts) *)
   Inductive step_failure : step_relation (list name * network) (name * (input + list output)) :=
   (* like step_async, but only delivers to hosts that haven't failed yet *)
-  | StepFailure_deliver : forall net net' failed p xs ys out d l,
+  | StepFailure_deliver : forall net net' failed p xs ys out d l w,
       nwPackets net = xs ++ p :: ys ->
       ~ In (pDst p) failed ->
-      net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l) ->
+      net_handlers (pDst p) (pSrc p) (pBody p) (nwState net (pDst p)) = (out, d, l, w) ->
       net' = mkNetwork (send_packets (pDst p) l ++ xs ++ ys)
-                       (update name_eq_dec (nwState net) (pDst p) d) ->
+                       (update name_eq_dec (nwState net) (pDst p) d)
+                       (update name_eq_dec (nwDisk net) (pDst p) w) ->
       step_failure (failed, net) (failed, net') [(pDst p, inr out)]
-  | StepFailure_input : forall h net net' failed out inp d l,
+  | StepFailure_input : forall h net net' failed out inp d l w,
       ~ In h failed ->
-      input_handlers h inp (nwState net h) = (out, d, l) ->
+      input_handlers h inp (nwState net h) = (out, d, l, w) ->
       net' = mkNetwork (send_packets h l ++ nwPackets net)
-                       (update name_eq_dec (nwState net) h d) ->
+                       (update name_eq_dec (nwState net) h d)
+                       (update name_eq_dec (nwDisk net) h w) ->
       step_failure (failed, net) (failed, net') [(h, inl inp) ;  (h, inr out)]
   (* drops a packet *)
   | StepFailure_drop : forall net net' failed p xs ys,
       nwPackets net = xs ++ p :: ys ->
-      net' = (mkNetwork (xs ++ ys) (nwState net)) ->
+      net' = (mkNetwork (xs ++ ys) (nwState net) (nwDisk net)) ->
       step_failure (failed, net) (failed, net') []
   (* duplicates a packet *)
   | StepFailure_dup : forall net net' failed p xs ys,
       nwPackets net = xs ++ p :: ys ->
-      net' = (mkNetwork (p :: xs ++ p :: ys) (nwState net)) ->
+      net' = (mkNetwork (p :: xs ++ p :: ys) (nwState net) (nwDisk net)) ->
       step_failure (failed, net) (failed, net') []
   (* a host fails (potentially again) *)
   | StepFailure_fail :  forall h net failed,
       step_failure (failed, net) (h :: failed, net) []
   (* a host reboots (is not failing anymore). the new state is computed with the reboot function from the old state *)
-  | StepFailure_reboot : forall h net net' failed failed',
+  | StepFailure_reboot : forall h net net' failed failed' d,
       In h failed ->
       failed' = remove name_eq_dec h failed ->
+      reboot (nwDisk net h) = Some d ->
       net' = mkNetwork (nwPackets net)
-                       (update name_eq_dec (nwState net) h (reboot (nwState net h))) ->
+                       (update name_eq_dec (nwState net) h d)
+                       (nwDisk net) ->
       step_failure (failed, net) (failed', net') [].
 
   Definition step_failure_star : step_relation (list name * network) (name * (input + list output)) :=
@@ -436,27 +452,30 @@ Section StepOrdered.
   Record ordered_network :=
     mkONetwork
        { onwPackets : src -> dst -> list msg;
-         onwState   : name -> data
+         onwState   : name -> data;
+         onwDisk    : name -> disk
        }.
 
   Inductive step_ordered : step_relation ordered_network (name * (input + output)) :=
-  | StepOrdered_deliver : forall net net' tr m ms out d l from to,
+  | StepOrdered_deliver : forall net net' tr m ms out d l w from to,
       onwPackets net from to = m :: ms ->
-      net_handlers to from m (onwState net to) = (out, d, l) ->
+      net_handlers to from m (onwState net to) = (out, d, l, w) ->
       net' = mkONetwork (collate name_eq_dec to (update2 name_eq_dec (onwPackets net) from to ms) l)
-                        (update name_eq_dec (onwState net) to d) ->
+                        (update name_eq_dec (onwState net) to d)
+                        (update name_eq_dec (onwDisk net) to w) ->
       tr = map2fst to (map inr out) ->
       step_ordered net net' tr
-  | StepOrdered_input : forall h net net' tr out inp d l,
-      input_handlers h inp (onwState net h) = (out, d, l) ->
+  | StepOrdered_input : forall h net net' tr out inp d l w,
+      input_handlers h inp (onwState net h) = (out, d, l, w) ->
       net' = mkONetwork (collate name_eq_dec h (onwPackets net) l)
-                        (update name_eq_dec (onwState net) h d) ->
+                        (update name_eq_dec (onwState net) h d)
+                        (update name_eq_dec (onwDisk net) h w) ->
       tr = (h, inl inp) :: map2fst h (map inr out) ->
       step_ordered net net' tr.
 
   Definition step_ordered_star := refl_trans_1n_trace step_ordered.
 
-  Definition step_ordered_init : ordered_network := mkONetwork (fun _ _ => []) init_handlers.
+  Definition step_ordered_init : ordered_network := mkONetwork (fun _ _ => []) init_handlers init_disk.
 End StepOrdered.
 
 Section StepOrderedFailure.
@@ -465,26 +484,29 @@ Section StepOrderedFailure.
   Context {fail_msg_params : FailMsgParams multi_params}.
 
   Inductive step_ordered_failure : step_relation (list name * ordered_network) (name * (input + output)) :=
-  | StepOrderedFailure_deliver : forall net net' failed tr m ms out d l from to,
+  | StepOrderedFailure_deliver : forall net net' failed tr m ms out d l w from to,
       onwPackets net from to = m :: ms ->
       ~ In to failed ->
-      net_handlers to from m (onwState net to) = (out, d, l) ->
+      net_handlers to from m (onwState net to) = (out, d, l, w) ->
       net' = {| onwPackets := collate name_eq_dec to (update2 name_eq_dec (onwPackets net) from to ms) l;
-                onwState := update name_eq_dec (onwState net) to d |} ->
+                onwState := update name_eq_dec (onwState net) to d;
+                onwDisk := update name_eq_dec (onwDisk net) to w |} ->
       tr = map2fst to (map inr out) ->
       step_ordered_failure (failed, net) (failed, net') tr
-  | StepOrderedFailure_input : forall h net net' failed tr out inp d l,
+  | StepOrderedFailure_input : forall h net net' failed tr out inp d l w,
       ~ In h failed ->
-      input_handlers h inp (onwState net h) = (out, d, l) ->
+      input_handlers h inp (onwState net h) = (out, d, l, w) ->
       net' = {| onwPackets := collate name_eq_dec h (onwPackets net) l;
-                onwState := update name_eq_dec (onwState net) h d |} ->
+                onwState := update name_eq_dec (onwState net) h d;
+             onwDisk := update name_eq_dec (onwDisk net) h w |} ->
       tr = (h, inl inp) :: map2fst h (map inr out) ->
       step_ordered_failure (failed, net) (failed, net') tr
   | StepOrderedFailure_fail :  forall h net net' failed,
       ~ In h failed ->
       net' = {| onwPackets := collate name_eq_dec h (onwPackets net)
                   (map2snd msg_fail (filter_rel adjacent_to_dec h (remove_all name_eq_dec failed nodes))) ;
-                onwState := onwState net |} ->
+                onwState := onwState net;
+                onwDisk := onwDisk net |} ->
       step_ordered_failure (failed, net) (h :: failed, net') [].
 
   Definition step_ordered_failure_star := refl_trans_1n_trace step_ordered_failure.
@@ -505,7 +527,8 @@ Section StepOrderedDynamic.
        {
          odnwNodes : list name ;
          odnwPackets : src -> dst -> list msg ;
-         odnwState : name -> option data
+         odnwState : name -> option data ;
+         odnwDisk : name -> disk;
        }.
 
   Inductive step_ordered_dynamic : step_relation ordered_dynamic_network (name * (input + output)) :=
@@ -515,31 +538,34 @@ Section StepOrderedDynamic.
                 odnwPackets := collate_ls name_eq_dec (filter_rel adjacent_to_dec h (odnwNodes net))
                                (collate name_eq_dec h (odnwPackets net)
                                  (map2snd msg_new (filter_rel adjacent_to_dec h (odnwNodes net)))) h msg_new;
-                odnwState := update name_eq_dec (odnwState net) h (Some (init_handlers h)) |} ->
+                odnwState := update name_eq_dec (odnwState net) h (Some (init_handlers h));
+                odnwDisk := update name_eq_dec (odnwDisk net) h (init_disk h) |} ->
       step_ordered_dynamic net net' []
-  | StepOrderedDynamic_deliver : forall net net' tr m ms out d d' l from to,
+  | StepOrderedDynamic_deliver : forall net net' tr m ms out d d' l w from to,
       In to (odnwNodes net) ->
       odnwState net to = Some d ->
       odnwPackets net from to = m :: ms ->
-      net_handlers to from m d = (out, d', l) ->
+      net_handlers to from m d = (out, d', l, w) ->
       net' = {| odnwNodes := odnwNodes net;
                 odnwPackets := collate name_eq_dec to (update2 name_eq_dec (odnwPackets net) from to ms) l;
-                odnwState := update name_eq_dec (odnwState net) to (Some d') |} ->
+                odnwState := update name_eq_dec (odnwState net) to (Some d');
+                odnwDisk := update name_eq_dec (odnwDisk net) to w |} ->
       tr = map2fst to (map inr out) ->
       step_ordered_dynamic net net' tr
-  | StepOrderedDynamic_input : forall h net net' tr out inp d d' l,
+  | StepOrderedDynamic_input : forall h net net' tr out inp d d' l w,
       In h (odnwNodes net) ->
       odnwState net h = Some d ->
-      input_handlers h inp d = (out, d', l) ->
+      input_handlers h inp d = (out, d', l, w) ->
       net' = {| odnwNodes := odnwNodes net;
                 odnwPackets := collate name_eq_dec h (odnwPackets net) l;
-                odnwState := update name_eq_dec (odnwState net) h (Some d') |} ->
+                odnwState := update name_eq_dec (odnwState net) h (Some d');
+                odnwDisk := update name_eq_dec (odnwDisk net) h w |} ->
       tr = (h, inl inp) :: map2fst h (map inr out) ->
       step_ordered_dynamic net net' tr.
 
   Definition step_ordered_dynamic_star := refl_trans_1n_trace step_ordered_dynamic.
 
-  Definition step_ordered_dynamic_init : ordered_dynamic_network := mkODNetwork [] (fun _ _ => []) (fun _ => None).
+  Definition step_ordered_dynamic_init : ordered_dynamic_network := mkODNetwork [] (fun _ _ => []) (fun _ => None) init_disk.
 End StepOrderedDynamic.
 
 Section StepOrderedDynamicFailure.
@@ -555,27 +581,30 @@ Section StepOrderedDynamicFailure.
                 odnwPackets := collate_ls name_eq_dec (filter_rel adjacent_to_dec h (remove_all name_eq_dec failed (odnwNodes net)))
                                 (collate name_eq_dec h (odnwPackets net)
                                   (map2snd msg_new (filter_rel adjacent_to_dec h (remove_all name_eq_dec failed (odnwNodes net))))) h msg_new;
-                odnwState := update name_eq_dec (odnwState net) h (Some (init_handlers h)) |} ->
+                odnwState := update name_eq_dec (odnwState net) h (Some (init_handlers h));
+                odnwDisk := update name_eq_dec (odnwDisk net) h (init_disk h) |} ->
       step_ordered_dynamic_failure (failed, net) (failed, net') []
-  | StepOrderedDynamicFailure_deliver : forall net net' failed tr m ms out d d' l from to,
+  | StepOrderedDynamicFailure_deliver : forall net net' failed tr m ms out d d' l w from to,
       ~ In to failed ->
       In to (odnwNodes net) ->
       odnwState net to = Some d ->
       odnwPackets net from to = m :: ms ->
-      net_handlers to from m d = (out, d', l) ->
+      net_handlers to from m d = (out, d', l, w) ->
       net' = {| odnwNodes := odnwNodes net;
                 odnwPackets := collate name_eq_dec to (update2 name_eq_dec (odnwPackets net) from to ms) l;
-                odnwState := update name_eq_dec (odnwState net) to (Some d') |} ->
+                odnwState := update name_eq_dec (odnwState net) to (Some d');
+             odnwDisk := update name_eq_dec (odnwDisk net) to w |} ->
       tr = map2fst to (map inr out) ->
       step_ordered_dynamic_failure (failed, net) (failed, net') tr
-  | StepOrderedDynamicFailure_input : forall h net net' failed tr out inp d d' l,
+  | StepOrderedDynamicFailure_input : forall h net net' failed tr out inp d d' l w,
       ~ In h failed ->
       In h (odnwNodes net) ->
       odnwState net h = Some d ->
-      input_handlers h inp d = (out, d', l) ->
+      input_handlers h inp d = (out, d', l, w) ->
       net' = {| odnwNodes := odnwNodes net;
                 odnwPackets := collate name_eq_dec h (odnwPackets net) l;
-                odnwState := update name_eq_dec (odnwState net) h (Some d') |} ->
+                odnwState := update name_eq_dec (odnwState net) h (Some d');
+                odnwDisk := update name_eq_dec (odnwDisk net) h w |} ->
       tr = (h, inl inp) :: map2fst h (map inr out) ->
       step_ordered_dynamic_failure (failed, net) (failed, net') tr
   | StepOrderedDynamicFailure_fail : forall h net net' failed,
@@ -584,7 +613,8 @@ Section StepOrderedDynamicFailure.
       net' = {| odnwNodes := odnwNodes net;
                 odnwPackets := collate name_eq_dec h (odnwPackets net)
                                 (map2snd msg_fail (filter_rel adjacent_to_dec h (remove_all name_eq_dec failed (odnwNodes net)))) ;
-                odnwState := odnwState net |} ->
+                odnwState := odnwState net;
+                odnwDisk := odnwDisk net |} ->
       step_ordered_dynamic_failure (failed, net) (h :: failed, net') [].
 
   Definition step_ordered_dynamic_failure_star := refl_trans_1n_trace step_ordered_dynamic_failure.
