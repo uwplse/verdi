@@ -18,6 +18,7 @@ depends: [
   "coq-mathcomp-ssreflect" {>= "1.6" & < "1.7~"}
   "InfSeqExt" {= "dev"}
   "StructTact" {= "dev"}
+  "cheerios" {= "dev"}
 ]
 
 tags: [
