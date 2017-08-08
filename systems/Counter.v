@@ -142,12 +142,12 @@ Qed.
 
 Lemma PrimaryNetHandler_no_msgs :
   forall m d ms d' o u,
-    PrimaryNetHandler m d = (u, o, d', ms) ->
+    (PrimaryNetHandler m;; snapshot)  d = (u, o, d', ms) ->
     ms = [].
 Proof.
-  unfold PrimaryNetHandler.
+  unfold PrimaryNetHandler, snapshot.
   intros. monad_unfold.
-  break_match; find_inversion; auto.
+  repeat break_match; repeat find_inversion; auto.
 Qed.
 
 Definition inc_in_flight_to_backup (l : list d_packet) : nat :=
@@ -259,13 +259,13 @@ Proof.
                try rewrite update_same;
         try rewrite update_diff by congruence;
         unfold d_send_packets in *; simpl in *.
-      * unfold NetHandler, snapshot, NetHandler' in *.
-        (* 
-        erewrite PrimaryNetHandler_no_msgs with (ms := l) in *1.
-
-        simpl in *. rewrite inc_in_flight_to_backup_nil in *. auto with *.
-         *)
-        admit.
+      * erewrite PrimaryNetHandler_no_msgs with (ms := l) in * by eauto.
+        simpl in *. rewrite inc_in_flight_to_backup_nil in *.
+        rewrite inc_in_flight_to_backup_cons_primary_dst in *;
+          (repeat rewrite <- plus_n_O in *);
+           simpl in *;
+           try rewrite H0;
+           assumption.
       * omega.
     + find_apply_lem_hyp input_handlers_InputHandlers.
       find_copy_apply_lem_hyp InputHandler_inc_in_flight_to_backup_preserved.
@@ -277,7 +277,7 @@ Proof.
       * omega.
       * erewrite InputHandler_backup_no_msgs with (l := l) by eauto.
         simpl. rewrite inc_in_flight_to_backup_nil. omega.
-Admitted.
+Qed.
 
 Theorem primary_ge_backup :
   forall net tr,
