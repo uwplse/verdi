@@ -104,7 +104,7 @@ Instance Counter_MultiParams : DiskParams Counter_BaseParams :=
     d_all_names_nodes := all_Names_Nodes;
     d_no_dup_nodes := NoDup_Nodes;
     d_init_handlers := fun _ => init_Data;
-    d_init_disk := fun _ => (serialize_top serialize 3);
+    d_init_disk := fun _ => (serialize_top serialize 0);
     d_net_handlers := fun dst src msg s =>
                         match (runGenHandler s (NetHandler dst msg)) with
                         | (dsk, out, d, l) => (out, d, l, dsk)
@@ -458,4 +458,50 @@ Proof.
   intros.
   apply inputs_eq_outputs_plus_inc_plus_ack in H.
   omega.
+Qed.
+
+Theorem disk_follows_local_state: forall net tr,
+    step_async_disk_star (params := Counter_MultiParams) step_async_disk_init net tr ->
+    deserialize_top (deserialize : ByteListReader.t nat) (nwdDisk net backup) = Some (nwdState net backup).
+Proof.
+  intros.
+  remember step_async_disk_init as y in *.
+  revert Heqy.
+  induction H using refl_trans_1n_trace_n1_ind; intros; subst.
+  - simpl.
+    unfold init_Data.
+    apply serialize_deserialize_top_id.
+  - concludes.
+    match goal with
+    | [ H : step_async_disk _ _ _ |- _ ] => invc H
+    end; simpl.
+    + destruct (d_pDst p).
+      * rewrite update_diff.
+        -- rewrite update_diff.
+           ++ assumption.
+           ++ discriminate.
+        -- discriminate.
+      * rewrite update_eq.
+        -- rewrite update_eq.
+           ++ simpl in *.
+              unfold runGenHandler, NetHandler, NetHandler', BackupNetHandler, snapshot in *.
+              monad_unfold.
+              repeat break_match;
+                do 2 find_inversion;
+                 apply serialize_deserialize_top_id.
+           ++ auto.
+        -- auto.
+    + destruct h.
+      * rewrite update_diff.
+        -- rewrite update_diff.
+           ++ assumption.
+           ++ discriminate.
+        -- discriminate.
+      * rewrite update_eq.
+        -- rewrite update_eq.
+           ++ simpl in *.
+              find_inversion.
+              apply serialize_deserialize_top_id.
+           ++ auto.
+        -- auto.
 Qed.
