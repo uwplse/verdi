@@ -36,6 +36,10 @@ Definition Handler (S A : Type) := GenHandler (Name * Msg) S Output A.
 Definition snapshot : Handler Data disk :=
   s <- get ;; ret (serialize_top serialize s).
 
+Definition reboot (s : IOStreamWriter.wire) : option Data :=
+  deserialize_top deserialize s.
+
+
 (* Definition keep_disk : Handler Data := *)
 Definition PrimaryNetHandler (m : Msg) : Handler Data unit :=
   match m with
@@ -114,6 +118,12 @@ Instance Counter_MultiParams : DiskParams Counter_BaseParams :=
                           | (dsk, out, d, l) => (out, d, l, dsk)
                           end
   }.
+
+Instance Counter_FailureParams : DiskFailureParams Counter_MultiParams :=
+  {
+    d_reboot := reboot
+  }.
+
 Lemma net_handlers_NetHandler :
   forall h src m d os d' ms dsk,
     d_net_handlers h src m d = (os, d', ms, dsk) ->
@@ -460,9 +470,43 @@ Proof.
   omega.
 Qed.
 
-Theorem disk_follows_local_state: forall net tr,
+Theorem net_handlers_reboot : forall node net p out d l dsk,
+    d_net_handlers node
+                   (d_pSrc p) (d_pBody p)
+                   (nwdState net node) = (out, d, l, dsk) ->
+      reboot (update Name_eq_dec (nwdDisk net) node dsk node) =
+  Some (update Name_eq_dec (nwdState net) node d node).
+Proof.
+  intros.
+  simpl in *.
+  destruct node;
+    unfold runGenHandler, NetHandler, NetHandler', PrimaryNetHandler, BackupNetHandler, snapshot in *;
+    monad_unfold;
+    repeat break_match;
+    repeat find_inversion;
+    apply serialize_deserialize_top_id.
+Qed.
+
+Theorem input_handlers_reboot : forall node net inp out d l dsk,
+    d_input_handlers node
+                     inp
+                   (nwdState net node) = (out, d, l, dsk) ->
+      reboot (update Name_eq_dec (nwdDisk net) node dsk node) =
+  Some (update Name_eq_dec (nwdState net) node d node).
+Proof.
+  intros.
+  simpl in *.
+  destruct node;
+    unfold runGenHandler, InputHandler, InputHandler', PrimaryInputHandler, BackupInputHandler, snapshot in *;
+    monad_unfold;
+    repeat break_match;
+    repeat find_inversion;
+    apply serialize_deserialize_top_id.
+Qed.
+
+Theorem disk_follows_local_state: forall net tr node,
     step_async_disk_star (params := Counter_MultiParams) step_async_disk_init net tr ->
-    deserialize_top (deserialize : ByteListReader.t nat) (nwdDisk net backup) = Some (nwdState net backup).
+    reboot (nwdDisk net node) = Some (nwdState net node).
 Proof.
   intros.
   remember step_async_disk_init as y in *.
@@ -475,33 +519,42 @@ Proof.
     match goal with
     | [ H : step_async_disk _ _ _ |- _ ] => invc H
     end; simpl.
-    + destruct (d_pDst p).
+    + destruct node, (d_pDst p).
+      * match goal with
+        | [H : d_net_handlers ?node _ _ _ = _ |- _] =>
+          apply (net_handlers_reboot node _ _ H)
+        end.
       * rewrite update_diff.
         -- rewrite update_diff.
            ++ assumption.
            ++ discriminate.
         -- discriminate.
-      * rewrite update_eq.
-        -- rewrite update_eq.
-           ++ simpl in *.
-              unfold runGenHandler, NetHandler, NetHandler', BackupNetHandler, snapshot in *.
-              monad_unfold.
-              repeat break_match;
-                do 2 find_inversion;
-                 apply serialize_deserialize_top_id.
-           ++ auto.
-        -- auto.
-    + destruct h.
       * rewrite update_diff.
         -- rewrite update_diff.
            ++ assumption.
            ++ discriminate.
         -- discriminate.
-      * rewrite update_eq.
-        -- rewrite update_eq.
-           ++ simpl in *.
-              find_inversion.
-              apply serialize_deserialize_top_id.
-           ++ auto.
-        -- auto.
+      * match goal with
+        | [H : d_net_handlers ?node _ _ _ = _ |- _] =>
+          apply (net_handlers_reboot node _ _ H)
+        end.
+    + destruct node, h.
+      * match goal with
+        | [H : d_input_handlers ?node _ _ = _ |- _] =>
+          apply (input_handlers_reboot node _ _ H)
+        end.
+      * rewrite update_diff.
+        -- rewrite update_diff.
+           ++ assumption.
+           ++ discriminate.
+        -- discriminate.
+      * rewrite update_diff.
+        -- rewrite update_diff.
+           ++ assumption.
+           ++ discriminate.
+        -- discriminate.
+      * match goal with
+        | [H : d_input_handlers ?node _ _ = _ |- _] =>
+          apply (input_handlers_reboot node _ _ H)
+        end.
 Qed.
