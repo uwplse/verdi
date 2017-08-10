@@ -44,7 +44,7 @@ Section DiskCorrect.
     reflexivity.
   Qed.
 
-  Theorem f : forall st l,
+  Theorem revertDiskNetwork_packets : forall st l,
       nwdPackets st = l -> nwPackets (revertDiskNetwork st) = map revertPacket l.
   Proof.
     intros.
@@ -52,7 +52,21 @@ Section DiskCorrect.
     find_rewrite.
     reflexivity.
   Qed.
-  
+
+  Theorem revert_d_send_packets : forall p l,
+      map revertPacket (d_send_packets (pDst (revertPacket p)) l) =
+      send_packets (pDst (revertPacket p)) l.
+  Proof.
+    intros.
+    induction l.
+    - reflexivity.
+    - break_exists.
+      simpl map.
+      rewrite revertPacket_dst.
+      find_rewrite.
+      reflexivity.
+  Qed.
+
   Lemma reachable_revert_step :
     forall st st' out,
       reachable step_async_disk step_async_disk_init st ->
@@ -70,14 +84,17 @@ Section DiskCorrect.
       inversion H2.
       repeat find_rewrite.
       rewrite revertPacket_src, revertPacket_dst, revertPacket_body, revertDiskNetwork_state in *.
-      copy_apply f H1.
-
+      copy_apply revertDiskNetwork_packets H1.
       unfold revertDiskNetwork at 2.
       unfold nwdPackets, nwdState.
 
       assert (p :: ys = [p] ++ ys). reflexivity.
       repeat find_rewrite.
-      repeat rewrite map_app.
+      repeat rewrite map_app in *.
+
+      rewrite revert_d_send_packets.
+      exists [(pDst (revertPacket p), inr out0)].
+      Fail (apply StepAsync_deliver).
       admit.
     - admit.
   Admitted.
