@@ -109,14 +109,8 @@ Instance Counter_MultiParams : DiskParams Counter_BaseParams :=
     d_no_dup_nodes := NoDup_Nodes;
     d_init_handlers := fun _ => init_Data;
     d_init_disk := fun _ => (serialize_top serialize 0);
-    d_net_handlers := fun dst src msg s =>
-                        match (runGenHandler s (NetHandler dst msg)) with
-                        | (dsk, out, d, l) => (out, d, l, dsk)
-                        end;
-    d_input_handlers := fun nm i s =>
-                          match runGenHandler s (InputHandler nm i) with
-                          | (dsk, out, d, l) => (out, d, l, dsk)
-                          end
+    d_net_handlers := fun dst src msg s => runGenHandler s (NetHandler dst msg);
+    d_input_handlers := fun nm i s => runGenHandler s (InputHandler nm i)
   }.
 
 Instance Counter_FailureParams : DiskFailureParams Counter_MultiParams :=
@@ -126,27 +120,25 @@ Instance Counter_FailureParams : DiskFailureParams Counter_MultiParams :=
 
 Lemma net_handlers_NetHandler :
   forall h src m d os d' ms dsk,
-    d_net_handlers h src m d = (os, d', ms, dsk) ->
+    d_net_handlers h src m d = (dsk, os, d', ms) ->
     NetHandler h m d = (dsk, os, d', ms).
 Proof.
   intros.
   simpl in *.
   monad_unfold.
   repeat break_let.
-  find_inversion.
   auto.
 Qed.
 
 Lemma input_handlers_InputHandlers :
   forall h i d os d' ms dsk,
-    d_input_handlers h i d = (os, d', ms, dsk) ->
+    d_input_handlers h i d = (dsk, os, d', ms) ->
     InputHandler h i d = (dsk, os, d', ms).
 Proof.
   intros.
   simpl in *.
   monad_unfold.
   repeat break_let.
-  find_inversion.
   auto.
 Qed.
 
@@ -473,7 +465,7 @@ Qed.
 Theorem net_handlers_reboot : forall node net p out d l dsk,
     d_net_handlers node
                    (d_pSrc p) (d_pBody p)
-                   (nwdState net node) = (out, d, l, dsk) ->
+                   (nwdState net node) = (dsk, out, d, l) ->
       reboot (update Name_eq_dec (nwdDisk net) node dsk node) =
   Some (update Name_eq_dec (nwdState net) node d node).
 Proof.
@@ -490,7 +482,7 @@ Qed.
 Theorem input_handlers_reboot : forall node net inp out d l dsk,
     d_input_handlers node
                      inp
-                   (nwdState net node) = (out, d, l, dsk) ->
+                   (nwdState net node) = (dsk, out, d, l) ->
       reboot (update Name_eq_dec (nwdDisk net) node dsk node) =
   Some (update Name_eq_dec (nwdState net) node d node).
 Proof.
