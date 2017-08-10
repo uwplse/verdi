@@ -48,12 +48,11 @@ Class MultiParams (P : BaseParams) :=
     input_handlers : name -> input -> data -> (list output) * data * list (name * msg)
   }.
 
-Definition disk := IOStreamWriter.wire.
-
 Class DiskParams (P : BaseParams) :=
   {
     d_name : Type ;
     d_msg : Type ;
+    disk : Type ;
     d_msg_eq_dec : forall x y : d_msg, {x = y} + {x <> y} ;
     d_name_eq_dec : forall x y : d_name, {x = y} + {x <> y} ;
     d_nodes : list d_name ;
