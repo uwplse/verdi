@@ -61,8 +61,8 @@ Class DiskParams (P : BaseParams) :=
     d_no_dup_nodes : NoDup d_nodes ;
     d_init_handlers : d_name -> data;
     d_init_disk     : d_name -> disk;
-    d_net_handlers : d_name -> d_name -> d_msg -> data -> (list output) * data * list (d_name * d_msg) * disk;
-    d_input_handlers : d_name -> input -> data -> (list output) * data * list (d_name * d_msg) * disk
+    d_net_handlers : d_name -> d_name -> d_msg -> data -> disk *(list output) * data * list (d_name * d_msg);
+    d_input_handlers : d_name -> input -> data -> disk * (list output) * data * list (d_name * d_msg)
   }.
 
 Class DiskFailureParams `(P : DiskParams) :=
@@ -362,14 +362,14 @@ Section StepAsyncDisk.
   Inductive step_async_disk : step_relation d_network (d_name * (input + list output)) :=
   | StepAsyncDisk_deliver : forall net net' p xs ys out d l dsk,
       nwdPackets net = xs ++ p :: ys ->
-      d_net_handlers (d_pDst p) (d_pSrc p) (d_pBody p) (nwdState net (d_pDst p)) = (out, d, l, dsk) ->
+      d_net_handlers (d_pDst p) (d_pSrc p) (d_pBody p) (nwdState net (d_pDst p)) = (dsk, out, d, l) ->
       net' = mkdNetwork (d_send_packets (d_pDst p) l ++ xs ++ ys)
                         (update d_name_eq_dec (nwdState net) (d_pDst p) d)
                         (update d_name_eq_dec (nwdDisk net) (d_pDst p) dsk) ->
       step_async_disk net net' [(d_pDst p, inr out)]
   (* inject a message (f inp) into host h. analogous to step_1 *delivery* *)
   | StepAsyncDisk_input : forall h net net' out inp d l dsk,
-      d_input_handlers h inp (nwdState net h) = (out, d, l, dsk) ->
+      d_input_handlers h inp (nwdState net h) = (dsk, out, d, l) ->
       net' = mkdNetwork (d_send_packets h l ++ nwdPackets net)
                         (update d_name_eq_dec (nwdState net) h d)
                         (update d_name_eq_dec (nwdDisk net) h dsk)->
