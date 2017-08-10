@@ -10,11 +10,8 @@ Section Disk.
   Context {orig_multi_params : MultiParams orig_base_params}.
   Context {data_serializer : Serializer data}.
 
-<<<<<<< HEAD
   Definition disk := IOStreamWriter.wire.
 
-=======
->>>>>>> e121e719ea8617f58e9e967301032e463dffe8d1
   Definition init_disk h := serialize_top serialize (init_handlers h).
   
   Definition disk_net_handlers dst src m st :=
