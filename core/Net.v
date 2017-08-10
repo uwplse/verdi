@@ -494,9 +494,7 @@ End StepFailure.
 Section StepFailureDisk.
   Context `{params : DiskFailureParams}.
 
-  (* this step relation transforms a list of failed hosts (list name * network), but does not transform handlers (H : hosts) *)
   Inductive step_failure_disk : step_relation (list d_name * d_network) (d_name * (input + list output)) := 
-  (* like step_async, but only delivers to hosts that haven't failed yet *)
   | StepFailureDisk_deliver : forall net net' failed p xs ys out d l dsk,
       nwdPackets net = xs ++ p :: ys ->
       ~ In (d_pDst p) failed ->
@@ -512,20 +510,16 @@ Section StepFailureDisk.
                         (update d_name_eq_dec (nwdState net) h d)
                         (update d_name_eq_dec (nwdDisk net) h dsk) ->
       step_failure_disk (failed, net) (failed, net') [(h, inl inp) ;  (h, inr out)]
-  (* drops a packet *)
   | StepFailureDisk_drop : forall net net' failed p xs ys,
       nwdPackets net = xs ++ p :: ys ->
       net' = (mkdNetwork (xs ++ ys) (nwdState net) (nwdDisk net)) ->
       step_failure_disk (failed, net) (failed, net') []
-  (* duplicates a packet *)
   | StepFailureDisk_dup : forall net net' failed p xs ys,
       nwdPackets net = xs ++ p :: ys ->
       net' = (mkdNetwork (p :: xs ++ p :: ys) (nwdState net) (nwdDisk net)) ->
       step_failure_disk (failed, net) (failed, net') []
-  (* a host fails (potentially again) *)
   | StepFailureDisk_fail :  forall h net failed,
       step_failure_disk (failed, net) (h :: failed, net) []
-  (* a host reboots (is not failing anymore). the new state is computed with the reboot function from the old state *)
   | StepFailureDisk_reboot : forall h net net' failed failed' d,
       In h failed ->
       failed' = remove d_name_eq_dec h failed ->
