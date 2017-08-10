@@ -33,6 +33,8 @@ Definition init_Data := 0.
 
 Definition Handler (S A : Type) := GenHandler (Name * Msg) S Output A.
 
+Definition disk := IOStreamWriter.wire.
+
 Definition snapshot : Handler Data disk :=
   s <- get ;; ret (serialize_top serialize s).
 
