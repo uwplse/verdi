@@ -1,5 +1,4 @@
 Require Import Verdi.Verdi.
-Require Import Verdi.HandlerMonad.
 
 Require Import Cheerios.Cheerios.
 
@@ -11,25 +10,33 @@ Section Disk.
   Context {orig_multi_params : MultiParams orig_base_params}.
   Context {data_serializer : Serializer data}.
 
+<<<<<<< HEAD
   Definition disk := IOStreamWriter.wire.
 
+=======
+>>>>>>> e121e719ea8617f58e9e967301032e463dffe8d1
   Definition init_disk h := serialize_top serialize (init_handlers h).
   
-  Definition disk_net_handlers dst src m : GenHandler (name * msg) data output disk :=
-    fun s =>
-      match net_handlers dst src m s with
-      | (out, data, packets) => 
+  Definition disk_net_handlers dst src m st :=
+    match net_handlers dst src m st with
+    | (out, data, packets) => 
       (serialize_top serialize data, out, data, packets)
     end.
 
-  Definition disk_input_handlers h inp : GenHandler (name * msg) data output disk :=
-    fun s =>
-      match input_handlers h inp s with
-      | (out, data, packets) => 
+  Definition disk_input_handlers h inp st :=
+    match input_handlers h inp st with
+    | (out, data, packets) => 
       (serialize_top serialize data, out, data, packets)
     end.
 
-  Instance disk_params : DiskParams orig_base_params :=
+  Instance base_params : BaseParams :=
+    {
+      data := data ;
+      input := input ;
+      output := output
+    }.
+
+  Instance disk_params : DiskParams base_params :=
     {
       d_name := name;
       d_name_eq_dec := name_eq_dec;
@@ -47,9 +54,10 @@ Section Disk.
 
   Instance disk_failure_params : DiskFailureParams disk_params :=
     {
-      d_reboot := deserialize_top (deserialize : ByteListReader.t data)
+      d_reboot := deserialize_top deserialize
     }.
 
+  (*
   Theorem disk_follows_local_state: forall net tr (node : d_name),
       step_async_disk_star (params := disk_params) step_async_disk_init net tr ->
       d_reboot (nwdDisk net node) = Some (nwdState net node).
@@ -71,5 +79,10 @@ Section Disk.
           repeat break_match;
           repeat find_inversion;
           apply serialize_deserialize_top_id.
-  Qed.        
+  Qed.
+   *)        
 End Disk.
+
+Hint Extern 5 (@BaseParams) => apply base_params : typeclass_instances.
+Hint Extern 5 (@DiskParams _) => apply disk_params : typeclass_instances.
+Hint Extern 5 (@DiskFailureParams _) => apply disk_failure_params : typeclass_instances.
