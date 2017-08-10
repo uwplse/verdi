@@ -1,12 +1,37 @@
 Require Import Verdi.Verdi.
+Require Import Cheerios.Cheerios.
+
 Require Import Verdi.Disk.
 
-Require Import Cheerios.Cheerios.
+Require Import mathcomp.ssreflect.ssreflect.
 
 Section DiskCorrect.
   Context {orig_base_params : BaseParams}.
   Context {orig_multi_params : MultiParams orig_base_params}.
   Context {data_serializer : Serializer data}.
+
+  Lemma disk_follows_local_state: forall net tr,
+      step_async_disk_star step_async_disk_init net tr ->
+      forall n, @d_reboot _ _ disk_failure_params (nwdDisk net n) = Some (nwdState net n).
+  Proof.
+    intros.
+    remember step_async_disk_init as y in *.
+    revert Heqy.
+    induction H using refl_trans_1n_trace_n1_ind; intros; subst.
+    - simpl.
+      unfold init_handlers.
+      apply serialize_deserialize_top_id.
+    - concludes.
+      match goal with
+      | [ H : step_async_disk _ _ _ |- _ ] => invc H
+      end; simpl;
+        break_if;
+        try assumption;
+        simpl in *; unfold disk_net_handlers, disk_input_handlers in *;
+          repeat break_match;
+          repeat find_inversion;
+          apply serialize_deserialize_top_id.
+  Qed.
 
   Definition orig_packet := @packet _ orig_multi_params.
   Definition orig_network := @network _ orig_multi_params.
@@ -17,133 +42,64 @@ Section DiskCorrect.
   Definition revertPacket (p : disk_packet) : orig_packet :=
     @mkPacket _ orig_multi_params (d_pSrc p) (d_pDst p) (d_pBody p).
 
-  Theorem revertPacket_src : forall p : disk_packet,
-      d_pSrc p = pSrc (revertPacket p).
-  Proof.
-    reflexivity.
-  Qed.
-
-  Theorem revertPacket_dst : forall p : disk_packet,
-      d_pDst p = pDst (revertPacket p).
-  Proof.
-    reflexivity.
-  Qed.
-
-  Theorem revertPacket_body : forall p : disk_packet,
-      d_pBody p = pBody (revertPacket p).
-  Proof.
-    reflexivity.
-  Qed.
-
   Definition revertDiskNetwork (net: disk_network) : orig_network :=
     mkNetwork (map revertPacket (nwdPackets net)) (nwdState net).
 
-  Lemma  revertDiskNetwork_state :
-    forall net, nwdState net = nwState (revertDiskNetwork net).
+  Lemma step_async_disk_star_step :
+    forall net net' tr,
+      step_async_disk net net' tr ->
+      step_async (revertDiskNetwork net) (revertDiskNetwork net') tr.
   Proof.
-    reflexivity.
+    move => net net' tr H_step.
+    destruct H_step.
+    - subst.
+      rewrite /= /revertDiskNetwork /= 2!map_app /=.
+      rewrite /d_net_handlers /= /disk_net_handlers /= in H0.
+      repeat break_let.
+      find_inversion.
+      have ->: d_pDst p = pDst (revertPacket p) by [].
+      eapply StepAsync_deliver; eauto.
+      * by rewrite /= H map_app /=; eauto.
+      * rewrite /d_send_packets /=.
+        set p1 := map revertPacket _.
+        set p2 := map _ l.
+        suff H_suff: p1 = p2 by rewrite H_suff.
+        rewrite /p1 /p2 {p1 p2 Heqp0}.
+        elim: l => //=.
+        case => n m l IH.
+        by rewrite {1}/revertPacket /= IH.
+    - subst.
+      rewrite /= /revertDiskNetwork /= map_app.
+      rewrite /d_input_handlers /= /disk_input_handlers /= in H.
+      repeat break_let.
+      find_inversion.
+      eapply StepAsync_input; eauto.
+      rewrite /=.
+      set p1 := map revertPacket _.
+      set p2 := map _ l.
+      suff H_suff: p1 = p2 by rewrite H_suff.
+      rewrite /p1 /p2 {p1 p2 Heqp}.
+      elim: l => //=.
+      case => n m l IH.
+      by rewrite {1}/revertPacket /= IH.
   Qed.
 
-  Theorem revertDiskNetwork_packets : forall st l,
-      nwdPackets st = l -> nwPackets (revertDiskNetwork st) = map revertPacket l.
-  Proof.
-    intros.
-    simpl.
-    find_rewrite.
-    reflexivity.
-  Qed.
-
-  Theorem map_revertPacket : forall st,
-      map revertPacket (nwdPackets st) = nwPackets (revertDiskNetwork st).
-  Proof.
-    reflexivity.
-  Qed.
-
-
-  
-  Theorem revert_d_send_packets : forall h l,
-      map revertPacket (d_send_packets h l) =
-      send_packets h l.
-  Proof.
-    intros.
-    induction l.
-    - reflexivity.
-    - break_exists.
-      simpl map.
-      find_rewrite.
-      reflexivity.
-  Qed.
-  
-  Lemma reachable_revert_step :
-    forall st st' out,
-      reachable step_async_disk step_async_disk_init st ->
-      step_async_disk st st' out ->
-      (exists out, step_async (revertDiskNetwork st) (revertDiskNetwork st') out).
-  Proof using.
-    intros.
-    unfold reachable in *.
-    break_exists.
-    match goal with H : step_async_disk _ _ _ |- _ => invc H end.
-    - match goal with H : d_net_handlers _ _ _ _ = _ |- _ => simpl in H end.
-      unfold disk_net_handlers in *.
-      repeat break_match.
-      simpl d_name_eq_dec.
-      rewrite revertPacket_src, revertPacket_dst, revertPacket_body, revertDiskNetwork_state in *.
-      copy_apply revertDiskNetwork_packets H1.
-      unfold revertDiskNetwork at 2.
-      unfold nwdPackets, nwdState.
-
-      assert (p :: ys = [p] ++ ys). reflexivity.
-      repeat find_rewrite.
-      repeat rewrite map_app in *.
-
-      rewrite revert_d_send_packets.
-      exists [(pDst (revertPacket p), inr out0)].
-      Fail (apply StepAsync_deliver).
-      admit.
-    - match goal with H : d_input_handlers _ _ _ = _ |- _ => invc H end.
-      unfold disk_input_handlers in *.
-      repeat break_match.
-      simpl d_name_eq_dec.
-      rewrite revertDiskNetwork_state in *.
-      unfold revertDiskNetwork at 2.
-      unfold nwdPackets at 1, nwdState.
-      rewrite map_app.
-      Fail apply StepAsync_input.
-      admit.
+  Lemma step_async_disk_star_revert_simulation : 
+    forall net tr,
+      step_async_disk_star step_async_disk_init net tr ->
+      step_async_star step_async_init (revertDiskNetwork net) tr.
+  Proof.   
   Admitted.
 
-  Theorem reachable_revert :
-    true_in_reachable step_async_disk step_async_disk_init
-                      (fun (st : disk_network) =>
-                         reachable step_async
-                                   step_async_init
-                                   (revertDiskNetwork st)).
-  Proof.
-    apply true_in_reachable_reqs.
-    - unfold revertDiskNetwork. simpl.
-      unfold reachable. exists []. constructor.
-    - intros.
-      find_apply_lem_hyp reachable_revert_step; auto.
-      intuition.
-      unfold reachable in *.
-      break_exists.
-      eexists.
-      apply refl_trans_n1_1n_trace.
-      econstructor; eauto using refl_trans_1n_n1_trace.
-  Qed.
-
-  Theorem true_in_reachable_disk_transform :
+  Corollary true_in_reachable_disk_transform :
     forall P,
       true_in_reachable step_async step_async_init P ->
       true_in_reachable step_async_disk step_async_disk_init (fun net => P (revertDiskNetwork net)).
   Proof.
-    intros. find_apply_lem_hyp true_in_reachable_elim. intuition.
-    apply true_in_reachable_reqs. eauto.
-    intros. find_copy_apply_lem_hyp reachable_revert.
-    find_apply_lem_hyp reachable_revert_step; auto.
-    intuition.
+    rewrite /true_in_reachable /reachable => P H_r net H_r'.
     break_exists.
-    eauto.
+    find_apply_lem_hyp step_async_disk_star_revert_simulation.
+    apply H_r.
+    by exists x.
   Qed.
 End DiskCorrect.

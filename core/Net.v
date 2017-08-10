@@ -535,12 +535,11 @@ Section StepFailureDisk.
                         (nwdDisk net) ->
       step_failure_disk (failed, net) (failed', net') [].
 
-  Definition step_failure_star : step_relation (list name * network) (name * (input + list output)) :=
-    refl_trans_1n_trace step_failure.
+  Definition step_failure_disk_star : step_relation (list d_name * d_network) (d_name * (input + list output)) :=
+    refl_trans_1n_trace step_failure_disk.
 
-  Definition step_failure_init : list name * network := ([], step_async_init).
-End StepFailure.
-
+  Definition step_failure_disk_init : list d_name * d_network := ([], step_async_disk_init).
+End StepFailureDisk.
 
 Section StepOrdered.
   Context `{params : MultiParams}.

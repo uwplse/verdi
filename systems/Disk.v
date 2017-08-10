@@ -4,7 +4,6 @@ Require Import Cheerios.Cheerios.
 
 Set Implicit Arguments.
 
-
 Section Disk.
   Context {orig_base_params : BaseParams}.
   Context {orig_multi_params : MultiParams orig_base_params}.
@@ -53,31 +52,6 @@ Section Disk.
     {
       d_reboot := deserialize_top deserialize
     }.
-
-  (*
-  Theorem disk_follows_local_state: forall net tr (node : d_name),
-      step_async_disk_star (params := disk_params) step_async_disk_init net tr ->
-      d_reboot (nwdDisk net node) = Some (nwdState net node).
-  Proof.
-    intros.
-    remember step_async_disk_init as y in *.
-    revert Heqy.
-    induction H using refl_trans_1n_trace_n1_ind; intros; subst.
-    - simpl.
-      unfold init_handlers.
-      apply serialize_deserialize_top_id.
-    - concludes.
-      match goal with
-      | [ H : step_async_disk _ _ _ |- _ ] => invc H
-      end; simpl;
-        break_if;
-        try assumption;
-        simpl in *; unfold disk_net_handlers, disk_input_handlers in *;
-          repeat break_match;
-          repeat find_inversion;
-          apply serialize_deserialize_top_id.
-  Qed.
-   *)        
 End Disk.
 
 Hint Extern 5 (@BaseParams) => apply base_params : typeclass_instances.
