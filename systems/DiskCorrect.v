@@ -17,8 +17,41 @@ Section DiskCorrect.
   Definition revertPacket (p : disk_packet) : orig_packet :=
     @mkPacket _ orig_multi_params (d_pSrc p) (d_pDst p) (d_pBody p).
 
+  Theorem revertPacket_src : forall p : disk_packet,
+      d_pSrc p = pSrc (revertPacket p).
+  Proof.
+    reflexivity.
+  Qed.
+
+  Theorem revertPacket_dst : forall p : disk_packet,
+      d_pDst p = pDst (revertPacket p).
+  Proof.
+    reflexivity.
+  Qed.
+
+  Theorem revertPacket_body : forall p : disk_packet,
+      d_pBody p = pBody (revertPacket p).
+  Proof.
+    reflexivity.
+  Qed.
+
   Definition revertDiskNetwork (net: disk_network) : orig_network :=
     mkNetwork (map revertPacket (nwdPackets net)) (nwdState net).
+
+  Lemma  revertDiskNetwork_state :
+    forall net, nwdState net = nwState (revertDiskNetwork net).
+  Proof.
+    reflexivity.
+  Qed.
+
+  Theorem f : forall st l,
+      nwdPackets st = l -> nwPackets (revertDiskNetwork st) = map revertPacket l.
+  Proof.
+    intros.
+    simpl.
+    find_rewrite.
+    reflexivity.
+  Qed.
   
   Lemma reachable_revert_step :
     forall st st' out,
@@ -29,11 +62,26 @@ Section DiskCorrect.
     intros.
     unfold reachable in *.
     break_exists.
-    match goal with H : step_async_disk _ _ _ |- _ => invcs H end.
-    - admit.
+    match goal with H : step_async_disk _ _ _ |- _ => invc H end.
+    - match goal with H : d_net_handlers _ _ _ _ = _ |- _ => simpl in H end.
+      unfold disk_net_handlers in *.
+      repeat break_match.
+      simpl d_name_eq_dec.
+      inversion H2.
+      repeat find_rewrite.
+      rewrite revertPacket_src, revertPacket_dst, revertPacket_body, revertDiskNetwork_state in *.
+      copy_apply f H1.
+
+      unfold revertDiskNetwork at 2.
+      unfold nwdPackets, nwdState.
+
+      assert (p :: ys = [p] ++ ys). reflexivity.
+      repeat find_rewrite.
+      repeat rewrite map_app.
+      admit.
     - admit.
   Admitted.
-  
+
   Theorem reachable_revert :
     true_in_reachable step_async_disk step_async_disk_init
                       (fun (st : disk_network) =>
@@ -51,8 +99,7 @@ Section DiskCorrect.
       break_exists.
       eexists.
       apply refl_trans_n1_1n_trace.
-      econstructor;
-        eauto using refl_trans_1n_n1_trace.
+      econstructor; eauto using refl_trans_1n_n1_trace.
   Qed.
 
   Theorem true_in_reachable_disk_transform :
@@ -60,9 +107,8 @@ Section DiskCorrect.
       true_in_reachable step_async step_async_init P ->
       true_in_reachable step_async_disk step_async_disk_init (fun net => P (revertDiskNetwork net)).
   Proof.
-    intros.
     intros. find_apply_lem_hyp true_in_reachable_elim. intuition.
-    apply true_in_reachable_reqs; eauto.
+    apply true_in_reachable_reqs. eauto.
     intros. find_copy_apply_lem_hyp reachable_revert.
     find_apply_lem_hyp reachable_revert_step; auto.
     intuition.
