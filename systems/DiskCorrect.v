@@ -89,7 +89,21 @@ Section DiskCorrect.
       step_async_disk_star step_async_disk_init net tr ->
       step_async_star step_async_init (revertDiskNetwork net) tr.
   Proof.   
-  Admitted.
+    intros.
+    remember step_async_disk_init.
+    induction H using refl_trans_1n_trace_n1_ind.
+    - find_rewrite.
+      unfold step_async_disk_init. simpl.
+      unfold revertDiskNetwork. simpl.
+      constructor.
+    - concludes.
+      unfold step_async_star.
+      apply RT1n_step with (y := revertDiskNetwork x').
+      + find_rewrite.
+        assumption.
+      + apply step_async_disk_star_step.
+        assumption.
+  Qed.
 
   Corollary true_in_reachable_disk_transform :
     forall P,
