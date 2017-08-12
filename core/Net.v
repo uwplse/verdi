@@ -48,7 +48,7 @@ Class MultiParams (P : BaseParams) :=
     input_handlers : name -> input -> data -> (list output) * data * list (name * msg)
   }.
 
-Class DiskParams (P : BaseParams) :=
+Class DiskMultiParams (P : BaseParams) :=
   {
     d_name : Type ;
     d_msg : Type ;
@@ -64,7 +64,7 @@ Class DiskParams (P : BaseParams) :=
     d_input_handlers : d_name -> input -> data -> disk * (list output) * data * list (d_name * d_msg)
   }.
 
-Class DiskFailureParams `(P : DiskParams) :=
+Class DiskFailureParams `(P : DiskMultiParams) :=
   {
     d_reboot : disk -> option data
   }.
@@ -338,7 +338,7 @@ End StepAsync.
 
 Section StepAsyncDisk.
 
-  Context `{params : DiskParams}.
+  Context `{params : DiskMultiParams}.
 
   Record d_packet := mkdPacket { d_pSrc  : d_name ;
                                  d_pDst  : d_name ;

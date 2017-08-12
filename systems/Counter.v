@@ -100,7 +100,7 @@ Proof.
   repeat constructor; simpl; intuition discriminate.
 Qed.
 
-Instance Counter_MultiParams : DiskParams Counter_BaseParams :=
+Instance Counter_MultiParams : DiskMultiParams Counter_BaseParams :=
   {
     d_name := Name;
     d_name_eq_dec := Name_eq_dec;
