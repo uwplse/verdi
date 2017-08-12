@@ -84,11 +84,11 @@ Section DiskCorrect.
       by rewrite {1}/revertPacket /= IH.
   Qed.
 
-  Lemma step_async_disk_star_revert_simulation : 
+  Lemma step_async_disk_star_revert_simulation :
     forall net tr,
       step_async_disk_star step_async_disk_init net tr ->
       step_async_star step_async_init (revertDiskNetwork net) tr.
-  Proof.   
+  Proof.
     intros.
     remember step_async_disk_init.
     induction H using refl_trans_1n_trace_n1_ind.
@@ -115,5 +115,116 @@ Section DiskCorrect.
     find_apply_lem_hyp step_async_disk_star_revert_simulation.
     apply H_r.
     by exists x.
+  Qed.
+
+
+  Definition revertDiskFailureNetwork (net : list d_name * d_network) : network :=
+    match net with
+    | (_, net) => revertDiskNetwork net
+    end.
+
+  Context {disk_failure_params : DiskFailureParams disk_params}.
+
+  Theorem revertPacket_src : forall p : disk_packet,
+      d_pSrc p = pSrc (revertPacket p).
+  Proof.
+    reflexivity.
+  Qed.
+
+  Theorem revertPacket_dst : forall p : disk_packet,
+      d_pDst p = pDst (revertPacket p).
+  Proof.
+    reflexivity.
+  Qed.
+
+  Theorem revertPacket_body : forall p : disk_packet,
+      d_pBody p = pBody (revertPacket p).
+  Proof.
+    reflexivity.
+  Qed.
+
+  Lemma  revertDiskNetwork_state :
+    forall net, nwdState net = nwState (revertDiskNetwork net).
+  Proof.
+    reflexivity.
+  Qed.
+
+  Theorem revert_d_send_packets : forall h l,
+      map revertPacket (d_send_packets h l) =
+      send_packets h l.
+  Proof.
+    intros.
+    induction l.
+    - reflexivity.
+    - break_exists.
+      simpl map.
+      find_rewrite.
+      reflexivity.
+  Qed.
+
+
+  Lemma step_disk_failure_star_step :
+    forall net net' tr,
+      step_failure_disk net net' tr ->
+      step_async (revertDiskFailureNetwork net) (revertDiskFailureNetwork net') tr
+      \/ (revertDiskFailureNetwork net) = (revertDiskFailureNetwork net').
+  Proof.
+    intros.
+    destruct H;
+      simpl;
+      subst;
+      unfold revertDiskNetwork at 2.
+    - left.
+      simpl nwdPackets. simpl nwdState.
+      repeat break_match.
+      simpl in *. unfold disk_net_handlers in *.
+      repeat break_match. find_inversion.
+      rewrite revertPacket_dst.
+      rewrite revertPacket_src revertPacket_dst revertPacket_body revertDiskNetwork_state in Heqp0.
+      eapply (StepAsync_deliver _ _ (map revertPacket xs) (map revertPacket ys) _ Heqp0).
+      + repeat rewrite map_app.
+        rewrite (revert_d_send_packets (pDst (revertPacket p))).
+        reflexivity.
+      + simpl.
+    - left.
+      simpl in H0.
+      unfold disk_input_handlers in H0.
+      repeat break_match.
+      find_inversion.
+      rewrite map_app.
+      rewrite revert_d_send_packets.
+      rewrite revertDiskNetwork_state in Heqp.
+      apply StepAsync_input with (d0 := d) (l0 := l).
+      + assumption.
+      + reflexivity.
+    - admit.
+    - admit.
+    - right.
+      reflexivity.
+    - right.
+      admit.
+  Admitted.
+
+  Lemma step_disk_failure_star_revert_simulation :
+    forall net tr,
+      step_failure_disk_star step_failure_disk_init net tr ->
+      step_async_star step_async_init (revertDiskFailureNetwork net) tr.
+  Proof.
+    intros.
+    remember step_failure_disk_init as y.
+    induction H using refl_trans_1n_trace_n1_ind.
+    - find_rewrite.
+      simpl.
+      unfold revertDiskNetwork, step_async_disk_init.
+      simpl.
+      constructor.
+    - concludes.
+      unfold step_async_star.
+      Print refl_trans_1n_trace.
+      apply RT1n_step with (y := (revertDiskFailureNetwork x')).
+      + find_rewrite.
+        assumption.
+      + apply step_disk_failure_star_step.
+        assumption.
   Qed.
 End DiskCorrect.
