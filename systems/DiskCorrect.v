@@ -68,7 +68,7 @@ Section DiskCorrect.
   Definition revertDiskNetwork (net: disk_network) : orig_network :=
     mkNetwork (map revertPacket (nwdPackets net)) (nwdState net).
 
-  Lemma step_failure_disk_star_step :
+  Theorem disk_step_failure_step :
     forall net net' failed failed' tr tr',
       step_failure_disk_star step_failure_disk_init (failed, net) tr ->
       step_failure_disk (failed, net) (failed', net') tr' ->
@@ -127,7 +127,7 @@ Section DiskCorrect.
       exact: disk_follows_local_state_reboot _ _ _ H_star h _ Heqo.
   Qed.
 
-  Lemma step_failure_disk_star_revert_simulation :
+  Lemma disk_step_failure_star_simulation :
     forall net failed tr,
       step_failure_disk_star step_failure_disk_init (failed, net) tr ->
       step_failure_star step_failure_init (failed, revertDiskNetwork net) tr.
@@ -147,7 +147,7 @@ Section DiskCorrect.
       subst.
       apply RT1n_step with (y := (failed', revertDiskNetwork net')).
       + exact: IHH_star1.
-      + exact: (step_failure_disk_star_step _ _ _ _ tr1).
+      + exact: (disk_step_failure_step _ _ _ _ tr1).
   Qed.
 
   Corollary true_in_reachable_disk_transform :
@@ -157,7 +157,7 @@ Section DiskCorrect.
   Proof.
     rewrite /true_in_reachable /reachable => P H_r [failed net] H_r'.
     break_exists.
-    find_apply_lem_hyp step_failure_disk_star_revert_simulation.
+    find_apply_lem_hyp disk_step_failure_star_simulation.
     apply H_r.
     by exists x.
   Qed.
