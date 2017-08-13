@@ -17,14 +17,15 @@ Section DiskCorrect.
 
   Lemma disk_follows_local_state_reboot : forall net failed tr,
       step_failure_disk_star step_failure_disk_init (failed, net) tr ->
-      forall n, deserialize_top deserialize (nwdDisk net n) = Some (@reboot _ _ orig_failure_params (nwdState net n)).
+      forall n d, deserialize_top deserialize (nwdDisk net n) = Some d ->
+        @reboot _ _ orig_failure_params d = @reboot _ _ orig_failure_params (nwdState net n).
   Proof.
     remember step_failure_disk_init as y in *.
     move => net failed tr H_st.
     change net with (snd (failed, net)).
     move: Heqy.
     induction H_st using refl_trans_1n_trace_n1_ind => 
-    H_init n; first by rewrite H_init /= /init_disk serialize_deserialize_top_id.
+    H_init n d; first by rewrite H_init /= /init_disk serialize_deserialize_top_id => H_d; find_injection.
     concludes.
     match goal with
       | [ H : step_failure_disk _ _ _ |- _ ] => invcs H
@@ -32,19 +33,27 @@ Section DiskCorrect.
     - unfold disk_net_handlers in *.
       repeat break_let.
       find_inversion.
-      break_if => //.
-      by rewrite serialize_deserialize_top_id.
-   -  unfold disk_input_handlers in *.
-      repeat break_let.
-      find_inversion.
-      break_if => //.
-      by rewrite serialize_deserialize_top_id.
-   - break_if => //.
-     subst.
-     rewrite IHH_st1 in H2.
-     find_injection.
-     rewrite reboot_idem.
-     exact: IHH_st1.
+      break_if.
+      * subst. rewrite serialize_deserialize_top_id => H_d.
+        by find_injection.
+      * exact: IHH_st1.
+   - unfold disk_input_handlers in *.
+     repeat break_let.
+     find_inversion.
+     break_if.
+     * subst. rewrite serialize_deserialize_top_id => H_d.
+       by find_injection.
+     * exact: IHH_st1.
+   - exact: IHH_st1.
+   - exact: IHH_st1.
+   - exact: IHH_st1.
+   - break_if.
+     * subst.
+       break_match => //.
+       find_injection.
+       find_injection.
+       by rewrite reboot_idem.
+     * exact: IHH_st1.
    Qed.
 
   Definition orig_packet := @packet _ orig_multi_params.
@@ -113,9 +122,9 @@ Section DiskCorrect.
       apply functional_extensionality => n.
       break_if => //=.
       subst.
-      have H_f := disk_follows_local_state_reboot _ _ _ H_star h.
-      find_rewrite.
-      by find_injection.
+      break_match => //.
+      find_injection.
+      exact: disk_follows_local_state_reboot _ _ _ H_star h _ Heqo.
   Qed.
 
   Lemma step_failure_disk_star_revert_simulation :

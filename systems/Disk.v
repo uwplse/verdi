@@ -10,15 +10,15 @@ Section Disk.
   Context {orig_failure_params : FailureParams orig_multi_params}.
   Context {data_serializer : Serializer data}.
 
-  Definition init_disk h := serialize_top serialize (reboot (init_handlers h)).
+  Definition init_disk h := serialize_top serialize (init_handlers h).
   
   Definition disk_net_handlers dst src m st :=
     let '(out, data, ps) := net_handlers dst src m st in
-    (serialize_top serialize (reboot data), out, data, ps).
+    (serialize_top serialize data, out, data, ps).
 
   Definition disk_input_handlers h inp st :=
     let '(out, data, ps) := input_handlers h inp st in
-    (serialize_top serialize (reboot data), out, data, ps).
+    (serialize_top serialize data, out, data, ps).
 
   Instance disk_base_params : BaseParams :=
     {
@@ -45,7 +45,12 @@ Section Disk.
 
   Instance disk_failure_params : DiskFailureParams disk_multi_params :=
     {
-      d_reboot := deserialize_top deserialize
+      d_reboot :=
+        fun s =>
+          match deserialize_top deserialize s with
+          | Some d => Some (@reboot _ _ orig_failure_params d)
+          | None => None
+          end
     }.
 End Disk.
 
