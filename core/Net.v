@@ -380,17 +380,22 @@ End StepAsyncDisk.
 Arguments update _ _ _ _ _ _ / _.
 Arguments send_packets _ _ _ _ /.
 
-Section packet_eta.
-  Context {P : BaseParams}.
-  Context {M : @MultiParams P}.
+Section ParamsAux.
+  Context `{params : MultiParams}.
 
   Lemma packet_eta :
-    forall p : @packet P M,
+    forall p : packet,
       {| pSrc := pSrc p; pDst := pDst p; pBody := pBody p |} = p.
   Proof using.
     destruct p; auto.
   Qed.
-End packet_eta.
+
+  Definition trace_non_empty_out (e : name * (input + list output)) :=
+    match e with
+    | (n, inr []) => None
+    | _ => Some e
+    end.
+End ParamsAux.
 
 Ltac map_id :=
   rewrite map_ext with (g := (fun x => x)); [eauto using map_id|simpl; intros; apply packet_eta].

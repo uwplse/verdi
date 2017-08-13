@@ -1,7 +1,5 @@
 Require Import Verdi.Verdi.
-
 Require Import FunctionalExtensionality.
-
 Require Import Verdi.SeqNum.
 
 Section SeqNumCorrect.
@@ -89,7 +87,6 @@ Section SeqNumCorrect.
       subst; eapply processPackets_correct in Heqp; eauto; omega.
   Qed.
 
-
   Lemma processPackets_NoDup : forall n l n' l',
                                   processPackets n l = (n', l') ->
                                   NoDup l'.
@@ -100,7 +97,6 @@ Section SeqNumCorrect.
       specialize (IHl n0 l0). concludes.
       constructor; auto.
       intro.
-
       eapply processPackets_correct in H; eauto.
       simpl in *. omega.
   Qed.
@@ -123,10 +119,10 @@ Section SeqNumCorrect.
     @mkPacket _ orig_multi_params (pSrc p) (pDst p) (tmMsg (pBody p)).
 
   Definition pkt_eq_dec (x y : seq_num_packet) : {x = y} + {x <> y}.
-    repeat decide equality.
-    apply msg_eq_dec.
-    apply name_eq_dec.
-    apply name_eq_dec.
+    decide equality.
+    - apply msg_eq_dec.
+    - apply name_eq_dec.
+    - apply name_eq_dec.
   Defined.
 
   Definition revertNetwork (net: seq_num_network) : orig_network :=
@@ -575,13 +571,13 @@ Section SeqNumCorrect.
 
   (* We need this for dedup_eliminates_duplicates *)
   Arguments dedup _ _ _ : simpl nomatch.
-  
+
   Lemma reachable_revert_step :
-    forall st st' out,
+    forall st st' tr,
       reachable step_dup step_async_init st ->
-      step_dup st st' out ->
-      (exists out, step_async (revertNetwork st) (revertNetwork st') out)
-      \/ revertNetwork st = revertNetwork st'.
+      step_dup st st' tr ->
+      step_async (revertNetwork st) (revertNetwork st') tr \/
+      (revertNetwork st = revertNetwork st' /\ filterMap trace_non_empty_out tr = []).
   Proof using.
     intros.
     find_copy_apply_lem_hyp reachable_sane.
@@ -589,7 +585,12 @@ Section SeqNumCorrect.
     find_copy_apply_lem_hyp reachable_equality.
     break_exists.
     match goal with H : step_dup _ _ _ |- _ => invcs H end.
-    - unfold seq_num_net_handlers in *. break_if.
+    - unfold seq_num_net_handlers in *.
+      match goal with
+      | [H : context [ if _ then _ else _ ] |- _] =>
+        revert H
+      end.
+      break_if; intros.
       + right. find_inversion. simpl in *.
         unfold revertNetwork. simpl in *. intuition.
         f_equal.
@@ -606,19 +607,71 @@ Section SeqNumCorrect.
         * apply functional_extensionality.
           intros. break_if; subst; intuition.
       + left. repeat break_let. find_inversion.
-        eexists.
-        find_eapply_lem_hyp revertNetwork_deliver_step; eauto.
+        match goal with
+        | [ H : processPackets _ _ = _, H' : net_handlers _ _ _ _ = (_, d0, _) |- _ ] =>
+          eapply revertNetwork_deliver_step with (d := d0) in H; eauto
+        end.
         break_exists.
-        intuition.
-        econstructor; eauto.
+        break_and.
+        match goal with
+        | [H : nwPackets _ = _ |- _ ] =>
+          eapply (StepAsync_deliver _ _ _ _ H); eauto
+        end.
     - left. unfold seq_num_input_handlers in *. repeat break_let.
       find_inversion.
-      eexists. find_eapply_lem_hyp revertNetwork_input; eauto.
+      find_eapply_lem_hyp revertNetwork_input; eauto.
       econstructor 2; simpl; eauto.
     - right.
+      split; auto.
       unfold revertNetwork.
       f_equal. f_equal. f_equal.
       simpl. find_rewrite. eauto using dedup_eliminates_duplicates.
+  Qed.
+
+  Lemma step_dup_star_revert_simulation :
+    forall net tr,
+      step_dup_star step_async_init net tr ->
+      exists tr', step_async_star step_async_init (revertNetwork net) tr' /\
+      filterMap trace_non_empty_out tr = filterMap trace_non_empty_out tr'.
+  Proof.
+    intros.
+    remember step_async_init as y in *.
+    revert Heqy.
+    induction H using refl_trans_1n_trace_n1_ind; simpl; intros.
+    - find_rewrite.
+      exists []; simpl.
+      split; auto.
+      apply RT1nTBase.
+    - concludes.
+      subst.
+      break_exists_name tr'.
+      break_and.
+      assert (H_r: reachable step_dup step_async_init x') by (exists tr1; auto).
+      eapply reachable_revert_step in H_r; eauto.
+      break_or_hyp.
+      * exists (tr' ++ tr2); split.
+        + eapply refl_trans_1n_trace_trans; eauto.
+          rewrite (app_nil_end tr2).
+          eapply RT1nTStep; eauto.
+          apply RT1nTBase.
+        + rewrite filterMap_app.
+          rewrite filterMap_app.
+          find_reverse_rewrite.
+          reflexivity.
+      * break_and.
+        find_rewrite.
+        exists tr'; split; simpl; auto.
+        match goal with
+        | [H : filterMap _ _ = filterMap _ _ |- _ ] =>
+          rewrite <- H
+        end.
+        rewrite filterMap_app.
+        destruct tr2; simpl in *; [ rewrite <- app_nil_end | idtac ]; auto.
+        match goal with
+        | [H : _ = [] |- _ ] =>
+          rewrite H
+        end.
+        rewrite <- app_nil_end; auto.
   Qed.
 
   Theorem reachable_revert :

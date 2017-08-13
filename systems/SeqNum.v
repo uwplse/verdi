@@ -22,19 +22,19 @@ Section SeqNum.
     match packets with
       | [] => (seq_num, [])
       | p :: ps => let (n', pkts) := processPackets seq_num ps in
-                   (n' + 1, (fst p, mkseq_num_msg n' (snd p)) :: pkts)
+                   (S n', (fst p, mkseq_num_msg n' (snd p)) :: pkts)
     end.
 
   Definition seq_num_init_handlers (n : name) :=
     mkseq_num_data 0 [] (init_handlers n).
 
   Definition seq_num_net_handlers (dst : name) (src : name) (m : seq_num_msg) (state : seq_num_data) :
-    (list output) * seq_num_data * list (name * seq_num_msg) :=
+    list output * seq_num_data * list (name * seq_num_msg) :=
     let seen_src := assoc_default name_eq_dec (tdSeen state) src [] in
-    if (member (tmNum m) seen_src) then
+    if member (tmNum m) seen_src then
       ([], state, [])
     else
-      let '(out, data', pkts) := (net_handlers dst src (tmMsg m) (tdData state)) in
+      let '(out, data', pkts) := net_handlers dst src (tmMsg m) (tdData state) in
       let (n', tpkts) := processPackets (tdNum state) pkts in
       (out, mkseq_num_data n' (assoc_set name_eq_dec (tdSeen state) src (tmNum m :: seen_src)) data', tpkts).
 
@@ -43,7 +43,7 @@ Section SeqNum.
              (inp : input)
              (state : seq_num_data) :
     (list output) * seq_num_data * list (name * seq_num_msg) :=
-    let '(out, data', pkts) := (input_handlers h inp (tdData state)) in
+    let '(out, data', pkts) := input_handlers h inp (tdData state) in
     let (n', tpkts) := processPackets (tdNum state) pkts in
     (out, mkseq_num_data n' (tdSeen state) data', tpkts).
 
