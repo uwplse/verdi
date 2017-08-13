@@ -141,7 +141,7 @@ Theorem lb_step_failure_pt_mapped_simulation_1_silent :
   forall net net' failed failed' lb tr,
     tot_map_label lb = label_silent ->
     @lb_step_failure _ labeled_multi_fst (failed, net) lb (failed', net') tr ->
-    @lb_step_failure _ labeled_multi_snd (List.map tot_map_name failed, pt_map_net net) label_silent (List.map tot_map_name failed', pt_map_net net') [] /\ filterMap pt_trace_remove_empty_out (filterMap pt_map_trace_occ tr) = [].
+    @lb_step_failure _ labeled_multi_snd (List.map tot_map_name failed, pt_map_net net) label_silent (List.map tot_map_name failed', pt_map_net net') [] /\ filterMap trace_non_empty_out (filterMap pt_map_trace_occ tr) = [].
 Proof using multi_map_lb_congr multi_map_congr.
 move => net net' failed failed' lb tr H_eq H_step.
 invcs H_step => //=.

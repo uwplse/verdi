@@ -577,8 +577,7 @@ Section SeqNumCorrect.
       reachable step_dup step_async_init st ->
       step_dup st st' tr ->
       step_async (revertNetwork st) (revertNetwork st') tr \/
-      (revertNetwork st = revertNetwork st' /\ 
-      filterMap (fun e => match e with (n, inr []) => None | _ => Some e end) tr = []).
+      (revertNetwork st = revertNetwork st' /\ filterMap trace_non_empty_out tr = []).
   Proof using.
     intros.
     find_copy_apply_lem_hyp reachable_sane.
@@ -629,14 +628,11 @@ Section SeqNumCorrect.
       simpl. find_rewrite. eauto using dedup_eliminates_duplicates.
   Qed.
 
-  Require Import mathcomp.ssreflect.ssreflect.
-
   Lemma disk_step_failure_star_simulation :
     forall net tr,
       step_dup_star step_async_init net tr ->
       exists tr', step_async_star step_async_init (revertNetwork net) tr' /\
-      filterMap (fun e => match e with (n, inr []) => None | _ => Some e end) tr =
-      filterMap (fun e => match e with (n, inr []) => None | _ => Some e end) tr'.
+      filterMap trace_non_empty_out tr = filterMap trace_non_empty_out tr'.
   Proof.
     intros.
     remember step_async_init as y in *.
@@ -648,12 +644,12 @@ Section SeqNumCorrect.
       apply RT1nTBase.
     - concludes.
       subst.
-      break_exists.
+      break_exists_name tr'.
       break_and.
       assert (H_r: reachable step_dup step_async_init x') by (exists tr1; auto).
       eapply reachable_revert_step in H_r; eauto.
       break_or_hyp.
-      * exists (x ++ tr2); split.
+      * exists (tr' ++ tr2); split.
         + eapply refl_trans_1n_trace_trans; eauto.
           rewrite (app_nil_end tr2).
           eapply RT1nTStep; eauto.
@@ -664,9 +660,18 @@ Section SeqNumCorrect.
           reflexivity.
       * break_and.
         find_rewrite.
-        exists x; split; simpl; auto.
+        exists tr'; split; simpl; auto.
+        match goal with
+        | [H : filterMap _ _ = filterMap _ _ |- _ ] =>
+          rewrite <- H
+        end.
         rewrite filterMap_app.
-        by rewrite -H3 H5 -app_nil_end.
+        destruct tr2; simpl in *; [ rewrite <- app_nil_end | idtac ]; auto.
+        match goal with
+        | [H : _ = [] |- _ ] =>
+          rewrite H
+        end.
+        rewrite <- app_nil_end; auto.
   Qed.
 
   Theorem reachable_revert :

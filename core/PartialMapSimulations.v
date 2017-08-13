@@ -222,17 +222,11 @@ move {H_eq H_eq'}.
 exact: pt_map_update_eq.
 Qed.
 
-Definition pt_trace_remove_empty_out (e : @name _ multi_snd * (@input base_snd + list (@output base_snd))) :=
-match e with
-| (n, inr []) => None
-| _ => Some e
-end.
-
 Theorem step_async_pt_mapped_simulation_1 :
   forall net net' tr,
     @step_async _ multi_fst net net' tr ->
     @step_async _ multi_snd (pt_map_net net) (pt_map_net net') (filterMap pt_map_trace_occ tr) \/ 
-    (pt_map_net net' = pt_map_net net /\ filterMap pt_trace_remove_empty_out (filterMap pt_map_trace_occ tr) = []).
+    (pt_map_net net' = pt_map_net net /\ filterMap trace_non_empty_out (filterMap pt_map_trace_occ tr) = []).
 Proof using name_map_bijective multi_map_congr.
 move => net net' tr.
 case => {net net' tr}.
@@ -326,7 +320,7 @@ Corollary step_async_pt_mapped_simulation_star_1 :
   forall net tr,
     @step_async_star _ multi_fst step_async_init net tr ->
     exists tr', @step_async_star _ multi_snd step_async_init (pt_map_net net) tr' /\ 
-     filterMap pt_trace_remove_empty_out (filterMap pt_map_trace_occ tr) = filterMap pt_trace_remove_empty_out tr'.
+     filterMap trace_non_empty_out (filterMap pt_map_trace_occ tr) = filterMap trace_non_empty_out tr'.
 Proof using name_map_bijective multi_map_congr.
 move => net tr H_step.
 remember step_async_init as y in *.
@@ -368,7 +362,7 @@ Theorem step_failure_pt_mapped_simulation_1 :
   forall net net' failed failed' tr,
     @step_failure _ _ fail_fst (failed, net) (failed', net') tr ->
     @step_failure _ _ fail_snd (map tot_map_name failed, pt_map_net net) (map tot_map_name failed', pt_map_net net') (filterMap pt_map_trace_occ tr) \/ 
-    (pt_map_net net' = pt_map_net net /\ failed = failed' /\ filterMap pt_trace_remove_empty_out (filterMap pt_map_trace_occ tr) = []).
+    (pt_map_net net' = pt_map_net net /\ failed = failed' /\ filterMap trace_non_empty_out (filterMap pt_map_trace_occ tr) = []).
 Proof using name_map_bijective multi_map_congr fail_map_congr.
 move => net net' failed failed' tr H_step.
 invcs H_step.
@@ -483,7 +477,7 @@ Corollary step_failure_pt_mapped_simulation_star_1 :
   forall net failed tr,
     @step_failure_star _ _ fail_fst step_failure_init (failed, net) tr ->
     exists tr', @step_failure_star _ _ fail_snd step_failure_init (map tot_map_name failed, pt_map_net net) tr' /\ 
-     filterMap pt_trace_remove_empty_out (filterMap pt_map_trace_occ tr) = filterMap pt_trace_remove_empty_out tr'.
+     filterMap trace_non_empty_out (filterMap pt_map_trace_occ tr) = filterMap trace_non_empty_out tr'.
 Proof using name_map_bijective multi_map_congr fail_map_congr.
 move => net failed tr H_step.
 remember step_failure_init as y in *.
