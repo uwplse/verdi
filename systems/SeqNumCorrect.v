@@ -628,7 +628,7 @@ Section SeqNumCorrect.
       simpl. find_rewrite. eauto using dedup_eliminates_duplicates.
   Qed.
 
-  Lemma disk_step_failure_star_simulation :
+  Lemma step_dup_star_revert_simulation :
     forall net tr,
       step_dup_star step_async_init net tr ->
       exists tr', step_async_star step_async_init (revertNetwork net) tr' /\
