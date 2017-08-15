@@ -74,6 +74,30 @@ Class FailureParams `(P : MultiParams) :=
     reboot : data -> data
   }.
 
+Class LogMultiParams (P : BaseParams) :=
+  {
+    l_name : Type ;
+    l_msg : Type ;
+    l_msg_eq_dec : forall x y : l_msg, {x = y} + {x <> y} ;
+    l_name_eq_dec : forall x y : l_name, {x = y} + {x <> y} ;
+    l_nodes : list l_name ;
+    l_all_names_nodes : forall n, In n l_nodes ;
+    l_no_dup_nodes : NoDup l_nodes ;
+    l_init_handlers : l_name -> data;
+    l_init_log : l_name -> nat * data * list (input + l_msg);
+    l_net_handlers : l_name -> l_name -> l_msg -> data -> (input + l_msg) * (list output) * data * list (l_name * l_msg);
+    l_input_handlers : l_name -> input -> data -> (input + l_msg) * (list output) * data * list (l_name * l_msg)
+  }.
+
+Definition entry `{P : LogMultiParams} : Type := input + l_msg.
+Definition log `{P : LogMultiParams} : Type := nat * data * list entry.
+
+Class LogFailureParams `(P : LogMultiParams) :=
+  {
+    l_reboot : log -> data
+  }.
+
+
 Class NameOverlayParams `(P : MultiParams) :=
   {
     adjacent_to : relation name ;
@@ -158,7 +182,7 @@ Section StepRelations.
       true_in_reachable step init P.
   Proof using.
     intros. unfold true_in_reachable, reachable in *.
-    intros. break_exists. 
+    intros. break_exists.
     match goal with H : refl_trans_1n_trace _ _ _ _ |- _ => induction H end;
       intuition eauto.
     match goal with H : P _ -> _ |- _ => apply H end;
@@ -177,7 +201,7 @@ Section StepRelations.
     match goal with H : refl_trans_1n_trace _ _ _ _ |- _ => induction H end;
       intuition eauto.
   Qed.
-  
+
   Inductive refl_trans_n1_trace (step : step_relation) : step_relation :=
   | RTn1TBase : forall x, refl_trans_n1_trace step x x []
   | RTn1TStep : forall x x' x'' cs cs',
@@ -401,7 +425,7 @@ Ltac map_id :=
   rewrite map_ext with (g := (fun x => x)); [eauto using map_id|simpl; intros; apply packet_eta].
 
 Section StepDup.
-  
+
   Context `{params : MultiParams}.
 
   Inductive step_dup : step_relation network (name * (input + list output)) :=
@@ -499,7 +523,7 @@ End StepFailure.
 Section StepFailureDisk.
   Context `{params : DiskFailureParams}.
 
-  Inductive step_failure_disk : step_relation (list d_name * d_network) (d_name * (input + list output)) := 
+  Inductive step_failure_disk : step_relation (list d_name * d_network) (d_name * (input + list output)) :=
   | StepFailureDisk_deliver : forall net net' failed p xs ys out d l dsk,
       nwdPackets net = xs ++ p :: ys ->
       ~ In (d_pDst p) failed ->
@@ -539,6 +563,83 @@ Section StepFailureDisk.
 
   Definition step_failure_disk_init : list d_name * d_network := ([], step_async_disk_init).
 End StepFailureDisk.
+
+Section StepFailureLog.
+  Context `{params : LogFailureParams}.
+
+  Record l_packet := mklPacket { l_pSrc  : l_name ;
+                                 l_pDst  : l_name ;
+                                 l_pBody : l_msg }.
+
+  Definition l_send_packets src ps := (map (fun m => mklPacket src (fst m) (snd m)) ps).
+
+  Definition l_packet_eq_dec (p q : l_packet) : {p = q} + {p <> q}.
+    decide equality; auto using l_name_eq_dec, l_msg_eq_dec.
+  Defined.
+
+  Record l_network := mklNetwork { nwlPackets : list l_packet ;
+                                   nwlState   : l_name -> data;
+                                   nwlLog     : l_name -> log
+                                 }.
+
+  Definition snapshot_interval := 1000.
+
+  Definition update_log (l : log) (e : entry) (d : data) :=
+    match l with
+      (n, snapshot, entries) =>
+      if Nat.eqb n snapshot_interval
+      then (S n, d, [e])
+      else (1, snapshot, entries ++ [e])
+    end.
+
+  Inductive step_failure_log : step_relation (list l_name * l_network) (l_name * (input + list output)) :=
+  | StepFailureLog_deliver : forall net net' failed p xs ys e out d l,
+      nwlPackets net = xs ++ p :: ys ->
+      ~ In (l_pDst p) failed ->
+      l_net_handlers (l_pDst p) (l_pSrc p) (l_pBody p) (nwlState net (l_pDst p)) = (e, out, d, l) ->
+      net' = mklNetwork (l_send_packets (l_pDst p) l ++ xs ++ ys)
+                        (update l_name_eq_dec (nwlState net) (l_pDst p) d)
+                        (update l_name_eq_dec
+                                (nwlLog net)
+                                (l_pDst p)
+                                (update_log (nwlLog net (l_pDst p)) e d)) ->
+ step_failure_log (failed, net) (failed, net') [(l_pDst p, inr out)]
+  | StepFailureLog_input : forall h net net' failed e out inp d l n snapshot entries,
+      ~ In h failed ->
+      l_input_handlers h inp (nwlState net h) = (e, out, d, l) ->
+      nwlLog net h = (n, snapshot, entries) ->
+      net' = mklNetwork (l_send_packets h l ++ nwlPackets net)
+                        (update l_name_eq_dec (nwlState net) h d)
+                        (update l_name_eq_dec
+                                (nwlLog net)
+                                h
+                                (update_log (nwlLog net h) e d)) ->
+      step_failure_log (failed, net) (failed, net') [(h, inl inp) ;  (h, inr out)]
+  | StepFailureLog_drop : forall net net' failed p xs ys,
+      nwlPackets net = xs ++ p :: ys ->
+      net' = (mklNetwork (xs ++ ys) (nwlState net) (nwlLog net)) ->
+      step_failure_log (failed, net) (failed, net') []
+  | StepFailureLog_dup : forall net net' failed p xs ys,
+      nwlPackets net = xs ++ p :: ys ->
+      net' = (mklNetwork (p :: xs ++ p :: ys) (nwlState net) (nwlLog net)) ->
+      step_failure_log (failed, net) (failed, net') []
+  | StepFailureLog_fail :  forall h net failed,
+      step_failure_log (failed, net) (h :: failed, net) []
+  | StepFailureLog_reboot : forall h net net' failed failed' d,
+      In h failed ->
+      failed' = remove l_name_eq_dec h failed ->
+      l_reboot (nwlLog net h) = d ->
+      net' = mklNetwork (nwlPackets net)
+                        (update l_name_eq_dec (nwlState net) h d)
+                        (nwlLog net) ->
+      step_failure_log (failed, net) (failed', net') [].
+
+  Definition step_failure_log_star : step_relation (list l_name * l_network) (l_name * (input + list output)) :=
+    refl_trans_1n_trace step_failure_log.
+
+  Definition step_failure_log_init : l_network :=
+    mklNetwork [] l_init_handlers l_init_log.
+End StepFailureLog.
 
 Section StepOrdered.
   Context `{params : MultiParams}.
