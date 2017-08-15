@@ -10,11 +10,11 @@ Section Log.
   Context {orig_failure_params : FailureParams orig_multi_params}.
   Context {data_serializer : Serializer data}.
 
-  Definition log_net_handlers dst src m st : (input + msg) * list output * data * list (name * msg)  :=
+  Definition log_net_handlers dst src m st : (input + name * msg) * list output * data * list (name * msg)  :=
     let '(out, data, ps) := net_handlers dst src m st in
-    (inr m , out, data, ps).
+    (inr (src , m) , out, data, ps).
 
-  Definition log_input_handlers h inp st : (input + msg) * list output * data * list (name * msg) :=
+  Definition log_input_handlers h inp st : (input + name * msg) * list output * data * list (name * msg) :=
     let '(out, data, ps) := input_handlers h inp st in
     (inl inp, out, data, ps).
 
@@ -42,7 +42,7 @@ Section Log.
     }.
 
   Definition init_log h :=
-    (0, init_handlers h, [] : list (input + msg)).
+    (0, init_handlers h, [] : list (input + name * msg)).
   
   Instance log_multi_params : LogMultiParams log_base_params :=
     {
@@ -61,11 +61,12 @@ Section Log.
   
   Instance log_failure_params : LogFailureParams log_multi_params :=
     {
-      l_reboot := fun l =>
+      l_reboot := fun h l =>
                     match l with
-                    | (_, d, _) => @reboot _ _ orig_failure_params d
+                    | (_, d, entries) => @reboot _ _ orig_failure_params
+                                                 (apply_log h d entries)
                     end
-    }.  
+    }.
 End Log.
 
 Hint Extern 5 (@BaseParams) => apply log_base_params : typeclass_instances.

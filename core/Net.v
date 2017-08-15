@@ -84,17 +84,17 @@ Class LogMultiParams (P : BaseParams) :=
     l_all_names_nodes : forall n, In n l_nodes ;
     l_no_dup_nodes : NoDup l_nodes ;
     l_init_handlers : l_name -> data;
-    l_init_log : l_name -> nat * data * list (input + l_msg);
-    l_net_handlers : l_name -> l_name -> l_msg -> data -> (input + l_msg) * (list output) * data * list (l_name * l_msg);
-    l_input_handlers : l_name -> input -> data -> (input + l_msg) * (list output) * data * list (l_name * l_msg)
+    l_init_log : l_name -> nat * data * list (input + l_name * l_msg);
+    l_net_handlers : l_name -> l_name -> l_msg -> data -> (input + l_name * l_msg) * (list output) * data * list (l_name * l_msg);
+    l_input_handlers : l_name -> input -> data -> (input + l_name * l_msg) * (list output) * data * list (l_name * l_msg)
   }.
 
-Definition entry `{P : LogMultiParams} : Type := input + l_msg.
+Definition entry `{P : LogMultiParams} : Type := input + (l_name * l_msg).
 Definition log `{P : LogMultiParams} : Type := nat * data * list entry.
 
 Class LogFailureParams `(P : LogMultiParams) :=
   {
-    l_reboot : log -> data
+    l_reboot : l_name -> log -> data
   }.
 
 
@@ -628,7 +628,7 @@ Section StepFailureLog.
   | StepFailureLog_reboot : forall h net net' failed failed' d,
       In h failed ->
       failed' = remove l_name_eq_dec h failed ->
-      l_reboot (nwlLog net h) = d ->
+      l_reboot h (nwlLog net h) = d ->
       net' = mklNetwork (nwlPackets net)
                         (update l_name_eq_dec (nwlState net) h d)
                         (nwlLog net) ->
