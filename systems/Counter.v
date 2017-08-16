@@ -36,7 +36,7 @@ Definition Handler (S A : Type) := GenHandler (Name * Msg) S Output A.
 Definition disk := IOStreamWriter.wire.
 
 Definition snapshot : Handler Data disk :=
-  s <- get ;; ret (serialize_top serialize s).
+  s <- get ;; ret (serialize_top (serialize s)).
 
 Definition reboot (s : IOStreamWriter.wire) : option Data :=
   deserialize_top deserialize s.
@@ -110,7 +110,7 @@ Instance Counter_MultiParams : DiskMultiParams Counter_BaseParams :=
     d_all_names_nodes := all_Names_Nodes;
     d_no_dup_nodes := NoDup_Nodes;
     d_init_handlers := fun _ => init_Data;
-    d_init_disk := fun _ => (serialize_top serialize 0);
+    d_init_disk := fun _ => (serialize_top (serialize 0));
     d_net_handlers := fun dst src msg s => runGenHandler s (NetHandler dst msg);
     d_input_handlers := fun nm i s => runGenHandler s (InputHandler nm i)
   }.
