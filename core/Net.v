@@ -74,6 +74,9 @@ Class FailureParams `(P : MultiParams) :=
     reboot : data -> data
   }.
 
+Definition log : Type :=
+  IOStreamWriter.t * IOStreamWriter.t * IOStreamWriter.t.
+
 Class LogMultiParams (P : BaseParams) :=
   {
     l_name : Type ;
@@ -84,20 +87,17 @@ Class LogMultiParams (P : BaseParams) :=
     l_all_names_nodes : forall n, In n l_nodes ;
     l_no_dup_nodes : NoDup l_nodes ;
     l_init_handlers : l_name -> data;
-    l_init_log : nat * data * list (input + l_name * l_msg);
-    l_net_handlers : l_name -> l_name -> l_msg -> data -> (input + l_name * l_msg) * (list output) * data * list (l_name * l_msg);
-    l_input_handlers : l_name -> input -> data -> (input + l_name * l_msg) * (list output) * data * list (l_name * l_msg)
+    l_init_log : l_name -> log ;
+    l_net_handlers : l_name -> l_name -> l_msg -> data -> IOStreamWriter.t * (list output) * data * list (l_name * l_msg);
+    l_input_handlers : l_name -> input -> data -> IOStreamWriter.t * (list output) * data * list (l_name * l_msg);
   }.
 
 Definition entry `{P : LogMultiParams} : Type := input + (l_name * l_msg).
-Definition log : Type :=
-  IOStreamWriter.t * IOStreamWriter.t * IOStreamWriter.t.
 
 Class LogFailureParams `(P : LogMultiParams) :=
   {
-    l_reboot : l_name -> log -> data
+    l_reboot : l_name -> (IOStreamWriter.wire * IOStreamWriter.wire * IOStreamWriter.wire) -> data
   }.
-
 
 Class NameOverlayParams `(P : MultiParams) :=
   {
@@ -568,12 +568,6 @@ End StepFailureDisk.
 Section StepFailureLog.
   Context `{params : LogFailureParams}.
 
-  (* provisional; makes me question division between transformer/semantics *)
-  Context `{data_serializer : Serializer data}.
-  Context `{msg_serializer : Serializer l_msg}.
-  Context `{input_serializer : Serializer input}.
-  Context `{entry_serializer : Serializer entry}.
-
   Record l_packet := mklPacket { l_pSrc  : l_name ;
                                  l_pDst  : l_name ;
                                  l_pBody : l_msg }.
@@ -591,7 +585,8 @@ Section StepFailureLog.
 
   Definition snapshot_interval := 1000.
 
-  Definition update_log (l : log) (e : entry) (d : data) : option log :=
+  (* semantics/shim provides the control flow for snapshot vs. log append *)
+  Definition update_log (l : log) (e : IOStreamWriter.t) (d : data) : option log :=
     match l with
     | (ns, ds, es) =>
       match deserialize_top deserialize (serialize_top ns) with
@@ -599,10 +594,15 @@ Section StepFailureLog.
         Some (if Nat.eqb n snapshot_interval
               then (serialize 1, es,
                     IOStreamWriter.append (fun _ => es)
-                                          (fun _ => serialize e))
-              else (serialize (S n), ds, serialize e))
+                                          (fun _ => e))
+              else (serialize (S n), ds, e))
       | None => None
       end
+    end.
+
+  Definition log_to_wire (l : log) :=
+    match l with
+    | (ns, ds, es) => (serialize_top ns, serialize_top ds, serialize_top es)
     end.
 
   Inductive step_failure_log : step_relation (list l_name * l_network) (l_name * (input + list output)) :=
@@ -643,7 +643,7 @@ Section StepFailureLog.
   | StepFailureLog_reboot : forall h net net' failed failed' d,
       In h failed ->
       failed' = remove l_name_eq_dec h failed ->
-      l_reboot h (nwlLog net h) = d ->
+      l_reboot h (log_to_wire (nwlLog net h)) = d ->
       net' = mklNetwork (nwlPackets net)
                         (update l_name_eq_dec (nwlState net) h d)
                         (nwlLog net) ->
@@ -653,7 +653,7 @@ Section StepFailureLog.
     refl_trans_1n_trace step_failure_log.
 
   Definition step_failure_log_init : l_network :=
-    mklNetwork [] l_init_handlers (fun _ => (serialize_log l_init_log)).
+    mklNetwork [] l_init_handlers l_init_log.
 End StepFailureLog.
 
 Section StepOrdered.
