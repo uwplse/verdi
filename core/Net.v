@@ -91,7 +91,7 @@ Class LogMultiParams (P : BaseParams) :=
 
 Definition entry `{P : LogMultiParams} : Type := input + (l_name * l_msg).
 Definition log : Type :=
-  IOStreamWriter.wire * IOStreamWriter.wire * IOStreamWriter.wire.
+  IOStreamWriter.t * IOStreamWriter.t * IOStreamWriter.t.
 
 Class LogFailureParams `(P : LogMultiParams) :=
   {
@@ -591,33 +591,18 @@ Section StepFailureLog.
 
   Definition snapshot_interval := 1000.
 
-  Definition deserialize_log (l : log) : option (nat * data * list entry) :=
+  Definition update_log (l : log) (e : entry) (d : data) : option log :=
     match l with
-      (ns, ds, es) => match deserialize_top deserialize ns with
-                      | Some n => match deserialize_top deserialize ds with
-                                  | Some d => match deserialize_top deserialize es with
-                                              | Some entries => Some (n, d, entries)
-                                              | None => None
-                                              end
-                                  | None => None
-                                  end
-                      | None => None
+    | (ns, ds, es) =>
+      match deserialize_top deserialize (serialize_top ns) with
+      | Some n =>
+        Some (if Nat.eqb n snapshot_interval
+              then (serialize 1, es,
+                    IOStreamWriter.append (fun _ => es)
+                                          (fun _ => serialize e))
+              else (serialize (S n), ds, serialize e))
+      | None => None
       end
-    end.
-  
-  Definition update_log (l : log) (e : entry) (d : data) :=
-    match deserialize_log l with
-    | Some (n, snapshot, entries) => Some (if Nat.eqb n snapshot_interval
-                                           then (S n, d, [e])
-                                           else (1, snapshot, entries ++ [e]))
-    | None => None
-    end.
-
-  Definition serialize_log (l : nat * data * list entry) :=
-    match l with
-    | (n, d, entries) => (serialize_top (serialize n),
-                          serialize_top (serialize d),
-                          serialize_top (serialize entries))
     end.
 
   Inductive step_failure_log : step_relation (list l_name * l_network) (l_name * (input + list output)) :=
@@ -631,7 +616,7 @@ Section StepFailureLog.
                         (update l_name_eq_dec
                                 (nwlLog net)
                                 (l_pDst p)
-                                (serialize_log log)) ->
+                                log) ->
       step_failure_log (failed, net) (failed, net') [(l_pDst p, inr out)]
   | StepFailureLog_input : forall h net net' failed e out inp d l n snapshot entries log,
       ~ In h failed ->
@@ -643,7 +628,7 @@ Section StepFailureLog.
                         (update l_name_eq_dec
                                 (nwlLog net)
                                 h
-                                (serialize_log log)) ->
+                                log) ->
       step_failure_log (failed, net) (failed, net') [(h, inl inp) ;  (h, inr out)]
   | StepFailureLog_drop : forall net net' failed p xs ys,
       nwlPackets net = xs ++ p :: ys ->
