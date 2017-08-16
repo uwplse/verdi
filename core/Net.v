@@ -84,13 +84,14 @@ Class LogMultiParams (P : BaseParams) :=
     l_all_names_nodes : forall n, In n l_nodes ;
     l_no_dup_nodes : NoDup l_nodes ;
     l_init_handlers : l_name -> data;
-    l_init_log : l_name -> nat * data * list (input + l_name * l_msg);
+    l_init_log : nat * data * list (input + l_name * l_msg);
     l_net_handlers : l_name -> l_name -> l_msg -> data -> (input + l_name * l_msg) * (list output) * data * list (l_name * l_msg);
     l_input_handlers : l_name -> input -> data -> (input + l_name * l_msg) * (list output) * data * list (l_name * l_msg)
   }.
 
 Definition entry `{P : LogMultiParams} : Type := input + (l_name * l_msg).
-Definition log `{P : LogMultiParams} : Type := nat * data * list entry.
+Definition log : Type :=
+  IOStreamWriter.wire * IOStreamWriter.wire * IOStreamWriter.wire.
 
 Class LogFailureParams `(P : LogMultiParams) :=
   {
@@ -567,6 +568,12 @@ End StepFailureDisk.
 Section StepFailureLog.
   Context `{params : LogFailureParams}.
 
+  (* provisional; makes me question division between transformer/semantics *)
+  Context `{data_serializer : Serializer data}.
+  Context `{msg_serializer : Serializer l_msg}.
+  Context `{input_serializer : Serializer input}.
+  Context `{entry_serializer : Serializer entry}.
+
   Record l_packet := mklPacket { l_pSrc  : l_name ;
                                  l_pDst  : l_name ;
                                  l_pBody : l_msg }.
@@ -584,36 +591,59 @@ Section StepFailureLog.
 
   Definition snapshot_interval := 1000.
 
-  Definition update_log (l : log) (e : entry) (d : data) :=
+  Definition deserialize_log (l : log) : option (nat * data * list entry) :=
     match l with
-      (n, snapshot, entries) =>
-      if Nat.eqb n snapshot_interval
-      then (S n, d, [e])
-      else (1, snapshot, entries ++ [e])
+      (ns, ds, es) => match deserialize_top deserialize ns with
+                      | Some n => match deserialize_top deserialize ds with
+                                  | Some d => match deserialize_top deserialize es with
+                                              | Some entries => Some (n, d, entries)
+                                              | None => None
+                                              end
+                                  | None => None
+                                  end
+                      | None => None
+      end
+    end.
+  
+  Definition update_log (l : log) (e : entry) (d : data) :=
+    match deserialize_log l with
+    | Some (n, snapshot, entries) => Some (if Nat.eqb n snapshot_interval
+                                           then (S n, d, [e])
+                                           else (1, snapshot, entries ++ [e]))
+    | None => None
+    end.
+
+  Definition serialize_log (l : nat * data * list entry) :=
+    match l with
+    | (n, d, entries) => (serialize_top (serialize n),
+                          serialize_top (serialize d),
+                          serialize_top (serialize entries))
     end.
 
   Inductive step_failure_log : step_relation (list l_name * l_network) (l_name * (input + list output)) :=
-  | StepFailureLog_deliver : forall net net' failed p xs ys e out d l,
+  | StepFailureLog_deliver : forall net net' failed p xs ys e out d l log,
       nwlPackets net = xs ++ p :: ys ->
       ~ In (l_pDst p) failed ->
       l_net_handlers (l_pDst p) (l_pSrc p) (l_pBody p) (nwlState net (l_pDst p)) = (e, out, d, l) ->
+      update_log (nwlLog net (l_pDst p)) e d = Some log ->
       net' = mklNetwork (l_send_packets (l_pDst p) l ++ xs ++ ys)
                         (update l_name_eq_dec (nwlState net) (l_pDst p) d)
                         (update l_name_eq_dec
                                 (nwlLog net)
                                 (l_pDst p)
-                                (update_log (nwlLog net (l_pDst p)) e d)) ->
- step_failure_log (failed, net) (failed, net') [(l_pDst p, inr out)]
-  | StepFailureLog_input : forall h net net' failed e out inp d l n snapshot entries,
+                                (serialize_log log)) ->
+      step_failure_log (failed, net) (failed, net') [(l_pDst p, inr out)]
+  | StepFailureLog_input : forall h net net' failed e out inp d l n snapshot entries log,
       ~ In h failed ->
       l_input_handlers h inp (nwlState net h) = (e, out, d, l) ->
       nwlLog net h = (n, snapshot, entries) ->
+      update_log (nwlLog net h) e d = Some log ->
       net' = mklNetwork (l_send_packets h l ++ nwlPackets net)
                         (update l_name_eq_dec (nwlState net) h d)
                         (update l_name_eq_dec
                                 (nwlLog net)
                                 h
-                                (update_log (nwlLog net h) e d)) ->
+                                (serialize_log log)) ->
       step_failure_log (failed, net) (failed, net') [(h, inl inp) ;  (h, inr out)]
   | StepFailureLog_drop : forall net net' failed p xs ys,
       nwlPackets net = xs ++ p :: ys ->
@@ -638,7 +668,7 @@ Section StepFailureLog.
     refl_trans_1n_trace step_failure_log.
 
   Definition step_failure_log_init : l_network :=
-    mklNetwork [] l_init_handlers l_init_log.
+    mklNetwork [] l_init_handlers (fun _ => (serialize_log l_init_log)).
 End StepFailureLog.
 
 Section StepOrdered.
