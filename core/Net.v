@@ -652,8 +652,8 @@ Section StepFailureLog.
   Definition step_failure_log_star : step_relation (list l_name * l_network) (l_name * (input + list output)) :=
     refl_trans_1n_trace step_failure_log.
 
-  Definition step_failure_log_init : l_network :=
-    mklNetwork [] l_init_handlers l_init_log.
+  Definition step_failure_log_init : list l_name * l_network :=
+    ([], mklNetwork [] l_init_handlers l_init_log).
 End StepFailureLog.
 
 Section StepOrdered.

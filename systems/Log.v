@@ -9,14 +9,23 @@ Section Log.
   Context {orig_multi_params : MultiParams orig_base_params}.
   Context {orig_failure_params : FailureParams orig_multi_params}.
   Context {data_serializer : Serializer data}.
+  Context {l_name_serializer : Serializer name}.
+  Context {msg_serializer : Serializer msg}.
+  Context {input_serializer : Serializer input}.
 
-  Definition log_net_handlers dst src m st : (input + name * msg) * list output * data * list (name * msg)  :=
+  Definition log_net_handlers dst src m st : IOStreamWriter.t *
+                                             list output *
+                                             data *
+                                             list (name * msg)  :=
     let '(out, data, ps) := net_handlers dst src m st in
-    (inr (src , m) , out, data, ps).
+    (serialize (inr (src , m)), out, data, ps).
 
-  Definition log_input_handlers h inp st : (input + name * msg) * list output * data * list (name * msg) :=
+  Definition log_input_handlers h inp st : IOStreamWriter.t *
+                                           list output *
+                                           data *
+                                           list (name * msg) :=
     let '(out, data, ps) := input_handlers h inp st in
-    (inl inp, out, data, ps).
+    (serialize (inl inp), out, data, ps).
 
   Fixpoint apply_log h (d : data) (entries : list (input + (name * msg))) : data :=
     match entries with
@@ -42,8 +51,8 @@ Section Log.
     }.
 
   Definition init_log h :=
-    (0, init_handlers h, [] : list (input + name * msg)).
-  
+    (serialize 0, serialize (init_handlers h), serialize ([] : list (input + name * msg))).
+
   Instance log_multi_params : LogMultiParams log_base_params :=
     {
       l_name := name;
@@ -58,14 +67,36 @@ Section Log.
       l_net_handlers := log_net_handlers;
       l_input_handlers := log_input_handlers
     }.
-  
+
+  Definition wire_to_log lw : option (nat * data * list (input + (name * msg))) :=
+    match lw with
+    | (nw, dw, ew) =>
+      match deserialize_top deserialize nw with
+      | Some n =>
+        match deserialize_top deserialize dw with
+        | Some d =>
+          match deserialize_top (list_deserialize_rec _ _ n) ew with
+          | Some entries => Some (n, d, entries)
+          | None => None
+          end
+        | None => None
+        end
+      | None => None
+      end
+    end.
+
+  Definition deserialize_apply_log h lw :=
+    match wire_to_log lw with
+    | Some (n, d, entries) => apply_log h d entries
+    | None => l_init_handlers h
+    end.
+
   Instance log_failure_params : LogFailureParams log_multi_params :=
     {
-      l_reboot := fun h l =>
-                    match l with
-                    | (_, d, entries) => @reboot _ _ orig_failure_params
-                                                 (apply_log h d entries)
-                    end
+      l_reboot :=
+        fun h lw =>
+          @reboot _ _ orig_failure_params
+                  (deserialize_apply_log h lw)
     }.
 End Log.
 
