@@ -51,7 +51,7 @@ Section Log.
     }.
 
   Definition init_log h :=
-    (serialize 0, serialize (init_handlers h), serialize ([] : list (input + name * msg))).
+    (serialize 0, serialize (init_handlers h), list_serialize_rec (input + name * msg) _ []).
 
   Instance log_multi_params : LogMultiParams log_base_params :=
     {
