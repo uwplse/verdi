@@ -2,6 +2,8 @@ Require Import Verdi.Verdi.
 
 Require Import Cheerios.Cheerios.
 
+Import DeserializerNotations.
+
 Set Implicit Arguments.
 
 Section Log.
@@ -12,6 +14,49 @@ Section Log.
   Context {l_name_serializer : Serializer name}.
   Context {msg_serializer : Serializer msg}.
   Context {input_serializer : Serializer input}.
+
+  (* entry serializer *)
+  Notation "a +++ b" := (IOStreamWriter.append (fun _ => a) (fun _ => b))
+                      (at level 100, right associativity).
+  Inductive entry : Type :=
+  | LogInput : input -> entry
+  | LogMsg : name * msg -> entry
+  | Reboot : entry.
+
+  Definition entry_serialize e :=
+    match e with
+    | LogInput inp => serialize x00 +++ serialize inp
+    | LogMsg nm => serialize x01 +++ serialize nm
+    | Reboot => serialize x02
+    end.
+
+  Definition entry_deserialize : ByteListReader.t entry :=
+    tag <- deserialize;;
+        match tag with
+        | x00 => LogInput <$> deserialize
+        | x01 => LogMsg <$> deserialize
+        | x02 => ByteListReader.ret Reboot
+        | _ => ByteListReader.error
+        end.
+
+  Lemma entry_serialize_deserialize_id :
+    serialize_deserialize_id_spec entry_serialize entry_deserialize.
+  Proof.
+    intros.
+    unfold entry_deserialize, entry_serialize.
+    destruct a;
+      cheerios_crush;
+      simpl;
+      cheerios_crush.
+  Qed.
+
+  Instance entry_Serializer : Serializer entry.
+  Proof.
+    exact {| serialize := entry_serialize;
+             deserialize := entry_deserialize;
+             serialize_deserialize_id := entry_serialize_deserialize_id
+          |}.
+  Qed.
 
   Definition log_net_handlers dst src m st : IOStreamWriter.t *
                                              list output *
@@ -27,22 +72,23 @@ Section Log.
     let '(out, data, ps) := input_handlers h inp st in
     (serialize (inl inp), out, data, ps).
 
-  Fixpoint apply_log h (d : data) (entries : list (input + (name * msg))) : data :=
+  Fixpoint apply_log h (d : data) (entries : list entry) : data :=
     match entries with
     | [] => d
     | e :: entries =>
       apply_log h
                 (match e with
-                 | inl inp => match log_input_handlers h inp d with
+                 | LogInput inp => match log_input_handlers h inp d with
                               | (_, _, d, _) => d
-                              end
-                 | inr (src, m) => match log_net_handlers h src m d with
-                                   | (_, _, d, _) => d
                                    end
-                 end) 
+                 | LogMsg (src, m) =>  match log_net_handlers h src m d with
+                                       | (_, _, d, _) => d
+                                       end
+                 | Reboot => reboot d
+                 end)
                 entries
     end.
-  
+
   Instance log_base_params : BaseParams :=
     {
       data := data ;
@@ -68,7 +114,7 @@ Section Log.
       l_input_handlers := log_input_handlers
     }.
 
-  Definition wire_to_log lw : option (nat * data * list (input + (name * msg))) :=
+  Definition wire_to_log lw : option (nat * data * list entry) :=
     match lw with
     | (nw, dw, ew) =>
       match deserialize_top deserialize nw with

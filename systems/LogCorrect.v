@@ -17,11 +17,8 @@ Section LogCorrect.
 
   Lemma g :
     @deserialize_top
-            (list
-               (@input (@log_base_params _) +
-                @name _ orig_multi_params *
-                @msg _ orig_multi_params))
-            (list_deserialize_rec (input + name * msg) _ 0)
+            (list entry)
+            (list_deserialize_rec entry entry_Serializer 0)
             (serialize_top IOStreamWriter.empty) = Some [].
   Proof.
     apply serialize_deserialize_top_id' with (bytes := []).
@@ -31,14 +28,12 @@ Section LogCorrect.
 
   Lemma disk_follows_local_state : forall net failed tr h,
       @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
-      @reboot _ _
-              orig_failure_params
-              (@deserialize_apply_log _
-                                      orig_multi_params
-                                      _ _ _ _
-                                      h
-                                      (log_to_wire (nwlLog net h))) =
-      @reboot _ _ orig_failure_params (nwlState net h).
+      (@deserialize_apply_log _
+                              orig_multi_params
+                              _ _ _ _ _
+                              h
+                              (log_to_wire (nwlLog net h))) =
+      (nwlState net h).
   Proof.
     intros.
     remember step_failure_log_init as x.
@@ -112,7 +107,8 @@ Section LogCorrect.
                                                end.
         * now repeat find_rewrite.
       + assumption.
-      + destruct net'.
+      + simpl in H3. simpl.
+        destruct net'.
         inversion H4.
         simpl in *.
          break_if.
@@ -203,8 +199,8 @@ Section LogCorrect.
       match goal with
       | H : _ = ?xs ++ ?p :: ?ys |- _ =>
         apply StepFailure_dup with (p0 := revertPacket p)
-                                    (xs0 :=  map revertPacket xs)
-                                    (ys0 := map revertPacket ys)
+                                   (xs0 :=  map revertPacket xs)
+                                   (ys0 := map revertPacket ys)
       end.
       + reflexivity.
       + now rewrite map_app.

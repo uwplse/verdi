@@ -92,8 +92,6 @@ Class LogMultiParams (P : BaseParams) :=
     l_input_handlers : l_name -> input -> data -> IOStreamWriter.t * (list output) * data * list (l_name * l_msg);
   }.
 
-Definition entry `{P : LogMultiParams} : Type := input + (l_name * l_msg).
-
 Class LogFailureParams `(P : LogMultiParams) :=
   {
     l_reboot : l_name -> (IOStreamWriter.wire * IOStreamWriter.wire * IOStreamWriter.wire) -> data
@@ -646,7 +644,7 @@ Section StepFailureLog.
       l_reboot h (log_to_wire (nwlLog net h)) = d ->
       net' = mklNetwork (nwlPackets net)
                         (update l_name_eq_dec (nwlState net) h d)
-                        (nwlLog net) ->
+                        (nwlLog net) -> (* log needs to be updated to reflect reboot *)
       step_failure_log (failed, net) (failed', net') [].
 
   Definition step_failure_log_star : step_relation (list l_name * l_network) (l_name * (input + list output)) :=
