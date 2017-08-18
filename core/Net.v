@@ -592,7 +592,7 @@ Section StepFailureLog.
       match deserialize_top deserialize (serialize_top ns) with
       | Some n =>
         Some (if Nat.eqb n snapshot_interval
-              then (serialize 1, es,
+              then (serialize 1, ds,
                     IOStreamWriter.append (fun _ => es)
                                           (fun _ => e))
               else (serialize (S n), ds, e))

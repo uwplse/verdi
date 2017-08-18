@@ -13,6 +13,8 @@ Section LogCorrect.
   Context {msg_serializer : Serializer msg}.
   Context {input_serializer : Serializer input}.
 
+  Hypothesis reboot_idem : forall d, reboot (reboot d) = reboot d.
+
   Lemma g :
     @deserialize_top
             (list
@@ -29,8 +31,14 @@ Section LogCorrect.
 
   Lemma disk_follows_local_state : forall net failed tr h,
       @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
-      @deserialize_apply_log _ orig_multi_params _ _ _ _ h (log_to_wire (nwlLog net h)) =
-      nwlState net h.
+      @reboot _ _
+              orig_failure_params
+              (@deserialize_apply_log _
+                                      orig_multi_params
+                                      _ _ _ _
+                                      h
+                                      (log_to_wire (nwlLog net h))) =
+      @reboot _ _ orig_failure_params (nwlState net h).
   Proof.
     intros.
     remember step_failure_log_init as x.
@@ -57,7 +65,23 @@ Section LogCorrect.
         simpl in *.
         inversion H5.
         break_if.
-        * admit.
+        * unfold update_log in *.
+          unfold log_net_handlers in *.
+          repeat break_match.
+          -- repeat tuple_inversion.
+             match goal with
+             | H : _ = Some log |- _ => inversion H
+             end.
+             unfold deserialize_apply_log.
+             repeat break_match.
+             ++ admit.
+             ++ unfold log_to_wire, wire_to_log in *.
+                repeat break_match; try congruence; admit.
+          -- inversion H4.
+             unfold deserialize_apply_log.
+             repeat break_match;
+               admit.
+          -- inversion H4.
         * assumption.
       + destruct net'.
         simpl in *.
@@ -65,7 +89,7 @@ Section LogCorrect.
         break_if.
         * unfold deserialize_apply_log.
           repeat break_match.
-          -- repeat find_inversion.
+          --
              admit.
           -- admit.
         * assumption.
@@ -95,7 +119,8 @@ Section LogCorrect.
         * rewrite <- H3.
           rewrite e in *.
           rewrite IHrefl_trans_1n_trace1.
-           admit.
+          symmetry.
+          apply reboot_idem.
          * assumption.
   Admitted.
 
@@ -115,8 +140,10 @@ Section LogCorrect.
   Theorem disk_step_failure_step :
     forall net net' failed failed' tr tr',
       @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
-      @step_failure_log _ _ log_failure_params (failed, net) (failed, net') tr' ->
-      step_failure (failed, revertLogNetwork net) (failed', revertLogNetwork net') tr'.
+      @step_failure_log _ _ log_failure_params (failed, net) (failed', net') tr' ->
+      step_failure (failed, revertLogNetwork net)
+                   (failed', revertLogNetwork net')
+                   tr'.
   Proof.
     intros.
     assert (revert_packets : forall net, nwPackets (revertLogNetwork net) =
@@ -129,9 +156,8 @@ Section LogCorrect.
           simpl.
           now rewrite IHl.
       }
-    invc H0.
-    - assert (failed = failed') by admit.
-      unfold revertLogNetwork.
+    invcs H0.
+    - unfold revertLogNetwork in *.
       simpl.
       repeat find_rewrite.
       rewrite map_app.
@@ -151,8 +177,7 @@ Section LogCorrect.
       + assumption.
       + simpl.
         now rewrite revert_send.
-    - assert (failed = failed') by admit.
-      unfold revertLogNetwork. simpl. repeat find_rewrite.
+    - unfold revertLogNetwork in *. simpl. repeat find_rewrite.
       simpl in *. unfold log_input_handlers in *.
       repeat break_let. find_inversion.
       rewrite map_app.
@@ -161,13 +186,11 @@ Section LogCorrect.
       | H : input_handlers _ _ _ = (_, ?d, ?l) |- _ =>
         apply StepFailure_input with (d0 := d) (l0 := l); auto
       end.
-    - assert (failed = failed') by admit.
-      unfold revertLogNetwork at 2.
+    - unfold revertLogNetwork.
       simpl.
-      rewrite map_app.
-      unfold revertLogNetwork.
-      repeat find_rewrite.
-      rewrite map_app. simpl.
+      find_rewrite.
+      repeat rewrite map_app.
+      simpl.
       match goal with
       | H : _ = ?xs ++ ?p :: ?ys |- _ =>
         apply StepFailure_drop with (p0 := revertPacket p)
@@ -175,25 +198,24 @@ Section LogCorrect.
                                     (ys0 := map revertPacket ys)
       end; reflexivity.
     - unfold revertLogNetwork.
-      simpl.
-      assert (failed = failed') by admit.
-      repeat find_rewrite.
+      match goal with H : nwlPackets net = _ |- _ => rewrite H end.
       rewrite map_app. simpl.
       match goal with
       | H : _ = ?xs ++ ?p :: ?ys |- _ =>
         apply StepFailure_dup with (p0 := revertPacket p)
                                     (xs0 :=  map revertPacket xs)
                                     (ys0 := map revertPacket ys)
-      end; reflexivity.
-    - apply list_neq_cons in H4.
-      inversion H4.
-    - unfold l_reboot.
-      simpl.
-      rewrite disk_follows_local_state with (failed := failed) (tr := tr).
-      + apply StepFailure_reboot with (h0 := h).
-        * assumption.
-        * admit.
-        * reflexivity.
+      end.
+      + reflexivity.
+      + now rewrite map_app.
+    - apply (@StepFailure_fail _ _ orig_failure_params).
+    - match goal with
+        H : In ?h _ |- _ => apply StepFailure_reboot with (h0 := h)
+      end.
       + assumption.
-  Admitted.
+      + reflexivity.
+      + unfold revertLogNetwork. simpl.
+        rewrite (disk_follows_local_state _ failed tr);
+          auto.
+  Qed.
 End LogCorrect.
