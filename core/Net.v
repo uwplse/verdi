@@ -74,27 +74,37 @@ Class FailureParams `(P : MultiParams) :=
     reboot : data -> data
   }.
 
-Definition log : Type :=
-  IOStreamWriter.t * IOStreamWriter.t * IOStreamWriter.t.
+Definition do_disk file_name :=
+  file_name -> IOStreamWriter.t.
 
-Class LogMultiParams (P : BaseParams) :=
+Inductive disk_op file_name :=
+| Append :  file_name -> IOStreamWriter.t -> disk_op file_name
+| Write : file_name -> IOStreamWriter.t -> disk_op file_name
+| Delete : file_name -> disk_op file_name.
+
+Class DiskOpMultiParams (P : BaseParams) :=
   {
-    l_name : Type ;
-    l_msg : Type ;
-    l_msg_eq_dec : forall x y : l_msg, {x = y} + {x <> y} ;
-    l_name_eq_dec : forall x y : l_name, {x = y} + {x <> y} ;
-    l_nodes : list l_name ;
-    l_all_names_nodes : forall n, In n l_nodes ;
-    l_no_dup_nodes : NoDup l_nodes ;
-    l_init_handlers : l_name -> data;
-    l_init_log : l_name -> log ;
-    l_net_handlers : l_name -> l_name -> l_msg -> data -> IOStreamWriter.t * (list output) * data * list (l_name * l_msg);
-    l_input_handlers : l_name -> input -> data -> IOStreamWriter.t * (list output) * data * list (l_name * l_msg);
+    do_name : Type ;
+    file_name : Type ;
+    do_msg : Type ;
+    do_msg_eq_dec : forall x y : do_msg, {x = y} + {x <> y} ;
+    do_name_eq_dec : forall x y : do_name, {x = y} + {x <> y} ;
+    file_name_eq_dec : forall x y : file_name, {x = y} + {x <> y} ;
+    do_nodes : list do_name ;
+    do_all_names_nodes : forall n, In n do_nodes ;
+    do_no_dup_nodes : NoDup do_nodes ;
+    do_init_handlers : do_name -> data;
+    do_init_disk : do_name -> (do_disk file_name) ;
+    do_net_handlers : do_name -> do_name -> do_msg -> data ->
+                      list (disk_op file_name) * (list output) * data * list (do_name * do_msg) ;
+    do_input_handlers : do_name -> input -> data ->
+                        list (disk_op file_name) * (list output) * data * list (do_name * do_msg);
   }.
 
-Class LogFailureParams `(P : LogMultiParams) :=
+Class DiskOpFailureParams `(P : DiskOpMultiParams) :=
   {
-    l_reboot : l_name -> (IOStreamWriter.wire * IOStreamWriter.wire * IOStreamWriter.wire) -> data
+    do_reboot : do_name -> (file_name -> IOStreamWriter.wire) ->
+                data * do_disk file_name
   }.
 
 Class NameOverlayParams `(P : MultiParams) :=
@@ -563,96 +573,92 @@ Section StepFailureDisk.
   Definition step_failure_disk_init : list d_name * d_network := ([], step_async_disk_init).
 End StepFailureDisk.
 
-Section StepFailureLog.
-  Context `{params : LogFailureParams}.
+Section StepFailureDiskOp.
+  Context `{disk_op_failure_params : DiskOpFailureParams}.
 
-  Record l_packet := mklPacket { l_pSrc  : l_name ;
-                                 l_pDst  : l_name ;
-                                 l_pBody : l_msg }.
+  Record do_packet := mklPacket { do_pSrc  : do_name ;
+                                 do_pDst  : do_name ;
+                                 do_pBody : do_msg }.
 
-  Definition l_send_packets src ps := (map (fun m => mklPacket src (fst m) (snd m)) ps).
+  Definition do_send_packets src ps := (map (fun m => mklPacket src (fst m) (snd m)) ps).
 
-  Definition l_packet_eq_dec (p q : l_packet) : {p = q} + {p <> q}.
-    decide equality; auto using l_name_eq_dec, l_msg_eq_dec.
+  Definition do_packet_eq_dec (p q : do_packet) : {p = q} + {p <> q}.
+    decide equality; auto using do_name_eq_dec, do_msg_eq_dec.
   Defined.
 
-  Record l_network := mklNetwork { nwlPackets : list l_packet ;
-                                   nwlState   : l_name -> data;
-                                   nwlLog     : l_name -> log
-                                 }.
+  Record do_network := mkdoNetwork { nwdoPackets : list do_packet ;
+                                     nwdoState   : do_name -> data ;
+                                     nwdoDisk    : do_name -> do_disk file_name
+                                   }.
 
-  Definition snapshot_interval := 1000.
+  Definition disk_to_wire (dsk : do_disk file_name) : file_name -> IOStreamWriter.wire :=
+    fun file =>
+      serialize_top (dsk file).
 
-  (* semantics/shim provides the control flow for snapshot vs. log append *)
-  Definition update_log (l : log) (e : IOStreamWriter.t) (d : data) : option log :=
-    match l with
-    | (ns, ds, es) =>
-      match deserialize_top deserialize (serialize_top ns) with
-      | Some n =>
-        Some (if Nat.eqb n snapshot_interval
-              then (serialize 1, ds,
-                    IOStreamWriter.append (fun _ => es)
-                                          (fun _ => e))
-              else (serialize (S n), ds, e))
-      | None => None
-      end
+  Definition update_disk (dsk : do_disk file_name) (op : disk_op file_name) :
+    do_disk file_name :=
+    match op with
+    | Append file x => update file_name_eq_dec dsk file
+                              (IOStreamWriter.append
+                                 (fun _ => dsk file)
+                                 (fun _ => x))
+    | Write file x => update file_name_eq_dec dsk file x
+    | Delete file =>  update file_name_eq_dec dsk file IOStreamWriter.empty
     end.
 
-  Definition log_to_wire (l : log) :=
-    match l with
-    | (ns, ds, es) => (serialize_top ns, serialize_top ds, serialize_top es)
+  Fixpoint apply_ops dsk ops :=
+    match ops with
+    | [] => dsk
+    | op :: ops => apply_ops (update_disk dsk op) ops
     end.
 
-  Inductive step_failure_log : step_relation (list l_name * l_network) (l_name * (input + list output)) :=
-  | StepFailureLog_deliver : forall net net' failed p xs ys e out d l log,
-      nwlPackets net = xs ++ p :: ys ->
-      ~ In (l_pDst p) failed ->
-      l_net_handlers (l_pDst p) (l_pSrc p) (l_pBody p) (nwlState net (l_pDst p)) = (e, out, d, l) ->
-      update_log (nwlLog net (l_pDst p)) e d = Some log ->
-      net' = mklNetwork (l_send_packets (l_pDst p) l ++ xs ++ ys)
-                        (update l_name_eq_dec (nwlState net) (l_pDst p) d)
-                        (update l_name_eq_dec
-                                (nwlLog net)
-                                (l_pDst p)
-                                log) ->
-      step_failure_log (failed, net) (failed, net') [(l_pDst p, inr out)]
-  | StepFailureLog_input : forall h net net' failed e out inp d l n snapshot entries log,
+  Inductive step_failure_log : step_relation (list do_name * do_network) (do_name * (input + list output)) :=
+  | StepFailureDiskOp_deliver : forall net net' failed p xs ys ops out d l,
+      nwdoPackets net = xs ++ p :: ys ->
+      ~ In (do_pDst p) failed ->
+      do_net_handlers (do_pDst p) (do_pSrc p) (do_pBody p) (nwdoState net (do_pDst p)) = (ops, out, d, l) ->
+      net' = mkdoNetwork (do_send_packets (do_pDst p) l ++ xs ++ ys)
+                         (update do_name_eq_dec (nwdoState net) (do_pDst p) d)
+                         (update do_name_eq_dec
+                                 (nwdoDisk net)
+                                 (do_pDst p)
+                                 (apply_ops (nwdoDisk net (do_pDst p)) ops)) ->
+      step_failure_log (failed, net) (failed, net') [(do_pDst p, inr out)]
+  | StepFailureDiskOp_input : forall h net net' failed op out inp d l,
       ~ In h failed ->
-      l_input_handlers h inp (nwlState net h) = (e, out, d, l) ->
-      nwlLog net h = (n, snapshot, entries) ->
-      update_log (nwlLog net h) e d = Some log ->
-      net' = mklNetwork (l_send_packets h l ++ nwlPackets net)
-                        (update l_name_eq_dec (nwlState net) h d)
-                        (update l_name_eq_dec
-                                (nwlLog net)
-                                h
-                                log) ->
+      do_input_handlers h inp (nwdoState net h) = (op, out, d, l) ->
+      net' = mkdoNetwork (do_send_packets h l ++ nwdoPackets net)
+                         (update do_name_eq_dec (nwdoState net) h d)
+                         (update do_name_eq_dec
+                                 (nwdoDisk net)
+                                 h
+                                 (apply_ops (nwdoDisk net h) op)) ->
       step_failure_log (failed, net) (failed, net') [(h, inl inp) ;  (h, inr out)]
-  | StepFailureLog_drop : forall net net' failed p xs ys,
-      nwlPackets net = xs ++ p :: ys ->
-      net' = (mklNetwork (xs ++ ys) (nwlState net) (nwlLog net)) ->
+  | StepFailureDiskOp_drop : forall net net' failed p xs ys,
+      nwdoPackets net = xs ++ p :: ys ->
+      net' = (mkdoNetwork (xs ++ ys) (nwdoState net) (nwdoDisk net)) ->
       step_failure_log (failed, net) (failed, net') []
-  | StepFailureLog_dup : forall net net' failed p xs ys,
-      nwlPackets net = xs ++ p :: ys ->
-      net' = (mklNetwork (p :: xs ++ p :: ys) (nwlState net) (nwlLog net)) ->
+  | StepFailureDiskOp_dup : forall net net' failed p xs ys,
+      nwdoPackets net = xs ++ p :: ys ->
+      net' = (mkdoNetwork (p :: xs ++ p :: ys) (nwdoState net) (nwdoDisk net)) ->
       step_failure_log (failed, net) (failed, net') []
-  | StepFailureLog_fail :  forall h net failed,
+  | StepFailureDiskOp_fail :  forall h net failed,
       step_failure_log (failed, net) (h :: failed, net) []
-  | StepFailureLog_reboot : forall h net net' failed failed' d,
+  | StepFailureDiskOp_reboot : forall h net net' failed failed' d dsk,
       In h failed ->
-      failed' = remove l_name_eq_dec h failed ->
-      l_reboot h (log_to_wire (nwlLog net h)) = d ->
-      net' = mklNetwork (nwlPackets net)
-                        (update l_name_eq_dec (nwlState net) h d)
-                        (nwlLog net) -> (* log needs to be updated to reflect reboot *)
+      failed' = remove do_name_eq_dec h failed ->
+      do_reboot h (disk_to_wire (nwdoDisk net h)) = (d, dsk) ->
+      net' = mkdoNetwork (nwdoPackets net)
+                        (update do_name_eq_dec (nwdoState net) h d)
+                        (update do_name_eq_dec (nwdoDisk net) h dsk) ->
       step_failure_log (failed, net) (failed', net') [].
 
-  Definition step_failure_log_star : step_relation (list l_name * l_network) (l_name * (input + list output)) :=
+  Definition step_failure_log_star : step_relation (list do_name * do_network) (do_name * (input + list output)) :=
     refl_trans_1n_trace step_failure_log.
 
-  Definition step_failure_log_init : list l_name * l_network :=
-    ([], mklNetwork [] l_init_handlers l_init_log).
-End StepFailureLog.
+  Definition step_failure_log_init : list do_name * do_network :=
+    ([], mkdoNetwork [] do_init_handlers do_init_disk).
+End StepFailureDiskOp.
 
 Section StepOrdered.
   Context `{params : MultiParams}.
