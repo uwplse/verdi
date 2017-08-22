@@ -28,22 +28,30 @@ Section LogCorrect.
     cheerios_crush.
   Qed.
 
-  Lemma disk_follows_local_state : forall net failed tr (h : name) d dsk,
+  Lemma g : forall {A B} (f : A -> B) (c : bool) x y, f (if c then x else y) = if c then (f x) else (f y).
+  Proof.
+    intros.
+    now break_if.
+  Qed.
+
+  Definition do_reboot := do_reboot (snapshot_interval := snapshot_interval).
+
+  Lemma disk_follows_local_state : forall net failed tr (h : name),
       @step_failure_log_star _ _
                              (log_failure_params (snapshot_interval := snapshot_interval)) step_failure_log_init (failed, net) tr ->
-      (do_reboot (snapshot_interval := snapshot_interval))
-        h (disk_to_wire (nwdoDisk net h)) = (d, dsk) ->
-      d = nwdoState net h.
+      match do_reboot h (disk_to_wire (nwdoDisk net h)) with
+      | (d, dsk) => d
+      end = nwdoState net h.
   Proof.
     intros.
     remember step_failure_log_init as x.
-    generalize dependent d. generalize dependent dsk.
     change net with (snd (failed, net)).
     induction H using refl_trans_1n_trace_n1_ind.
     - intros.
       rewrite Heqx in *.
       simpl in *.
-      unfold disk_to_wire, init_disk, do_reboot in *.
+      unfold disk_to_wire, init_disk, do_reboot, Log.do_reboot in *.
+      break_let.
       break_match;
         unfold wire_to_log in *;
         repeat rewrite serialize_deserialize_top_id in Heqo;
@@ -55,8 +63,45 @@ Section LogCorrect.
         reflexivity.
       + congruence.
     - concludes.
+      break_let. break_let.
       rewrite Heqx in *.
-      admit.
+      match goal with H : step_failure_log _ _ _ |- _ => invcs H end.
+      + unfold do_reboot, Log.do_reboot in Heqp.
+        break_match. break_match.
+        * break_let. break_let.
+          find_inversion.
+          unfold log_net_handlers in *. break_let. break_let.
+          break_if.
+          -- find_inversion.
+             unfold do_reboot, Log.do_reboot in Heqp0.
+             break_match.
+             ++ break_let. break_let.
+                find_inversion.
+                admit.
+             ++ admit. (* expect a contradiction here) *)
+          -- admit.
+        * admit.
+        * break_match.
+          -- admit.
+          -- admit.
+      + break_if.
+        * admit.
+        * admit.
+      + match goal with H : do_reboot _ _ = _ |- _ => rewrite H in * end.
+        find_inversion.
+        reflexivity.
+      + match goal with H : do_reboot _ _ = _ |- _ => rewrite H in * end.
+        find_inversion.
+        reflexivity.
+      + match goal with H : do_reboot _ _ = _ |- _ => rewrite H in * end.
+        find_inversion.
+        reflexivity.
+      + break_if.
+        * find_rewrite.
+          admit.
+        * match goal with H : do_reboot _ _ = _ |- _ => rewrite H in * end.
+          find_inversion.
+          reflexivity.
   Admitted.
 
   Definition orig_packet := @packet _ orig_multi_params.
@@ -93,5 +138,57 @@ Section LogCorrect.
           now rewrite IHl.
       }
       invcs H0.
-      Admitted.
+    - unfold revertLogNetwork.
+      simpl.
+      find_rewrite.
+      repeat rewrite map_app. simpl.
+      rewrite revert_send.
+      assert (revert_packet : do_pDst p = pDst (revertPacket p)) by reflexivity.
+      rewrite revert_packet in *.
+      apply StepFailure_deliver with (xs0 := map revertPacket xs)
+                                     (ys0 := map revertPacket ys)
+                                     (d0 := log_data d)
+                                     (l0 := l).
+      + reflexivity.
+      + assumption.
+      + simpl.
+        unfold log_net_handlers in *.
+        break_let. break_let.
+        break_if;
+          find_inversion;
+          rewrite revert_packet in *;
+          assumption.
+      + unfold log_data.
+        break_let.
+        simpl.
+        admit.
+    - unfold revertLogNetwork.
+      simpl.
+      repeat rewrite map_app.
+      rewrite revert_send.
+      admit.
+    - unfold revertLogNetwork.
+      simpl. find_rewrite.
+      rewrite map_app. simpl.
+      apply StepFailure_drop with (xs0 := map revertPacket xs)
+                                  (p0 := revertPacket p)
+                                  (ys0 := map revertPacket ys).
+      + reflexivity.
+      + rewrite map_app. reflexivity.
+    - unfold revertLogNetwork.
+      simpl. find_rewrite.
+      rewrite map_app. simpl.
+      apply (@StepFailure_dup _ _ _ _ _ _
+                              (revertPacket p)
+                              (map revertPacket xs)
+                              (map revertPacket ys)).
+      + reflexivity.
+      + reflexivity.
+    - constructor.
+    - apply StepFailure_reboot with (h0 := h).
+      + assumption.
+      + reflexivity.
+      + unfold revertLogNetwork. simpl.
+        admit.
+  Admitted.
 End LogCorrect.

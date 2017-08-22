@@ -62,14 +62,15 @@ Section Log.
                                              log_state *
                                              list (name * msg)  :=
     let '(out, data, ps) := net_handlers dst src m (log_data st) in
-    if S (log_num_entries st) =? snapshot_interval
-    then ([Delete Log; Write Snapshot (serialize data)],
+    let n := log_num_entries st in
+    if S n =? snapshot_interval
+    then ([Delete Log; Write Snapshot (serialize data); Write Count (serialize 0)],
           out,
           mk_log_state 0 data,
           ps)
-    else ([Append Log (serialize (inr (src , m)))],
+    else ([Append Log (serialize (inr (src , m))); Write Count (serialize (S n))],
           out,
-          mk_log_state 0 data,
+          mk_log_state (S n) data,
           ps).
 
   Definition log_input_handlers h inp st : list (disk_op log_files) *
@@ -77,14 +78,15 @@ Section Log.
                                            log_state *
                                            list (name * msg) :=
     let '(out, data, ps) := input_handlers h inp (log_data st) in
-    if S (log_num_entries st) =? snapshot_interval
-    then ([Delete Log; Write Snapshot (serialize data)],
+    let n := log_num_entries st in
+    if S n =? snapshot_interval
+    then ([Delete Log; Write Snapshot (serialize data); Write Count (serialize 0)],
           out,
           mk_log_state 0 data,
           ps)
-    else ([Append Log (serialize (inl inp))],
+    else ([Append Log (serialize (inl inp)); Write Count (serialize (S n))],
           out,
-          mk_log_state 0 data,
+          mk_log_state (S n) data,
           ps).
 
   Instance log_base_params : BaseParams :=
