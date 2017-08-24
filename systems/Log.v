@@ -64,7 +64,7 @@ Section Log.
     let '(out, data, ps) := net_handlers dst src m (log_data st) in
     let n := log_num_entries st in
     if S n =? snapshot_interval
-    then ([Delete Log; Write Snapshot (serialize data); Write Count (serialize 0)],
+    then ([Delete Log; Write Snapshot (serialize (mk_log_state 0 data)); Write Count (serialize 0)],
           out,
           mk_log_state 0 data,
           ps)
@@ -138,21 +138,133 @@ Section Log.
     | None => None
     end.
 
+  Definition apply_entry h d e :=
+    match e with
+     | inl inp => match log_input_handlers h inp d with
+                  | (_, _, d, _) => d
+                  end
+     | inr (src, m) =>  match log_net_handlers h src m d with
+                        | (_, _, d, _) => d
+                        end
+    end.
+
+
   Fixpoint apply_log h (d : data) (entries : list entry) : data :=
     match entries with
     | [] => d
     | e :: entries =>
-      apply_log h
-                (match e with
-                 | inl inp => match log_input_handlers h inp d with
-                              | (_, _, d, _) => d
-                                   end
-                 | inr (src, m) =>  match log_net_handlers h src m d with
-                                       | (_, _, d, _) => d
-                                    end
-                 end)
-                entries
+      apply_log h (apply_entry h d e) entries
     end.
+
+  Lemma apply_log_app : forall h d entries e,
+      apply_log h d (entries ++ [e]) =
+      apply_entry h (apply_log h d entries) e.
+  Proof.
+    intros.
+    generalize dependent d.
+    induction entries.
+    - reflexivity.
+    - intros.
+      simpl.
+      rewrite IHentries.
+      reflexivity.
+  Qed.
+
+(*
+  Lemma serialize_empty : deserialize_top
+                            (list_deserialize_rec entry
+                                                  (sum_Serializer input (name * msg) input_serializer
+                                                                  (pair_Serializer name msg l_name_serializer msg_serializer)) n')
+                            (serialize_top IOStreamWriter.empty) = Some [].
+ *)
+  Lemma serialize_empty : forall A,
+    ByteListReader.unwrap (ByteListReader.ret (@nil A))
+                          (IOStreamWriter.unwrap IOStreamWriter.empty) = Some ([], []).
+  Proof.
+    cheerios_crush.
+  Qed.
+
+  Lemma serialize_cons : forall l e n entries entries',
+      ByteListReader.unwrap
+        (list_deserialize_rec entry _ n)
+        (IOStreamWriter.unwrap l) = Some (entries, []) ->
+         ByteListReader.unwrap
+         (list_deserialize_rec entry _ (S n))
+         (IOStreamWriter.unwrap
+            (IOStreamWriter.append (fun _ : unit => l)
+                                   (fun _ : unit => serialize e))) = Some (entries', []) ->
+         entries' = entries ++ [e].
+  Proof.
+    intros.
+  Admitted.
+
+
+    (*
+    Set Printing Implicit.
+    rewrite (@serialize_deserialize_top_id' (list entry)) with (v := l) (bytes := []) in H. *)
+
+  Lemma a : forall dst src m d cs out d' l
+                   (dsk : do_disk file_name) n snap (entries : list entry)
+                   dsk' n' snap' entries',
+      log_net_handlers dst src m d = (cs, out, d', l) ->
+      ByteListReader.unwrap (@deserialize nat _) (IOStreamWriter.unwrap (dsk Count)) = Some (n, []) ->
+      ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Snapshot)) = Some (snap, []) ->
+      dsk Log = list_serialize_rec entry _ entries ->
+      apply_log dst snap entries = d ->
+      apply_ops dsk cs = dsk' ->
+      ByteListReader.unwrap (@deserialize nat _)
+                            (IOStreamWriter.unwrap (dsk' Count)) = Some (n', [])  ->
+      ByteListReader.unwrap deserialize
+                            (IOStreamWriter.unwrap (dsk' Snapshot)) = Some (snap', []) ->
+      ByteListReader.unwrap (list_deserialize_rec _  _ n')
+                            (IOStreamWriter.unwrap (dsk' Log)) = Some (entries', []) ->
+      apply_log dst snap' entries' = d'.
+  Proof.
+    intros.
+    unfold log_net_handlers in *.
+    break_let. break_let. break_if.
+    - assert (dsk' Count = serialize 0).
+      * find_inversion.
+        simpl.
+        break_if; try congruence.
+      * match goal with
+        | H : dsk' Count = _ |- _ => rewrite H in *
+        end.
+        match goal with
+        | H : context [serialize 0] |- _ => rewrite serialize_deserialize_id_nil in H
+        end.
+        find_inversion. find_inversion.
+        simpl in H8. repeat break_if; try congruence.
+        simpl in H7. repeat break_if; try congruence. rewrite serialize_empty in H7.
+        simpl in H6. repeat break_if; try congruence.
+        find_inversion. find_inversion.
+        rewrite serialize_deserialize_id_nil in H6.
+        simpl.
+        find_inversion.
+        reflexivity.
+    - assert (n' = S n).
+      * find_inversion.
+        simpl in H5. break_if; try congruence.
+        rewrite serialize_deserialize_id_nil in H5.
+        find_inversion.
+        admit.
+      * rewrite H8 in *.
+        find_inversion.
+        simpl in H5. repeat break_if; try congruence.
+        rewrite serialize_deserialize_id_nil in H5.
+        simpl in H6. repeat break_if; try congruence.
+        unfold apply_ops, update_disk, update in H7. repeat break_if; try congruence.
+        match goal with
+        | H : dsk Log = _ |- _ => rewrite H in *
+        end.
+        assert (entries' = entries ++ [inr (src, m)]) by admit.
+        rewrite H.
+        rewrite apply_log_app.
+        unfold apply_entry. repeat break_let.
+        unfold log_net_handlers in *. repeat break_let.
+
+        admit.
+  Admitted.
 
   Definition do_reboot (h : do_name) (w : log_files -> IOStreamWriter.wire) :
     (data * do_disk log_files) :=
