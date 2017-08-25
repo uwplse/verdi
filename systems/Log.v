@@ -14,7 +14,8 @@ Section Log.
   Context {l_name_serializer : Serializer name}.
   Context {msg_serializer : Serializer msg}.
   Context {input_serializer : Serializer input}.
-  Context {snapshot_interval : nat}.
+
+  Variable snapshot_interval : nat.
 
   Definition entry : Type := input + (name * msg).
 

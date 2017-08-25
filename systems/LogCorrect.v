@@ -13,8 +13,7 @@ Section LogCorrect.
   Context {msg_serializer : Serializer msg}.
   Context {input_serializer : Serializer input}.
 
-  Context {snapshot_interval : nat}.
-  Hypothesis reboot_idem : forall d, reboot (reboot d) = reboot d.
+  Variable snapshot_interval : nat.
 
   Lemma f :
     deserialize_top
@@ -34,11 +33,11 @@ Section LogCorrect.
     now break_if.
   Qed.
 
-  Definition do_reboot := do_reboot (snapshot_interval := snapshot_interval).
+  Definition do_reboot := do_reboot snapshot_interval.
 
   Lemma disk_follows_local_state : forall net failed tr (h : name),
       @step_failure_log_star _ _
-                             (log_failure_params (snapshot_interval := snapshot_interval)) step_failure_log_init (failed, net) tr ->
+                             (log_failure_params snapshot_interval) step_failure_log_init (failed, net) tr ->
       match do_reboot h (disk_to_wire (nwdoDisk net h)) with
       | (d, dsk) => d
       end = nwdoState net h.
@@ -96,9 +95,8 @@ Section LogCorrect.
   Definition orig_packet := @packet _ orig_multi_params.
   Definition orig_network := @network _ orig_multi_params.
 
-  Definition log_packet := @do_packet _ (log_multi_params (snapshot_interval := snapshot_interval)).
-  Definition log_network := @do_network _ (log_multi_params (snapshot_interval := snapshot_interval)).
-
+  Definition log_packet := @do_packet _ (log_multi_params snapshot_interval).
+  Definition log_network := @do_network _ (log_multi_params snapshot_interval).
 
   Definition revertPacket (p : log_packet) : orig_packet :=
     @mkPacket _ orig_multi_params (do_pSrc p) (do_pDst p) (do_pBody p).
@@ -109,8 +107,8 @@ Section LogCorrect.
 
   Theorem disk_step_failure_step :
     forall net net' failed failed' tr tr',
-      @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
-      @step_failure_log _ _ log_failure_params (failed, net) (failed', net') tr' ->
+      @step_failure_log_star _ _ (log_failure_params snapshot_interval) step_failure_log_init (failed, net) tr ->
+      @step_failure_log _ _ (log_failure_params snapshot_interval) (failed, net) (failed', net') tr' ->
       step_failure (failed, revertLogNetwork net)
                    (failed', revertLogNetwork net')
                    tr'.

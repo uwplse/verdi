@@ -598,10 +598,7 @@ Section StepFailureDiskOp.
   Definition update_disk (dsk : do_disk file_name) (op : disk_op file_name) :
     do_disk file_name :=
     match op with
-    | Append file x => update file_name_eq_dec dsk file
-                              (IOStreamWriter.append
-                                 (fun _ => dsk file)
-                                 (fun _ => x))
+    | Append file x => update file_name_eq_dec dsk file (dsk file +$+ x)
     | Write file x => update file_name_eq_dec dsk file x
     | Delete file =>  update file_name_eq_dec dsk file IOStreamWriter.empty
     end.
