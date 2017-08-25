@@ -32,13 +32,12 @@ Section Log.
                                      log_data : data}.
 
   Definition log_state_serialize d :=
-    IOStreamWriter.append (fun _ => serialize (log_num_entries d))
-                          (fun _ => serialize (log_data d)).
+    serialize (log_num_entries d) +$+ serialize (log_data d).
 
   Definition log_state_deserialize :=
     n <- deserialize;;
-      d <- deserialize;;
-      ByteListReader.ret (mk_log_state n d).
+    d <- deserialize;;
+    ByteListReader.ret (mk_log_state n d).
 
   Lemma log_state_serialize_deserialize_id:
     serialize_deserialize_id_spec log_state_serialize log_state_deserialize.
@@ -125,32 +124,26 @@ Section Log.
     }.
 
   Definition wire_to_log (w : file_name -> IOStreamWriter.wire) : option (nat * @data orig_base_params * list entry) :=
-    match (deserialize_top deserialize (w Count),
-           deserialize_top deserialize (w Snapshot)) with
-    | (Some n, Some d) =>
+    match deserialize_top deserialize (w Count), deserialize_top deserialize (w Snapshot) with
+    | Some n, Some d =>
       match deserialize_top (list_deserialize_rec _ _ n) (w Log) with
       | Some es => Some (n, d, es)
       | None => None
       end
-    | (_, _) => None
+    | _, _ => None
     end.
 
   Definition apply_entry h d e :=
     match e with
-     | inl inp => match input_handlers h inp d with
-                  | ( _, d, _) => d
-                  end
-     | inr (src, m) =>  match net_handlers h src m d with
-                        | (_, d, _) => d
-                        end
+     | inl inp => let '(_, d', _) := input_handlers h inp d in d'
+     | inr (src, m) => let '(_, d', _) := net_handlers h src m d in d'
     end.
 
 
   Fixpoint apply_log h (d : @data orig_base_params) (entries : list entry) : @data orig_base_params :=
     match entries with
     | [] => d
-    | e :: entries =>
-      apply_log h (apply_entry h d e) entries
+    | e :: entries => apply_log h (apply_entry h d e) entries
     end.
 
   Lemma apply_log_app : forall h d entries e,
@@ -176,8 +169,7 @@ Section Log.
 
   Lemma serialize_snoc : forall {A} {sA : Serializer A} (a : A) l,
       (IOStreamWriter.unwrap
-         (IOStreamWriter.append (fun _ : unit => list_serialize_rec _ _ l)
-                                (fun _ : unit => serialize a))) =
+         (list_serialize_rec _ _ l +$+ serialize a)) =
       (IOStreamWriter.unwrap (list_serialize_rec _ _ (l ++ [a]))).
   Proof.
     intros.
@@ -376,7 +368,7 @@ Section Log.
                                       | Count => serialize 0
                                       | Snapshot => serialize d
                                       | Log => IOStreamWriter.empty
-                                         end)
+                                     end)
     | None => (mk_log_state 0 (init_handlers h), fun _ => IOStreamWriter.empty)
     end.
 
@@ -385,5 +377,5 @@ Section Log.
 End Log.
 
 Hint Extern 5 (@BaseParams) => apply log_base_params : typeclass_instances.
-Hint Extern 5 (@DiskMultiParams _) => apply log_multi_params : typeclass_instances.
-Hint Extern 5 (@DiskFailureParams _ _) => apply log_failure_params : typeclass_instances.
+Hint Extern 5 (@DiskOpMultiParams _) => apply log_multi_params : typeclass_instances.
+Hint Extern 5 (@DiskOpFailureParams _ _) => apply log_failure_params : typeclass_instances.
