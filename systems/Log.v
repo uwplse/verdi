@@ -6,16 +6,25 @@ Import DeserializerNotations.
 
 Set Implicit Arguments.
 
+Class LogParams `(P : MultiParams) :=
+  {
+    log_data_serializer : Serializer data ;
+    log_name_serializer : Serializer name ;
+    log_msg_serializer : Serializer msg ;
+    log_input_serializer : Serializer input ;
+    log_snapshot_interval : nat
+  }.
+
 Section Log.
   Context {orig_base_params : BaseParams}.
   Context {orig_multi_params : MultiParams orig_base_params}.
   Context {orig_failure_params : FailureParams orig_multi_params}.
-  Context {data_serializer : Serializer data}.
-  Context {l_name_serializer : Serializer name}.
-  Context {msg_serializer : Serializer msg}.
-  Context {input_serializer : Serializer input}.
+  Context {log_params : LogParams orig_multi_params}.
 
-  Variable snapshot_interval : nat.
+  Existing Instance log_data_serializer.
+  Existing Instance log_name_serializer.
+  Existing Instance log_msg_serializer.
+  Existing Instance log_input_serializer.
 
   Definition entry : Type := input + (name * msg).
 
@@ -24,13 +33,13 @@ Section Log.
   | Snapshot
   | Log.
 
-  Lemma log_files_eq_dec : forall x y : log_files, {x = y} + {x <> y}.
-  Proof.
+  Definition log_files_eq_dec : forall x y : log_files, {x = y} + {x <> y}.
     decide equality.
-  Qed.
+  Defined.
 
-  Record log_state := mk_log_state { log_num_entries : nat ;
-                                     log_data : data}.
+  Record log_state :=
+    mk_log_state { log_num_entries : nat ;
+                   log_data : data }.
 
   Definition log_state_serialize d :=
     serialize (log_num_entries d) +$+ serialize (log_data d).
@@ -63,7 +72,7 @@ Section Log.
                                              list (name * msg)  :=
     let '(out, data, ps) := net_handlers dst src m (log_data st) in
     let n := log_num_entries st in
-    if S n =? snapshot_interval
+    if S n =? log_snapshot_interval
     then ([Delete Log; Write Snapshot (serialize data); Write Count (serialize 0)],
           out,
           mk_log_state 0 data,
@@ -79,7 +88,7 @@ Section Log.
                                            list (name * msg) :=
     let '(out, data, ps) := input_handlers h inp (log_data st) in
     let n := log_num_entries st in
-    if S n =? snapshot_interval
+    if S n =? log_snapshot_interval
     then ([Delete Log; Write Snapshot (serialize data); Write Count (serialize 0)],
           out,
           mk_log_state 0 data,
@@ -187,16 +196,11 @@ Section Log.
   Qed.
 
   Lemma serialize_deserialize_snoc : forall entries e0,
- ByteListReader.unwrap
-    (list_deserialize_rec entry
-       (sum_Serializer input (name * msg) input_serializer
-          (pair_Serializer name msg l_name_serializer msg_serializer))
-       (S (length entries)))
-    (IOStreamWriter.unwrap
-       (list_serialize_rec entry
-          (sum_Serializer input (name * msg) input_serializer
-             (pair_Serializer name msg l_name_serializer msg_serializer))
-          (entries ++ [e0]))) = Some (entries ++ [e0], []).
+      ByteListReader.unwrap
+        (list_deserialize_rec entry _ (S (length entries)))
+        (IOStreamWriter.unwrap
+           (list_serialize_rec entry _ (entries ++ [e0]))) =
+      Some (entries ++ [e0], []).
   Proof.
     intros.
     induction entries.
@@ -262,8 +266,7 @@ Section Log.
     - break_let. break_let.
       assert (dsk' Count = serialize 0).
       * find_inversion.
-        simpl.
-        break_if; try congruence.
+        reflexivity.
       * match goal with
         | H : dsk' Count = _ |- _ => rewrite H in *
         end.
@@ -284,7 +287,8 @@ Section Log.
         reflexivity.
     - break_let. break_let.
       assert (Hn' : n' = S n).
-      + find_inversion. simpl in *. break_if; try congruence.
+      + find_inversion. simpl in *.
+        reflexivity.
       + rewrite Hn' in *.
         assert (Hentries' : entries' = entries ++ [inr (src, m)]).
         {
@@ -348,7 +352,7 @@ Section Log.
       assert (dsk' Count = serialize 0).
       * find_inversion.
         simpl.
-        break_if; try congruence.
+        reflexivity.
       * match goal with
         | H : dsk' Count = _ |- _ => rewrite H in *
         end.
@@ -369,7 +373,8 @@ Section Log.
         reflexivity.
     - break_let. break_let.
       assert (Hn' : n' = S n).
-      + find_inversion. simpl in *. break_if; try congruence.
+      + find_inversion. simpl in *.
+        reflexivity.
       + rewrite Hn' in *.
         assert (Hentries' : entries' = entries ++ [inl m]).
         {

@@ -7,19 +7,16 @@ Section LogCorrect.
   Context {orig_base_params : BaseParams}.
   Context {orig_multi_params : MultiParams orig_base_params}.
   Context {orig_failure_params : FailureParams orig_multi_params}.
+  Context {log_params : LogParams orig_multi_params}.
 
-  Context {data_serializer : Serializer data}.
-  Context {l_name_serializer : Serializer name}.
-  Context {msg_serializer : Serializer msg}.
-  Context {input_serializer : Serializer input}.
-
-  Variable snapshot_interval : nat.
+  Existing Instance log_data_serializer.
+  Existing Instance log_name_serializer.
+  Existing Instance log_msg_serializer.
+  Existing Instance log_input_serializer.
 
   Lemma f :
     deserialize_top
-             (list_deserialize_rec entry
-                (sum_Serializer input (name * msg) input_serializer
-                   (pair_Serializer name msg l_name_serializer msg_serializer)) 0)
+             (list_deserialize_rec entry _ 0)
              (serialize_top IOStreamWriter.empty) = Some [].
   Proof.
     unfold deserialize_top, serialize_top.
@@ -33,11 +30,8 @@ Section LogCorrect.
     now break_if.
   Qed.
 
-  Definition do_reboot := do_reboot snapshot_interval.
-
   Lemma disk_follows_local_state : forall net failed tr (h : name),
-      @step_failure_log_star _ _
-                             (log_failure_params snapshot_interval) step_failure_log_init (failed, net) tr ->
+      @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
       match do_reboot h (disk_to_wire (nwdoDisk net h)) with
       | (d, dsk) => d
       end = nwdoState net h.
@@ -95,8 +89,8 @@ Section LogCorrect.
   Definition orig_packet := @packet _ orig_multi_params.
   Definition orig_network := @network _ orig_multi_params.
 
-  Definition log_packet := @do_packet _ (log_multi_params snapshot_interval).
-  Definition log_network := @do_network _ (log_multi_params snapshot_interval).
+  Definition log_packet := @do_packet _ log_multi_params.
+  Definition log_network := @do_network _ log_multi_params.
 
   Definition revertPacket (p : log_packet) : orig_packet :=
     @mkPacket _ orig_multi_params (do_pSrc p) (do_pDst p) (do_pBody p).
@@ -107,8 +101,8 @@ Section LogCorrect.
 
   Theorem disk_step_failure_step :
     forall net net' failed failed' tr tr',
-      @step_failure_log_star _ _ (log_failure_params snapshot_interval) step_failure_log_init (failed, net) tr ->
-      @step_failure_log _ _ (log_failure_params snapshot_interval) (failed, net) (failed', net') tr' ->
+      @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
+      @step_failure_log _ _ log_failure_params (failed, net) (failed', net') tr' ->
       step_failure (failed, revertLogNetwork net)
                    (failed', revertLogNetwork net')
                    tr'.
