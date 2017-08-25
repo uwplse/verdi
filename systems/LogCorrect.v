@@ -66,27 +66,16 @@ Section LogCorrect.
       break_let. break_let.
       rewrite Heqx in *.
       match goal with H : step_failure_log _ _ _ |- _ => invcs H end.
-      + unfold do_reboot, Log.do_reboot in Heqp.
-        break_match. break_match.
-        * break_let. break_let.
-          find_inversion.
-          unfold log_net_handlers in *. break_let. break_let.
-          break_if.
-          -- find_inversion.
-             unfold do_reboot, Log.do_reboot in Heqp0.
-             break_match.
-             ++ break_let. break_let.
-                find_inversion.
-                admit.
-             ++ admit. (* expect a contradiction here) *)
-          -- admit.
-        * admit.
-        * break_match.
-          -- admit.
-          -- admit.
       + break_if.
         * admit.
+        * match goal with H : do_reboot _ _ = _ |- _ => rewrite H in * end.
+          find_inversion.
+          reflexivity.
+      + break_if.
         * admit.
+        * match goal with H : do_reboot _ _ = _ |- _ => rewrite H in * end.
+          find_inversion.
+          reflexivity.
       + match goal with H : do_reboot _ _ = _ |- _ => rewrite H in * end.
         find_inversion.
         reflexivity.

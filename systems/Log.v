@@ -68,7 +68,7 @@ Section Log.
           out,
           mk_log_state 0 data,
           ps)
-    else ([Append Log (serialize (inr (src , m))); Write Count (serialize (S n))],
+    else ([Append Log (serialize (inr (src , m) : entry)); Write Count (serialize (S n))],
           out,
           mk_log_state (S n) data,
           ps).
@@ -84,7 +84,7 @@ Section Log.
           out,
           mk_log_state 0 data,
           ps)
-    else ([Append Log (serialize (inl inp)); Write Count (serialize (S n))],
+    else ([Append Log (serialize (inl inp : entry)); Write Count (serialize (S n))],
           out,
           mk_log_state (S n) data,
           ps).
@@ -125,17 +125,14 @@ Section Log.
     }.
 
   Definition wire_to_log (w : file_name -> IOStreamWriter.wire) : option (nat * @data orig_base_params * list entry) :=
-    match deserialize_top deserialize (w Count) with
-    | Some n =>
-      match deserialize_top deserialize (w Snapshot) with
-      | Some d =>
-        match deserialize_top (list_deserialize_rec _ _ n) (w Log) with
-        | Some es => Some (n, d, es)
-        | None => None
-        end
+    match (deserialize_top deserialize (w Count),
+           deserialize_top deserialize (w Snapshot)) with
+    | (Some n, Some d) =>
+      match deserialize_top (list_deserialize_rec _ _ n) (w Log) with
+      | Some es => Some (n, d, es)
       | None => None
       end
-    | None => None
+    | (_, _) => None
     end.
 
   Definition apply_entry h d e :=
@@ -170,13 +167,6 @@ Section Log.
       reflexivity.
   Qed.
 
-(*
-  Lemma serialize_empty : deserialize_top
-                            (list_deserialize_rec entry
-                                                  (sum_Serializer input (name * msg) input_serializer
-                                                                  (pair_Serializer name msg l_name_serializer msg_serializer)) n')
-                            (serialize_top IOStreamWriter.empty) = Some [].
- *)
   Lemma serialize_empty : forall A,
     ByteListReader.unwrap (ByteListReader.ret (@nil A))
                           (IOStreamWriter.unwrap IOStreamWriter.empty) = Some ([], []).
@@ -184,31 +174,49 @@ Section Log.
     cheerios_crush.
   Qed.
 
-  Lemma serialize_cons : forall l e n entries entries',
-      ByteListReader.unwrap
-        (list_deserialize_rec entry _ n)
-        (IOStreamWriter.unwrap l) = Some (entries, []) ->
-         ByteListReader.unwrap
-         (list_deserialize_rec entry _ (S n))
-         (IOStreamWriter.unwrap
-            (IOStreamWriter.append (fun _ : unit => l)
-                                   (fun _ : unit => serialize e))) = Some (entries', []) ->
-         entries' = entries ++ [e].
+  Lemma serialize_snoc : forall {A} {sA : Serializer A} (a : A) l,
+      (IOStreamWriter.unwrap
+         (IOStreamWriter.append (fun _ : unit => list_serialize_rec _ _ l)
+                                (fun _ : unit => serialize a))) =
+      (IOStreamWriter.unwrap (list_serialize_rec _ _ (l ++ [a]))).
   Proof.
     intros.
+    induction l;
+      rewrite IOStreamWriter.append_unwrap;
+      simpl;
+      repeat rewrite IOStreamWriter.append_unwrap.
+    - rewrite IOStreamWriter.empty_unwrap.
+      rewrite app_nil_r.
+      reflexivity.
+    - rewrite <- IHl.
+      rewrite IOStreamWriter.append_unwrap, app_ass.
+      reflexivity.
+  Qed.
+
+  Theorem serialize_snoc' : forall e entries dsk n,
+      dsk Log = list_serialize_rec entry _ entries ->
+      ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Count)) = Some (n, []) ->
+      ByteListReader.unwrap
+        (list_deserialize_rec entry _ (S n))
+        (IOStreamWriter.unwrap
+           (apply_ops dsk [Append Log (serialize e); Write Count (serialize (S n))] Log)) = Some (entries ++ [e], []).
+  Proof.
+    unfold apply_ops, update_disk, update.
+    repeat break_if;
+      try congruence.
+    intros.
+    rewrite H.
+    rewrite serialize_snoc.
+    admit.
   Admitted.
 
-
-     (*
-    Set Printing Implicit.
-    rewrite (@serialize_deserialize_top_id' (list entry)) with (v := l) (bytes := []) in H. *)
-
-  Lemma a : forall dst src m d cs out d' l
-                   (dsk : do_disk file_name) (n : nat) snap (entries : list entry)
-                   dsk' n' snap' entries',
-      log_net_handlers dst src m (mk_log_state n d) = (cs, out, mk_log_state n' d', l) -> 
+  Lemma log_net_handlers_spec :
+    forall dst src m d cs out d' l
+           (dsk : do_disk file_name) (n : nat) snap (entries : list entry)
+           dsk' n' snap' entries',
+      log_net_handlers dst src m (mk_log_state n d) = (cs, out, mk_log_state n' d', l) ->
       ByteListReader.unwrap (@deserialize nat _)
-                            (IOStreamWriter.unwrap (dsk Count)) = Some (n, []) -> 
+                            (IOStreamWriter.unwrap (dsk Count)) = Some (n, []) ->
       ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Snapshot)) = Some (snap, []) ->
       dsk Log = list_serialize_rec entry _ entries ->
       apply_log dst snap entries = d ->
@@ -248,7 +256,17 @@ Section Log.
       assert (Hn' : n' = S n).
       + find_inversion. simpl in H5. break_if; try congruence.
       + rewrite Hn' in *.
-        assert (Hentries' : entries' = entries ++ [inr (src, m)]) by admit.
+        assert (Hentries' : entries' = entries ++ [inr (src, m)]).
+        {
+          match goal with
+          | H : _ = dsk' |- _ => rewrite <- H in *
+          end.
+          tuple_inversion.
+          rewrite (serialize_snoc' _ entries) in H7.
+          * find_inversion. reflexivity.
+          * assumption.
+          * assumption.
+        }
         assert (Hsnap' : snap' = snap).
         * find_inversion.
           match goal with
@@ -269,7 +287,86 @@ Section Log.
           end.
           find_inversion.
           reflexivity.
-  Admitted.
+  Qed.
+
+  Lemma log_input_handlers_spec
+    : forall dst m d cs out d' l
+             (dsk : do_disk file_name) (n : nat) snap (entries : list entry)
+             dsk' n' snap' entries',
+      log_input_handlers dst m (mk_log_state n d) = (cs, out, mk_log_state n' d', l) ->
+      ByteListReader.unwrap (@deserialize nat _)
+                            (IOStreamWriter.unwrap (dsk Count)) = Some (n, []) ->
+      ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Snapshot)) = Some (snap, []) ->
+      dsk Log = list_serialize_rec entry _ entries ->
+      apply_log dst snap entries = d ->
+      apply_ops dsk cs = dsk' ->
+      ByteListReader.unwrap deserialize
+                            (IOStreamWriter.unwrap (dsk' Count)) = Some (n', [])  ->
+      ByteListReader.unwrap deserialize
+                            (IOStreamWriter.unwrap (dsk' Snapshot)) = Some (snap', []) ->
+      ByteListReader.unwrap (list_deserialize_rec _  _ n')
+                            (IOStreamWriter.unwrap (dsk' Log)) = Some (entries', []) ->
+      apply_log dst snap' entries' = d'.
+  Proof.
+    intros.
+    unfold log_input_handlers in *.
+    break_if.
+    - break_let. break_let.
+      assert (dsk' Count = serialize 0).
+      * find_inversion.
+        simpl.
+        break_if; try congruence.
+      * match goal with
+        | H : dsk' Count = _ |- _ => rewrite H in *
+        end.
+        match goal with
+        | H : context [serialize 0] |- _ => rewrite serialize_deserialize_id_nil in H
+        end.
+        find_inversion. find_inversion.
+        simpl in H8. repeat break_if; try congruence.
+        simpl in H7. repeat break_if; try congruence. rewrite serialize_empty in H7.
+        simpl in H6. repeat break_if; try congruence.
+        find_inversion. find_inversion.
+        rewrite serialize_deserialize_id_nil in H6.
+        simpl.
+        find_inversion.
+        reflexivity.
+    - break_let. break_let.
+      assert (Hn' : n' = S n).
+      + find_inversion. simpl in H5. break_if; try congruence.
+      + rewrite Hn' in *.
+        assert (Hentries' : entries' = entries ++ [inl m]).
+        {
+          match goal with
+          | H : _ = dsk' |- _ => rewrite <- H in *
+          end.
+          tuple_inversion.
+          rewrite (serialize_snoc' _ entries) in H7.
+          * find_inversion. reflexivity.
+          * assumption.
+          * assumption.
+        }
+        assert (Hsnap' : snap' = snap).
+        * find_inversion.
+          match goal with
+          | H : _ = Some (snap', _) |- _ => simpl in H; repeat break_if; try congruence
+          end.
+        * rewrite Hsnap', Hentries'.
+          rewrite apply_log_app.
+          match goal with
+          | H : _ = d |- _ => rewrite H
+          end.
+          unfold apply_entry. repeat break_let.
+          inversion H.
+          match goal with
+          | H : _ = ?d |- _ = ?d => rewrite <- H
+          end.
+          match goal with
+          | H : input_handlers _ _ (log_data _) = _ |- _ => simpl in H; rewrite H in *
+          end.
+          find_inversion.
+          reflexivity.
+  Qed.
 
   Definition do_reboot (h : do_name) (w : log_files -> IOStreamWriter.wire) :
     (data * do_disk log_files) :=
