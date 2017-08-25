@@ -9,11 +9,6 @@ Section LogCorrect.
   Context {orig_failure_params : FailureParams orig_multi_params}.
   Context {log_params : LogParams orig_multi_params}.
 
-  Existing Instance log_data_serializer.
-  Existing Instance log_name_serializer.
-  Existing Instance log_msg_serializer.
-  Existing Instance log_input_serializer.
-
   Lemma f :
     deserialize_top
              (list_deserialize_rec entry _ 0)

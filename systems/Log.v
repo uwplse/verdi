@@ -8,10 +8,10 @@ Set Implicit Arguments.
 
 Class LogParams `(P : MultiParams) :=
   {
-    log_data_serializer : Serializer data ;
-    log_name_serializer : Serializer name ;
-    log_msg_serializer : Serializer msg ;
-    log_input_serializer : Serializer input ;
+    log_data_serializer :> Serializer data ;
+    log_name_serializer :> Serializer name ;
+    log_msg_serializer :> Serializer msg ;
+    log_input_serializer :> Serializer input ;
     log_snapshot_interval : nat
   }.
 
@@ -20,11 +20,6 @@ Section Log.
   Context {orig_multi_params : MultiParams orig_base_params}.
   Context {orig_failure_params : FailureParams orig_multi_params}.
   Context {log_params : LogParams orig_multi_params}.
-
-  Existing Instance log_data_serializer.
-  Existing Instance log_name_serializer.
-  Existing Instance log_msg_serializer.
-  Existing Instance log_input_serializer.
 
   Definition entry : Type := input + (name * msg).
 
