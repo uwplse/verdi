@@ -16,6 +16,7 @@ Section LogCorrect.
   Proof.
     unfold deserialize_top, serialize_top.
     simpl.
+    rewrite IOStreamWriter.wire_wrap_unwrap.
     cheerios_crush.
   Qed.
 
@@ -24,6 +25,70 @@ Section LogCorrect.
     intros.
     now break_if.
   Qed.
+
+  Lemma disk_to_wire_to_log : forall dsk n d es,
+      wire_to_log (disk_to_wire dsk) = Some (n, d, es) ->
+      ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Count)) = Some (n, []) /\
+      ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Snapshot)) = Some (d, []) /\
+      ByteListReader.unwrap (list_deserialize_rec entry _ n) (IOStreamWriter.unwrap (dsk Log)) = Some (es, []).
+  Proof.
+    intros.
+    intuition;
+      unfold wire_to_log, disk_to_wire in *;
+      repeat break_match;
+      try congruence;
+      find_inversion;
+      match goal with
+      | H : deserialize_top _ (serialize_top _) = Some ?v  |- _ = Some (?v, []) =>
+        apply serialize_deserialize_top_invert in H
+      end;
+      assumption.
+  Qed.
+
+  Lemma disk_valid' : forall net failed tr (h : name),
+      @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
+       (* this induction hypothesis probably isn't strong enough. at least, it's not
+          the most convenient. better (?): all three files deserialize to something valid *)
+      exists v,
+      wire_to_log (disk_to_wire (nwdoDisk net h)) = Some v.
+    intros.
+    remember step_failure_log_init as x.
+    change net with (snd (failed, net)).
+    induction H  using refl_trans_1n_trace_n1_ind.
+    - find_rewrite.
+      simpl.
+      unfold disk_to_wire, wire_to_log.
+      unfold init_disk.
+      repeat rewrite serialize_deserialize_top_id.
+      unfold list_deserialize_rec.
+      exists (0, init_handlers h, []).
+      unfold deserialize_top, serialize_top.
+      rewrite IOStreamWriter.wire_wrap_unwrap.
+      cheerios_crush.
+    - concludes.
+      break_exists.
+      invcs H0.
+      + admit.
+      + admit.
+      + eauto.
+      + eauto.
+      + eauto.
+      + eauto.
+  Admitted.
+
+   Lemma disk_valid : forall net failed tr (h : name),
+      @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
+       (* this induction hypothesis probably isn't strong enough. at least, it's not
+          the most convenient. better (?): all three files deserialize to something valid *)
+      ~wire_to_log (disk_to_wire (nwdoDisk net h)) = None.
+   Proof.
+     intros.
+     apply disk_valid' with (h := h) in H.
+     break_exists.
+     find_rewrite.
+     intuition.
+     congruence.
+   Qed.
 
   Lemma disk_follows_local_state : forall net failed tr (h : name),
       @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
@@ -55,7 +120,13 @@ Section LogCorrect.
       rewrite Heqx in *.
       match goal with H : step_failure_log _ _ _ |- _ => invcs H end.
       + break_if.
-        * admit.
+        * unfold do_reboot, Log.do_reboot in *.
+          repeat break_match; try congruence.
+          -- find_apply_lem_hyp disk_to_wire_to_log.
+             admit.
+          -- admit.
+          -- admit.
+          -- admit.
         * match goal with H : do_reboot _ _ = _ |- _ => rewrite H in * end.
           find_inversion.
           reflexivity.
