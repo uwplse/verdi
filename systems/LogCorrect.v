@@ -94,7 +94,7 @@ Section LogCorrect.
     mkNetwork (map revertPacket (nwdoPackets net))
               (fun h => (log_data (nwdoState net h))).
 
-  Theorem disk_step_failure_step :
+  Theorem log_step_failure_step :
     forall net net' failed failed' tr tr',
       @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
       @step_failure_log _ _ log_failure_params (failed, net) (failed', net') tr' ->
@@ -167,4 +167,27 @@ Section LogCorrect.
       + unfold revertLogNetwork. simpl.
         admit.
   Admitted.
+
+  Lemma log_step_failure_star_simulation :
+    forall net failed tr,
+      step_failure_log_star step_failure_log_init (failed, net) tr ->
+      step_failure_star step_failure_init (failed, revertLogNetwork net) tr.
+  Proof.
+    intros net failed tr H_star.
+    remember step_failure_log_init as y in *.
+    change failed with (fst (failed, net)).
+    change net with (snd (failed, net)) at 2.
+    revert Heqy.
+    induction H_star using refl_trans_1n_trace_n1_ind; intro H_init.
+    - find_rewrite.
+      simpl; unfold revertLogNetwork; simpl.
+      constructor.
+    - concludes.
+      destruct x' as (failed', net').
+      destruct x'' as (failed'', net'').
+      subst.
+      apply RT1n_step with (y := (failed', revertLogNetwork net')).
+      + apply IHH_star1.
+      + eapply log_step_failure_step; eauto.
+    Qed.
 End LogCorrect.
