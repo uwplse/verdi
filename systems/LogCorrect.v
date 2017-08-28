@@ -91,21 +91,19 @@ Section LogCorrect.
      congruence.
    Qed.
 
-  Lemma disk_follows_local_state : forall net failed tr (h : name),
+  Lemma disk_follows_local_state : forall net failed tr,
       @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
-      match do_reboot h (disk_to_wire (nwdoDisk net h)) with
-      | (d, dsk) => d
-      end = nwdoState net h.
+      forall h d dsk, do_log_reboot h (disk_to_wire (nwdoDisk net h)) = (d, dsk) ->
+      log_data d = reboot (log_data (nwdoState net h)).
   Proof.
-    intros.
-    remember step_failure_log_init as x.
+    intros net failed tr H_st h d dsk.
+    remember step_failure_log_init as x.    
     change net with (snd (failed, net)).
-    induction H using refl_trans_1n_trace_n1_ind.
-    - intros.
-      rewrite Heqx in *.
+    induction H_st using refl_trans_1n_trace_n1_ind.
+    - subst.
+      intros.
       simpl in *.
-      unfold disk_to_wire, init_disk, do_reboot, Log.do_reboot in *.
-      break_let.
+      unfold disk_to_wire, init_disk, do_reboot, Log.do_log_reboot in *.
       break_match;
         unfold wire_to_log in *;
         repeat rewrite serialize_deserialize_top_id in Heqo;
@@ -117,40 +115,40 @@ Section LogCorrect.
         reflexivity.
       + congruence.
     - concludes.
-      break_let. break_let.
+      intros.
       rewrite Heqx in *.
       match goal with H : step_failure_log _ _ _ |- _ => invcs H end.
       + break_if.
-        * unfold do_reboot, Log.do_reboot in *.
+        * unfold do_reboot, Log.do_log_reboot in *.
           repeat break_match; try congruence.
           -- find_apply_lem_hyp disk_to_wire_to_log.
              admit.
           -- admit.
           -- admit.
           -- admit.
-        * match goal with H : do_reboot _ _ = _ |- _ => rewrite H in * end.
-          find_inversion.
-          reflexivity.
+        * match goal with H : do_log_reboot _ _ = _ |- _ => rewrite H in * end.
+          concludes.
+          assumption.
       + break_if.
         * admit.
-        * match goal with H : do_reboot _ _ = _ |- _ => rewrite H in * end.
-          find_inversion.
-          reflexivity.
-      + match goal with H : do_reboot _ _ = _ |- _ => rewrite H in * end.
-        find_inversion.
-        reflexivity.
-      + match goal with H : do_reboot _ _ = _ |- _ => rewrite H in * end.
-        find_inversion.
-        reflexivity.
-      + match goal with H : do_reboot _ _ = _ |- _ => rewrite H in * end.
-        find_inversion.
-        reflexivity.
+        * match goal with H : do_log_reboot _ _ = _ |- _ => rewrite H in * end.
+          concludes.
+          assumption.
+      + match goal with H : do_log_reboot _ _ = _ |- _ => rewrite H in * end.
+        concludes.
+        assumption.
+      + match goal with H : do_log_reboot _ _ = _ |- _ => rewrite H in * end.
+        concludes.
+        assumption.
+      + match goal with H : do_log_reboot _ _ = _ |- _ => rewrite H in * end.
+        concludes.
+        assumption.
       + break_if.
         * find_rewrite.
           admit.
-        * match goal with H : do_reboot _ _ = _ |- _ => rewrite H in * end.
-          find_inversion.
-          reflexivity.
+        * match goal with H : do_log_reboot _ _ = _ |- _ => rewrite H in * end.
+          concludes.
+          assumption.
   Admitted.
 
   Definition orig_packet := @packet _ orig_multi_params.
