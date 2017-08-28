@@ -15,10 +15,42 @@ Section DiskCorrect.
 
   Hypothesis reboot_idem : forall d, reboot (reboot d) = reboot d.
 
+  Lemma disk_deserialize_some : forall net failed tr,
+      step_failure_disk_star step_failure_disk_init (failed, net) tr ->
+      forall n, exists d, deserialize_top deserialize (nwdDisk net n) = Some d.
+  Proof.
+    remember step_failure_disk_init as y in *.
+    move => net failed tr H_st.
+    change net with (snd (failed, net)).
+    move: Heqy.
+    induction H_st using refl_trans_1n_trace_n1_ind => H_eq n.
+    - rewrite H_eq /= /init_disk /=.
+      rewrite serialize_deserialize_top_id.
+      by exists (init_handlers n).
+    - concludes.
+      match goal with
+      | [ H : step_failure_disk _ _ _ |- _ ] => invcs H
+      end; simpl => //.
+      * break_if => //.
+        subst.
+        unfold disk_net_handlers in *.
+        repeat break_let.
+        find_inversion.
+        rewrite serialize_deserialize_top_id.
+        by exists d.
+      * break_if => //.
+        subst.
+        unfold disk_input_handlers in *.
+        repeat break_let.
+        find_inversion.
+        rewrite serialize_deserialize_top_id.
+        by exists d.
+   Qed.
+
   Lemma disk_follows_local_state_reboot : forall net failed tr,
       step_failure_disk_star step_failure_disk_init (failed, net) tr ->
       forall n d, deserialize_top deserialize (nwdDisk net n) = Some d ->
-        @reboot _ _ orig_failure_params d = @reboot _ _ orig_failure_params (nwdState net n).
+        reboot d = reboot (nwdState net n).
   Proof.
     remember step_failure_disk_init as y in *.
     move => net failed tr H_st.
@@ -50,10 +82,14 @@ Section DiskCorrect.
    - break_if.
      * subst.
        break_match => //.
-       find_injection.
-       find_injection.
-       by rewrite reboot_idem.
-     * exact: IHH_st1.
+       + move => H_eq.
+         rewrite Heqo in H_eq.
+         find_injection.
+         by rewrite reboot_idem.
+       + move => H_eq.
+         rewrite Heqo in H_eq.
+         by congruence.
+       + exact: IHH_st1.
    Qed.
 
   Definition orig_packet := @packet _ orig_multi_params.
@@ -122,9 +158,12 @@ Section DiskCorrect.
       apply functional_extensionality => n.
       break_if => //=.
       subst.
-      break_match => //.
-      find_injection.
-      exact: disk_follows_local_state_reboot _ _ _ H_star h _ Heqo.
+      break_match.
+      * exact: disk_follows_local_state_reboot _ _ _ H_star h _ Heqo.
+      * have H_st' := disk_deserialize_some _ _ _ H_star h.
+        break_exists.
+        rewrite H in Heqo.
+        by congruence.
   Qed.
 
   Lemma disk_step_failure_star_simulation :

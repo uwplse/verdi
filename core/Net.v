@@ -48,6 +48,11 @@ Class MultiParams (P : BaseParams) :=
     input_handlers : name -> input -> data -> (list output) * data * list (name * msg)
   }.
 
+Class FailureParams `(P : MultiParams) :=
+  {
+    reboot : data -> data
+  }.
+
 Class DiskMultiParams (P : BaseParams) :=
   {
     d_name : Type ;
@@ -66,12 +71,7 @@ Class DiskMultiParams (P : BaseParams) :=
 
 Class DiskFailureParams `(P : DiskMultiParams) :=
   {
-    d_reboot : disk -> option data
-  }.
-
-Class FailureParams `(P : MultiParams) :=
-  {
-    reboot : data -> data
+    d_reboot : d_name -> disk -> data
   }.
 
 Definition do_disk file_name :=
@@ -558,12 +558,11 @@ Section StepFailureDisk.
       step_failure_disk (failed, net) (failed, net') []
   | StepFailureDisk_fail :  forall h net failed,
       step_failure_disk (failed, net) (h :: failed, net) []
-  | StepFailureDisk_reboot : forall h net net' failed failed' d,
+  | StepFailureDisk_reboot : forall h net net' failed failed',
       In h failed ->
       failed' = remove d_name_eq_dec h failed ->
-      d_reboot (nwdDisk net h) = Some d ->
       net' = mkdNetwork (nwdPackets net)
-                        (update d_name_eq_dec (nwdState net) h d)
+                        (update d_name_eq_dec (nwdState net) h (d_reboot h (nwdDisk net h)))
                         (nwdDisk net) ->
       step_failure_disk (failed, net) (failed', net') [].
 

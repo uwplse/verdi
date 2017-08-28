@@ -100,7 +100,7 @@ Proof.
   repeat constructor; simpl; intuition discriminate.
 Qed.
 
-Instance Counter_MultiParams : DiskMultiParams Counter_BaseParams :=
+Instance Counter_DiskMultiParams : DiskMultiParams Counter_BaseParams :=
   {
     d_name := Name;
     d_name_eq_dec := Name_eq_dec;
@@ -110,14 +110,19 @@ Instance Counter_MultiParams : DiskMultiParams Counter_BaseParams :=
     d_all_names_nodes := all_Names_Nodes;
     d_no_dup_nodes := NoDup_Nodes;
     d_init_handlers := fun _ => init_Data;
-    d_init_disk := fun _ => (serialize_top (serialize 0));
+    d_init_disk := fun _ => (serialize_top (serialize init_Data));
     d_net_handlers := fun dst src msg s => runGenHandler s (NetHandler dst msg);
     d_input_handlers := fun nm i s => runGenHandler s (InputHandler nm i)
   }.
 
-Instance Counter_FailureParams : DiskFailureParams Counter_MultiParams :=
+Instance Counter_FailureParams : DiskFailureParams Counter_DiskMultiParams :=
   {
-    d_reboot := reboot
+    d_reboot :=
+      fun _ s =>
+        match deserialize_top deserialize s with
+        | Some d => d
+        | None => init_Data
+        end
   }.
 
 Lemma net_handlers_NetHandler :
@@ -240,7 +245,7 @@ Qed.
 
 Lemma backup_plus_network_eq_primary :
   forall net tr,
-    step_async_disk_star (params := Counter_MultiParams)
+    step_async_disk_star (params := Counter_DiskMultiParams)
                          step_async_disk_init
                          net tr -> 
     nwdState net backup + inc_in_flight_to_backup (nwdPackets net) = nwdState net primary.
@@ -285,7 +290,7 @@ Qed.
 
 Theorem primary_ge_backup :
   forall net tr,
-    step_async_disk_star (params := Counter_MultiParams) step_async_disk_init net tr ->
+    step_async_disk_star (params := Counter_DiskMultiParams) step_async_disk_init net tr ->
     nwdState net backup <= nwdState net primary.
 Proof.
   intros.
@@ -414,7 +419,7 @@ Qed.
 
 Lemma inputs_eq_outputs_plus_inc_plus_ack :
   forall net tr,
-    step_async_disk_star (params := Counter_MultiParams) step_async_disk_init net tr ->
+    step_async_disk_star (params := Counter_DiskMultiParams) step_async_disk_init net tr ->
     trace_inputs tr = trace_outputs tr +
                       inc_in_flight_to_backup (nwdPackets net) +
                       ack_in_flight_to_primary (nwdPackets net).
@@ -456,7 +461,7 @@ Qed.
 
 Theorem inputs_ge_outputs :
   forall net tr,
-    step_async_disk_star (params := Counter_MultiParams) step_async_disk_init net tr ->
+    step_async_disk_star (params := Counter_DiskMultiParams) step_async_disk_init net tr ->
     trace_outputs tr <= trace_inputs tr.
 Proof.
   intros.
@@ -499,7 +504,7 @@ Proof.
 Qed.
 
 Theorem disk_follows_local_state: forall net tr node,
-    step_async_disk_star (params := Counter_MultiParams) step_async_disk_init net tr ->
+    step_async_disk_star (params := Counter_DiskMultiParams) step_async_disk_init net tr ->
     reboot (nwdDisk net node) = Some (nwdState net node).
 Proof.
   intros.
