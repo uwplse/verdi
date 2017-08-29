@@ -216,8 +216,76 @@ Section Log.
       cheerios_crush.
   Qed.
 
+
+  Theorem bar : forall entries e s,
+      (forall bytes, ByteListReader.unwrap
+                       (list_deserialize_rec entry _ (length entries))
+                       (IOStreamWriter.unwrap s ++ bytes) = Some (entries, bytes)) ->
+      ByteListReader.unwrap
+        (list_deserialize_rec entry _ (S (length entries)))
+        (IOStreamWriter.unwrap (s +$+ (@serialize entry _ e))) =
+      ByteListReader.unwrap
+        (entries <- (list_deserialize_rec entry _ (length entries));;
+                 e <- deserialize;;
+                 ByteListReader.ret (entries ++ [e]))
+        (IOStreamWriter.unwrap (s +$+ serialize e)).
+  Proof.
+    intros until s.
+    induction entries.
+    - intros.
+      repeat rewrite IOStreamWriter.append_unwrap.
+      destruct (IOStreamWriter.unwrap s).
+      + repeat rewrite H.
+        simpl.
+        cheerios_crush.
+        rewrite <- (app_nil_r (IOStreamWriter.unwrap (serialize e))).
+        rewrite serialize_deserialize_id.
+        cheerios_crush.
+      + specialize H with [].
+        simpl in H.
+        rewrite ByteListReader.ret_unwrap in H.
+        find_inversion.
+    - intros.
+      admit.
+  Admitted.
+
+  Theorem foo : forall n s entries e,
+      n = length entries ->
+      (forall bytes, ByteListReader.unwrap
+                       (list_deserialize_rec entry _ n)
+                       (IOStreamWriter.unwrap s ++ bytes) = Some (entries, bytes)) ->
+      ByteListReader.unwrap
+        (list_deserialize_rec entry _ (S n))
+        (IOStreamWriter.unwrap (s +$+ (@serialize entry _ e))) = Some (entries ++ [e], []).
+  Proof.
+    intros.
+    find_rewrite. find_rewrite.
+    rewrite bar with (entries := entries).
+    - rewrite IOStreamWriter.append_unwrap.
+      rewrite ByteListReader.bind_unwrap.
+      specialize H0 with
+          (IOStreamWriter.unwrap
+             (@serialize
+                entry
+                (sum_Serializer (@input orig_base_params)
+            (@name orig_base_params orig_multi_params * @msg orig_base_params orig_multi_params)
+            (@log_input_serializer orig_base_params orig_multi_params log_params)
+            (pair_Serializer (@name orig_base_params orig_multi_params)
+               (@msg orig_base_params orig_multi_params)
+               (@log_name_serializer orig_base_params orig_multi_params log_params)
+               (@log_msg_serializer orig_base_params orig_multi_params log_params)))
+                e)).
+      rewrite H0.
+      cheerios_crush.
+      rewrite <- (app_nil_r (IOStreamWriter.unwrap (serialize e))).
+      cheerios_crush.
+    - assumption.
+  Qed.
+
   Theorem serialize_snoc' : forall e entries dsk n,
-      dsk Log = list_serialize_rec entry _ entries ->
+      (forall bytes, ByteListReader.unwrap
+                       (list_deserialize_rec entry _ n)
+                       (IOStreamWriter.unwrap (dsk Log) ++ bytes) = Some(entries, bytes)) ->
       n = length entries ->
       ByteListReader.unwrap
         (list_deserialize_rec entry _ (S n))
@@ -228,11 +296,11 @@ Section Log.
     repeat break_if;
       try congruence.
     intros.
-    rewrite H.
-    rewrite serialize_snoc.
-    rewrite H0.
-    rewrite serialize_deserialize_snoc.
-    reflexivity.
+    find_rewrite. find_rewrite.
+    rewrite foo with (entries := entries).
+    - reflexivity.
+    - reflexivity.
+    - assumption.
   Qed.
 
   Lemma log_net_handlers_spec :
@@ -243,7 +311,9 @@ Section Log.
       ByteListReader.unwrap (@deserialize nat _)
                             (IOStreamWriter.unwrap (dsk Count)) = Some (n, []) ->
       ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Snapshot)) = Some (snap, []) ->
-      dsk Log = list_serialize_rec entry _ entries ->
+      (forall bytes, ByteListReader.unwrap
+                       (list_deserialize_rec entry _ n)
+                       (IOStreamWriter.unwrap (dsk Log) ++ bytes) = Some (entries, bytes)) ->
       n = length entries ->
       apply_log dst snap entries = d ->
       apply_ops dsk cs = dsk' ->
@@ -292,7 +362,8 @@ Section Log.
           end.
           tuple_inversion.
           match goal with
-          | H : _ = Some (entries', _) |- _ =>  rewrite (serialize_snoc' _ entries) in H
+          | H : _ = Some (entries', _) |- _ =>
+            rewrite serialize_snoc' with (entries := entries) in H
           end.
           * find_inversion. reflexivity.
           * assumption.
@@ -309,7 +380,9 @@ Section Log.
           | H : _ = d |- _ => rewrite H
           end.
           unfold apply_entry. repeat break_let.
-          inversion H.
+          match goal with
+          | H : (_, _, _, _) = _ |- _ => inversion H
+          end.
           match goal with
           | H : _ = ?d |- _ = ?d => rewrite <- H
           end.
@@ -327,8 +400,11 @@ Section Log.
       log_input_handlers dst m (mk_log_state n d) = (cs, out, mk_log_state n' d', l) ->
       ByteListReader.unwrap (@deserialize nat _)
                             (IOStreamWriter.unwrap (dsk Count)) = Some (n, []) ->
+
       ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Snapshot)) = Some (snap, []) ->
-      dsk Log = list_serialize_rec entry _ entries ->
+      (forall bytes, ByteListReader.unwrap
+                       (list_deserialize_rec entry _ n)
+                       (IOStreamWriter.unwrap (dsk Log) ++ bytes) = Some (entries, bytes)) ->
       n = length entries ->
       apply_log dst snap entries = d ->
       apply_ops dsk cs = dsk' ->
@@ -378,7 +454,8 @@ Section Log.
           end.
           tuple_inversion.
           match goal with
-          | H : _ = Some (entries', _) |- _ =>  rewrite (serialize_snoc' _ entries) in H
+          | H : _ = Some (entries', _) |- _ =>
+            rewrite serialize_snoc' with (entries := entries) in H
           end.
           * find_inversion. reflexivity.
           * assumption.
@@ -395,7 +472,9 @@ Section Log.
           | H : _ = d |- _ => rewrite H
           end.
           unfold apply_entry. repeat break_let.
-          inversion H.
+          match goal with
+          | H : (_, _, _, _) = _ |- _ => inversion H
+          end.
           match goal with
           | H : _ = ?d |- _ = ?d => rewrite <- H
           end.
