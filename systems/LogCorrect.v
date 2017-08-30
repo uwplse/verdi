@@ -2,6 +2,7 @@ Require Import Verdi.Verdi.
 Require Import Cheerios.Cheerios.
 
 Require Import Verdi.Log.
+Require Import FunctionalExtensionality.
 
 Section LogCorrect.
   Context {orig_base_params : BaseParams}.
@@ -9,7 +10,7 @@ Section LogCorrect.
   Context {orig_failure_params : FailureParams orig_multi_params}.
   Context {log_params : LogParams orig_multi_params}.
 
-  Lemma a : forall net (h : do_name) d dsk,
+  Lemma disk_correct_reboot : forall net (h : do_name) d dsk,
       disk_correct (nwdoDisk net h) h (nwdoState net h) ->
       do_log_reboot h (disk_to_wire (nwdoDisk net h)) = (d, dsk) ->
       disk_correct dsk h d.
@@ -79,9 +80,30 @@ Section LogCorrect.
       + assumption.
       + break_if.
         * repeat find_rewrite.
-          apply (a net0);
+          apply (disk_correct_reboot net0);
             assumption.
         * assumption.
+  Qed.
+
+  Lemma reboot_invariant : forall net failed tr,
+      @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
+      forall h d dsk, do_reboot h (disk_to_wire (nwdoDisk net h)) = (d, dsk) ->
+                      log_data d = reboot (log_data (nwdoState net h)).
+    intros net failed tr H_st h d dsk H_reboot.
+    apply disk_correct_invariant with (h := h) in H_st.
+    unfold disk_correct in *.
+    break_exists. intuition.
+    simpl in *.
+    unfold do_log_reboot, wire_to_log, disk_to_wire in *.
+    unfold deserialize_top, serialize_top in *.
+    repeat rewrite IOStreamWriter.wire_wrap_unwrap in *.
+    repeat find_rewrite.
+    rewrite <- (app_nil_r (IOStreamWriter.unwrap _)) in H_reboot.
+    rewrite list_serialize_deserialize_id_rec' in H_reboot.
+    find_inversion.
+    simpl.
+    find_rewrite.
+    reflexivity.
   Qed.
 
   Definition orig_packet := @packet _ orig_multi_params.
@@ -110,11 +132,22 @@ Section LogCorrect.
                                          map revertPacket (nwdoPackets net)) by reflexivity.
     assert (revert_send : forall l h,
                map revertPacket (do_send_packets h l) = send_packets h l).
-    { induction l.
+    {
+      induction l.
       * reflexivity.
       * intros.
         simpl.
         now rewrite IHl.
+    }
+    assert (apply_if : forall h d,
+               (fun h0 : name => log_data (if name_eq_dec h0 h then d else nwdoState net h0)) =
+               (fun h0 : name => if name_eq_dec h0 h
+                                 then log_data d
+                                 else log_data (nwdoState net h0))).
+    {
+      intros.
+      extensionality h0.
+      break_if; reflexivity.
     }
     invcs H0.
     - unfold revertLogNetwork.
@@ -137,15 +170,22 @@ Section LogCorrect.
           find_inversion;
           rewrite revert_packet in *;
           assumption.
-      + unfold log_data.
-        break_let.
-        simpl.
-        admit.
+      + simpl.
+        rewrite apply_if.
+        reflexivity.
     - unfold revertLogNetwork.
       simpl.
       repeat rewrite map_app.
       rewrite revert_send.
-      admit.
+      apply StepFailure_input with (d0 := log_data d) (l0 := l).
+      + assumption.
+      + unfold log_input_handlers in *.
+        do 2 break_let.
+        break_if;
+          find_inversion;
+          assumption.
+      + rewrite apply_if.
+        reflexivity.
     - unfold revertLogNetwork.
       simpl. find_rewrite.
       rewrite map_app. simpl.
@@ -168,8 +208,12 @@ Section LogCorrect.
       + assumption.
       + reflexivity.
       + unfold revertLogNetwork. simpl.
-        admit.
-  Admitted.
+        apply reboot_invariant with (h := h) (d := d) (dsk := dsk) in H.
+        * rewrite <- H.
+          rewrite apply_if.
+          reflexivity.
+        * assumption.
+  Qed.
 
   Lemma log_step_failure_star_simulation :
     forall net failed tr,
