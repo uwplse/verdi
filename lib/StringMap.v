@@ -3,9 +3,11 @@ Import ListNotations.
 Require Import NArith.
 Require Import PArith.
 Require Import String.
+Require Import Ascii.
+
+Require Import StructTact.StructTactics.
 
 Require Import Verdi.Coqlib.
-Require Import StructTact.StructTactics.
 Require Export Verdi.Maps.
 
 Module ITree(X: INDEXED_TYPE) <: TREE.
@@ -74,22 +76,26 @@ Module IndexedString <: INDEXED_TYPE.
   Definition t := string.
   Definition eq := string_dec.
 
-  Fixpoint encode_bools (l : list bool) (p : positive) : positive :=
+  Fixpoint positive_of_digits (l : list bool) (p : positive) : positive :=
     match l with
-      | nil => p
-      | b :: l' => if b then xI (encode_bools l' p) else xO (encode_bools l' p)
-    end.
-  Fixpoint index (s : string) : positive :=
-    match s with
-      | EmptyString => 1
-      | String a s' => let (a0, a1, a2, a3, a4, a5, a6, a7) := a in
-          encode_bools [a0; a1; a2; a3; a4; a5; a6; a7] (index s')
+    | [] => p
+    | b :: l' => if b then xI (positive_of_digits l' p) else xO (positive_of_digits l' p)
     end.
 
-  Lemma encode_bools_inj :
+  Definition list_bool_of_ascii (a : ascii) : list bool :=
+    let (a0,a1,a2,a3,a4,a5,a6,a7) := a in
+    [a0; a1; a2; a3; a4; a5; a6; a7].
+
+  Fixpoint index (s : string) : positive :=
+    match s with
+    | EmptyString => 1
+    | String a s' => positive_of_digits (list_bool_of_ascii a) (index s')
+    end.
+
+  Lemma positive_of_digits_inj :
     forall l l' p p',
       List.length l = List.length l' ->
-      encode_bools l p = encode_bools l' p' ->
+      positive_of_digits l p = positive_of_digits l' p' ->
       l = l' /\ p = p'.
   Proof.
     induction l; destruct l'; intros; try discriminate; auto.
@@ -104,11 +110,13 @@ Module IndexedString <: INDEXED_TYPE.
   Proof.
     induction x; destruct y; intros.
     - reflexivity.
-    - simpl in *. repeat break_match; congruence.
-    - simpl in *. repeat break_match; congruence.
-    - unfold index in *. fold index in *. repeat break_let.
-      find_apply_lem_hyp encode_bools_inj.
-      + subst. break_and. do 8 (inv H). find_apply_hyp_hyp. subst. reflexivity.
+    - simpl in *. unfold list_bool_of_ascii in *.
+      break_let; simpl in * ; repeat break_match; congruence.
+    - simpl in *. unfold list_bool_of_ascii in *.
+      break_let; simpl in *; repeat break_match; congruence.
+    - simpl in *. unfold list_bool_of_ascii in *. repeat break_let.
+      find_apply_lem_hyp positive_of_digits_inj.
+      + subst. break_and. find_inversion. find_apply_hyp_hyp. subst. reflexivity.
       + reflexivity.
   Qed.
 End IndexedString.
