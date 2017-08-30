@@ -345,10 +345,10 @@ Proof.
 Qed.
 End VarDFunctor.
 
-Require Import FMapAVL.
+Require Import FMapList.
 
-Module StringMapAVL := FMapList.Make string_as_OT.
+Module StringMap := FMapList.Make string_as_OT.
 
-Module VarD := VarDFunctor StringMapAVL.
+Module VarD := VarDFunctor StringMap.
 
 Export VarD.
