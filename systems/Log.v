@@ -36,31 +36,6 @@ Section Log.
     mk_log_state { log_num_entries : nat ;
                    log_data : data }.
 
-  Definition log_state_serialize d :=
-    serialize (log_num_entries d) +$+ serialize (log_data d).
-
-  Definition log_state_deserialize :=
-    n <- deserialize;;
-    d <- deserialize;;
-    ByteListReader.ret (mk_log_state n d).
-
-  Lemma log_state_serialize_deserialize_id:
-    serialize_deserialize_id_spec log_state_serialize log_state_deserialize.
-  Proof.
-    intros.
-    unfold log_state_serialize, log_state_deserialize.
-    destruct a.
-    cheerios_crush.
-  Qed.
-
-  Instance log_state_Serializer : Serializer log_state.
-  Proof.
-    exact {| serialize := log_state_serialize ;
-             deserialize := log_state_deserialize ;
-             serialize_deserialize_id := log_state_serialize_deserialize_id
-          |}.
-  Qed.
-
   Definition log_net_handlers dst src m st : list (disk_op log_files) *
                                              list output *
                                              log_state *
@@ -131,7 +106,7 @@ Section Log.
   Definition wire_to_log (w : file_name -> IOStreamWriter.wire) : option (nat * @data orig_base_params * list entry) :=
     match deserialize_top deserialize (w Count), deserialize_top deserialize (w Snapshot) with
     | Some n, Some d =>
-      match deserialize_top (list_deserialize_rec _ _ n) (w Log) with
+      match deserialize_top (list_deserialize_rec' _ _ n) (w Log) with
       | Some es => Some (n, d, es)
       | None => None
       end
@@ -172,20 +147,17 @@ Section Log.
   Qed.
 
   Lemma serialize_snoc : forall {A} {sA : Serializer A} (a : A) l,
-      (IOStreamWriter.unwrap
-         (list_serialize_rec _ _ l +$+ serialize a)) =
+      IOStreamWriter.unwrap (list_serialize_rec _ _ l) ++
+                            IOStreamWriter.unwrap (serialize a) =
       (IOStreamWriter.unwrap (list_serialize_rec _ _ (l ++ [a]))).
   Proof.
     intros.
     induction l;
-      rewrite IOStreamWriter.append_unwrap;
       simpl;
-      repeat rewrite IOStreamWriter.append_unwrap.
-    - rewrite IOStreamWriter.empty_unwrap.
-      rewrite app_nil_r.
+      cheerios_crush.
+    - rewrite app_nil_r.
       reflexivity.
     - rewrite <- IHl.
-      rewrite IOStreamWriter.append_unwrap, app_ass.
       reflexivity.
   Qed.
 
@@ -230,7 +202,7 @@ Section Log.
         (IOStreamWriter.unwrap (s +$+ serialize e)).
   Proof.
     intros until s.
-    induction entries.
+    induction entries using rev_ind.
     - intros.
       repeat rewrite IOStreamWriter.append_unwrap.
       destruct (IOStreamWriter.unwrap s).
@@ -248,7 +220,30 @@ Section Log.
       admit.
   Admitted.
 
-  Theorem foo : forall n s entries e,
+  Theorem foo : forall entries n s e,
+      n = length entries ->
+      (forall bytes, ByteListReader.unwrap
+                       (list_deserialize_rec entry _ n)
+                       (IOStreamWriter.unwrap s ++ bytes) = Some (entries, bytes)) ->
+      ByteListReader.unwrap
+        (list_deserialize_rec entry _ (S n))
+        (IOStreamWriter.unwrap (s +$+ (@serialize entry _ e))) = Some (entries ++ [e], []).
+  Proof.
+    induction entries using rev_ind.
+    - intros.
+      repeat rewrite H.
+      simpl.
+      admit.
+    - intros.
+      rewrite IOStreamWriter.append_unwrap.
+      specialize IHentries with (length entries) s x.
+      concludes.
+      rewrite H.
+      admit.
+  Admitted.
+
+
+  Theorem foo' : forall n s entries e,
       n = length entries ->
       (forall bytes, ByteListReader.unwrap
                        (list_deserialize_rec entry _ n)
@@ -296,192 +291,186 @@ Section Log.
       try congruence.
     intros.
     find_rewrite. find_rewrite.
-    rewrite foo with (entries := entries).
+    rewrite foo' with (entries := entries).
     - reflexivity.
     - reflexivity.
     - assumption.
   Qed.
 
+  Definition disk_correct dsk h st  :=
+    exists entries snap,
+      IOStreamWriter.unwrap (dsk Log) = IOStreamWriter.unwrap (list_serialize_rec entry _ entries) /\
+      log_num_entries st = length entries /\
+      ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Count)) =
+      Some (length entries, []) /\
+      ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Snapshot)) =
+      Some (snap, []) /\
+      (apply_log h snap entries = log_data st).
+
   Lemma log_net_handlers_spec :
-    forall dst src m d cs out d' l
-           (dsk : do_disk file_name) (n : nat) snap (entries : list entry)
-           dsk' n' snap' entries',
-      log_net_handlers dst src m (mk_log_state n d) = (cs, out, mk_log_state n' d', l) ->
-      ByteListReader.unwrap (@deserialize nat _)
-                            (IOStreamWriter.unwrap (dsk Count)) = Some (n, []) ->
-      ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Snapshot)) = Some (snap, []) ->
-      (forall bytes, ByteListReader.unwrap
-                       (list_deserialize_rec entry _ n)
-                       (IOStreamWriter.unwrap (dsk Log) ++ bytes) = Some (entries, bytes)) ->
-      n = length entries ->
-      apply_log dst snap entries = d ->
+    forall dst src m st
+           cs out st' l
+           dsk dsk',
+      disk_correct dsk dst st ->
+      log_net_handlers dst src m st = (cs, out, st', l) ->
       apply_ops dsk cs = dsk' ->
-      ByteListReader.unwrap deserialize
-                            (IOStreamWriter.unwrap (dsk' Count)) = Some (n', [])  ->
-      ByteListReader.unwrap deserialize
-                            (IOStreamWriter.unwrap (dsk' Snapshot)) = Some (snap', []) ->
-      ByteListReader.unwrap (list_deserialize_rec _  _ n')
-                            (IOStreamWriter.unwrap (dsk' Log)) = Some (entries', []) ->
-      apply_log dst snap' entries' = d'.
-  Proof.
+      disk_correct dsk' dst st'.
     intros.
+    unfold disk_correct in *.
+    break_exists.
+    intuition.
     unfold log_net_handlers in *.
-    break_if.
-    - break_let. break_let.
-      assert (dsk' Count = serialize 0).
-      * find_inversion.
-        reflexivity.
-      * match goal with
-        | H : dsk' Count = _ |- _ => rewrite H in *
+    break_if; do 2 break_let.
+    - exists [], d.
+      intuition.
+      + match goal with
+        | H : _ = dsk' |- _ => rewrite <- H
         end.
-        match goal with
-        | H : context [serialize 0] |- _ => rewrite serialize_deserialize_id_nil in H
-        end.
-        find_inversion. find_inversion.
-        simpl in *. repeat break_if; try congruence.
-        match goal with
-        | H : context [IOStreamWriter.empty] |- _ => rewrite serialize_empty in H
-        end.
-        find_inversion. find_inversion.
-        match goal with
-        | H : _ = Some (snap', _) |- _ => rewrite serialize_deserialize_id_nil in H
-        end.
-        simpl.
         find_inversion.
         reflexivity.
-    - break_let. break_let.
-      assert (Hn' : n' = S n).
-      + find_inversion. simpl in *.
+      + find_inversion.
         reflexivity.
-      + rewrite Hn' in *.
-        assert (Hentries' : entries' = entries ++ [inr (src, m)]).
-        {
-          match goal with
-          | H : _ = dsk' |- _ => rewrite <- H in *
-          end.
-          tuple_inversion.
-          match goal with
-          | H : _ = Some (entries', _) |- _ =>
-            rewrite serialize_snoc' with (entries := entries) in H
-          end.
-          * find_inversion. reflexivity.
-          * assumption.
-          * reflexivity.
-        }
-        assert (Hsnap' : snap' = snap).
-        * find_inversion.
-          match goal with
-          | H : _ = Some (snap', _) |- _ => simpl in H; repeat break_if; try congruence
-          end.
-        * rewrite Hsnap', Hentries'.
-          rewrite apply_log_app.
-          match goal with
-          | H : _ = d |- _ => rewrite H
-          end.
-          unfold apply_entry. repeat break_let.
-          match goal with
-          | H : (_, _, _, _) = _ |- _ => inversion H
-          end.
-          match goal with
-          | H : _ = ?d |- _ = ?d => rewrite <- H
-          end.
-          match goal with
-          | H : net_handlers _ _ _ _ = _ |- _ => simpl in H; rewrite H in *
-          end.
-          find_inversion.
-          reflexivity.
+      + match goal with
+        | H : _ = dsk' |- _ => rewrite <- H
+        end.
+        find_inversion.
+        simpl.
+        rewrite serialize_deserialize_id_nil.
+        reflexivity.
+      + find_inversion.
+        simpl.
+        rewrite serialize_deserialize_id_nil.
+        reflexivity.
+      + find_inversion.
+        reflexivity.
+    - repeat break_and.
+      exists (x ++ [inr (src, m)]), x0.
+      intuition.
+      + match goal with
+        | H : _ = dsk' |- _ => rewrite <- H
+        end.
+        find_inversion.
+        simpl.
+        cheerios_crush.
+        match goal with
+        | H : IOStreamWriter.unwrap (dsk Log) = _ |- _ => rewrite H
+        end.
+        rewrite serialize_snoc.
+        reflexivity.
+      + find_inversion.
+        repeat find_rewrite.
+        rewrite app_length.
+        rewrite PeanoNat.Nat.add_1_r.
+        reflexivity.
+      + match goal with
+        | H : _ = dsk' |- _ => rewrite <- H
+        end.
+        find_inversion.
+        simpl.
+        rewrite serialize_deserialize_id_nil.
+        rewrite app_length.
+        rewrite PeanoNat.Nat.add_1_r.
+        repeat find_rewrite.
+        reflexivity.
+      + match goal with
+        | H : _ = dsk' |- _ => rewrite <- H
+        end.
+        find_inversion.
+        simpl.
+        assumption.
+      + rewrite apply_log_app.
+        match goal with
+        | H : apply_log _ _ _ = _ |- _ => rewrite H
+        end.
+        find_inversion.
+        simpl.
+        match goal with
+        | H : net_handlers _ _ _ _ = _ |- _ => rewrite H
+        end.
+        reflexivity.
   Qed.
 
-  Lemma log_input_handlers_spec
-    : forall dst m d cs out d' l
-             (dsk : do_disk file_name) (n : nat) snap (entries : list entry)
-             dsk' n' snap' entries',
-      log_input_handlers dst m (mk_log_state n d) = (cs, out, mk_log_state n' d', l) ->
-      ByteListReader.unwrap (@deserialize nat _)
-                            (IOStreamWriter.unwrap (dsk Count)) = Some (n, []) ->
-
-      ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Snapshot)) = Some (snap, []) ->
-      (forall bytes, ByteListReader.unwrap
-                       (list_deserialize_rec entry _ n)
-                       (IOStreamWriter.unwrap (dsk Log) ++ bytes) = Some (entries, bytes)) ->
-      n = length entries ->
-      apply_log dst snap entries = d ->
+  Lemma log_input_handlers_spec :
+    forall dst m st
+           cs out st' l
+           dsk dsk',
+      disk_correct dsk dst st ->
+      log_input_handlers dst m st = (cs, out, st', l) ->
       apply_ops dsk cs = dsk' ->
-      ByteListReader.unwrap deserialize
-                            (IOStreamWriter.unwrap (dsk' Count)) = Some (n', [])  ->
-      ByteListReader.unwrap deserialize
-                            (IOStreamWriter.unwrap (dsk' Snapshot)) = Some (snap', []) ->
-      ByteListReader.unwrap (list_deserialize_rec _  _ n')
-                            (IOStreamWriter.unwrap (dsk' Log)) = Some (entries', []) ->
-      apply_log dst snap' entries' = d'.
-  Proof.
+      disk_correct dsk' dst st'.
     intros.
+    unfold disk_correct in *.
+    break_exists.
+    intuition.
     unfold log_input_handlers in *.
-    break_if.
-    - break_let. break_let.
-      assert (dsk' Count = serialize 0).
-      * find_inversion.
-        simpl.
-        reflexivity.
-      * match goal with
-        | H : dsk' Count = _ |- _ => rewrite H in *
+    break_if; do 2 break_let.
+    - exists [], d.
+      intuition.
+      + match goal with
+        | H : _ = dsk' |- _ => rewrite <- H
         end.
-        match goal with
-        | H : context [serialize 0] |- _ => rewrite serialize_deserialize_id_nil in H
-        end.
-        find_inversion. find_inversion.
-        simpl in *. repeat break_if; try congruence.
-        match goal with
-        | H : context [IOStreamWriter.empty] |- _ => rewrite serialize_empty in H
-        end.
-        find_inversion. find_inversion.
-        match goal with
-        | H : _ = Some (snap', _) |- _ => rewrite serialize_deserialize_id_nil in H
-        end.
-        simpl.
         find_inversion.
         reflexivity.
-    - break_let. break_let.
-      assert (Hn' : n' = S n).
-      + find_inversion. simpl in *.
+      + find_inversion.
         reflexivity.
-      + rewrite Hn' in *.
-        assert (Hentries' : entries' = entries ++ [inl m]).
-        {
-          match goal with
-          | H : _ = dsk' |- _ => rewrite <- H in *
-          end.
-          tuple_inversion.
-          match goal with
-          | H : _ = Some (entries', _) |- _ =>
-            rewrite serialize_snoc' with (entries := entries) in H
-          end.
-          * find_inversion. reflexivity.
-          * assumption.
-          * reflexivity.
-        }
-        assert (Hsnap' : snap' = snap).
-        * find_inversion.
-          match goal with
-          | H : _ = Some (snap', _) |- _ => simpl in H; repeat break_if; try congruence
-          end.
-        * rewrite Hsnap', Hentries'.
-          rewrite apply_log_app.
-          match goal with
-          | H : _ = d |- _ => rewrite H
-          end.
-          unfold apply_entry. repeat break_let.
-          match goal with
-          | H : (_, _, _, _) = _ |- _ => inversion H
-          end.
-          match goal with
-          | H : _ = ?d |- _ = ?d => rewrite <- H
-          end.
-          match goal with
-          | H : input_handlers _ _ _ = _ |- _ => simpl in H; rewrite H in *
-          end.
-          find_inversion.
-          reflexivity.
+      + match goal with
+        | H : _ = dsk' |- _ => rewrite <- H
+        end.
+        find_inversion.
+        simpl.
+        rewrite serialize_deserialize_id_nil.
+        reflexivity.
+      + find_inversion.
+        simpl.
+        rewrite serialize_deserialize_id_nil.
+        reflexivity.
+      + find_inversion.
+        reflexivity.
+    - repeat break_and.
+      exists (x ++ [inl m]), x0.
+      intuition.
+      + match goal with
+        | H : _ = dsk' |- _ => rewrite <- H
+        end.
+        find_inversion.
+        simpl.
+        cheerios_crush.
+        match goal with
+        | H : IOStreamWriter.unwrap (dsk Log) = _ |- _ => rewrite H
+        end.
+        rewrite serialize_snoc.
+        reflexivity.
+      + find_inversion.
+        repeat find_rewrite.
+        rewrite app_length.
+        rewrite PeanoNat.Nat.add_1_r.
+        reflexivity.
+      + match goal with
+        | H : _ = dsk' |- _ => rewrite <- H
+        end.
+        find_inversion.
+        simpl.
+        rewrite serialize_deserialize_id_nil.
+        rewrite app_length.
+        rewrite PeanoNat.Nat.add_1_r.
+        repeat find_rewrite.
+        reflexivity.
+      + match goal with
+        | H : _ = dsk' |- _ => rewrite <- H
+        end.
+        find_inversion.
+        simpl.
+        assumption.
+      + rewrite apply_log_app.
+        match goal with
+        | H : apply_log _ _ _ = _ |- _ => rewrite H
+        end.
+        find_inversion.
+        simpl.
+        match goal with
+        | H : input_handlers _ _ _ = _ |- _ => rewrite H
+        end.
+        reflexivity.
   Qed.
 
   Definition do_log_reboot (h : do_name) (w : log_files -> IOStreamWriter.wire) :

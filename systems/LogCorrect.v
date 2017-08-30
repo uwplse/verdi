@@ -66,6 +66,14 @@ Section LogCorrect.
       unfold deserialize_top, serialize_top.
       rewrite IOStreamWriter.wire_wrap_unwrap.
       cheerios_crush.
+      repeat break_match; try congruence;
+        match goal with
+        | H : ByteListReader.unwrap _ _ = _ |- _ =>
+          simpl in H; rewrite ByteListReader.ret_unwrap in H
+        end;
+        repeat find_inversion.
+      + reflexivity.
+      + inversion Heqo0.
     - concludes.
       break_exists.
       invcs H0.
@@ -97,23 +105,14 @@ Section LogCorrect.
       log_data d = reboot (log_data (nwdoState net h)).
   Proof.
     intros net failed tr H_st h d dsk.
-    remember step_failure_log_init as x.    
+    remember step_failure_log_init as x.
     change net with (snd (failed, net)).
     induction H_st using refl_trans_1n_trace_n1_ind.
     - subst.
       intros.
       simpl in *.
       unfold disk_to_wire, init_disk, do_reboot, Log.do_log_reboot in *.
-      break_match;
-        unfold wire_to_log in *;
-        repeat rewrite serialize_deserialize_top_id in Heqo;
-        rewrite f in *.
-      + break_let.
-        break_let.
-        find_inversion.
-        find_inversion.
-        reflexivity.
-      + congruence.
+      admit.
     - concludes.
       intros.
       rewrite Heqx in *.
