@@ -9,146 +9,80 @@ Section LogCorrect.
   Context {orig_failure_params : FailureParams orig_multi_params}.
   Context {log_params : LogParams orig_multi_params}.
 
-  Lemma f :
-    deserialize_top
-             (list_deserialize_rec entry _ 0)
-             (serialize_top IOStreamWriter.empty) = Some [].
+  Lemma a : forall net (h : do_name) d dsk,
+      disk_correct (nwdoDisk net h) h (nwdoState net h) ->
+      do_log_reboot h (disk_to_wire (nwdoDisk net h)) = (d, dsk) ->
+      disk_correct dsk h d.
   Proof.
-    unfold deserialize_top, serialize_top.
-    simpl.
-    rewrite IOStreamWriter.wire_wrap_unwrap.
-    cheerios_crush.
+    intros.
+    unfold do_log_reboot, wire_to_log, disk_to_wire in *.
+    unfold disk_correct in *. break_exists. intuition.
+    break_inner_match.
+    - break_inner_match.
+      + break_inner_match.
+        -- find_inversion.
+           exists [], (reboot (apply_log h d0 l)).
+           intuition;
+             rewrite serialize_deserialize_id_nil;
+             reflexivity.
+        -- unfold deserialize_top, serialize_top in Heqo1.
+           rewrite IOStreamWriter.wire_wrap_unwrap in Heqo1.
+           rewrite H1 in Heqo1.
+           unfold deserialize_top, serialize_top in Heqo.
+           rewrite IOStreamWriter.wire_wrap_unwrap in Heqo.
+           rewrite H2 in Heqo.
+           symmetry in Heqo.
+           invcs Heqo.
+           rewrite <- (app_nil_r (IOStreamWriter.unwrap (list_serialize_rec _ _ x))) in Heqo1.
+           rewrite list_serialize_deserialize_id_rec' in Heqo1.
+           inversion Heqo1.
+      + unfold deserialize_top, serialize_top in Heqo0.
+        rewrite IOStreamWriter.wire_wrap_unwrap in Heqo0.
+        rewrite H3 in Heqo0.
+        inversion Heqo0.
+    - unfold deserialize_top, serialize_top in Heqo.
+      rewrite IOStreamWriter.wire_wrap_unwrap in Heqo.
+      rewrite H2 in Heqo.
+      inversion Heqo.
   Qed.
 
-  Lemma g : forall {A B} (f : A -> B) (c : bool) x y, f (if c then x else y) = if c then (f x) else (f y).
-  Proof.
-    intros.
-    now break_if.
-  Qed.
-
-  Lemma disk_to_wire_to_log : forall dsk n d es,
-      wire_to_log (disk_to_wire dsk) = Some (n, d, es) ->
-      ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Count)) = Some (n, []) /\
-      ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Snapshot)) = Some (d, []) /\
-      ByteListReader.unwrap (list_deserialize_rec entry _ n) (IOStreamWriter.unwrap (dsk Log)) = Some (es, []).
-  Proof.
-    intros.
-    intuition;
-      unfold wire_to_log, disk_to_wire in *;
-      repeat break_match;
-      try congruence;
-      find_inversion.
-      (*match goal with
-      | H : deserialize_top _ (serialize_top _) = Some ?v  |- _ = Some (?v, []) =>
-        apply serialize_deserialize_top_invert in H
-      end;
-      assumption.*)
-    admit.
-  Admitted.
-
-  Lemma disk_valid' : forall net failed tr (h : name),
+  Lemma disk_correct_invariant : forall net failed tr,
       @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
-       (* this induction hypothesis probably isn't strong enough. at least, it's not
-          the most convenient. better (?): all three files deserialize to something valid *)
-      exists v,
-      wire_to_log (disk_to_wire (nwdoDisk net h)) = Some v.
-    intros.
-    remember step_failure_log_init as x.
-    change net with (snd (failed, net)).
-    induction H  using refl_trans_1n_trace_n1_ind.
-    - find_rewrite.
-      simpl.
-      unfold disk_to_wire, wire_to_log.
-      unfold init_disk.
-      repeat rewrite serialize_deserialize_top_id.
-      unfold list_deserialize_rec.
-      exists (0, init_handlers h, []).
-      unfold deserialize_top, serialize_top.
-      rewrite IOStreamWriter.wire_wrap_unwrap.
-      cheerios_crush.
-      repeat break_match; try congruence;
-        match goal with
-        | H : ByteListReader.unwrap _ _ = _ |- _ =>
-          simpl in H; rewrite ByteListReader.ret_unwrap in H
-        end;
-        repeat find_inversion.
-      + reflexivity.
-      + inversion Heqo0.
-    - concludes.
-      break_exists.
-      invcs H0.
-      + admit.
-      + admit.
-      + eauto.
-      + eauto.
-      + eauto.
-      + eauto.
-  Admitted.
-
-   Lemma disk_valid : forall net failed tr (h : name),
-      @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
-       (* this induction hypothesis probably isn't strong enough. at least, it's not
-          the most convenient. better (?): all three files deserialize to something valid *)
-      ~wire_to_log (disk_to_wire (nwdoDisk net h)) = None.
-   Proof.
-     intros.
-     apply disk_valid' with (h := h) in H.
-     break_exists.
-     find_rewrite.
-     intuition.
-     congruence.
-   Qed.
-
-  Lemma disk_follows_local_state : forall net failed tr,
-      @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
-      forall h d dsk, do_log_reboot h (disk_to_wire (nwdoDisk net h)) = (d, dsk) ->
-      log_data d = reboot (log_data (nwdoState net h)).
+      forall h, disk_correct (nwdoDisk net h) h (nwdoState net h).
   Proof.
-    intros net failed tr H_st h d dsk.
+    intros net failed tr H_st h.
     remember step_failure_log_init as x.
     change net with (snd (failed, net)).
     induction H_st using refl_trans_1n_trace_n1_ind.
     - subst.
       intros.
       simpl in *.
-      unfold disk_to_wire, init_disk, do_reboot, Log.do_log_reboot in *.
-      admit.
+      unfold disk_correct.
+      exists [], (init_handlers h).
+      intuition;
+        simpl;
+        rewrite serialize_deserialize_id_nil;
+        reflexivity.
     - concludes.
-      intros.
-      rewrite Heqx in *.
       match goal with H : step_failure_log _ _ _ |- _ => invcs H end.
       + break_if.
-        * unfold do_reboot, Log.do_log_reboot in *.
-          repeat break_match; try congruence.
-          -- find_apply_lem_hyp disk_to_wire_to_log.
-             admit.
-          -- admit.
-          -- admit.
-          -- admit.
-        * match goal with H : do_log_reboot _ _ = _ |- _ => rewrite H in * end.
-          concludes.
-          assumption.
+        * rewrite e in *.
+          apply (log_net_handlers_spec _ _ IHH_st1 H2). reflexivity.
+        * assumption.
       + break_if.
-        * admit.
-        * match goal with H : do_log_reboot _ _ = _ |- _ => rewrite H in * end.
-          concludes.
-          assumption.
-      + match goal with H : do_log_reboot _ _ = _ |- _ => rewrite H in * end.
-        concludes.
-        assumption.
-      + match goal with H : do_log_reboot _ _ = _ |- _ => rewrite H in * end.
-        concludes.
-        assumption.
-      + match goal with H : do_log_reboot _ _ = _ |- _ => rewrite H in * end.
-        concludes.
-        assumption.
+        * rewrite e in *.
+          apply (log_input_handlers_spec _ IHH_st1 H1).
+          reflexivity.
+        * assumption.
+      + assumption.
+      + assumption.
+      + assumption.
       + break_if.
-        * find_rewrite.
-          admit.
-        * match goal with H : do_log_reboot _ _ = _ |- _ => rewrite H in * end.
-          concludes.
-          assumption.
-  Admitted.
+        * repeat find_rewrite.
+          apply (a net0);
+            assumption.
+        * assumption.
+  Qed.
 
   Definition orig_packet := @packet _ orig_multi_params.
   Definition orig_network := @network _ orig_multi_params.
@@ -173,16 +107,16 @@ Section LogCorrect.
   Proof.
     intros.
     assert (revert_packets : forall net, nwPackets (revertLogNetwork net) =
-                        map revertPacket (nwdoPackets net)) by reflexivity.
+                                         map revertPacket (nwdoPackets net)) by reflexivity.
     assert (revert_send : forall l h,
                map revertPacket (do_send_packets h l) = send_packets h l).
-      { induction l.
-        * reflexivity.
-        * intros.
-          simpl.
-          now rewrite IHl.
-      }
-      invcs H0.
+    { induction l.
+      * reflexivity.
+      * intros.
+        simpl.
+        now rewrite IHl.
+    }
+    invcs H0.
     - unfold revertLogNetwork.
       simpl.
       find_rewrite.
@@ -258,5 +192,5 @@ Section LogCorrect.
       apply RT1n_step with (y := (failed', revertLogNetwork net')).
       + apply IHH_star1.
       + eapply log_step_failure_step; eauto.
-    Qed.
+  Qed.
 End LogCorrect.
