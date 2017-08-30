@@ -309,11 +309,11 @@ Section Log.
 
   Lemma log_net_handlers_spec :
     forall dst src m st
-           cs out st' l
+           ops out st' l
            dsk dsk',
       disk_correct dsk dst st ->
-      log_net_handlers dst src m st = (cs, out, st', l) ->
-      apply_ops dsk cs = dsk' ->
+      log_net_handlers dst src m st = (ops, out, st', l) ->
+      apply_ops dsk ops = dsk' ->
       disk_correct dsk' dst st'.
     intros.
     unfold disk_correct in *.
@@ -392,11 +392,11 @@ Section Log.
 
   Lemma log_input_handlers_spec :
     forall dst m st
-           cs out st' l
+           ops out st' l
            dsk dsk',
       disk_correct dsk dst st ->
-      log_input_handlers dst m st = (cs, out, st', l) ->
-      apply_ops dsk cs = dsk' ->
+      log_input_handlers dst m st = (ops, out, st', l) ->
+      apply_ops dsk ops = dsk' ->
       disk_correct dsk' dst st'.
     intros.
     unfold disk_correct in *.
