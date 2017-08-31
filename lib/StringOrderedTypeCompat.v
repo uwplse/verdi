@@ -148,17 +148,15 @@ refine
 - exact: lex_lt_lt.
 Defined.
 
-Module string_as_OT : OrderedType
-    with Definition t := string
-    with Definition eq := @eq string.
-Definition t := string.
-Definition eq := @eq string.
-Definition lt := lex_lt.
-Definition eq_refl := @eq_refl string.
-Definition eq_sym := @eq_sym string.
-Definition eq_trans := @eq_trans string.
-Definition lt_trans := lex_lt_trans.
-Definition lt_not_eq := lex_lt_not_eq.
-Definition compare := compare_string_lex.
-Definition eq_dec := string_dec.
+Module string_as_OT <: UsualOrderedType.
+  Definition t := string.
+  Definition eq := @eq string.
+  Definition lt := lex_lt.
+  Definition eq_refl := @eq_refl string.
+  Definition eq_sym := @eq_sym string.
+  Definition eq_trans := @eq_trans string.
+  Definition lt_trans := lex_lt_trans.
+  Definition lt_not_eq := lex_lt_not_eq.
+  Definition compare := compare_string_lex.
+  Definition eq_dec := string_dec.
 End string_as_OT.

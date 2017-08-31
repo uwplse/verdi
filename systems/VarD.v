@@ -21,7 +21,7 @@ Inductive output : Set :=
 | Response : key -> option value -> option value -> output (* uniform response *)
 .
 
-Module VarDFunctor (Map : FMapInterface.S
+Module VarDFunctor (Map : FMapInterface.WS
                        with Definition E.t := string
                        with Definition E.eq := @eq string).
 
