@@ -5,7 +5,6 @@ Require Import String.
 
 Require Import Verdi.FMapVeryWeak.
 Require Import Verdi.StateMachineHandlerMonad.
-Require Import Verdi.StringOrderedTypeCompat.
 
 Definition key := string.
 Definition value := string.
