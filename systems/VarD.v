@@ -342,12 +342,9 @@ Proof.
 Qed.
 End VarDFunctor.
 
-Module LogTimeVarD := VarDFunctor StringIndexedPositiveMap.
-
-Module StringListMapS := FMapList.Make string_as_OT.
-Module StringListMap := WS_to_VWS StringListMapS.
-
-Module LinearTimeVarD := VarDFunctor StringListMap.
+Module LogTimeVarD := VarDFunctor(LogTimeStringMap).
+Module LinearTimeVarD := VarDFunctor(LinearTimeStringMap).
 
 Module VarD := LogTimeVarD.
+
 Export VarD.

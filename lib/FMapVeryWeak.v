@@ -2,14 +2,15 @@ Require Import ZArith.
 
 Require Import FMapInterface.
 Require Import FMapPositive.
+Require Import FMapList.
 Require Import FMapFacts.
 
 Require Import String.
 Require Import Ascii.
-
 Require Import List.
 
 Require Import StructTact.StructTactics.
+Require Import Verdi.StringOrderedTypeCompat.
 
 Import ListNotations.
 
@@ -54,6 +55,9 @@ Module WS_to_VWS (Map : WS) <: VWS.
   Definition remove_eq_o := F.remove_eq_o.
   Definition remove_neq_o := F.remove_neq_o.
 End WS_to_VWS.
+
+Module StringMapList := FMapList.Make string_as_OT.
+Module LinearTimeStringMap <: VWS := WS_to_VWS StringMapList.
 
 Module Type IndexedType.
   Parameter t: Type.
@@ -188,4 +192,4 @@ Module IndexedString <: IndexedType.
   Qed.
 End IndexedString.
 
-Module StringIndexedPositiveMap <: VWS := IndexedPositiveMap IndexedString.
+Module LogTimeStringMap <: VWS := IndexedPositiveMap IndexedString.
