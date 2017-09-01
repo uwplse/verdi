@@ -41,19 +41,8 @@ Module Type VWS.
 End VWS.
 
 Module WS_to_VWS (Map : WS) <: VWS.
-  Module E := Map.E.
-  Module F := Facts Map.
-  Definition key := E.t.
-  Definition t := Map.t.
-  Definition empty := Map.empty.
-  Definition add := Map.add.
-  Definition find := Map.find.
-  Definition remove := Map.remove.
-  Definition empty_o := F.empty_o.
-  Definition add_eq_o := F.add_eq_o.
-  Definition add_neq_o := F.add_neq_o.
-  Definition remove_eq_o := F.remove_eq_o.
-  Definition remove_neq_o := F.remove_neq_o.
+  Include Map.
+  Include Facts Map.
 End WS_to_VWS.
 
 Module StringMapList := FMapList.Make string_as_OT.
