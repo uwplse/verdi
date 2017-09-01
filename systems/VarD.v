@@ -1,8 +1,9 @@
 Require Import Verdi.Verdi.
 
+Require Import FMapList.
 Require Import String.
-Require Import Verdi.StringMap.
 
+Require Import Verdi.FMapVeryWeak.
 Require Import Verdi.StateMachineHandlerMonad.
 
 Definition key := string.
@@ -16,10 +17,11 @@ Inductive input : Set :=
 | CAD : key -> value -> input.
 
 Inductive output : Set :=
-| Response : key -> option value -> option value -> output (* uniform response *)
-.
+| Response : key -> option value -> option value -> output. (* uniform response *)
 
-Module VarDFunctor (Map : TREE with Definition elt := string).
+Module VarDFunctor (Map : VWS
+                       with Definition E.t := string
+                       with Definition E.eq := @eq string).
 
 Definition key_eq_dec := string_dec.
 Definition value_eq_dec := string_dec.
@@ -49,9 +51,9 @@ Definition beq_key (k1 k2 : key) :=
 
 Definition getk k : GenHandler1 data (option value) :=
   db <- get ;;
-  ret (Map.get k db).
+  ret (Map.find k db).
 
-Definition setk k v : GenHandler1 data unit := modify (fun db => Map.set k v db).
+Definition setk k v : GenHandler1 data unit := modify (fun db => Map.add k v db).
 
 Definition delk k : GenHandler1 data unit := modify (fun db => Map.remove k db).
 
@@ -144,7 +146,7 @@ Inductive trace_correct' : data -> list (input * output) -> Prop :=
 | TC'App : forall st t i v o, trace_correct' st t ->
                          interpret (input_key i)
                                    (i :: (rev (inputs_with_key t (input_key i))))
-                                   (Map.get (input_key i) st) = (v, o) ->
+                                   (Map.find (input_key i) st) = (v, o) ->
                          trace_correct' st (t ++ [(i, Response (input_key i) v o)]).
 
 Lemma trace_correct'_trace_correct :
@@ -156,12 +158,12 @@ Proof.
   remember init as x. induction H.
   - constructor.
   - subst. constructor; auto.
-    find_rewrite_lem Map.gempty. auto.
+    find_rewrite_lem Map.empty_o. auto.
 Qed.
 
 Definition trace_state_correct (trace : list (input * output)) (st : data) (st' : data) :=
   forall k,
-    fst (interpret k (rev (inputs_with_key trace k)) (Map.get k st)) = Map.get k st'.
+    fst (interpret k (rev (inputs_with_key trace k)) (Map.find k st)) = Map.find k st'.
 
 Ltac vard_unfold :=
   unfold runHandler,
@@ -225,49 +227,47 @@ Proof.
   - unfold trace_state_correct in *. intros.
     invcs H0. unfold VarDHandler, VarDHandler' in *.
     vard_unfold. repeat break_match; simpl in *; repeat find_inversion.
-    + simpl in *.
-      destruct (key_eq_dec k0 k).
+    + destruct (key_eq_dec k0 k).
       * rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
-        subst. symmetry; apply Map.gss.
+        subst.
+        symmetry; apply Map.add_eq_o.
+        reflexivity.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
-        rewrite Map.gso; auto.
-    + simpl in *.
-      destruct (key_eq_dec k0 k).
-      * rewrite inputs_with_key_plus_key; simpl in *; auto.
-        rewrite rev_unit. simpl in *.
-        subst. eauto.
-      * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
-    + simpl in *.
-      destruct (key_eq_dec k0 k).
+        rewrite Map.add_neq_o; auto.
+    + destruct (key_eq_dec k0 k).
       * rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
         subst. eauto.
-        symmetry; apply Map.grs.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
-        rewrite Map.gro; eauto.
-    + simpl in *.
-      destruct (key_eq_dec k0 k).
+    + destruct (key_eq_dec k0 k).
+      * rewrite inputs_with_key_plus_key; simpl in *; auto.
+        rewrite rev_unit. simpl in *.
+        subst. eauto.
+        rewrite Map.remove_eq_o; auto.
+      * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
+        rewrite Map.remove_neq_o; auto.
+    + destruct (key_eq_dec k0 k).
       * subst. rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
-        break_if; eauto using Map.gss.
+        break_if; first rewrite Map.add_eq_o; auto.
         exfalso. intuition.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
-        rewrite Map.gso; eauto.
-    + simpl in *.
-      destruct (key_eq_dec k0 k).
+        rewrite Map.add_neq_o; auto.
+    + destruct (key_eq_dec k0 k).
       * rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
-        subst. break_if; eauto using Map.grs.
-        subst.
-        exfalso. intuition.
+        subst. break_if.
+        - subst.
+          exfalso. intuition.
+        - simpl in *.
+          apply IHrefl_trans_n1_trace.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
-    + simpl in *.
-      destruct (key_eq_dec k0 k).
+    + destruct (key_eq_dec k0 k).
       * { subst. rewrite inputs_with_key_plus_key; simpl in *; auto.
           rewrite rev_unit. simpl in *.
           break_if; simpl in *.
-          - symmetry. apply Map.grs.
+          - symmetry. rewrite Map.remove_eq_o; auto.
           - exfalso. intuition.
             match goal with
               | H : _ -> False |- _ => apply H
@@ -275,9 +275,8 @@ Proof.
             find_higher_order_rewrite. auto.
         }
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
-        rewrite Map.gro; eauto.
-    + simpl in *.
-      destruct (key_eq_dec k0 k).
+        rewrite Map.remove_neq_o; auto.
+    + destruct (key_eq_dec k0 k).
       * subst. rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
         break_if; simpl in *; intuition.
