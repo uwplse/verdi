@@ -1,9 +1,9 @@
 Require Import Verdi.Verdi.
 
-Require Import FMapInterface.
-Require Import FMapFacts.
+Require Import FMapList.
 Require Import String.
 
+Require Import Verdi.FMapVeryWeak.
 Require Import Verdi.StateMachineHandlerMonad.
 Require Import Verdi.StringOrderedTypeCompat.
 
@@ -18,14 +18,11 @@ Inductive input : Set :=
 | CAD : key -> value -> input.
 
 Inductive output : Set :=
-| Response : key -> option value -> option value -> output (* uniform response *)
-.
+| Response : key -> option value -> option value -> output. (* uniform response *)
 
-Module VarDFunctor (Map : FMapInterface.WS
+Module VarDFunctor (Map : VWS
                        with Definition E.t := string
                        with Definition E.eq := @eq string).
-
-Module MapFacts := Facts Map.
 
 Definition key_eq_dec := string_dec.
 Definition value_eq_dec := string_dec.
@@ -162,7 +159,7 @@ Proof.
   remember init as x. induction H.
   - constructor.
   - subst. constructor; auto.
-    find_rewrite_lem MapFacts.empty_o. auto.
+    find_rewrite_lem Map.empty_o. auto.
 Qed.
 
 Definition trace_state_correct (trace : list (input * output)) (st : data) (st' : data) :=
@@ -235,10 +232,10 @@ Proof.
       * rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
         subst.
-        symmetry; apply MapFacts.add_eq_o.
+        symmetry; apply Map.add_eq_o.
         reflexivity.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
-        rewrite MapFacts.add_neq_o; auto.
+        rewrite Map.add_neq_o; auto.
     + destruct (key_eq_dec k0 k).
       * rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
@@ -248,16 +245,16 @@ Proof.
       * rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
         subst. eauto.
-        rewrite MapFacts.remove_eq_o; auto.
+        rewrite Map.remove_eq_o; auto.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
-        rewrite MapFacts.remove_neq_o; auto.
+        rewrite Map.remove_neq_o; auto.
     + destruct (key_eq_dec k0 k).
       * subst. rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
-        break_if; first rewrite MapFacts.add_eq_o; auto.
+        break_if; first rewrite Map.add_eq_o; auto.
         exfalso. intuition.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
-        rewrite MapFacts.add_neq_o; auto.
+        rewrite Map.add_neq_o; auto.
     + destruct (key_eq_dec k0 k).
       * rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
@@ -271,7 +268,7 @@ Proof.
       * { subst. rewrite inputs_with_key_plus_key; simpl in *; auto.
           rewrite rev_unit. simpl in *.
           break_if; simpl in *.
-          - symmetry. rewrite MapFacts.remove_eq_o; auto.
+          - symmetry. rewrite Map.remove_eq_o; auto.
           - exfalso. intuition.
             match goal with
               | H : _ -> False |- _ => apply H
@@ -279,7 +276,7 @@ Proof.
             find_higher_order_rewrite. auto.
         }
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
-        rewrite MapFacts.remove_neq_o; auto.
+        rewrite Map.remove_neq_o; auto.
     + destruct (key_eq_dec k0 k).
       * subst. rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
@@ -345,10 +342,12 @@ Proof.
 Qed.
 End VarDFunctor.
 
-Require Import FMapList.
+Module LogTimeVarD := VarDFunctor StringIndexedPositiveMap.
 
-Module StringMap := FMapList.Make string_as_OT.
+Module StringListMapS := FMapList.Make string_as_OT.
+Module StringListMap := WS_to_VWS StringListMapS.
 
-Module VarD := VarDFunctor StringMap.
+Module LinearTimeVarD := VarDFunctor StringListMap.
 
+Module VarD := LogTimeVarD.
 Export VarD.
