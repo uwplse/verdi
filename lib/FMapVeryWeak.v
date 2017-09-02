@@ -10,7 +10,7 @@ Require Import Ascii.
 Require Import List.
 
 Require Import StructTact.StructTactics.
-Require Import Verdi.StringOrderedTypeCompat.
+Require Import StructTact.StringOrders.
 
 Import ListNotations.
 
@@ -56,7 +56,7 @@ Module WS_to_VWS (Map : WS) <: VWS.
   Definition remove_neq_o := F.remove_neq_o.
 End WS_to_VWS.
 
-Module StringMapList := FMapList.Make string_as_OT.
+Module StringMapList := FMapList.Make string_lex_as_OT_compat.
 Module LinearTimeStringMap <: VWS := WS_to_VWS StringMapList.
 
 Module Type IndexedType.

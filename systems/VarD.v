@@ -250,7 +250,7 @@ Proof.
     + destruct (key_eq_dec k0 k).
       * subst. rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
-        break_if; first rewrite Map.add_eq_o; auto.
+        break_if; [rewrite Map.add_eq_o; auto | idtac].
         exfalso. intuition.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
         rewrite Map.add_neq_o; auto.
@@ -258,10 +258,10 @@ Proof.
       * rewrite inputs_with_key_plus_key; simpl in *; auto.
         rewrite rev_unit. simpl in *.
         subst. break_if.
-        - subst.
-          exfalso. intuition.
-        - simpl in *.
-          apply IHrefl_trans_n1_trace.
+        -- subst.
+           exfalso. intuition.
+        -- simpl in *.
+           apply IHrefl_trans_n1_trace.
       * rewrite inputs_with_key_plus_not_key; simpl in *; eauto.
     + destruct (key_eq_dec k0 k).
       * { subst. rewrite inputs_with_key_plus_key; simpl in *; auto.
