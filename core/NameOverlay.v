@@ -120,17 +120,19 @@ Module FinRootNameType (Import N : NatValue) (FN : FinNameType N) <: RootNameTyp
     intros x y.
     unfold root.
     intros H_x H_y.
-    case (fin_compare n x y); intros H_lt.
-    - unfold fin_lt in H_lt.
-      rewrite H_x in H_lt.
-      rewrite H_y in H_lt.
-      contradict H_lt.
+    case (fin_compare n x y); intro cmp; case cmp; intro H_cmp.
+    - inversion H_cmp; auto.
+    - inversion H_cmp.
+      unfold fin_lt in H.
+      rewrite H_x in H.
+      rewrite H_y in H.
+      contradict H.
       auto with arith.
-    - auto.
-    - unfold fin_lt in H_lt.
-      rewrite H_x in H_lt.
-      rewrite H_y in H_lt.
-      contradict H_lt.
+    - inversion H_cmp.
+      unfold fin_lt in H.
+      rewrite H_x in H.
+      rewrite H_y in H.
+      contradict H.
       auto with arith.
   Qed.
 End FinRootNameType.
