@@ -251,11 +251,11 @@ Section LogCorrect.
   Qed.
 
   Lemma disk_correct_invariant : forall net failed tr,
-      @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
+      @step_failure_disk_ops_star _ _ log_failure_params step_failure_disk_ops_init (failed, net) tr ->
       forall h, disk_correct (nwdoDisk net h) h (nwdoState net h).
   Proof.
     intros net failed tr H_st h.
-    remember step_failure_log_init as x.
+    remember step_failure_disk_ops_init as x.
     change net with (snd (failed, net)).
     induction H_st using refl_trans_1n_trace_n1_ind.
     - subst.
@@ -268,7 +268,7 @@ Section LogCorrect.
         rewrite serialize_deserialize_id_nil;
         reflexivity.
     - concludes.
-      match goal with H : step_failure_log _ _ _ |- _ => invcs H end.
+      match goal with H : step_failure_disk_ops _ _ _ |- _ => invcs H end.
       + break_if.
         * rewrite e in *.
           match goal with
@@ -296,7 +296,7 @@ Section LogCorrect.
   Qed.
 
   Lemma reboot_invariant : forall net failed tr,
-      @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
+      @step_failure_disk_ops_star _ _ log_failure_params step_failure_disk_ops_init (failed, net) tr ->
       forall h d dsk, do_reboot h (disk_to_wire (nwdoDisk net h)) = (d, dsk) ->
                       log_data d = reboot (log_data (nwdoState net h)).
     intros net failed tr H_st h d dsk H_reboot.
@@ -331,8 +331,8 @@ Section LogCorrect.
 
   Theorem log_step_failure_step :
     forall net net' failed failed' tr tr',
-      @step_failure_log_star _ _ log_failure_params step_failure_log_init (failed, net) tr ->
-      @step_failure_log _ _ log_failure_params (failed, net) (failed', net') tr' ->
+      @step_failure_disk_ops_star _ _ log_failure_params step_failure_disk_ops_init (failed, net) tr ->
+      @step_failure_disk_ops _ _ log_failure_params (failed, net) (failed', net') tr' ->
       step_failure (failed, revertLogNetwork net)
                    (failed', revertLogNetwork net')
                    tr'.
@@ -427,11 +427,11 @@ Section LogCorrect.
 
   Lemma log_step_failure_star_simulation :
     forall net failed tr,
-      step_failure_log_star step_failure_log_init (failed, net) tr ->
+      step_failure_disk_ops_star step_failure_disk_ops_init (failed, net) tr ->
       step_failure_star step_failure_init (failed, revertLogNetwork net) tr.
   Proof.
     intros net failed tr H_star.
-    remember step_failure_log_init as y in *.
+    remember step_failure_disk_ops_init as y in *.
     change failed with (fst (failed, net)).
     change net with (snd (failed, net)) at 2.
     revert Heqy.

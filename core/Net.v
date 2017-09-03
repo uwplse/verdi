@@ -608,7 +608,7 @@ Section StepFailureDiskOp.
     | op :: ops => apply_ops (update_disk dsk op) ops
     end.
 
-  Inductive step_failure_log : step_relation (list do_name * do_network) (do_name * (input + list output)) :=
+  Inductive step_failure_disk_ops : step_relation (list do_name * do_network) (do_name * (input + list output)) :=
   | StepFailureDiskOp_deliver : forall net net' failed p xs ys ops out d l,
       nwdoPackets net = xs ++ p :: ys ->
       ~ In (do_pDst p) failed ->
@@ -619,7 +619,7 @@ Section StepFailureDiskOp.
                                  (nwdoDisk net)
                                  (do_pDst p)
                                  (apply_ops (nwdoDisk net (do_pDst p)) ops)) ->
-      step_failure_log (failed, net) (failed, net') [(do_pDst p, inr out)]
+      step_failure_disk_ops (failed, net) (failed, net') [(do_pDst p, inr out)]
   | StepFailureDiskOp_input : forall h net net' failed op out inp d l,
       ~ In h failed ->
       do_input_handlers h inp (nwdoState net h) = (op, out, d, l) ->
@@ -629,17 +629,17 @@ Section StepFailureDiskOp.
                                  (nwdoDisk net)
                                  h
                                  (apply_ops (nwdoDisk net h) op)) ->
-      step_failure_log (failed, net) (failed, net') [(h, inl inp) ;  (h, inr out)]
+      step_failure_disk_ops (failed, net) (failed, net') [(h, inl inp) ;  (h, inr out)]
   | StepFailureDiskOp_drop : forall net net' failed p xs ys,
       nwdoPackets net = xs ++ p :: ys ->
       net' = (mkdoNetwork (xs ++ ys) (nwdoState net) (nwdoDisk net)) ->
-      step_failure_log (failed, net) (failed, net') []
+      step_failure_disk_ops (failed, net) (failed, net') []
   | StepFailureDiskOp_dup : forall net net' failed p xs ys,
       nwdoPackets net = xs ++ p :: ys ->
       net' = (mkdoNetwork (p :: xs ++ p :: ys) (nwdoState net) (nwdoDisk net)) ->
-      step_failure_log (failed, net) (failed, net') []
+      step_failure_disk_ops (failed, net) (failed, net') []
   | StepFailureDiskOp_fail :  forall h net failed,
-      step_failure_log (failed, net) (h :: failed, net) []
+      step_failure_disk_ops (failed, net) (h :: failed, net) []
   | StepFailureDiskOp_reboot : forall h net net' failed failed' d dsk,
       In h failed ->
       failed' = remove do_name_eq_dec h failed ->
@@ -647,12 +647,12 @@ Section StepFailureDiskOp.
       net' = mkdoNetwork (nwdoPackets net)
                         (update do_name_eq_dec (nwdoState net) h d)
                         (update do_name_eq_dec (nwdoDisk net) h dsk) ->
-      step_failure_log (failed, net) (failed', net') [].
+      step_failure_disk_ops (failed, net) (failed', net') [].
 
-  Definition step_failure_log_star : step_relation (list do_name * do_network) (do_name * (input + list output)) :=
-    refl_trans_1n_trace step_failure_log.
+  Definition step_failure_disk_ops_star : step_relation (list do_name * do_network) (do_name * (input + list output)) :=
+    refl_trans_1n_trace step_failure_disk_ops.
 
-  Definition step_failure_log_init : list do_name * do_network :=
+  Definition step_failure_disk_ops_init : list do_name * do_network :=
     ([], mkdoNetwork [] do_init_handlers do_init_disk).
 End StepFailureDiskOp.
 
