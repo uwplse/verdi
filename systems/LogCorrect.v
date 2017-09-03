@@ -8,7 +8,17 @@ Section LogCorrect.
   Context {orig_base_params : BaseParams}.
   Context {orig_multi_params : MultiParams orig_base_params}.
   Context {orig_failure_params : FailureParams orig_multi_params}.
-  Context {log_params : LogParams orig_multi_params}.
+
+  Context {data_serializer : Serializer data}.
+  Context {name_serializer : Serializer name}.
+  Context {msg_serializer : Serializer msg}.
+  Context {input_serializer : Serializer input}.
+
+  Variable snapshot_interval : nat.
+
+  Instance log_base_params : BaseParams := @log_base_params orig_base_params.
+  Instance log_multi_params : DiskOpMultiParams log_base_params := log_multi_params snapshot_interval.
+  Instance log_failure_params : DiskOpFailureParams log_multi_params := log_failure_params snapshot_interval.
 
   Lemma apply_log_app : forall h d entries e,
       apply_log h d (entries ++ [e]) =
@@ -38,6 +48,7 @@ Section LogCorrect.
     - rewrite <- IHl.
       reflexivity.
   Qed.
+
   Definition disk_correct dsk h st  :=
     exists entries snap,
       IOStreamWriter.unwrap (dsk Log) = IOStreamWriter.unwrap (list_serialize_rec entry _ entries) /\
@@ -53,7 +64,7 @@ Section LogCorrect.
            ops out st' l
            dsk dsk',
       disk_correct dsk dst st ->
-      log_net_handlers dst src m st = (ops, out, st', l) ->
+      log_net_handlers snapshot_interval dst src m st = (ops, out, st', l) ->
       apply_ops dsk ops = dsk' ->
       disk_correct dsk' dst st'.
     intros.
@@ -136,7 +147,7 @@ Section LogCorrect.
            ops out st' l
            dsk dsk',
       disk_correct dsk dst st ->
-      log_input_handlers dst m st = (ops, out, st', l) ->
+      log_input_handlers snapshot_interval dst m st = (ops, out, st', l) ->
       apply_ops dsk ops = dsk' ->
       disk_correct dsk' dst st'.
     intros.
@@ -216,7 +227,7 @@ Section LogCorrect.
 
   Lemma disk_correct_reboot : forall net h d dsk,
       disk_correct (nwdoDisk net h) h (nwdoState net h) ->
-      do_log_reboot h (disk_to_wire (nwdoDisk net h)) = (d, dsk) ->
+      do_log_reboot snapshot_interval h (disk_to_wire (nwdoDisk net h)) = (d, dsk) ->
       disk_correct dsk h d.
   Proof.
     intros net h d dsk H_correct H_reboot.
@@ -261,7 +272,7 @@ Section LogCorrect.
       + break_if.
         * rewrite e in *.
           match goal with
-          | [G : disk_correct _ _ _, H : log_net_handlers _ _ _ _ = _ |- _] =>
+          | [G : disk_correct _ _ _, H : log_net_handlers _ _ _ _ _ = _ |- _] =>
             apply (log_net_handlers_spec _ _ _ _ _ _ _ _ _ _  G H)
           end.
           reflexivity.
@@ -269,7 +280,7 @@ Section LogCorrect.
       + break_if.
         * rewrite e in *.
           match goal with
-          | [G : disk_correct _ _ _, H : log_input_handlers _ _ _ = _ |- _] =>
+          | [G : disk_correct _ _ _, H : log_input_handlers _ _ _ _ = _ |- _] =>
             apply (log_input_handlers_spec  _ _ _ _ _ _ _ _ _ G H)
           end.
           reflexivity.

@@ -6,20 +6,17 @@ Import DeserializerNotations.
 
 Set Implicit Arguments.
 
-Class LogParams `(P : MultiParams) :=
-  {
-    log_data_serializer :> Serializer data ;
-    log_name_serializer :> Serializer name ;
-    log_msg_serializer :> Serializer msg ;
-    log_input_serializer :> Serializer input ;
-    log_snapshot_interval : nat
-  }.
-
 Section Log.
   Context {orig_base_params : BaseParams}.
   Context {orig_multi_params : MultiParams orig_base_params}.
   Context {orig_failure_params : FailureParams orig_multi_params}.
-  Context {log_params : LogParams orig_multi_params}.
+
+  Context {data_serializer : Serializer data}.
+  Context {name_serializer : Serializer name}.
+  Context {msg_serializer : Serializer msg}.
+  Context {input_serializer : Serializer input}.
+
+  Variable snapshot_interval : nat.
 
   Definition entry : Type := input + (name * msg).
 
@@ -42,7 +39,7 @@ Section Log.
                                              list (name * msg)  :=
     let '(out, data, ps) := net_handlers dst src m (log_data st) in
     let n := log_num_entries st in
-    if S n =? log_snapshot_interval
+    if S n =? snapshot_interval
     then ([Delete Log; Write Snapshot (serialize data); Write Count (serialize 0)],
           out,
           mk_log_state 0 data,
@@ -58,7 +55,7 @@ Section Log.
                                            list (name * msg) :=
     let '(out, data, ps) := input_handlers h inp (log_data st) in
     let n := log_num_entries st in
-    if S n =? log_snapshot_interval
+    if S n =? snapshot_interval
     then ([Delete Log; Write Snapshot (serialize data); Write Count (serialize 0)],
           out,
           mk_log_state 0 data,
