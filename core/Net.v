@@ -53,27 +53,6 @@ Class FailureParams `(P : MultiParams) :=
     reboot : data -> data
   }.
 
-Class DiskMultiParams (P : BaseParams) :=
-  {
-    d_name : Type ;
-    d_msg : Type ;
-    disk : Type ;
-    d_msg_eq_dec : forall x y : d_msg, {x = y} + {x <> y} ;
-    d_name_eq_dec : forall x y : d_name, {x = y} + {x <> y} ;
-    d_nodes : list d_name ;
-    d_all_names_nodes : forall n, In n d_nodes ;
-    d_no_dup_nodes : NoDup d_nodes ;
-    d_init_handlers : d_name -> data;
-    d_init_disk     : d_name -> disk;
-    d_net_handlers : d_name -> d_name -> d_msg -> data -> disk *(list output) * data * list (d_name * d_msg);
-    d_input_handlers : d_name -> input -> data -> disk * (list output) * data * list (d_name * d_msg)
-  }.
-
-Class DiskFailureParams `(P : DiskMultiParams) :=
-  {
-    d_reboot : d_name -> disk -> data
-  }.
-
 Definition do_disk file_name :=
   file_name -> IOStreamWriter.t.
 
@@ -369,47 +348,6 @@ Section StepAsync.
   Definition step_async_star := refl_trans_1n_trace step_async.
 End StepAsync.
 
-Section StepAsyncDisk.
-
-  Context `{params : DiskMultiParams}.
-
-  Record d_packet := mkdPacket { d_pSrc  : d_name ;
-                                 d_pDst  : d_name ;
-                                 d_pBody : d_msg }.
-
-  Definition d_send_packets src ps := (map (fun m => mkdPacket src (fst m) (snd m)) ps).
-
-  Definition d_packet_eq_dec (p q : d_packet) : {p = q} + {p <> q}.
-    decide equality; auto using d_name_eq_dec, d_msg_eq_dec.
-  Defined.
-
-  Record d_network := mkdNetwork { nwdPackets : list d_packet ;
-                                   nwdState   : d_name -> data;
-                                   nwdDisk    : d_name -> disk
-                                 }.
-
-  Definition step_async_disk_init : d_network :=
-    mkdNetwork [] d_init_handlers d_init_disk.
-
-  Inductive step_async_disk : step_relation d_network (d_name * (input + list output)) :=
-  | StepAsyncDisk_deliver : forall net net' p xs ys out d l dsk,
-      nwdPackets net = xs ++ p :: ys ->
-      d_net_handlers (d_pDst p) (d_pSrc p) (d_pBody p) (nwdState net (d_pDst p)) = (dsk, out, d, l) ->
-      net' = mkdNetwork (d_send_packets (d_pDst p) l ++ xs ++ ys)
-                        (update d_name_eq_dec (nwdState net) (d_pDst p) d)
-                        (update d_name_eq_dec (nwdDisk net) (d_pDst p) dsk) ->
-      step_async_disk net net' [(d_pDst p, inr out)]
-  (* inject a message (f inp) into host h. analogous to step_1 *delivery* *)
-  | StepAsyncDisk_input : forall h net net' out inp d l dsk,
-      d_input_handlers h inp (nwdState net h) = (dsk, out, d, l) ->
-      net' = mkdNetwork (d_send_packets h l ++ nwdPackets net)
-                        (update d_name_eq_dec (nwdState net) h d)
-                        (update d_name_eq_dec (nwdDisk net) h dsk)->
-      step_async_disk net net' [(h, inl inp); (h, inr out)].
-
-  Definition step_async_disk_star := refl_trans_1n_trace step_async_disk.
-End StepAsyncDisk.
-
 Arguments update _ _ _ _ _ _ / _.
 Arguments send_packets _ _ _ _ /.
 
@@ -529,49 +467,6 @@ Section StepFailure.
   Definition step_failure_init : list name * network := ([], step_async_init).
 End StepFailure.
 
-Section StepFailureDisk.
-  Context `{params : DiskFailureParams}.
-
-  Inductive step_failure_disk : step_relation (list d_name * d_network) (d_name * (input + list output)) :=
-  | StepFailureDisk_deliver : forall net net' failed p xs ys out d l dsk,
-      nwdPackets net = xs ++ p :: ys ->
-      ~ In (d_pDst p) failed ->
-      d_net_handlers (d_pDst p) (d_pSrc p) (d_pBody p) (nwdState net (d_pDst p)) = (dsk, out, d, l) ->
-      net' = mkdNetwork (d_send_packets (d_pDst p) l ++ xs ++ ys)
-                        (update d_name_eq_dec (nwdState net) (d_pDst p) d)
-                        (update d_name_eq_dec (nwdDisk net) (d_pDst p) dsk) ->
-      step_failure_disk (failed, net) (failed, net') [(d_pDst p, inr out)]
-  | StepFailureDisk_input : forall h net net' failed out inp d l dsk,
-      ~ In h failed ->
-      d_input_handlers h inp (nwdState net h) = (dsk, out, d, l) ->
-      net' = mkdNetwork (d_send_packets h l ++ nwdPackets net)
-                        (update d_name_eq_dec (nwdState net) h d)
-                        (update d_name_eq_dec (nwdDisk net) h dsk) ->
-      step_failure_disk (failed, net) (failed, net') [(h, inl inp) ;  (h, inr out)]
-  | StepFailureDisk_drop : forall net net' failed p xs ys,
-      nwdPackets net = xs ++ p :: ys ->
-      net' = (mkdNetwork (xs ++ ys) (nwdState net) (nwdDisk net)) ->
-      step_failure_disk (failed, net) (failed, net') []
-  | StepFailureDisk_dup : forall net net' failed p xs ys,
-      nwdPackets net = xs ++ p :: ys ->
-      net' = (mkdNetwork (p :: xs ++ p :: ys) (nwdState net) (nwdDisk net)) ->
-      step_failure_disk (failed, net) (failed, net') []
-  | StepFailureDisk_fail :  forall h net failed,
-      step_failure_disk (failed, net) (h :: failed, net) []
-  | StepFailureDisk_reboot : forall h net net' failed failed',
-      In h failed ->
-      failed' = remove d_name_eq_dec h failed ->
-      net' = mkdNetwork (nwdPackets net)
-                        (update d_name_eq_dec (nwdState net) h (d_reboot h (nwdDisk net h)))
-                        (nwdDisk net) ->
-      step_failure_disk (failed, net) (failed', net') [].
-
-  Definition step_failure_disk_star : step_relation (list d_name * d_network) (d_name * (input + list output)) :=
-    refl_trans_1n_trace step_failure_disk.
-
-  Definition step_failure_disk_init : list d_name * d_network := ([], step_async_disk_init).
-End StepFailureDisk.
-
 Section StepFailureDiskOp.
   Context `{disk_op_failure_params : DiskOpFailureParams}.
 
@@ -591,8 +486,7 @@ Section StepFailureDiskOp.
                                    }.
 
   Definition disk_to_wire (dsk : do_disk file_name) : file_name -> IOStreamWriter.wire :=
-    fun file =>
-      serialize_top (dsk file).
+    fun file => serialize_top (dsk file).
 
   Definition update_disk (dsk : do_disk file_name) (op : disk_op file_name) :
     do_disk file_name :=
