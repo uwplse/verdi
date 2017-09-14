@@ -85,10 +85,15 @@ Section LogCorrect.
       + match goal with
         | H : _ = dsk' |- _ => rewrite <- H
         end.
-        find_inversion.
-        simpl.
-        rewrite serialize_deserialize_id_nil.
-        reflexivity.
+        match goal with
+        | _ : (?x, _, _, _) = (?ops, _, _, _) |- _ => assert (H_ops : ops = x)
+        end.
+        * find_inversion. reflexivity.
+        * rewrite H_ops.
+          unfold apply_ops, update_disk, update.
+          repeat break_if; try congruence.
+          rewrite serialize_deserialize_id_nil.
+          reflexivity.
       + find_inversion.
         simpl.
         rewrite serialize_deserialize_id_nil.
@@ -117,13 +122,21 @@ Section LogCorrect.
       + match goal with
         | H : _ = dsk' |- _ => rewrite <- H
         end.
-        find_inversion.
-        simpl.
-        rewrite serialize_deserialize_id_nil.
-        rewrite app_length.
-        rewrite PeanoNat.Nat.add_1_r.
-        repeat find_rewrite.
-        reflexivity.
+        match goal with
+        | _ : (?x, _, _, _) = (?ops, _, _, _) |- _ => assert (H_ops : ops = x)
+        end.
+        * find_inversion. reflexivity.
+        * rewrite H_ops.
+          unfold apply_ops, update_disk, update.
+          repeat break_if; try congruence.
+          rewrite serialize_deserialize_id_nil.
+          rewrite app_length.
+          simpl.
+          match goal with
+          | H : _ = length x |- _ => rewrite H
+          end.
+          rewrite PeanoNat.Nat.add_1_r.
+          reflexivity.
       + match goal with
         | H : _ = dsk' |- _ => rewrite <- H
         end.
@@ -168,10 +181,15 @@ Section LogCorrect.
       + match goal with
         | H : _ = dsk' |- _ => rewrite <- H
         end.
-        find_inversion.
-        simpl.
-        rewrite serialize_deserialize_id_nil.
-        reflexivity.
+        match goal with
+        | _ : (?x, _, _, _) = (?ops, _, _, _) |- _ => assert (H_ops : ops = x)
+        end.
+        * find_inversion. reflexivity.
+        * rewrite H_ops.
+          unfold apply_ops, update_disk, update.
+          repeat break_if; try congruence.
+          rewrite serialize_deserialize_id_nil.
+          reflexivity.
       + find_inversion.
         simpl.
         rewrite serialize_deserialize_id_nil.
@@ -200,13 +218,21 @@ Section LogCorrect.
       + match goal with
         | H : _ = dsk' |- _ => rewrite <- H
         end.
-        find_inversion.
-        simpl.
-        rewrite serialize_deserialize_id_nil.
-        rewrite app_length.
-        rewrite PeanoNat.Nat.add_1_r.
-        repeat find_rewrite.
-        reflexivity.
+        match goal with
+        | _ : (?x, _, _, _) = (?ops, _, _, _) |- _ => assert (H_ops : ops = x)
+        end.
+        * find_inversion. reflexivity.
+        * rewrite H_ops.
+          unfold apply_ops, update_disk, update.
+          repeat break_if; try congruence.
+          rewrite serialize_deserialize_id_nil.
+          rewrite app_length.
+          simpl.
+          match goal with
+          | H : _ = length x |- _ => rewrite H
+          end.
+          rewrite PeanoNat.Nat.add_1_r.
+          reflexivity.
       + match goal with
         | H : _ = dsk' |- _ => rewrite <- H
         end.
@@ -250,6 +276,16 @@ Section LogCorrect.
       reflexivity.
   Qed.
 
+  Lemma nat_serialize_spec : nat_serialize = serialize.
+  Proof.
+    reflexivity.
+  Qed.
+
+  Lemma nat_deserialize_spec : nat_deserialize = deserialize.
+  Proof.
+    reflexivity.
+  Qed.
+
   Lemma disk_correct_invariant : forall net failed tr,
       @step_failure_disk_ops_star _ _ log_failure_params step_failure_disk_ops_init (failed, net) tr ->
       forall h, disk_correct (nwdoDisk net h) h (nwdoState net h).
@@ -265,6 +301,8 @@ Section LogCorrect.
       exists [], (init_handlers h).
       intuition;
         simpl;
+        try rewrite nat_serializer_spec;
+        try rewrite nat_deserialize_spec;
         rewrite serialize_deserialize_id_nil;
         reflexivity.
     - concludes.
@@ -307,6 +345,7 @@ Section LogCorrect.
     unfold do_log_reboot, wire_to_log, disk_to_wire in *.
     unfold deserialize_top, serialize_top in *.
     repeat rewrite IOStreamWriter.wire_wrap_unwrap in *.
+    rewrite nat_deserialize_spec in *.
     repeat find_rewrite.
     rewrite <- (app_nil_r (IOStreamWriter.unwrap _)) in H_reboot.
     rewrite list_serialize_deserialize_id_rec' in H_reboot.
