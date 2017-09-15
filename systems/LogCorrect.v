@@ -50,13 +50,14 @@ Section LogCorrect.
   Qed.
 
   Definition disk_correct dsk h st  :=
-    exists entries snap,
-      IOStreamWriter.unwrap (dsk Log) = IOStreamWriter.unwrap (list_serialize_rec entry _ entries) /\
+    exists s1 s2 s3 entries snap,
+      dsk Count = Some s1 /\ 
+      dsk Snapshot = Some s2 /\
+      dsk Log = Some s3 /\
+      IOStreamWriter.unwrap s3 = IOStreamWriter.unwrap (list_serialize_rec entry _ entries) /\
       log_num_entries st = length entries /\
-      ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Count)) =
-      Some (length entries, []) /\
-      ByteListReader.unwrap deserialize (IOStreamWriter.unwrap (dsk Snapshot)) =
-      Some (snap, []) /\
+      s1 = serialize (length entries) /\
+      s2 = serialize snap /\
       (apply_log h snap entries = log_data st).
 
   Lemma log_net_handlers_spec :
@@ -73,30 +74,36 @@ Section LogCorrect.
     intuition.
     unfold log_net_handlers in *.
     break_if; do 2 break_let.
-    - exists [], d.
+    - match goal with
+      | _ : dsk Count = Some ?s1,
+            _ : dsk Snapshot = Some ?s2,
+                _ : dsk Log = Some ?s3 |- _ => 
+        exists (serialize 0), (serialize d), IOStreamWriter.empty, [], d
+      end.
       intuition.
       + match goal with
         | H : _ = dsk' |- _ => rewrite <- H
         end.
-        find_inversion.
+        inversion H0.
+        simpl.
         reflexivity.
       + find_inversion.
+        simpl.
         reflexivity.
       + match goal with
         | H : _ = dsk' |- _ => rewrite <- H
         end.
         find_inversion.
         simpl.
-        rewrite serialize_deserialize_id_nil.
         reflexivity.
       + find_inversion.
         simpl.
-        rewrite serialize_deserialize_id_nil.
         reflexivity.
       + find_inversion.
         reflexivity.
     - repeat break_and.
-      exists (x ++ [inr (src, m)]), x0.
+      exists (serialize (S (length x2))), (serialize x3), (x1 +$+ serialize (inr (src, m))),
+      (x2 ++ [inr (src, m)]), x3.
       intuition.
       + match goal with
         | H : _ = dsk' |- _ => rewrite <- H
@@ -104,32 +111,41 @@ Section LogCorrect.
         find_inversion.
         simpl.
         cheerios_crush.
+        repeat find_rewrite.
+        reflexivity.
+      + find_inversion.
+        simpl.
+        repeat find_rewrite.
+        reflexivity.
+      + match goal with
+        | H : _ = dsk' |- _ => rewrite <- H
+        end.
+        find_inversion.
+        simpl.
+        break_match.
+        * find_inversion.
+          reflexivity.
+        * congruence.
+      + find_inversion.
+        rewrite IOStreamWriter.append_unwrap.
         match goal with
-        | H : IOStreamWriter.unwrap (dsk Log) = _ |- _ => rewrite H
+        | H : IOStreamWriter.unwrap _ = IOStreamWriter.unwrap _ |- _ => rewrite H
         end.
         rewrite serialize_snoc.
         reflexivity.
       + find_inversion.
+        simpl.
         repeat find_rewrite.
         rewrite app_length.
-        rewrite PeanoNat.Nat.add_1_r.
-        reflexivity.
-      + match goal with
-        | H : _ = dsk' |- _ => rewrite <- H
-        end.
-        find_inversion.
         simpl.
-        rewrite serialize_deserialize_id_nil.
-        rewrite app_length.
-        rewrite PeanoNat.Nat.add_1_r.
+        rewrite NPeano.Nat.add_1_r.
+        reflexivity.
+      + simpl.
         repeat find_rewrite.
-        reflexivity.
-      + match goal with
-        | H : _ = dsk' |- _ => rewrite <- H
-        end.
-        find_inversion.
+        rewrite app_length.
         simpl.
-        assumption.
+        rewrite NPeano.Nat.add_1_r.
+        reflexivity.
       + rewrite apply_log_app.
         match goal with
         | H : apply_log _ _ _ = _ |- _ => rewrite H

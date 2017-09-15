@@ -75,14 +75,6 @@ Section Log.
   Definition log_init_handlers h :=
     mk_log_state 0 (init_handlers h).
 
-  Definition init_disk (h : name) : do_disk log_files :=
-    fun file =>
-      match file with
-      | Count => serialize 0
-      | Snapshot => serialize (init_handlers h)
-      | Log => IOStreamWriter.empty
-      end.
-
   Instance log_multi_params : DiskOpMultiParams log_base_params :=
     {
       do_name := name;
@@ -95,19 +87,23 @@ Section Log.
       do_all_names_nodes := all_names_nodes;
       do_no_dup_nodes := no_dup_nodes;
       do_init_handlers := log_init_handlers;
-      do_init_disk := init_disk;
       do_net_handlers := log_net_handlers;
       do_input_handlers := log_input_handlers
     }.
 
-  Definition wire_to_log (w : file_name -> IOStreamWriter.wire) : option (nat * @data orig_base_params * list entry) :=
-    match deserialize_top deserialize (w Count), deserialize_top deserialize (w Snapshot) with
-    | Some n, Some d =>
-      match deserialize_top (list_deserialize_rec' _ _ n) (w Log) with
-      | Some es => Some (n, d, es)
-      | None => None
+  Definition channel_to_log (channel : file_name -> option IOStreamWriter.in_channel) : option (nat * @data orig_base_params * list entry) :=
+    match channel Count, channel Snapshot, channel Log with
+    | Some s1, Some s2, Some s3 =>
+
+      match from_channel deserialize s1, from_channel deserialize s2 with
+      | Some n, Some d =>
+        match from_channel (list_deserialize_rec' _ _ n) s3 with
+        | Some es => Some (n, d, es)
+        | None => None
+        end
+      | _, _ => None
       end
-    | _, _ => None
+    | _, _, _ => None
     end.
 
   Definition apply_entry h d e :=
@@ -122,25 +118,17 @@ Section Log.
     | e :: entries => apply_log h (apply_entry h d e) entries
     end.
 
-  Definition do_log_reboot (h : do_name) (w : log_files -> IOStreamWriter.wire) :
-    data * do_disk log_files :=
-    match wire_to_log w with
+  Definition do_log_reboot (h : do_name) (w : log_files -> option IOStreamWriter.in_channel) :
+    data * list (disk_op log_files) :=
+    match channel_to_log w with
     | Some (n, d, es) =>
       let d' := reboot (apply_log h d es) in
       (mk_log_state 0 d',
-       fun file => match file with
-                  | Count => serialize 0
-                  | Snapshot => serialize d'
-                  | Log => IOStreamWriter.empty
-                  end)
+       [Delete Log; Write Snapshot (serialize d'); Write Count (serialize 0)])
     | None =>
       let d' := reboot (init_handlers h) in
       (mk_log_state 0 d',
-       fun file => match file with
-                  | Count => serialize 0
-                  | Snapshot => serialize d'
-                  | Log => IOStreamWriter.empty
-                  end)
+       [Delete Log; Write Snapshot (serialize d'); Write Count (serialize 0)])
     end.
 
   Instance log_failure_params : DiskOpFailureParams log_multi_params :=

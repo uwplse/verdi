@@ -54,7 +54,7 @@ Class FailureParams `(P : MultiParams) :=
   }.
 
 Definition do_disk file_name :=
-  file_name -> IOStreamWriter.t.
+  file_name -> option IOStreamWriter.t.
 
 Inductive disk_op file_name :=
 | Append :  file_name -> IOStreamWriter.t -> disk_op file_name
@@ -73,7 +73,6 @@ Class DiskOpMultiParams (P : BaseParams) :=
     do_all_names_nodes : forall n, In n do_nodes ;
     do_no_dup_nodes : NoDup do_nodes ;
     do_init_handlers : do_name -> data;
-    do_init_disk : do_name -> (do_disk file_name) ;
     do_net_handlers : do_name -> do_name -> do_msg -> data ->
                       list (disk_op file_name) * (list output) * data * list (do_name * do_msg) ;
     do_input_handlers : do_name -> input -> data ->
@@ -82,8 +81,8 @@ Class DiskOpMultiParams (P : BaseParams) :=
 
 Class DiskOpFailureParams `(P : DiskOpMultiParams) :=
   {
-    do_reboot : do_name -> (file_name -> IOStreamWriter.wire) ->
-                data * do_disk file_name
+    do_reboot : do_name -> (file_name -> option IOStreamWriter.in_channel) ->
+                data * list (disk_op file_name)
   }.
 
 Class NameOverlayParams `(P : MultiParams) :=
@@ -485,15 +484,22 @@ Section StepFailureDiskOp.
                                      nwdoDisk    : do_name -> do_disk file_name
                                    }.
 
-  Definition disk_to_wire (dsk : do_disk file_name) : file_name -> IOStreamWriter.wire :=
-    fun file => serialize_top (dsk file).
+  Definition disk_to_channel (dsk : do_disk file_name) :=
+    fun file => (match dsk file with
+                 | Some s => Some (IOStreamWriter.channel_send (IOStreamWriter.out_channel_wrap s))
+                 | None => None
+                 end).
 
   Definition update_disk (dsk : do_disk file_name) (op : disk_op file_name) :
     do_disk file_name :=
     match op with
-    | Append file x => update file_name_eq_dec dsk file (dsk file +$+ x)
-    | Write file x => update file_name_eq_dec dsk file x
-    | Delete file =>  update file_name_eq_dec dsk file IOStreamWriter.empty
+    | Append file x =>
+      update file_name_eq_dec dsk file (match dsk file with
+                                        | Some s => Some (s +$+ x)
+                                        | None => Some x
+                                        end)
+    | Write file x => update file_name_eq_dec dsk file (Some x)
+    | Delete file =>  update file_name_eq_dec dsk file (Some IOStreamWriter.empty)
     end.
 
   Fixpoint apply_ops dsk ops :=
@@ -534,20 +540,23 @@ Section StepFailureDiskOp.
       step_failure_disk_ops (failed, net) (failed, net') []
   | StepFailureDiskOp_fail :  forall h net failed,
       step_failure_disk_ops (failed, net) (h :: failed, net) []
-  | StepFailureDiskOp_reboot : forall h net net' failed failed' d dsk,
+  | StepFailureDiskOp_reboot : forall h net net' failed failed' d ops,
       In h failed ->
       failed' = remove do_name_eq_dec h failed ->
-      do_reboot h (disk_to_wire (nwdoDisk net h)) = (d, dsk) ->
+      do_reboot h (disk_to_channel (nwdoDisk net h)) = (d, ops) ->
       net' = mkdoNetwork (nwdoPackets net)
                         (update do_name_eq_dec (nwdoState net) h d)
-                        (update do_name_eq_dec (nwdoDisk net) h dsk) ->
+                        (update do_name_eq_dec
+                                (nwdoDisk net)
+                                h
+                                (apply_ops (nwdoDisk net h) ops)) ->
       step_failure_disk_ops (failed, net) (failed', net') [].
 
   Definition step_failure_disk_ops_star : step_relation (list do_name * do_network) (do_name * (input + list output)) :=
     refl_trans_1n_trace step_failure_disk_ops.
 
   Definition step_failure_disk_ops_init : list do_name * do_network :=
-    ([], mkdoNetwork [] do_init_handlers do_init_disk).
+    ([], mkdoNetwork [] do_init_handlers (fun _ _ => None)).
 End StepFailureDiskOp.
 
 Section StepOrdered.
