@@ -97,7 +97,7 @@ Section Log.
 
       match from_channel deserialize s1, from_channel deserialize s2 with
       | Some n, Some d =>
-        match from_channel (list_deserialize_rec' _ _ n) s3 with
+        match from_channel (list_deserialize_rec _ _ n) s3 with
         | Some es => Some (n, d, es)
         | None => None
         end
