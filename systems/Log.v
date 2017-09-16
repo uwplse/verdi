@@ -124,7 +124,7 @@ Section Log.
     let d := match channel_to_log w with
              | Some (n, es, d) =>
                reboot (apply_log h d es)
-             | None => reboot (init_handlers h)
+             | None => init_handlers h
              end in
     (mk_log_state 0 d,
      [Delete Log; Write Snapshot (serialize d); Write Count (serialize 0)]).

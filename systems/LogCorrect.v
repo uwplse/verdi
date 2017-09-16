@@ -16,8 +16,6 @@ Section LogCorrect.
 
   Variable snapshot_interval : nat.
 
-  Hypothesis reboot_init : forall h, init_handlers h = reboot (init_handlers h).
-
   Instance log_base_params : BaseParams := @log_base_params orig_base_params.
   Instance log_multi_params : DiskOpMultiParams log_base_params := log_multi_params snapshot_interval.
   Instance log_failure_params : DiskOpFailureParams log_multi_params := log_failure_params snapshot_interval.
@@ -217,7 +215,7 @@ Section LogCorrect.
       simpl in *.
       unfold disk_correct.
       simpl.
-      exists IOStreamWriter.empty, [], (reboot (init_handlers h)).
+      exists IOStreamWriter.empty, [], (init_handlers h).
       intuition.
     - concludes.
       match goal with H : step_failure_disk_ops _ _ _ |- _ => invcs H end.
@@ -398,13 +396,7 @@ Section LogCorrect.
     - find_rewrite.
       simpl; unfold revertLogNetwork; simpl.
       unfold step_failure_init, step_async_init.
-      change init_handlers with (fun h => init_handlers h) at 1.
-      assert (H_reboot_init : (fun h => init_handlers h) = (fun h => reboot (init_handlers h))).
-      + extensionality h.
-        rewrite reboot_init at 1.
-        reflexivity.
-      + rewrite H_reboot_init.
-        constructor.
+      constructor.
     - concludes.
       destruct x' as (failed', net').
       destruct x'' as (failed'', net'').
