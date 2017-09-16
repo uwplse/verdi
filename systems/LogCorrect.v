@@ -49,14 +49,59 @@ Section LogCorrect.
       reflexivity.
   Qed.
 
+  (* invariant: any of
+     - all files absent
+     - log and count present, snapshot absent
+     - log, count, snapshot present
+   *)
+
   Definition disk_correct dsk h st  :=
-    exists s entries snap,
-      dsk Count = Some (serialize (length entries)) /\
-      dsk Snapshot = Some (serialize snap) /\
-      dsk Log = Some s /\
-      IOStreamWriter.unwrap s = IOStreamWriter.unwrap (list_serialize_rec entry _ entries) /\
+    exists entries snap,
+      @channel_to_log _ _ _ _ _ _ snapshot_interval (disk_to_channel dsk) =
+      Some (length entries, entries, snap) /\
       log_num_entries st = length entries /\
       (apply_log h snap entries = log_data st).
+
+  Lemma disk_invariant : forall net failed tr,
+      @step_failure_disk_ops_star _ _ log_failure_params step_failure_disk_ops_init (failed, net) tr ->
+      forall h, ((forall f, nwdoDisk net h f = None) \/
+                 (exists s1 s2, nwdoDisk net h Count = s1 /\
+                                nwdoDisk net h Log = s2 /\
+                                (nwdoDisk net h Snapshot = None \/
+                                 exists s3, nwdoDisk net h Snapshot = Some s3))).
+  Proof.
+    intros net failed tr H_st.
+    remember step_failure_disk_ops_init as x.
+    change net with (snd (failed, net)).
+    induction H_st using refl_trans_1n_trace_n1_ind.
+    - left.
+      intros.
+      find_rewrite.
+      simpl.
+      unfold null_disk.
+      reflexivity.
+    - concludes.
+      invcs H.
+      + intros.
+        admit.
+      + admit.
+      + intuition.
+      + intuition.
+      + intuition.
+      + intuition.
+        unfold do_log_reboot in *.
+        do 2 break_let.
+        find_inversion.
+        simpl.
+        specialize IHH_st1 with h0.
+        intuition.
+        * right.
+
+
+
+
+
+
 
   Lemma log_net_handlers_spec :
     forall dst src m st
@@ -69,71 +114,79 @@ Section LogCorrect.
   Proof.
     intros.
     unfold disk_correct in *.
-    break_exists.
-    intuition.
-    unfold log_net_handlers in *.
-    break_if; do 2 break_let.
-    - exists IOStreamWriter.empty, [], d.
-      intuition;
-        try match goal with
-            | H : _ = dsk' |- _ => rewrite <- H
-            end;
-        find_inversion;
-        simpl;
-        reflexivity.
-    - repeat break_and.
-      match goal with
-      | _ : apply_log _ ?data ?entries = _,
-            _ : dsk Log = Some ?s |- _ =>
-        exists   (s +$+ serialize (inr (src, m))), (entries ++ [inr (src, m)]), data
-      end.
+    unfold log_net_handlers in *;
+      break_if; do 2 break_let.
+    - find_inversion.
+      simpl.
+      unfold channel_to_log, disk_to_channel.
+      simpl.
+      unfold from_channel.
+      repeat rewrite IOStreamWriter.channel_wrap_unwrap.
+      rewrite serialize_deserialize_id_nil.
+      simpl. cheerios_crush.
+      rewrite serialize_deserialize_id_nil.
+      exists [], d.
       intuition.
-      + match goal with
-        | H : _ = dsk' |- _ => rewrite <- H
-        end.
-        find_inversion.
-        simpl.
-        cheerios_crush.
-        repeat find_rewrite.
-        rewrite app_length.
-        rewrite NPeano.Nat.add_1_r.
+    - find_inversion.
+      simpl.
+      unfold channel_to_log, disk_to_channel.
+      simpl.
+      unfold from_channel.
+      rewrite IOStreamWriter.channel_wrap_unwrap.
+      break_exists.
+      intuition.
+      unfold channel_to_log, disk_to_channel in *.
+      break_let.
+      break_match.
+      * break_match.
+
+
+
+
+
+    intros.
+    unfold disk_correct in *.
+    intuition;
+      unfold log_net_handlers in *;
+      break_if; do 2 break_let;
+        unfold channel_to_log, disk_to_channel, from_channel;
+        repeat rewrite IOStreamWriter.channel_wrap_unwrap.
+    - find_inversion.
+      exists [], d.
+      intuition.
+      simpl.
+      do 3 rewrite IOStreamWriter.channel_wrap_unwrap.
+      rewrite serialize_deserialize_id_nil.
+      rewrite <- (app_nil_r (IOStreamWriter.unwrap _)).
+      assert (IOStreamWriter.empty = list_serialize_rec entry _ []) by reflexivity.
+      rewrite H0.
+      change 0 with (length (@nil entry)).
+      rewrite list_serialize_deserialize_id_rec.
+      rewrite serialize_deserialize_id_nil.
+      reflexivity.
+    - break_exists.
+      find_inversion.
+      unfold apply_ops.
+      simpl.
+      repeat rewrite IOStreamWriter.channel_wrap_unwrap.
+      rewrite serialize_deserialize_id_nil.
+      assert (IOStreamWriter.unwrap (serialize (inr (src, m) : entry)) =
+              IOStreamWriter.unwrap (list_serialize_rec entry _ [(inr (src, m))]) ++ []).
+      + simpl. cheerios_crush.
+        repeat rewrite app_nil_r.
         reflexivity.
-      + find_inversion.
-        simpl.
-        repeat find_rewrite.
-        reflexivity.
-      + match goal with
-        | H : _ = dsk' |- _ => rewrite <- H
-        end.
-        find_inversion.
-        simpl.
-        break_match.
-        * find_inversion.
-          reflexivity.
-        * congruence.
-      + find_inversion.
-        rewrite IOStreamWriter.append_unwrap.
-        match goal with
-        | H : IOStreamWriter.unwrap _ = IOStreamWriter.unwrap _ |- _ => rewrite H
-        end.
-        rewrite serialize_snoc.
-        reflexivity.
-      + find_inversion.
-        simpl.
-        repeat find_rewrite.
-        rewrite app_length.
-        simpl.
-        rewrite NPeano.Nat.add_1_r.
-        reflexivity.
-      + rewrite apply_log_app.
-        find_inversion.
-        unfold apply_entry.
-        repeat find_reverse_rewrite.
-        match goal with
-        | H : net_handlers _ _ _ _ = _ |- _ => rewrite H
-        end.
-        reflexivity.
-  Qed.
+      +
+        exists ([inr (src, m)]), (init_handlers dst).
+        intuition.
+        * match goal with
+          | H : context[log_num_entries] |- _ => rewrite H
+          end.
+          change 1 with (length ([inr (src, m) : entry])).
+          simpl.
+          break_let.
+          admit.
+        *
+  Admitted.
 
   Lemma log_input_handlers_spec :
     forall h m st

@@ -72,7 +72,6 @@ Class DiskOpMultiParams (P : BaseParams) :=
     do_nodes : list do_name ;
     do_all_names_nodes : forall n, In n do_nodes ;
     do_no_dup_nodes : NoDup do_nodes ;
-    do_init_handlers : do_name -> data;
     do_net_handlers : do_name -> do_name -> do_msg -> data ->
                       list (disk_op file_name) * (list output) * data * list (do_name * do_msg) ;
     do_input_handlers : do_name -> input -> data ->
@@ -555,8 +554,17 @@ Section StepFailureDiskOp.
   Definition step_failure_disk_ops_star : step_relation (list do_name * do_network) (do_name * (input + list output)) :=
     refl_trans_1n_trace step_failure_disk_ops.
 
+  Definition null_disk : do_disk file_name :=
+    fun _ => None.
+
   Definition step_failure_disk_ops_init : list do_name * do_network :=
-    ([], mkdoNetwork [] do_init_handlers (fun _ _ => None)).
+    ([], mkdoNetwork []
+                     (fun h => match do_reboot h (disk_to_channel null_disk) with
+                               | (d, _) => d
+                               end)
+                     (fun h => match do_reboot h (disk_to_channel null_disk) with
+                               | (_, ops) => apply_ops null_disk ops
+                               end)).
 End StepFailureDiskOp.
 
 Section StepOrdered.
