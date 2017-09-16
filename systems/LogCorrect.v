@@ -16,6 +16,8 @@ Section LogCorrect.
 
   Variable snapshot_interval : nat.
 
+  Hypothesis reboot_init : forall h, init_handlers h = reboot (init_handlers h).
+
   Instance log_base_params : BaseParams := @log_base_params orig_base_params.
   Instance log_multi_params : DiskOpMultiParams log_base_params := log_multi_params snapshot_interval.
   Instance log_failure_params : DiskOpFailureParams log_multi_params := log_failure_params snapshot_interval.
@@ -49,59 +51,14 @@ Section LogCorrect.
       reflexivity.
   Qed.
 
-  (* invariant: any of
-     - all files absent
-     - log and count present, snapshot absent
-     - log, count, snapshot present
-   *)
-
   Definition disk_correct dsk h st  :=
-    exists entries snap,
-      @channel_to_log _ _ _ _ _ _ snapshot_interval (disk_to_channel dsk) =
-      Some (length entries, entries, snap) /\
+    exists s (entries : list entry) (snap : data),
+      dsk Count = Some (serialize (length entries)) /\
+      dsk Log = Some s /\
+      IOStreamWriter.unwrap s = IOStreamWriter.unwrap (list_serialize_rec entry _ entries) /\
+      dsk Snapshot = Some (serialize snap) /\
       log_num_entries st = length entries /\
       (apply_log h snap entries = log_data st).
-
-  Lemma disk_invariant : forall net failed tr,
-      @step_failure_disk_ops_star _ _ log_failure_params step_failure_disk_ops_init (failed, net) tr ->
-      forall h, ((forall f, nwdoDisk net h f = None) \/
-                 (exists s1 s2, nwdoDisk net h Count = s1 /\
-                                nwdoDisk net h Log = s2 /\
-                                (nwdoDisk net h Snapshot = None \/
-                                 exists s3, nwdoDisk net h Snapshot = Some s3))).
-  Proof.
-    intros net failed tr H_st.
-    remember step_failure_disk_ops_init as x.
-    change net with (snd (failed, net)).
-    induction H_st using refl_trans_1n_trace_n1_ind.
-    - left.
-      intros.
-      find_rewrite.
-      simpl.
-      unfold null_disk.
-      reflexivity.
-    - concludes.
-      invcs H.
-      + intros.
-        admit.
-      + admit.
-      + intuition.
-      + intuition.
-      + intuition.
-      + intuition.
-        unfold do_log_reboot in *.
-        do 2 break_let.
-        find_inversion.
-        simpl.
-        specialize IHH_st1 with h0.
-        intuition.
-        * right.
-
-
-
-
-
-
 
   Lemma log_net_handlers_spec :
     forall dst src m st
@@ -118,75 +75,51 @@ Section LogCorrect.
       break_if; do 2 break_let.
     - find_inversion.
       simpl.
-      unfold channel_to_log, disk_to_channel.
-      simpl.
-      unfold from_channel.
-      repeat rewrite IOStreamWriter.channel_wrap_unwrap.
-      rewrite serialize_deserialize_id_nil.
-      simpl. cheerios_crush.
-      rewrite serialize_deserialize_id_nil.
-      exists [], d.
+      exists IOStreamWriter.empty, [], d.
       intuition.
     - find_inversion.
       simpl.
-      unfold channel_to_log, disk_to_channel.
-      simpl.
-      unfold from_channel.
-      rewrite IOStreamWriter.channel_wrap_unwrap.
       break_exists.
       intuition.
-      unfold channel_to_log, disk_to_channel in *.
-      break_let.
-      break_match.
-      * break_match.
+      match goal with
+      | _ : dsk Log = Some ?s, _ : apply_log _ ?d ?entries = _ |- _ =>
+        exists (s +$+ (serialize (inr (src, m) : entry))), (entries ++ [inr (src, m)]), d
+      end.
 
-
-
-
-
-    intros.
-    unfold disk_correct in *.
-    intuition;
-      unfold log_net_handlers in *;
-      break_if; do 2 break_let;
-        unfold channel_to_log, disk_to_channel, from_channel;
-        repeat rewrite IOStreamWriter.channel_wrap_unwrap.
-    - find_inversion.
-      exists [], d.
       intuition.
-      simpl.
-      do 3 rewrite IOStreamWriter.channel_wrap_unwrap.
-      rewrite serialize_deserialize_id_nil.
-      rewrite <- (app_nil_r (IOStreamWriter.unwrap _)).
-      assert (IOStreamWriter.empty = list_serialize_rec entry _ []) by reflexivity.
-      rewrite H0.
-      change 0 with (length (@nil entry)).
-      rewrite list_serialize_deserialize_id_rec.
-      rewrite serialize_deserialize_id_nil.
-      reflexivity.
-    - break_exists.
-      find_inversion.
-      unfold apply_ops.
-      simpl.
-      repeat rewrite IOStreamWriter.channel_wrap_unwrap.
-      rewrite serialize_deserialize_id_nil.
-      assert (IOStreamWriter.unwrap (serialize (inr (src, m) : entry)) =
-              IOStreamWriter.unwrap (list_serialize_rec entry _ [(inr (src, m))]) ++ []).
-      + simpl. cheerios_crush.
-        repeat rewrite app_nil_r.
-        reflexivity.
-      +
-        exists ([inr (src, m)]), (init_handlers dst).
-        intuition.
-        * match goal with
-          | H : context[log_num_entries] |- _ => rewrite H
+      + match goal with
+          | H : context [log_num_entries] |- _ => rewrite H
           end.
-          change 1 with (length ([inr (src, m) : entry])).
+          rewrite app_length.
           simpl.
-          break_let.
-          admit.
-        *
-  Admitted.
+          rewrite NPeano.Nat.add_1_r.
+          reflexivity.
+      + break_match.
+        * find_inversion.
+          reflexivity.
+        * congruence.
+      + cheerios_crush. rewrite <- serialize_snoc.
+        match goal with
+        | H : IOStreamWriter.unwrap _ = IOStreamWriter.unwrap _ |- _ => rewrite H
+        end.
+        reflexivity.
+      + match goal with
+        | H : context [log_num_entries] |- _ => rewrite H
+        end.
+        rewrite app_length.
+        simpl.
+        rewrite NPeano.Nat.add_1_r.
+        reflexivity.
+      + rewrite apply_log_app.
+        match goal with
+          | H : context [apply_log] |- _ => rewrite H
+        end.
+        simpl.
+        match goal with
+        | H : context [net_handlers] |- _ => rewrite H
+        end.
+        reflexivity.
+  Qed.
 
   Lemma log_input_handlers_spec :
     forall h m st
@@ -199,68 +132,51 @@ Section LogCorrect.
   Proof.
     intros.
     unfold disk_correct in *.
-    break_exists.
-    intuition.
-    unfold log_input_handlers in *.
-    break_if; do 2 break_let.
-    - exists IOStreamWriter.empty, [], d.
-      intuition;
-        try match goal with
-            | H : _ = dsk' |- _ => rewrite <- H
-            end;
-        find_inversion;
-        simpl;
-        reflexivity.
-    - repeat break_and.
+    unfold log_input_handlers in *;
+      break_if; do 2 break_let.
+    - find_inversion.
+      simpl.
+      exists IOStreamWriter.empty, [], d.
+      intuition.
+    - find_inversion.
+      simpl.
+      break_exists.
+      intuition.
       match goal with
-      | _ : apply_log _ ?data ?entries = _,
-            _ : dsk Log = Some ?s |- _ =>
-        exists   (s +$+ serialize (inl m : entry)), (entries ++ [inl m : entry]), data
+      | _ : dsk Log = Some ?s, _ : apply_log _ ?d ?entries = _ |- _ =>
+        exists (s +$+ (serialize (inl m : entry))), (entries ++ [inl m]), d
       end.
       intuition.
       + match goal with
-        | H : _ = dsk' |- _ => rewrite <- H
-        end.
-        find_inversion.
-        simpl.
-        cheerios_crush.
-        repeat find_rewrite.
-        rewrite app_length.
-        rewrite NPeano.Nat.add_1_r.
-        reflexivity.
-      + find_inversion.
-        simpl.
-        repeat find_rewrite.
-        reflexivity.
-      + match goal with
-        | H : _ = dsk' |- _ => rewrite <- H
-        end.
-        find_inversion.
-        simpl.
-        break_match.
+          | H : context [log_num_entries] |- _ => rewrite H
+          end.
+          rewrite app_length.
+          simpl.
+          rewrite NPeano.Nat.add_1_r.
+          reflexivity.
+      + break_match.
         * find_inversion.
           reflexivity.
         * congruence.
-      + find_inversion.
-        rewrite IOStreamWriter.append_unwrap.
+      + cheerios_crush. rewrite <- serialize_snoc.
         match goal with
         | H : IOStreamWriter.unwrap _ = IOStreamWriter.unwrap _ |- _ => rewrite H
         end.
-        rewrite serialize_snoc.
         reflexivity.
-      + find_inversion.
-        simpl.
-        repeat find_rewrite.
+      + match goal with
+        | H : context [log_num_entries] |- _ => rewrite H
+        end.
         rewrite app_length.
         simpl.
         rewrite NPeano.Nat.add_1_r.
         reflexivity.
       + rewrite apply_log_app.
-        find_inversion.
-        unfold apply_entry.
-        repeat find_reverse_rewrite.
         match goal with
-        | H : input_handlers _ _ _ = _ |- _ => rewrite H
+          | H : context [apply_log] |- _ => rewrite H
+        end.
+        simpl.
+        match goal with
+        | H : context [input_handlers] |- _ => rewrite H
         end.
         reflexivity.
   Qed.
@@ -290,8 +206,7 @@ Section LogCorrect.
 
   Lemma disk_correct_invariant : forall net failed tr,
       @step_failure_disk_ops_star _ _ log_failure_params step_failure_disk_ops_init (failed, net) tr ->
-      forall h, (forall f, nwdoDisk net h f = None) \/
-                disk_correct (nwdoDisk net h) h (nwdoState net h).
+      forall h, disk_correct (nwdoDisk net h) h (nwdoState net h).
   Proof.
     intros net failed tr H_st h.
     remember step_failure_disk_ops_init as x.
@@ -301,8 +216,9 @@ Section LogCorrect.
       intros.
       simpl in *.
       unfold disk_correct.
-      left.
-      reflexivity.
+      simpl.
+      exists IOStreamWriter.empty, [], (reboot (init_handlers h)).
+      intuition.
     - concludes.
       match goal with H : step_failure_disk_ops _ _ _ |- _ => invcs H end.
       + break_if.
@@ -334,21 +250,27 @@ Section LogCorrect.
 
   Lemma reboot_invariant : forall net failed tr,
       @step_failure_disk_ops_star _ _ log_failure_params step_failure_disk_ops_init (failed, net) tr ->
-      forall h d dsk, do_reboot h (disk_to_wire (nwdoDisk net h)) = (d, dsk) ->
+      forall h d dsk, do_reboot h (disk_to_channel (nwdoDisk net h)) = (d, dsk) ->
                       log_data d = reboot (log_data (nwdoState net h)).
     intros net failed tr H_st h d dsk H_reboot.
     apply disk_correct_invariant with (h := h) in H_st.
     unfold disk_correct in *.
     break_exists. intuition.
     simpl in *.
-    unfold do_log_reboot, wire_to_log, disk_to_wire in *.
-    unfold deserialize_top, serialize_top in *.
-    repeat rewrite IOStreamWriter.wire_wrap_unwrap in *.
-    repeat find_rewrite.
-    rewrite <- (app_nil_r (IOStreamWriter.unwrap _)) in H_reboot.
-    rewrite list_serialize_deserialize_id_rec' in H_reboot.
-    find_inversion.
+    unfold do_log_reboot, channel_to_log, disk_to_channel in *. find_inversion.
     simpl.
+    repeat match goal with
+           | H : nwdoDisk net h _ = Some _ |- _ => rewrite H
+           end.
+    unfold from_channel.
+    repeat rewrite IOStreamWriter.channel_wrap_unwrap in *.
+    rewrite serialize_deserialize_id_nil.
+    rewrite <- (app_nil_r (IOStreamWriter.unwrap _)).
+    match goal with
+    | H : IOStreamWriter.unwrap _ = IOStreamWriter.unwrap _ |- _ => rewrite H
+    end.
+    rewrite list_serialize_deserialize_id_rec.
+    rewrite serialize_deserialize_id_nil.
     find_rewrite.
     reflexivity.
   Qed.
@@ -455,7 +377,7 @@ Section LogCorrect.
       + assumption.
       + reflexivity.
       + unfold revertLogNetwork. simpl.
-        apply reboot_invariant with (h := h) (d := d) (dsk := dsk) in H.
+        apply reboot_invariant with (h := h) (d := d) (dsk := ops) in H.
         * rewrite <- H.
           rewrite apply_if.
           reflexivity.
@@ -475,7 +397,14 @@ Section LogCorrect.
     induction H_star using refl_trans_1n_trace_n1_ind; intro H_init.
     - find_rewrite.
       simpl; unfold revertLogNetwork; simpl.
-      constructor.
+      unfold step_failure_init, step_async_init.
+      change init_handlers with (fun h => init_handlers h) at 1.
+      assert (H_reboot_init : (fun h => init_handlers h) = (fun h => reboot (init_handlers h))).
+      + extensionality h.
+        rewrite reboot_init at 1.
+        reflexivity.
+      + rewrite H_reboot_init.
+        constructor.
     - concludes.
       destruct x' as (failed', net').
       destruct x'' as (failed'', net'').
