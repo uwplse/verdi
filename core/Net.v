@@ -501,11 +501,8 @@ Section StepFailureDiskOp.
     | Delete file =>  update file_name_eq_dec dsk file (Some IOStreamWriter.empty)
     end.
 
-  Fixpoint apply_ops dsk ops :=
-    match ops with
-    | [] => dsk
-    | op :: ops => apply_ops (update_disk dsk op) ops
-    end.
+  Definition apply_ops dsk ops :=
+    fold_left update_disk ops dsk.
 
   Inductive step_failure_disk_ops : step_relation (list do_name * do_network) (do_name * (input + list output)) :=
   | StepFailureDiskOp_deliver : forall net net' failed p xs ys ops out d l,
@@ -516,12 +513,12 @@ Section StepFailureDiskOp.
                (update do_name_eq_dec (nwdoState net) (do_pDst p) d)
                (update do_name_eq_dec (nwdoDisk net) (do_pDst p) (apply_ops (nwdoDisk net (do_pDst p)) ops)) ->
       step_failure_disk_ops (failed, net) (failed, net') [(do_pDst p, inr out)]
-  | StepFailureDiskOp_input : forall h net net' failed op out inp d l,
+  | StepFailureDiskOp_input : forall h net net' failed ops out inp d l,
       ~ In h failed ->
-      do_input_handlers h inp (nwdoState net h) = (op, out, d, l) ->
+      do_input_handlers h inp (nwdoState net h) = (ops, out, d, l) ->
       net' = mkdoNetwork (do_send_packets h l ++ nwdoPackets net)
                (update do_name_eq_dec (nwdoState net) h d)
-               (update do_name_eq_dec (nwdoDisk net) h (apply_ops (nwdoDisk net h) op)) ->
+               (update do_name_eq_dec (nwdoDisk net) h (apply_ops (nwdoDisk net h) ops)) ->
       step_failure_disk_ops (failed, net) (failed, net') [(h, inl inp) ;  (h, inr out)]
   | StepFailureDiskOp_drop : forall net net' failed p xs ys,
       nwdoPackets net = xs ++ p :: ys ->
