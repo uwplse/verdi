@@ -113,11 +113,8 @@ Section Log.
      | inr (src, m) => let '(_, d', _) := net_handlers h src m d in d'
     end.
 
-  Fixpoint apply_log h (d : @data orig_base_params) (entries : list entry) : @data orig_base_params :=
-    match entries with
-    | [] => d
-    | e :: entries => apply_log h (apply_entry h d e) entries
-    end.
+  Definition apply_log h (d : @data orig_base_params) (entries : list entry) : @data orig_base_params :=
+    fold_left (apply_entry h) entries d.
 
   Definition do_log_reboot (h : do_name) (w : log_files -> option IOStreamWriter.in_channel) :
     data * list (disk_op log_files) :=
