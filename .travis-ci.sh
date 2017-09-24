@@ -9,13 +9,6 @@ opam repo add distributedcomponents-dev http://opam-dev.distributedcomponents.ne
 opam pin add coq $COQ_VERSION --yes --verbose
 opam pin add coq-mathcomp-ssreflect $SSREFLECT_VERSION --yes --verbose
 
-pushd ..
-  git clone -b channel https://github.com/uwplse/cheerios.git
-  pushd cheerios
-    opam pin add cheerios . --yes --verbose
-  popd
-popd
-
 opam pin add verdi . --yes --verbose
 
 case $DOWNSTREAM in
