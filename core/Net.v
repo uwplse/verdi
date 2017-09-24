@@ -11,6 +11,8 @@ Require Import RelationClasses.
 
 Require Export Verdi.VerdiHints.
 
+Require Import Cheerios.Cheerios.
+
 Set Implicit Arguments.
 
 Class BaseParams :=
@@ -49,6 +51,37 @@ Class MultiParams (P : BaseParams) :=
 Class FailureParams `(P : MultiParams) :=
   {
     reboot : data -> data
+  }.
+
+Definition do_disk file_name :=
+  file_name -> option IOStreamWriter.t.
+
+Inductive disk_op file_name :=
+| Append :  file_name -> IOStreamWriter.t -> disk_op file_name
+| Write : file_name -> IOStreamWriter.t -> disk_op file_name
+| Delete : file_name -> disk_op file_name.
+
+Class DiskOpMultiParams (P : BaseParams) :=
+  {
+    do_name : Type ;
+    file_name : Type ;
+    do_msg : Type ;
+    do_msg_eq_dec : forall x y : do_msg, {x = y} + {x <> y} ;
+    do_name_eq_dec : forall x y : do_name, {x = y} + {x <> y} ;
+    file_name_eq_dec : forall x y : file_name, {x = y} + {x <> y} ;
+    do_nodes : list do_name ;
+    do_all_names_nodes : forall n, In n do_nodes ;
+    do_no_dup_nodes : NoDup do_nodes ;
+    do_net_handlers : do_name -> do_name -> do_msg -> data ->
+                      list (disk_op file_name) * (list output) * data * list (do_name * do_msg) ;
+    do_input_handlers : do_name -> input -> data ->
+                        list (disk_op file_name) * (list output) * data * list (do_name * do_msg);
+  }.
+
+Class DiskOpFailureParams `(P : DiskOpMultiParams) :=
+  {
+    do_reboot : do_name -> (file_name -> option IOStreamWriter.in_channel) ->
+                data * list (disk_op file_name)
   }.
 
 Class NameOverlayParams `(P : MultiParams) :=
@@ -135,7 +168,7 @@ Section StepRelations.
       true_in_reachable step init P.
   Proof using.
     intros. unfold true_in_reachable, reachable in *.
-    intros. break_exists. 
+    intros. break_exists.
     match goal with H : refl_trans_1n_trace _ _ _ _ |- _ => induction H end;
       intuition eauto.
     match goal with H : P _ -> _ |- _ => apply H end;
@@ -154,7 +187,7 @@ Section StepRelations.
     match goal with H : refl_trans_1n_trace _ _ _ _ |- _ => induction H end;
       intuition eauto.
   Qed.
-  
+
   Inductive refl_trans_n1_trace (step : step_relation) : step_relation :=
   | RTn1TBase : forall x, refl_trans_n1_trace step x x []
   | RTn1TStep : forall x x' x'' cs cs',
@@ -337,7 +370,7 @@ Ltac map_id :=
   rewrite map_ext with (g := (fun x => x)); [eauto using map_id|simpl; intros; apply packet_eta].
 
 Section StepDup.
-  
+
   Context `{params : MultiParams}.
 
   Inductive step_dup : step_relation network (name * (input + list output)) :=
@@ -431,6 +464,91 @@ Section StepFailure.
 
   Definition step_failure_init : list name * network := ([], step_async_init).
 End StepFailure.
+
+Section StepFailureDiskOp.
+  Context `{disk_op_failure_params : DiskOpFailureParams}.
+
+  Record do_packet := mklPacket { do_pSrc  : do_name ;
+                                 do_pDst  : do_name ;
+                                 do_pBody : do_msg }.
+
+  Definition do_send_packets src ps := (map (fun m => mklPacket src (fst m) (snd m)) ps).
+
+  Definition do_packet_eq_dec (p q : do_packet) : {p = q} + {p <> q}.
+    decide equality; auto using do_name_eq_dec, do_msg_eq_dec.
+  Defined.
+
+  Record do_network := mkdoNetwork { nwdoPackets : list do_packet ;
+                                     nwdoState   : do_name -> data ;
+                                     nwdoDisk    : do_name -> do_disk file_name
+                                   }.
+
+  Definition disk_to_channel (dsk : do_disk file_name) :=
+    fun file => (match dsk file with
+                 | Some s => Some (IOStreamWriter.channel_send (IOStreamWriter.out_channel_wrap s))
+                 | None => None
+                 end).
+
+  Definition update_disk (dsk : do_disk file_name) (op : disk_op file_name) :
+    do_disk file_name :=
+    match op with
+    | Append file x =>
+      update file_name_eq_dec dsk file (match dsk file with
+                                        | Some s => Some (s +$+ x)
+                                        | None => Some x
+                                        end)
+    | Write file x => update file_name_eq_dec dsk file (Some x)
+    | Delete file =>  update file_name_eq_dec dsk file (Some IOStreamWriter.empty)
+    end.
+
+  Definition apply_ops dsk ops :=
+    fold_left update_disk ops dsk.
+
+  Inductive step_failure_disk_ops : step_relation (list do_name * do_network) (do_name * (input + list output)) :=
+  | StepFailureDiskOp_deliver : forall net net' failed p xs ys ops out d l,
+      nwdoPackets net = xs ++ p :: ys ->
+      ~ In (do_pDst p) failed ->
+      do_net_handlers (do_pDst p) (do_pSrc p) (do_pBody p) (nwdoState net (do_pDst p)) = (ops, out, d, l) ->
+      net' = mkdoNetwork (do_send_packets (do_pDst p) l ++ xs ++ ys)
+               (update do_name_eq_dec (nwdoState net) (do_pDst p) d)
+               (update do_name_eq_dec (nwdoDisk net) (do_pDst p) (apply_ops (nwdoDisk net (do_pDst p)) ops)) ->
+      step_failure_disk_ops (failed, net) (failed, net') [(do_pDst p, inr out)]
+  | StepFailureDiskOp_input : forall h net net' failed ops out inp d l,
+      ~ In h failed ->
+      do_input_handlers h inp (nwdoState net h) = (ops, out, d, l) ->
+      net' = mkdoNetwork (do_send_packets h l ++ nwdoPackets net)
+               (update do_name_eq_dec (nwdoState net) h d)
+               (update do_name_eq_dec (nwdoDisk net) h (apply_ops (nwdoDisk net h) ops)) ->
+      step_failure_disk_ops (failed, net) (failed, net') [(h, inl inp) ;  (h, inr out)]
+  | StepFailureDiskOp_drop : forall net net' failed p xs ys,
+      nwdoPackets net = xs ++ p :: ys ->
+      net' = (mkdoNetwork (xs ++ ys) (nwdoState net) (nwdoDisk net)) ->
+      step_failure_disk_ops (failed, net) (failed, net') []
+  | StepFailureDiskOp_dup : forall net net' failed p xs ys,
+      nwdoPackets net = xs ++ p :: ys ->
+      net' = (mkdoNetwork (p :: xs ++ p :: ys) (nwdoState net) (nwdoDisk net)) ->
+      step_failure_disk_ops (failed, net) (failed, net') []
+  | StepFailureDiskOp_fail :  forall h net failed,
+      step_failure_disk_ops (failed, net) (h :: failed, net) []
+  | StepFailureDiskOp_reboot : forall h net net' failed failed' d ops,
+      In h failed ->
+      failed' = remove do_name_eq_dec h failed ->
+      do_reboot h (disk_to_channel (nwdoDisk net h)) = (d, ops) ->
+      net' = mkdoNetwork (nwdoPackets net)
+               (update do_name_eq_dec (nwdoState net) h d)
+               (update do_name_eq_dec (nwdoDisk net) h (apply_ops (nwdoDisk net h) ops)) ->
+      step_failure_disk_ops (failed, net) (failed', net') [].
+
+  Definition step_failure_disk_ops_star : step_relation (list do_name * do_network) (do_name * (input + list output)) :=
+    refl_trans_1n_trace step_failure_disk_ops.
+
+  Definition null_disk : do_disk file_name :=
+    fun _ => None.
+
+  Definition step_failure_disk_ops_init : list do_name * do_network :=
+    ([], mkdoNetwork [] (fun h => fst (do_reboot h (disk_to_channel null_disk)))
+      (fun h => apply_ops null_disk (snd (do_reboot h (disk_to_channel null_disk))))).
+End StepFailureDiskOp.
 
 Section StepOrdered.
   Context `{params : MultiParams}.

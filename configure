@@ -3,11 +3,12 @@
 ## Configures and calls coqproject.sh (https://github.com/dwoos/coqproject)
 
 ## Configuration options for coqproject.sh
-DEPS=(StructTact InfSeqExt)
+DEPS=(StructTact InfSeqExt Cheerios)
 DIRS=(core lib systems extraction)
-CANARIES=("mathcomp.ssreflect.ssreflect" "Verdi requires mathcomp to be installed" "StructTact.StructTactics" "Build StructTact before building Verdi" "InfSeqExt.infseq" "Build InfSeqExt before building Verdi")
+CANARIES=("mathcomp.ssreflect.ssreflect" "Verdi requires mathcomp to be installed" "StructTact.StructTactics" "Build StructTact before building Verdi" "InfSeqExt.infseq" "Build InfSeqExt before building Verdi" "Cheerios.Cheerios" "Build Cheerios before building Verdi")
 NAMESPACE_core="Verdi"
 NAMESPACE_lib="Verdi"
 NAMESPACE_systems="Verdi"
 NAMESPACE_extraction="Verdi"
+Cheerios_DIRS=(core extraction)
 source script/coqproject.sh
