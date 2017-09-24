@@ -14,6 +14,7 @@ Framework:
 - [`mathcomp-ssreflect 1.6`](http://math-comp.github.io/math-comp/) or [`mathcomp-ssreflect 1.6.1`](http://math-comp.github.io/math-comp/)
 - [`StructTact`](https://github.com/uwplse/StructTact)
 - [`InfSeqExt`](https://github.com/DistributedComponents/InfSeqExt)
+- [`Cheerios`](https://github.com/uwplse/cheerios)
 
 Runtime:
 
@@ -37,9 +38,9 @@ file for exact requirements.
 
 Then, run `./configure` in the Verdi root directory.  This will check
 for the appropriate version of Coq and ensure all necessary
-dependencies can be located. By default, the script assumes that `StructTact`
-and `InfSeqExt` are installed in Coq's `user-contrib` directory, but this
-can be overridden by setting the `StructTact_PATH` and/or `InfSeqExt_PATH`
+dependencies can be located. By default, the script assumes that `StructTact`,
+`InfSeqExt`, and `Cheerios` are installed in Coq's `user-contrib` directory, but this
+can be overridden by setting the `StructTact_PATH`, `InfSeqExt_PATH`, and `Cheerios_PATH`
 environment variables.
 
 Finally, run `make` in the Verdi root directory.  This will compile the
