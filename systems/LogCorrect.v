@@ -34,21 +34,6 @@ Section LogCorrect.
       reflexivity.
   Qed.
 
-  Lemma serialize_snoc : forall {A} {sA : Serializer A} (a : A) l,
-      IOStreamWriter.unwrap (list_serialize_rec _ _ l) ++
-                            IOStreamWriter.unwrap (serialize a) =
-      (IOStreamWriter.unwrap (list_serialize_rec _ _ (l ++ [a]))).
-  Proof.
-    intros.
-    induction l;
-      simpl;
-      cheerios_crush.
-    - rewrite app_nil_r.
-      reflexivity.
-    - rewrite <- IHl.
-      reflexivity.
-  Qed.
-
   Definition disk_correct dsk h st  :=
     exists s (entries : list entry) (snap : data),
       dsk Count = Some (serialize (length entries)) /\
@@ -96,7 +81,8 @@ Section LogCorrect.
         * find_inversion.
           reflexivity.
         * congruence.
-      + cheerios_crush. rewrite <- serialize_snoc.
+      + cheerios_crush.
+        rewrite serialize_snoc.
         match goal with
         | H : IOStreamWriter.unwrap _ = IOStreamWriter.unwrap _ |- _ => rewrite H
         end.
@@ -156,7 +142,8 @@ Section LogCorrect.
         * find_inversion.
           reflexivity.
         * congruence.
-      + cheerios_crush. rewrite <- serialize_snoc.
+      + cheerios_crush.
+        rewrite serialize_snoc.
         match goal with
         | H : IOStreamWriter.unwrap _ = IOStreamWriter.unwrap _ |- _ => rewrite H
         end.

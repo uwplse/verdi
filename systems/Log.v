@@ -44,7 +44,7 @@ Section Log.
           out,
           mk_log_state 0 data,
           ps)
-    else ([Append Log (serialize (inr (src , m) : entry)); Write Count (serialize (S n))],
+    else ([Append Log (serialize (inr (src , m))); Write Count (serialize (S n))],
           out,
           mk_log_state (S n) data,
           ps).
@@ -87,9 +87,8 @@ Section Log.
       do_input_handlers := log_input_handlers
     }.
 
-  (* doesn't fail silently *)
   Definition channel_to_log (channel : file_name -> option IOStreamWriter.in_channel) :
-    option (nat * list entry * @data orig_base_params) :=
+    option (list entry * @data orig_base_params) :=
     match channel Count, channel Log, channel Snapshot with
     | Some s1, Some s2, Some s3 =>
       match from_channel deserialize s1 with
@@ -97,7 +96,7 @@ Section Log.
         match from_channel (list_deserialize_rec _ _ n) s2 with
         | Some es =>
           match from_channel deserialize s3 with
-          | Some snap => Some (n, es, snap)
+          | Some snap => Some (es, snap)
           | None => None
           end
         | None => None
@@ -119,7 +118,7 @@ Section Log.
   Definition do_log_reboot (h : do_name) (w : log_files -> option IOStreamWriter.in_channel) :
     data * list (disk_op log_files) :=
     let d := match channel_to_log w with
-             | Some (n, es, d) =>
+             | Some (es, d) =>
                reboot (apply_log h d es)
              | None => init_handlers h
              end in
