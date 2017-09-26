@@ -29,41 +29,24 @@ Section Log.
     decide equality.
   Defined.
 
-  Record log_state :=
-    mk_log_state { log_num_entries : nat ;
-                   log_data : data }.
+  Record log_state := mk_log_state { log_num_entries : nat ; log_data : data }.
 
-  Definition log_net_handlers dst src m st : list (disk_op log_files) *
-                                             list output *
-                                             log_state *
-                                             list (name * msg)  :=
-    let '(out, data, ps) := net_handlers dst src m (log_data st) in
-    let n := log_num_entries st in
-    if S n =? snapshot_interval
-    then ([Delete Log; Write Snapshot (serialize data); Write Count (serialize 0)],
-          out,
-          mk_log_state 0 data,
-          ps)
-    else ([Append Log (serialize (inr (src , m))); Write Count (serialize (S n))],
-          out,
-          mk_log_state (S n) data,
-          ps).
+  Definition log_handler_result (num_entries : nat) (e : entry) (out : list output) (d : data) (ps : list (name * msg)) :=
+    if S num_entries =? snapshot_interval
+    then ([Delete Log; Write Snapshot (serialize d); Write Count (serialize 0)],
+          out, mk_log_state 0 d, ps)
+    else ([Append Log (serialize e); Write Count (serialize (S num_entries))],
+          out, mk_log_state (S num_entries) d, ps).
 
-  Definition log_input_handlers h inp st : list (disk_op log_files) *
-                                           list output *
-                                           log_state *
-                                           list (name * msg) :=
-    let '(out, data, ps) := input_handlers h inp (log_data st) in
-    let n := log_num_entries st in
-    if S n =? snapshot_interval
-    then ([Delete Log; Write Snapshot (serialize data); Write Count (serialize 0)],
-          out,
-          mk_log_state 0 data,
-          ps)
-    else ([Append Log (serialize (inl inp : entry)); Write Count (serialize (S n))],
-          out,
-          mk_log_state (S n) data,
-          ps).
+  Definition log_net_handlers dst src m st :
+    list (disk_op log_files) * list output * log_state * list (name * msg)  :=
+    let '(out, d, ps) := net_handlers dst src m (log_data st) in
+    log_handler_result (log_num_entries st) (inr (src , m)) out d ps.
+
+  Definition log_input_handlers h inp st :
+    list (disk_op log_files) * list output * log_state * list (name * msg) :=
+    let '(out, d, ps) := input_handlers h inp (log_data st) in
+    log_handler_result (log_num_entries st) (inl inp) out d ps.
 
   Instance log_base_params : BaseParams :=
     {
@@ -118,12 +101,11 @@ Section Log.
   Definition do_log_reboot (h : do_name) (w : log_files -> option IOStreamWriter.in_channel) :
     data * list (disk_op log_files) :=
     let d := match channel_to_log w with
-             | Some (es, d) =>
-               reboot (apply_log h d es)
-             | None => init_handlers h
-             end in
-    (mk_log_state 0 d,
-     [Delete Log; Write Snapshot (serialize d); Write Count (serialize 0)]).
+            | Some (es, d) => reboot (apply_log h d es)
+            | None => init_handlers h
+            end
+    in
+    (mk_log_state 0 d, [Delete Log; Write Snapshot (serialize d); Write Count (serialize 0)]).
 
   Instance log_failure_params : DiskOpFailureParams log_multi_params :=
     { do_reboot := do_log_reboot }.

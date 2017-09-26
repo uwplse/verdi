@@ -23,15 +23,11 @@ Section LogCorrect.
   Lemma apply_log_app : forall h d entries e,
       apply_log h d (entries ++ [e]) =
       apply_entry h (apply_log h d entries) e.
-  Proof.
+  Proof using.
     intros.
-    generalize dependent d.
-    induction entries.
-    - reflexivity.
-    - intros.
-      simpl.
-      rewrite IHentries.
-      reflexivity.
+    unfold apply_log.
+    rewrite fold_left_app.
+    reflexivity.
   Qed.
 
   Definition disk_correct dsk h st  :=
@@ -44,17 +40,15 @@ Section LogCorrect.
       (apply_log h snap entries = log_data st).
 
   Lemma log_net_handlers_spec :
-    forall dst src m st
-           ops out st' l
-           dsk dsk',
+    forall dst src m st ops out st' l dsk dsk',
       disk_correct dsk dst st ->
       log_net_handlers snapshot_interval dst src m st = (ops, out, st', l) ->
       apply_ops dsk ops = dsk' ->
       disk_correct dsk' dst st'.
-  Proof.
+  Proof using.
     intros.
     unfold disk_correct in *.
-    unfold log_net_handlers in *;
+    unfold log_net_handlers, log_handler_result in *;
       break_if; do 2 break_let.
     - find_inversion.
       simpl.
@@ -68,7 +62,6 @@ Section LogCorrect.
       | _ : dsk Log = Some ?s, _ : apply_log _ ?d ?entries = _ |- _ =>
         exists (s +$+ (serialize (inr (src, m) : entry))), (entries ++ [inr (src, m)]), d
       end.
-
       intuition.
       + match goal with
           | H : context [log_num_entries] |- _ => rewrite H
@@ -106,17 +99,15 @@ Section LogCorrect.
   Qed.
 
   Lemma log_input_handlers_spec :
-    forall h m st
-           ops out st' l
-           dsk dsk',
+    forall h m st ops out st' l dsk dsk',
       disk_correct dsk h st ->
       log_input_handlers snapshot_interval h m st = (ops, out, st', l) ->
       apply_ops dsk ops = dsk' ->
       disk_correct dsk' h st'.
-  Proof.
+  Proof using.
     intros.
     unfold disk_correct in *.
-    unfold log_input_handlers in *;
+    unfold log_input_handlers, log_handler_result in *;
       break_if; do 2 break_let.
     - find_inversion.
       simpl.
@@ -168,11 +159,9 @@ Section LogCorrect.
 
   Lemma disk_correct_reboot : forall net h d ops,
       disk_correct (nwdoDisk net h) h (nwdoState net h) ->
-      do_log_reboot snapshot_interval
-                    h
-                    (disk_to_channel (nwdoDisk net h)) = (d, ops) ->
+      do_log_reboot snapshot_interval h (disk_to_channel (nwdoDisk net h)) = (d, ops) ->
       disk_correct (apply_ops (nwdoDisk net h) ops) h d.
-  Proof.
+  Proof using.
     intros net h d dsk H_correct H_reboot.
     unfold do_log_reboot, disk_to_channel, channel_to_log, from_channel in *.
     unfold disk_correct in *. break_exists. intuition.
@@ -192,7 +181,7 @@ Section LogCorrect.
   Lemma disk_correct_invariant : forall net failed tr,
       @step_failure_disk_ops_star _ _ log_failure_params step_failure_disk_ops_init (failed, net) tr ->
       forall h, disk_correct (nwdoDisk net h) h (nwdoState net h).
-  Proof.
+  Proof using.
     intros net failed tr H_st h.
     remember step_failure_disk_ops_init as x.
     change net with (snd (failed, net)).
@@ -236,7 +225,8 @@ Section LogCorrect.
   Lemma reboot_invariant : forall net failed tr,
       @step_failure_disk_ops_star _ _ log_failure_params step_failure_disk_ops_init (failed, net) tr ->
       forall h d dsk, do_reboot h (disk_to_channel (nwdoDisk net h)) = (d, dsk) ->
-                      log_data d = reboot (log_data (nwdoState net h)).
+                 log_data d = reboot (log_data (nwdoState net h)).
+  Proof using.
     intros net failed tr H_st h d dsk H_reboot.
     apply disk_correct_invariant with (h := h) in H_st.
     unfold disk_correct in *.
@@ -271,20 +261,17 @@ Section LogCorrect.
     @mkPacket _ orig_multi_params (do_pSrc p) (do_pDst p) (do_pBody p).
 
   Definition revertLogNetwork (net: log_network) : orig_network :=
-    mkNetwork (map revertPacket (nwdoPackets net))
-              (fun h => (log_data (nwdoState net h))).
+    mkNetwork (map revertPacket (nwdoPackets net)) (fun h => (log_data (nwdoState net h))).
 
   Theorem log_step_failure_step :
     forall net net' failed failed' tr tr',
       @step_failure_disk_ops_star _ _ log_failure_params step_failure_disk_ops_init (failed, net) tr ->
       @step_failure_disk_ops _ _ log_failure_params (failed, net) (failed', net') tr' ->
-      step_failure (failed, revertLogNetwork net)
-                   (failed', revertLogNetwork net')
-                   tr'.
-  Proof.
+      step_failure (failed, revertLogNetwork net) (failed', revertLogNetwork net') tr'.
+  Proof using.
     intros.
     assert (revert_packets : forall net, nwPackets (revertLogNetwork net) =
-                                         map revertPacket (nwdoPackets net)) by reflexivity.
+                                    map revertPacket (nwdoPackets net)) by reflexivity.
     assert (revert_send : forall l h,
                map revertPacket (do_send_packets h l) = send_packets h l).
     {
@@ -319,7 +306,7 @@ Section LogCorrect.
       + reflexivity.
       + assumption.
       + simpl.
-        unfold log_net_handlers in *.
+        unfold log_net_handlers, log_handler_result in *.
         break_let. break_let.
         break_if;
           find_inversion;
@@ -334,7 +321,7 @@ Section LogCorrect.
       rewrite revert_send.
       apply StepFailure_input with (d0 := log_data d) (l0 := l).
       + assumption.
-      + unfold log_input_handlers in *.
+      + unfold log_input_handlers, log_handler_result in *.
         do 2 break_let.
         break_if;
           find_inversion;
@@ -374,7 +361,7 @@ Section LogCorrect.
     forall net failed tr,
       step_failure_disk_ops_star step_failure_disk_ops_init (failed, net) tr ->
       step_failure_star step_failure_init (failed, revertLogNetwork net) tr.
-  Proof.
+  Proof using.
     intros net failed tr H_star.
     remember step_failure_disk_ops_init as y in *.
     change failed with (fst (failed, net)).
