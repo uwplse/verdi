@@ -633,7 +633,7 @@ Section SeqNumCorrect.
       step_dup_star step_async_init net tr ->
       exists tr', step_async_star step_async_init (revertNetwork net) tr' /\
       filterMap trace_non_empty_out tr = filterMap trace_non_empty_out tr'.
-  Proof.
+  Proof using.
     intros.
     remember step_async_init as y in *.
     revert Heqy.
