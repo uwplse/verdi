@@ -1,8 +1,8 @@
 # sets COQVERSION
 include Makefile.detect-coq-version
 
-ifeq (,$(filter $(COQVERSION),8.5 8.6 8.7 trunk))
-$(error "Verdi is only compatible with Coq version 8.5 or later")
+ifeq (,$(filter $(COQVERSION),8.6 8.7 trunk))
+$(error "Verdi is only compatible with Coq version 8.6.1 or later")
 endif
 
 COQPROJECT_EXISTS := $(wildcard _CoqProject)
@@ -28,13 +28,11 @@ install: Makefile.coq
 	$(MAKE) -f Makefile.coq install
 
 Makefile.coq: _CoqProject
-	coq_makefile -f _CoqProject -o Makefile.coq \
-          -extra-phony 'distclean' 'clean' \
-	    'rm -f $$(join $$(dir $$(VFILES)),$$(addprefix .,$$(notdir $$(patsubst %.v,%.aux,$$(VFILES))))) $$(join $$(dir $$(VFILES)),$$(addprefix .,$$(notdir $$(patsubst %.v,%.vo.aux,$$(VFILES)))))'
+	coq_makefile -f _CoqProject -o Makefile.coq
 
 clean:
 	if [ -f Makefile.coq ]; then \
-	  $(MAKE) -f Makefile.coq distclean; fi
+	  $(MAKE) -f Makefile.coq cleanall; fi
 	rm -f Makefile.coq
 
 lint:

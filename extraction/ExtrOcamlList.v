@@ -1,4 +1,5 @@
 Require Import List.
+Require Extraction.
 
 Extract Inlined Constant length => "List.length".
 Extract Inlined Constant app => "List.append".
