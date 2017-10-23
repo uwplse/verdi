@@ -10,8 +10,8 @@ Requirements
 
 Framework:
 
-- [`Coq 8.5`](https://coq.inria.fr/coq-85) or [`Coq 8.6`](https://coq.inria.fr/coq-86)
-- [`mathcomp-ssreflect 1.6`](http://math-comp.github.io/math-comp/) or [`mathcomp-ssreflect 1.6.1`](http://math-comp.github.io/math-comp/)
+- [`Coq 8.6.1`](https://coq.inria.fr/coq-86) or [`Coq 8.7`](https://coq.inria.fr/coq-87)
+- [`mathcomp-ssreflect`](http://math-comp.github.io/math-comp/)
 - [`StructTact`](https://github.com/uwplse/StructTact)
 - [`InfSeqExt`](https://github.com/DistributedComponents/InfSeqExt)
 - [`Cheerios`](https://github.com/uwplse/cheerios)
