@@ -1,4 +1,5 @@
 Require Import StructTact.Fin.
+Require Extraction.
 
 Extract Inlined Constant fin => int.
 

@@ -1,4 +1,5 @@
 Require Import Bool.
+Require Extraction.
 
 Extract Inlined Constant negb => "not".
 
