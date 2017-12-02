@@ -3,7 +3,7 @@
 ### coqproject.sh
 ### Creates a _CoqProject file, including external dependencies.
 
-### See README.md for a description.
+### See the README.md file for a description.
 
 ## Implementation
 
@@ -27,7 +27,7 @@ function dep_dirs_lines(){
       if [ $dep_dir = "." ]; then
         LINE="-Q $1 $namespace"
       else
-	LINE="-Q $1/$dep_dir $namespace"
+        LINE="-Q $1/$dep_dir $namespace"
       fi
       echo $LINE >> $COQPROJECT_TMP
   done
@@ -69,7 +69,7 @@ for dir in ${DIRS[@]}; do
     namespace_var=${namespace_var//\//_}
     namespace_var=${namespace_var//-/_}
     namespace_var=${namespace_var//./_}
-    namespace=${!namespace_var:="\"\""}
+    namespace=${!namespace_var:="''"}
     LINE="-Q $dir $namespace"
     echo $LINE >> $COQPROJECT_TMP
 done
@@ -85,6 +85,5 @@ for extra in ${EXTRA[@]}; do
         echo $extra >> $COQPROJECT_TMP
     fi
 done
-
 
 mv $COQPROJECT_TMP _CoqProject
