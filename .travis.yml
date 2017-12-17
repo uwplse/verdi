@@ -6,6 +6,7 @@ addons:
     sources:
       - avsm
     packages:
+      - ocaml
       - opam
       - aspcud
 env:
