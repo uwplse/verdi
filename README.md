@@ -66,7 +66,7 @@ Getting Started
 ---------------
 
 To set up your own Verdi-based distributed systems verification project, we recommend
-forking [Verdi LockServ](https://github.com/DistributedComponents/verdi-lockserv).
+basing it on [Verdi LockServ](https://github.com/DistributedComponents/verdi-lockserv).
 
 Verdi LockServ contains a minimalistic implementation of a message-passing lock server
 and a proof that it maintains mutual exclusion between client nodes. At build time,

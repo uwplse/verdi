@@ -6,13 +6,12 @@ addons:
     sources:
       - avsm
     packages:
-      - ocaml
       - opam
       - aspcud
 env:
   matrix:
     - DOWNSTREAM=verdi-raft COQ_VERSION=8.6.1 SSREFLECT_VERSION=1.6.1
-    - DOWNSTREAM=none COQ_VERSION=8.7.0 SSREFLECT_VERSION=1.6.2
+    - DOWNSTREAM=none COQ_VERSION=8.7.1 SSREFLECT_VERSION=1.6.4
 before_install:
   - openssl aes-256-cbc -K $encrypted_130bc391cda8_key -iv $encrypted_130bc391cda8_iv -in .travis/travis_rsa.enc -out .travis/travis_rsa -d
   - cp .travis/travis_rsa ~/.ssh
