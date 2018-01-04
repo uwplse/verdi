@@ -44,7 +44,9 @@ script:
        git clone --quiet --depth 9 -b $TRAVIS_BRANCH $REMOTE_ORIGIN_URL $THIS_REPO || git clone --quiet --depth 9 -b $TRAVIS_BRANCH $REMOTE_ORIGIN_URL $THIS_REPO
        cd $THIS_REPO
      fi &&
-    ./.travis-ci.sh
+     export TRAVIS_REPO_SLUG=$TRAVIS_REPO_SLUG &&
+     export TRAVIS_BUILD_DIR=$TRAVIS_BUILD_DIR &&
+     ./.travis-ci.sh"
 
 git:
   depth: 9
