@@ -48,7 +48,7 @@ script:
      fi &&
      export TRAVIS_REPO_SLUG=$TRAVIS_REPO_SLUG &&
      export TRAVIS_BUILD_DIR=$TRAVIS_BUILD_DIR &&
-     ./.travis-ci.sh"
+     ./.travis-ci.sh $DOWNSTREAM"
 
 git:
   depth: 9
