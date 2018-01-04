@@ -1,3 +1,5 @@
+#!/bin/sh
+
 set -ev
 
 opam update --yes
