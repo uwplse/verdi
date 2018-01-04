@@ -12,7 +12,7 @@ env:
     - DOWNSTREAM=none COQ_VERSION=coq8.7
 
 before_script:
-- docker pull mdernst/trusty-for-verdi-$COQ_VERSION
+- docker pull mdernst/xenial-for-verdi-$COQ_VERSION
 
 # Using travis_wait here seems to cause the job to terminate after 1 minute
 # with no error (!).
@@ -30,7 +30,7 @@ script:
 - echo "TRAVIS_PULL_REQUEST_BRANCH=${TRAVIS_PULL_REQUEST_BRANCH}"
 - echo "TRAVIS_REPO_SLUG=${TRAVIS_REPO_SLUG}"
 - >-
-  docker run mdernst/trusty-for-verdi-$COQ_VERSION /bin/bash -c "true &&
+  docker run mdernst/xenial-for-verdi-$COQ_VERSION /bin/bash -c "true &&
      if [ $TRAVIS_EVENT_TYPE = pull_request ] ; then
        git clone --quiet --depth 9 $REMOTE_ORIGIN_URL $THIS_REPO || git clone --quiet --depth 9 $REMOTE_ORIGIN_URL $THIS_REPO
        cd $THIS_REPO
