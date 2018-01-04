@@ -7,6 +7,8 @@ services:
   - docker
 
 env:
+  global:
+    - THIS_REPO=verdi
   matrix:
     - DOWNSTREAM=verdi-raft COQ_VERSION=coq8.6
     - DOWNSTREAM=none COQ_VERSION=coq8.7
