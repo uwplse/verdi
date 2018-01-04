@@ -1,0 +1,45 @@
+# Create a Docker image that is ready to run Verdi tests,
+# using Coq 8.7.
+
+# Use Ubuntu LTS version.
+# Later LTS version xenial does not work with ppa:avsm/ppa ;
+# see https://launchpad.net/~avsm/+archive/ubuntu/ppa .
+# So, I should probably install opam using the "binary distribution"
+# instructions at https://opam.ocaml.org/doc/Install.html .
+FROM ubuntu:trusty
+MAINTAINER Michael Ernst <mernst@cs.washington.edu>
+
+# According to
+# https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/:
+#  * Put "apt-get update" and "apt-get install" in the same RUN command.
+#  * Do not run "apt-get upgrade"; instead get upstream to update.
+RUN apt-get -qqy update \
+&& apt-get -qqy install \
+  software-properties-common \
+  git \
+  gnuplot \
+  make \
+  m4 \
+&& add-apt-repository ppa:avsm/ppa \
+&& apt-get -qqy update \
+&& apt-get -qqy install \
+  aspcud \
+  ocaml \
+  opam \
+&& apt-get clean \
+&& rm -rf /var/lib/apt/lists/* \
+&& opam init --yes --no-setup \
+&& eval $(opam config env) \
+&& echo '. /root/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true' >> ~/profile \
+&& opam repo add coq-released https://coq.inria.fr/opam/released \
+&& opam repo add distributedcomponents-dev http://opam-dev.distributedcomponents.net \
+&& opam update --yes --verbose \
+&& opam pin add coq 8.7.1 --yes \
+&& opam pin add coq-mathcomp-ssreflect 1.6.4 --yes \
+&& opam upgrade --yes \
+&& openssl aes-256-cbc -K $encrypted_de10e8586561_key -iv $encrypted_de10e8586561_iv -in .travis/travis_rsa.enc -out .travis/travis_rsa -d \
+&& cp .travis/travis_rsa ~/.ssh \
+&& chmod 600 ~/.ssh/travis_rsa \
+&& cp .travis/ssh_config ~/.ssh/config \
+
+
