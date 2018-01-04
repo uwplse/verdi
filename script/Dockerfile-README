@@ -27,16 +27,6 @@ alias create_upload_docker_image=' \
   docker push mdernst/$OS-for-$PROJECT-$COQVER) && \
   rm -rf dockerdir'
 
-export OS=trusty
-export COQVER=coq8.6
-export PROJECT=verdi
-create_upload_docker_image
-
-export OS=trusty
-export COQVER=coq8.7
-export PROJECT=verdi
-create_upload_docker_image
-
 export OS=xenial
 export COQVER=coq8.6
 export PROJECT=verdi

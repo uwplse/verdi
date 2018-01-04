@@ -1,12 +1,8 @@
 # Create a Docker image that is ready to run Verdi tests,
-# using Coq 8.6.
+# using Coq 8.7.
 
 # Use Ubuntu LTS version.
-# Later LTS version xenial does not work with ppa:avsm/ppa ;
-# see https://launchpad.net/~avsm/+archive/ubuntu/ppa .
-# So, I should probably install opam using the "binary distribution"
-# instructions at https://opam.ocaml.org/doc/Install.html .
-FROM ubuntu:trusty
+FROM ubuntu:xenial
 MAINTAINER Michael Ernst <mernst@cs.washington.edu>
 
 # According to
@@ -20,9 +16,6 @@ RUN apt-get -qqy update \
   gnuplot \
   make \
   m4 \
-&& add-apt-repository ppa:avsm/ppa \
-&& apt-get -qqy update \
-&& apt-get -qqy install \
   aspcud \
   ocaml \
   opam \
@@ -34,6 +27,6 @@ RUN apt-get -qqy update \
 && opam repo add coq-released https://coq.inria.fr/opam/released \
 && opam repo add distributedcomponents-dev http://opam-dev.distributedcomponents.net \
 && opam update --yes --verbose \
-&& opam pin add coq 8.6.1 --yes \
-&& opam pin add coq-mathcomp-ssreflect 1.6.1 --yes \
+&& opam pin add coq 8.7.1 --yes \
+&& opam pin add coq-mathcomp-ssreflect 1.6.4 --yes \
 && opam upgrade --yes \
