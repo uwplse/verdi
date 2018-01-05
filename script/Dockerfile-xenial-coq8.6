@@ -26,7 +26,5 @@ RUN apt-get -qqy update \
 && echo '. /root/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true' >> ~/profile \
 && opam repo add coq-released https://coq.inria.fr/opam/released \
 && opam repo add distributedcomponents-dev http://opam-dev.distributedcomponents.net \
-&& opam update --yes --verbose \
 && opam pin add coq 8.6.1 --yes \
-&& opam pin add coq-mathcomp-ssreflect 1.6.1 --yes \
-&& opam upgrade --yes \
+&& opam pin add coq-mathcomp-ssreflect 1.6.4 --yes \

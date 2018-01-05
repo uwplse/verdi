@@ -4,7 +4,7 @@ set -ev
 
 export DOWNSTREAM=$1
 
-opam update --yes
+opam update
 
 opam pin add verdi . --yes --verbose
 
