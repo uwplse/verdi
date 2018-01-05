@@ -1,8 +1,6 @@
 language: generic
 sudo: false
 
-script: bash -ex .travis-ci.sh
-
 services:
   - docker
 
