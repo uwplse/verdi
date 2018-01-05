@@ -1,13 +1,10 @@
+#!/bin/sh
+
 set -ev
 
-opam init --yes --no-setup
-eval $(opam config env)
+export DOWNSTREAM=$1
 
-opam repo add coq-released https://coq.inria.fr/opam/released
-opam repo add distributedcomponents-dev http://opam-dev.distributedcomponents.net
-
-opam pin add coq ${COQ_VERSION} --yes
-opam pin add coq-mathcomp-ssreflect ${SSREFLECT_VERSION} --yes
+opam update
 
 opam pin add verdi . --yes --verbose
 
