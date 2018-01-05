@@ -1,5 +1,5 @@
 # Create a Docker image that is ready to run Verdi tests,
-# using Coq 8.7.
+# using Coq 8.6 compiled in 32-bit mode.
 
 # Use Ubuntu LTS version.
 FROM ubuntu:xenial
@@ -20,12 +20,14 @@ RUN apt-get -qqy update \
   aspcud \
   ocaml \
   opam \
+  gcc-multilib \
+  g++-multilib \
 && apt-get clean \
 && rm -rf /var/lib/apt/lists/* \
-&& opam init --yes --no-setup \
+&& opam init --compiler=4.06.0+32bit --yes --no-setup \
 && eval $(opam config env) \
 && echo '. /root/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true' >> ~/profile \
 && opam repo add coq-released https://coq.inria.fr/opam/released \
 && opam repo add distributedcomponents-dev http://opam-dev.distributedcomponents.net \
-&& opam pin add coq 8.7.1 --yes \
+&& opam pin add coq 8.6.1 --yes \
 && opam pin add coq-mathcomp-ssreflect 1.6.4 --yes \
