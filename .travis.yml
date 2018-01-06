@@ -9,44 +9,44 @@ env:
     - THIS_REPO=verdi
   matrix:
     - DOWNSTREAM=verdi-raft COQ_VERSION=coq8.6
-    - DOWNSTREAM=none COQ_VERSION=coq8.7
+    - DOWNSTREAM=none COQ_VERSION=coq8.7-32bit
 
 before_script:
-- docker pull mdernst/xenial-for-verdi-$COQ_VERSION
+  - docker pull mdernst/xenial-for-verdi-$COQ_VERSION
 
 # Using travis_wait here seems to cause the job to terminate after 1 minute
 # with no error (!).
 # The fcntl line works around a bug where Travis truncates logs and fails.
 script:
-- python -c "import fcntl; fcntl.fcntl(1, fcntl.F_SETFL, 0)"
-- REMOTE_ORIGIN_URL=`git config --get remote.origin.url`
-- echo "THIS_REPO=${THIS_REPO}"
-- echo "COQ_VERSION=${COQ_VERSION}"
-- echo "DOWNSTREAM=${DOWNSTREAM}"
-- echo "TRAVIS_BRANCH=${TRAVIS_BRANCH}"
-- echo "REMOTE_ORIGIN_URL=${REMOTE_ORIGIN_URL}"
-- echo "TRAVIS_EVENT_TYPE=${TRAVIS_EVENT_TYPE}"
-- echo "TRAVIS_PULL_REQUEST=${TRAVIS_PULL_REQUEST}"
-- echo "TRAVIS_PULL_REQUEST_BRANCH=${TRAVIS_PULL_REQUEST_BRANCH}"
-- echo "TRAVIS_REPO_SLUG=${TRAVIS_REPO_SLUG}"
-- >-
-  docker run mdernst/xenial-for-verdi-$COQ_VERSION /bin/bash -c "true &&
-     if [ $TRAVIS_EVENT_TYPE = pull_request ] ; then
-       git clone --quiet --depth 9 $REMOTE_ORIGIN_URL $THIS_REPO || git clone --quiet --depth 9 $REMOTE_ORIGIN_URL $THIS_REPO
-       cd $THIS_REPO
-       git fetch origin +refs/pull/$TRAVIS_PULL_REQUEST/merge
-       git checkout -qf FETCH_HEAD
-       git config user.email noone@cares.com
-       git config user.name Noone Cares
-       git remote add theupstream https://github.com/$TRAVIS_REPO_SLUG.git
-       git pull --depth 9 theupstream $TRAVIS_BRANCH || git pull --depth 9 theupstream $TRAVIS_BRANCH
-     else
-       git clone --quiet --depth 9 -b $TRAVIS_BRANCH $REMOTE_ORIGIN_URL $THIS_REPO || git clone --quiet --depth 9 -b $TRAVIS_BRANCH $REMOTE_ORIGIN_URL $THIS_REPO
-       cd $THIS_REPO
-     fi &&
-     export TRAVIS_REPO_SLUG=$TRAVIS_REPO_SLUG &&
-     export TRAVIS_BUILD_DIR=$TRAVIS_BUILD_DIR &&
-     ./.travis-ci.sh $DOWNSTREAM"
+  - python -c "import fcntl; fcntl.fcntl(1, fcntl.F_SETFL, 0)"
+  - REMOTE_ORIGIN_URL=`git config --get remote.origin.url`
+  - echo "THIS_REPO=${THIS_REPO}"
+  - echo "COQ_VERSION=${COQ_VERSION}"
+  - echo "DOWNSTREAM=${DOWNSTREAM}"
+  - echo "TRAVIS_BRANCH=${TRAVIS_BRANCH}"
+  - echo "REMOTE_ORIGIN_URL=${REMOTE_ORIGIN_URL}"
+  - echo "TRAVIS_EVENT_TYPE=${TRAVIS_EVENT_TYPE}"
+  - echo "TRAVIS_PULL_REQUEST=${TRAVIS_PULL_REQUEST}"
+  - echo "TRAVIS_PULL_REQUEST_BRANCH=${TRAVIS_PULL_REQUEST_BRANCH}"
+  - echo "TRAVIS_REPO_SLUG=${TRAVIS_REPO_SLUG}"
+  - >-
+    docker run mdernst/xenial-for-verdi-$COQ_VERSION /bin/bash -c "true &&
+       if [ $TRAVIS_EVENT_TYPE = pull_request ] ; then
+         git clone --quiet --depth 9 $REMOTE_ORIGIN_URL $THIS_REPO || git clone --quiet --depth 9 $REMOTE_ORIGIN_URL $THIS_REPO
+         cd $THIS_REPO
+         git fetch origin +refs/pull/$TRAVIS_PULL_REQUEST/merge
+         git checkout -qf FETCH_HEAD
+         git config user.email noone@cares.com
+         git config user.name Noone Cares
+         git remote add theupstream https://github.com/$TRAVIS_REPO_SLUG.git
+         git pull --depth 9 theupstream $TRAVIS_BRANCH || git pull --depth 9 theupstream $TRAVIS_BRANCH
+       else
+         git clone --quiet --depth 9 -b $TRAVIS_BRANCH $REMOTE_ORIGIN_URL $THIS_REPO || git clone --quiet --depth 9 -b $TRAVIS_BRANCH $REMOTE_ORIGIN_URL $THIS_REPO
+         cd $THIS_REPO
+       fi &&
+       export TRAVIS_REPO_SLUG=$TRAVIS_REPO_SLUG &&
+       export TRAVIS_BUILD_DIR=$TRAVIS_BUILD_DIR &&
+       ./.travis-ci.sh $DOWNSTREAM"
 
 git:
   depth: 9
