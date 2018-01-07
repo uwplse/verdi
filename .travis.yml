@@ -28,6 +28,8 @@ script:
   - echo "TRAVIS_EVENT_TYPE=${TRAVIS_EVENT_TYPE}"
   - echo "TRAVIS_PULL_REQUEST=${TRAVIS_PULL_REQUEST}"
   - echo "TRAVIS_PULL_REQUEST_BRANCH=${TRAVIS_PULL_REQUEST_BRANCH}"
+  - echo "TRAVIS_COMMIT=${TRAVIS_COMMIT}"
+  - echo "TRAVIS_PULL_REQUEST_SHA=${TRAVIS_PULL_REQUEST_SHA}"
   - echo "TRAVIS_REPO_SLUG=${TRAVIS_REPO_SLUG}"
   - >-
     docker run mdernst/xenial-for-verdi-$COQ_VERSION /bin/bash -c "true &&
@@ -35,7 +37,7 @@ script:
          git clone --quiet --depth 9 $REMOTE_ORIGIN_URL $THIS_REPO || git clone --quiet --depth 9 $REMOTE_ORIGIN_URL $THIS_REPO
          cd $THIS_REPO
          git fetch origin +refs/pull/$TRAVIS_PULL_REQUEST/merge
-         git checkout -qf FETCH_HEAD
+         git checkout -qf $TRAVIS_PULL_REQUEST_SHA
          git config user.email noone@cares.com
          git config user.name Noone Cares
          git remote add theupstream https://github.com/$TRAVIS_REPO_SLUG.git
@@ -43,9 +45,8 @@ script:
        else
          git clone --quiet --depth 9 -b $TRAVIS_BRANCH $REMOTE_ORIGIN_URL $THIS_REPO || git clone --quiet --depth 9 -b $TRAVIS_BRANCH $REMOTE_ORIGIN_URL $THIS_REPO
          cd $THIS_REPO
+         git checkout -qf $TRAVIS_COMMIT
        fi &&
-       export TRAVIS_REPO_SLUG=$TRAVIS_REPO_SLUG &&
-       export TRAVIS_BUILD_DIR=$TRAVIS_BUILD_DIR &&
        ./.travis-ci.sh $DOWNSTREAM"
 
 git:
