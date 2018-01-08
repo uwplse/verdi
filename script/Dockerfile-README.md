@@ -1,9 +1,13 @@
+Dockerfile documentation
+========================
+
 This directory contains Dockerfiles to create new Docker images for
 running Verdi tests reproducibly.
 
 The rest of this file explains how to build new Docker images.
 
-Preliminaries:
+Preliminaries
+-------------
 
 ```bash
 # Finish Docker setup if necessary.
@@ -15,10 +19,14 @@ sudo usermod -aG docker $(whoami)
 docker login
 ```
 
-Create the Docker image and upload to [Docker Hub]((https://hub.docker.com):
+Create images
+-------------
+
+The following commands create the Docker images and upload
+them to the [Docker Hub](https://hub.docker.com).
 
 ```bash
-# Create the Docker image, in an empty directory, and upload to Docker Hub.
+# Create image in an empty directory, and upload to Docker Hub.
 alias create_upload_docker_image=' \
   rm -rf dockerdir && \
   mkdir -p dockerdir && \
@@ -49,7 +57,8 @@ export PROJECT=verdi
 create_upload_docker_image
 ```
 
-Cleanup:
+Cleanup
+-------
 
 After creating the Docker images, consider deleting the Docker containers,
 which can take up a lot of disk space.
