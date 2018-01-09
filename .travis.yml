@@ -11,11 +11,14 @@ env:
     - DOWNSTREAM=verdi-raft COQ_VERSION=coq8.6-32bit
     - DOWNSTREAM=none COQ_VERSION=coq8.7-32bit
 
+# The "docker run" command will pull if needed.
+# Running this first gives two tries in case of network lossage.
 before_script:
-  - docker pull mdernst/xenial-for-verdi-$COQ_VERSION
+  - timeout 5m docker pull mdernst/xenial-for-verdi-$COQ_VERSION
 
 # Using travis_wait here seems to cause the job to terminate after 1 minute
 # with no error (!).
+# The git commands are tried twice, in case of temporary network failure.
 # The fcntl line works around a bug where Travis truncates logs and fails.
 script:
   - python -c "import fcntl; fcntl.fcntl(1, fcntl.F_SETFL, 0)"
@@ -26,9 +29,9 @@ script:
   - echo "TRAVIS_BRANCH=${TRAVIS_BRANCH}"
   - echo "REMOTE_ORIGIN_URL=${REMOTE_ORIGIN_URL}"
   - echo "TRAVIS_EVENT_TYPE=${TRAVIS_EVENT_TYPE}"
+  - echo "TRAVIS_COMMIT=${TRAVIS_COMMIT}"
   - echo "TRAVIS_PULL_REQUEST=${TRAVIS_PULL_REQUEST}"
   - echo "TRAVIS_PULL_REQUEST_BRANCH=${TRAVIS_PULL_REQUEST_BRANCH}"
-  - echo "TRAVIS_COMMIT=${TRAVIS_COMMIT}"
   - echo "TRAVIS_PULL_REQUEST_SHA=${TRAVIS_PULL_REQUEST_SHA}"
   - echo "TRAVIS_REPO_SLUG=${TRAVIS_REPO_SLUG}"
   - >-
