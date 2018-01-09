@@ -8,7 +8,7 @@ env:
   global:
     - THIS_REPO=verdi
   matrix:
-    - DOWNSTREAM=verdi-raft COQ_VERSION=coq8.6
+    - DOWNSTREAM=verdi-raft COQ_VERSION=coq8.6-32bit
     - DOWNSTREAM=none COQ_VERSION=coq8.7-32bit
 
 before_script:
