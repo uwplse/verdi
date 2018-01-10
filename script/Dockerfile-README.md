@@ -31,10 +31,20 @@ alias create_upload_docker_image=' \
   rm -rf dockerdir && \
   mkdir -p dockerdir && \
   (cd dockerdir && \
-  \cp -pf ../Dockerfile-$OS-$COQVER Dockerfile && \
+  cp -pf ../Dockerfile-$OS-$COQVER Dockerfile && \
   docker build -t mdernst/$OS-for-$PROJECT-$COQVER . && \
   docker push mdernst/$OS-for-$PROJECT-$COQVER) && \
   rm -rf dockerdir'
+
+export OS=xenial
+export COQVER=coq8.5
+export PROJECT=verdi
+create_upload_docker_image
+
+export OS=xenial
+export COQVER=coq8.5-32bit
+export PROJECT=verdi
+create_upload_docker_image
 
 export OS=xenial
 export COQVER=coq8.6
