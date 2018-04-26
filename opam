@@ -14,8 +14,8 @@ build: [
 install: [ make "install" ]
 remove: [ "sh" "-c" "rm -rf '%{lib}%/coq/user-contrib/Verdi'" ]
 depends: [
-  "coq" {((>= "8.6.1" & < "8.7~") | (>= "8.7" & < "8.8~"))}
-  "coq-mathcomp-ssreflect" {>= "1.6" & < "1.7~"}
+  "coq" {(>= "8.6.1" & < "8.7~") | (>= "8.7" & < "8.8~") | (>= "8.8" & < "8.9~")}
+  "coq-mathcomp-ssreflect" {(>= "1.6" & < "1.7~") | (>= "1.7" & < "1.8~")}
   "InfSeqExt" {= "dev"}
   "StructTact" {= "dev"}
   "cheerios" {= "dev"}
@@ -34,4 +34,5 @@ authors: [
   "Steve Anton <>"
   "Karl Palmskog <>"
   "Ryan Doenges <>"
+  "Justin Adsuara <>"
 ]

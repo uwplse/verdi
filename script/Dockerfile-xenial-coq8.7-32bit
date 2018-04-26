@@ -28,5 +28,5 @@ RUN apt-get -qqy update \
 && eval `opam config env` \
 && opam repo add coq-released https://coq.inria.fr/opam/released \
 && opam repo add distributedcomponents-dev http://opam-dev.distributedcomponents.net \
-&& opam pin add coq 8.7.1 --yes \
+&& opam pin add coq 8.7.2 --yes \
 && opam pin add coq-mathcomp-ssreflect 1.6.4 --yes \
