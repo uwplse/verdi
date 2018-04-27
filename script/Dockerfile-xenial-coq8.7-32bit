@@ -3,7 +3,7 @@
 
 # Use Ubuntu LTS version.
 FROM ubuntu:xenial
-MAINTAINER Michael Ernst <mernst@cs.washington.edu>
+MAINTAINER Karl Palmskog <palmskog@gmail.com>
 
 # According to
 # https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/:
@@ -24,7 +24,7 @@ RUN apt-get -qqy update \
   g++-multilib \
 && apt-get clean \
 && rm -rf /var/lib/apt/lists/* \
-&& opam init --compiler=4.02.3+32bit --yes --auto-setup \
+&& opam init --compiler=4.05.0+32bit --yes --auto-setup \
 && eval `opam config env` \
 && opam repo add coq-released https://coq.inria.fr/opam/released \
 && opam repo add distributedcomponents-dev http://opam-dev.distributedcomponents.net \

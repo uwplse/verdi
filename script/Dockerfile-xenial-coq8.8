@@ -22,7 +22,7 @@ RUN apt-get -qqy update \
   opam \
 && apt-get clean \
 && rm -rf /var/lib/apt/lists/* \
-&& opam init --yes --auto-setup \
+&& opam init --compiler=4.06.1 --yes --auto-setup \
 && eval `opam config env` \
 && opam repo add coq-released https://coq.inria.fr/opam/released \
 && opam repo add distributedcomponents-dev http://opam-dev.distributedcomponents.net \
