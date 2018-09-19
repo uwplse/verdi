@@ -12,3 +12,4 @@ Makefile.coq.conf
 *.vio
 *.pyc
 .vagrant
+.coqdeps.d

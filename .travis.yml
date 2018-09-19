@@ -8,13 +8,13 @@ env:
   global:
     - THIS_REPO=verdi
   matrix:
-    - DOWNSTREAM=verdi-raft COQ_VERSION=coq8.6-32bit
-    - DOWNSTREAM=none COQ_VERSION=coq8.7-32bit
+    - DOWNSTREAM=verdi-raft COQ_VERSION=coq8.7-32bit
+    - DOWNSTREAM=none COQ_VERSION=coq8.8-32bit
 
 # The "docker run" command will pull if needed.
 # Running this first gives two tries in case of network lossage.
 before_script:
-  - timeout 5m docker pull mdernst/xenial-for-verdi-$COQ_VERSION || true
+  - timeout 5m docker pull palmskog/xenial-for-verdi-$COQ_VERSION || true
 
 # Using travis_wait here seems to cause the job to terminate after 1 minute
 # with no error (!).
@@ -35,7 +35,7 @@ script:
   - echo "TRAVIS_PULL_REQUEST_SHA=${TRAVIS_PULL_REQUEST_SHA}"
   - echo "TRAVIS_REPO_SLUG=${TRAVIS_REPO_SLUG}"
   - >-
-    docker run mdernst/xenial-for-verdi-$COQ_VERSION /bin/bash -c "true &&
+    docker run palmskog/xenial-for-verdi-$COQ_VERSION /bin/bash -c "true &&
        if [ $TRAVIS_EVENT_TYPE = pull_request ] ; then
          git clone --quiet --depth 9 $REMOTE_ORIGIN_URL $THIS_REPO || git clone --quiet --depth 9 $REMOTE_ORIGIN_URL $THIS_REPO
          cd $THIS_REPO
