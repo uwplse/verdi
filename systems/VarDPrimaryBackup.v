@@ -1,5 +1,7 @@
 Require Import Verdi.Verdi.
 
+Require Import String.
+
 Require Import Verdi.VarD.
 Require Import Verdi.PrimaryBackup.
 
