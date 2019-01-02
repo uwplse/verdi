@@ -24,8 +24,6 @@ Section LockServ.
     decide equality. apply fin_eq_dec.
   Qed.
 
-
-
   Inductive Msg :=
   | Lock   : Msg
   | Unlock : Msg

@@ -83,7 +83,7 @@ Section SerializedMsgCorrect.
     tot_new_msg_fst_snd := eq_refl
   }.
 
-  Instance orig_multi_params_map_congruency :
+  Program Instance orig_multi_params_map_congruency :
     MultiParamsTotalMapCongruency orig_base_params_tot_map
       orig_multi_params_name_tot_map orig_multi_params_tot_msg_map :=
   {
@@ -91,42 +91,42 @@ Section SerializedMsgCorrect.
     tot_net_handlers_eq := _ ;
     tot_input_handlers_eq := _
   }.
-  Proof using.
-  - move => me src m st.
-    rewrite /tot_mapped_net_handlers /= /tot_map_name_msgs /= /id /=.
-    repeat break_let.
-    rewrite /serialized_net_handlers.
-    rewrite serialize_deserialize_top_id.
-    rewrite /serialize_handler_result.
-    repeat break_let.
-    find_injection.
-    rewrite map_id.
-    set l1 := map _ l.
-    set l2 := map _ l.
-    suff H_suff: l1 = l2 by rewrite H_suff.
-    rewrite /l1 /l2.
-    clear.
-    elim: l => //=.
-    move => p l IH.
-    rewrite IH /= /serialize_name_msg_tuple /=.
-    by break_let.
-  - move => me inp st.
-    rewrite /tot_mapped_input_handlers /=.
-    repeat break_let.
-    unfold serialized_input_handlers in *.
-    rewrite /serialize_handler_result /id /tot_map_name_msgs /tot_map_name /= /id /=.
-    repeat break_let.
-    find_injection.
-    rewrite map_id.
-    set l1 := map _ l.
-    set l2 := map _ l.
-    suff H_suff: l1 = l2 by rewrite H_suff.
-    rewrite /l1 /l2.
-    clear.
-    elim: l => //=.
-    move => p l IH.
-    rewrite IH /= /serialize_name_msg_tuple /=.
-    by break_let.
+  Next Obligation.
+  rewrite /tot_mapped_net_handlers /= /tot_map_name_msgs /= /id /=.
+  repeat break_let.
+  rewrite /serialized_net_handlers.
+  rewrite serialize_deserialize_top_id.
+  rewrite /serialize_handler_result.
+  repeat break_let.
+  find_injection.
+  rewrite map_id.
+  set l1 := map _ l.
+  set l2 := map _ l.
+  suff H_suff: l1 = l2 by rewrite H_suff.
+  rewrite /l1 /l2.
+  clear.
+  elim: l => //=.
+  move => p l IH.
+  rewrite IH /= /serialize_name_msg_tuple /=.
+  by break_let.
+  Qed.
+  Next Obligation.
+  rewrite /tot_mapped_input_handlers /=.
+  repeat break_let.
+  unfold serialized_input_handlers in *.
+  rewrite /serialize_handler_result /id /tot_map_name_msgs /tot_map_name /= /id /=.
+  repeat break_let.
+  find_injection.
+  rewrite map_id.
+  set l1 := map _ l.
+  set l2 := map _ l.
+  suff H_suff: l1 = l2 by rewrite H_suff.
+  rewrite /l1 /l2.
+  clear.
+  elim: l => //=.
+  move => p l IH.
+  rewrite IH /= /serialize_name_msg_tuple /=.
+  by break_let.
   Qed.
 
   Lemma serialize_odnet_tot_map_odnet :
@@ -374,13 +374,9 @@ Section SerializedMsgCorrect.
   Instance multi_params_orig_name_tot_map_bijective :
     MultiParamsNameTotalMapBijective multi_params_orig_name_tot_map :=
   {
-    tot_map_name_inv_inverse := fun _ => _ ;
-    tot_map_name_inverse_inv := fun _ => _
+    tot_map_name_inv_inverse := fun _ => eq_refl _;
+    tot_map_name_inverse_inv := fun _ => eq_refl _
   }.
-  Proof using.
-  - reflexivity.
-  - reflexivity.
-  Qed.
 
   Instance multi_orig_params_pt_msg_map : MultiParamsMsgPartialMap serialized_multi_params orig_multi_params :=
   {
@@ -400,110 +396,100 @@ Section SerializedMsgCorrect.
 
   Instance multi_orig_failure_params_pt_map_congruency : FailureParamsPartialMapCongruency serialized_failure_params orig_failure_params multi_orig_base_params_pt_map :=
   {
-    pt_reboot_eq := fun _ => _
+    pt_reboot_eq := fun _ => eq_refl _
   }.
-  Proof using.
-    reflexivity.
-  Qed.
 
   Instance multi_orig_name_overlay_params_tot_map_congruency : NameOverlayParamsTotalMapCongruency serialized_name_overlay_params orig_name_overlay_params multi_params_orig_name_tot_map := 
   {
-    tot_adjacent_to_fst_snd := fun _ _ => _
+    tot_adjacent_to_fst_snd := fun _ _ => conj (fun H => H) (fun H => H)
   }.
-  Proof using.
-    apply conj; auto.
-  Qed.
 
-  Instance multi_orig_fail_msg_params_pt_map_congruency : FailMsgParamsPartialMapCongruency serialized_fail_msg_params orig_fail_msg_params multi_orig_params_pt_msg_map :=
+  Program Instance multi_orig_fail_msg_params_pt_map_congruency : FailMsgParamsPartialMapCongruency serialized_fail_msg_params orig_fail_msg_params multi_orig_params_pt_msg_map :=
   {
     pt_fail_msg_fst_snd := _
   }.
-  Proof using.
-  rewrite /pt_map_msg /=.
+  Next Obligation.
   by rewrite serialize_deserialize_top_id.
   Qed.
 
-  Instance multi_orig_new_msg_params_pt_map_congruency : NewMsgParamsPartialMapCongruency serialized_new_msg_params orig_new_msg_params multi_orig_params_pt_msg_map :=
+  Program Instance multi_orig_new_msg_params_pt_map_congruency : NewMsgParamsPartialMapCongruency serialized_new_msg_params orig_new_msg_params multi_orig_params_pt_msg_map :=
   {
     pt_new_msg_fst_snd := _
   }.
-  Proof using.
-  rewrite /pt_map_msg /=.
+  Next Obligation.
   by rewrite serialize_deserialize_top_id.
   Qed.
 
-  Instance multi_orig_params_pt_map_congruency : MultiParamsPartialMapCongruency multi_orig_base_params_pt_map multi_params_orig_name_tot_map multi_orig_params_pt_msg_map :=
+  Program Instance multi_orig_params_pt_map_congruency : MultiParamsPartialMapCongruency multi_orig_base_params_pt_map multi_params_orig_name_tot_map multi_orig_params_pt_msg_map :=
   {
     pt_init_handlers_eq := fun _ => eq_refl ;
     pt_net_handlers_some := _ ;
     pt_net_handlers_none := _ ;
     pt_input_handlers_some := _ ;
-    pt_input_handlers_none := _
+    pt_input_handlers_none := _;
   }.
-  Proof using.
-  - move => me src mg st mg' H_eq.
-    rewrite /pt_mapped_net_handlers.
-    repeat break_let.
-    rewrite /tot_map_name /= /id.
-    rewrite /pt_map_msg /= in H_eq.
-    rewrite /net_handlers /= /serialized_net_handlers in Heqp.
-    move: H_eq Heqp.
-    case H_m: (deserialize_top deserialize mg) => [m'|] => H_eq //.
-    find_injection.
-    rewrite /serialize_handler_result in Heqp.
-    repeat break_let.
-    find_injection.
-    set sl2 := filterMap (fun _ => _) _.
-    set sl1 := filterMap _ _.
-    have H_eq: sl2 = l0.
-      rewrite /sl2.
-      clear.
-      elim: l0 => //=.
-      move => o l IH.
-      by rewrite IH.
-    have H_eq': sl1 = l1.
-      rewrite /sl1 /pt_map_name_msg /tot_map_name /id /= /id /serialize_name_msg_tuple.
-      clear.
-      elim: l1 => //=.
-      case => [n m] => /=.
-      move => l IH.
-      by rewrite serialize_deserialize_top_id IH.
-    by rewrite H_eq H_eq'.
-  - move => me src mg st out st' ps H_eq H_eq'.
-    rewrite /net_handlers /= /serialized_net_handlers /= in H_eq'.
-    rewrite /pt_map_msg /= in H_eq.
-    move: H_eq H_eq'.
-    case H_eq_m: (deserialize_top deserialize mg) => [mg'|] H_eq H_eq'; first by repeat break_let.
-    by find_injection.
-  - move => me inp st inp' H_eq.
-    rewrite /pt_mapped_input_handlers.
-    repeat break_let.
-    rewrite /tot_map_name /= /id.
-    rewrite /pt_map_input /= in H_eq.
-    rewrite /input_handlers /= /serialized_input_handlers in Heqp.
-    find_injection.
-    rewrite /serialize_handler_result in Heqp.
-    repeat break_let.
-    find_injection.
-    set sl2 := filterMap (fun _ => _) _.
-    set sl1 := filterMap _ _.
-    have H_eq: sl2 = l0.
-      rewrite /sl2.
-      clear.
-      elim: l0 => //=.
-      move => o l IH.
-      by rewrite IH.
-    have H_eq': sl1 = l1.
-      rewrite /sl1 /pt_map_name_msg /tot_map_name /id /= /id /serialize_name_msg_tuple.
-      clear.
-      elim: l1 => //=.
-      case => [n m] => /=.
-      move => l IH.
-      by rewrite serialize_deserialize_top_id IH.
-    by rewrite H_eq H_eq'.
-  - move => me inp st out st' ps H_eq H_eq'.
-    rewrite /pt_map_msg /= in H_eq.
-    by congruence.
+  Next Obligation.
+  rewrite /pt_mapped_net_handlers.
+  repeat break_let.
+  rewrite /tot_map_name /= /id.
+  rewrite /pt_map_msg /= in H.
+  rewrite /net_handlers /= /serialized_net_handlers in Heqp.
+  move: H Heqp.
+  case H_m: (deserialize_top deserialize m) => [m0|] => H_eq //.
+  find_injection.
+  rewrite /serialize_handler_result in Heqp.
+  repeat break_let.
+  find_injection.
+  set sl2 := filterMap (fun _ => _) _.
+  set sl1 := filterMap _ _.
+  have H_eq: sl2 = l0.
+    rewrite /sl2.
+    clear.
+    elim: l0 => //=.
+    move => o l IH.
+    by rewrite IH.
+  have H_eq': sl1 = l1.
+    rewrite /sl1 /pt_map_name_msg /tot_map_name /id /= /id /serialize_name_msg_tuple.
+    clear.
+    elim: l1 => //=.
+    case => [n m] => /=.
+    move => l IH.
+    by rewrite serialize_deserialize_top_id IH.
+  by rewrite H_eq H_eq'.
+  Qed.
+  Next Obligation.
+  rewrite /net_handlers /= /serialized_net_handlers /= in H0.
+  rewrite /pt_map_msg /= in H.
+  move: H H0.
+  case H_eq_m: (deserialize_top deserialize m) => [m'|] H_eq H_eq'; first by repeat break_let.
+  by find_injection.
+  Qed.
+  Next Obligation.
+  rewrite /pt_mapped_input_handlers.
+  repeat break_let.
+  destruct p.
+  rewrite /tot_map_name /= /id.
+  rewrite /input_handlers /= /serialized_input_handlers in Heqp.
+  find_injection.
+  rewrite /serialize_handler_result in Heqp.
+  repeat break_let.
+  find_injection.
+  set sl2 := filterMap (fun _ => _) _.
+  set sl1 := filterMap _ _.
+  have H_eq: sl2 = l0.
+    rewrite /sl2.
+    clear.
+    elim: l0 => //=.
+    move => o l IH.
+    by rewrite IH.
+  have H_eq': sl1 = l1.
+    rewrite /sl1 /pt_map_name_msg /tot_map_name /id /= /id /serialize_name_msg_tuple.
+    clear.
+    elim: l1 => //=.
+    case => [n m] => /=.
+    move => l IH.
+    by rewrite serialize_deserialize_top_id IH.
+  by rewrite H_eq H_eq'.
   Qed.
 
   Lemma pt_map_net_deserialize_net : 

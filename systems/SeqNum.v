@@ -61,14 +61,12 @@ Section SeqNum.
       msg_eq_dec := seq_num_msg_eq_dec ;
       name_eq_dec := name_eq_dec ;
       nodes := nodes ;
+      all_names_nodes := all_names_nodes;
+      no_dup_nodes := no_dup_nodes;
       init_handlers := seq_num_init_handlers;
       net_handlers := seq_num_net_handlers;
       input_handlers := seq_num_input_handlers
     }.
-  Proof.
-    - eauto using all_names_nodes.
-    - eauto using no_dup_nodes.
-  Defined.
 End SeqNum.
 
 Hint Extern 5 (@BaseParams) => apply base_params : typeclass_instances.

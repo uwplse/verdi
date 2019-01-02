@@ -37,14 +37,12 @@ Section Serialized.
       msg := IOStreamWriter.wire;
       msg_eq_dec := IOStreamWriter.wire_eq_dec;
       nodes := nodes;
+      all_names_nodes := all_names_nodes;
+      no_dup_nodes := no_dup_nodes;
       init_handlers := init_handlers;
       net_handlers := serialized_net_handlers;
       input_handlers := serialized_input_handlers;
     }.
-  Proof.
-    - eauto using all_names_nodes.
-    - eauto using no_dup_nodes.
-  Defined.
 
   Instance serialized_failure_params : FailureParams serialized_multi_params :=
     {
