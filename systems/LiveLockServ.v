@@ -10,8 +10,6 @@ Require Import Verdi.LabeledNet.
 Require Import InfSeqExt.infseq.
 Require Import InfSeqExt.classical.
 
-Set Bullet Behavior "Strict Subproofs".
-
 Set Implicit Arguments.
 
 Section LockServ.
@@ -29,8 +27,6 @@ Section LockServ.
   Definition Name_eq_dec : forall a b : Name, {a = b} + {a <> b}.
     decide equality. apply fin_eq_dec.
   Qed.
-
-
 
   Inductive Msg :=
   | Lock   : Msg

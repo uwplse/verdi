@@ -121,7 +121,7 @@ Instance refined_multi_params_tot_msg_map :
     tot_map_msg := id
   }.
 
-Instance refined_multi_params_map_congruency :
+Program Instance refined_multi_params_map_congruency :
  MultiParamsTotalMapCongruency refined_base_params_tot_map
   refined_multi_params_name_tot_map refined_multi_params_tot_msg_map :=
   {
@@ -129,19 +129,19 @@ Instance refined_multi_params_map_congruency :
     tot_net_handlers_eq := _ ;
     tot_input_handlers_eq := _
   }.
-Proof.
-- move => me src m st.
-  rewrite /tot_mapped_net_handlers /= /refined_net_handlers /= /tot_map_name_msgs /= /id /=.
-  repeat break_let.
-  find_inversion.
-  by rewrite /= -/id map_id map_fst_snd_id.
-- move => me inp st.
-  rewrite /tot_mapped_input_handlers /=.
-  repeat break_let.
-  unfold refined_input_handlers in *.
-  repeat break_let.
-  find_inversion.
-  by rewrite /id /= map_id /tot_map_name_msgs /= /id /= map_fst_snd_id.
+Next Obligation.
+rewrite /tot_mapped_net_handlers /= /refined_net_handlers /= /tot_map_name_msgs /= /id /=.
+repeat break_let.
+find_inversion.
+by rewrite /= -/id map_id map_fst_snd_id.
+Qed.
+Next Obligation.
+rewrite /tot_mapped_input_handlers /=.
+repeat break_let.
+unfold refined_input_handlers in *.
+repeat break_let.
+find_inversion.
+by rewrite /id /= map_id /tot_map_name_msgs /= /id /= map_fst_snd_id.
 Qed.
 
 Instance refined_failure_params_map_congruency :
@@ -409,7 +409,7 @@ Instance mgv_refined_multi_params_tot_map :
     tot_map_msg := snd ;
   }.
 
-Instance mgv_refined_multi_params_map_congruency :
+Program Instance mgv_refined_multi_params_map_congruency :
  MultiParamsTotalMapCongruency mgv_refined_base_params_tot_map
   mgv_refined_multi_params_name_tot_map mgv_refined_multi_params_tot_map :=
   {
@@ -417,28 +417,28 @@ Instance mgv_refined_multi_params_map_congruency :
     tot_net_handlers_eq := _ ;
     tot_input_handlers_eq := _
   }.
-Proof.
-- move => me src m st.
-  rewrite /tot_mapped_net_handlers /= /mgv_refined_net_handlers /= /tot_map_name_msgs /= /id /=.
-  repeat break_let.
-  find_inversion.
-  rewrite -/id map_id /= /add_ghost_msg /=.
-  elim l0 => //=.
-  case => n m' l IH.
-  find_inversion.
-  by find_rewrite; find_rewrite.
-- move => me inp st.
-  rewrite /tot_mapped_input_handlers /=.
-  repeat break_let.
-  rewrite map_id /id /=.
-  unfold mgv_refined_input_handlers in *.
-  repeat break_let.
-  find_inversion.
-  elim l1 => //=.
-  case => n m l.
-  move => IH.
-  find_inversion.
-  by find_rewrite; find_rewrite.
+Next Obligation.
+rewrite /tot_mapped_net_handlers /= /mgv_refined_net_handlers /= /tot_map_name_msgs /= /id /=.
+repeat break_let.
+find_inversion.
+rewrite -/id map_id /= /add_ghost_msg /=.
+elim l0 => //=.
+case => n m' l IH.
+find_inversion.
+by find_rewrite; find_rewrite.
+Qed.
+Next Obligation.
+rewrite /tot_mapped_input_handlers /=.
+repeat break_let.
+rewrite map_id /id /=.
+unfold mgv_refined_input_handlers in *.
+repeat break_let.
+find_inversion.
+elim l1 => //=.
+case => n m l.
+move => IH.
+find_inversion.
+by find_rewrite; find_rewrite.
 Qed.
 
 Instance mgv_refined_failure_params_map_congruency :
