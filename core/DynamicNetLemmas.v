@@ -6,7 +6,7 @@ Require Import Sumbool.
 Require Import Relation_Definitions.
 Require Import RelationClasses.
 
-Require Import mathcomp.ssreflect.ssreflect.
+Require Import Verdi.Ssrexport.
 
 Set Implicit Arguments.
 

@@ -7,7 +7,7 @@ Require Import FunctionalExtensionality.
 Require Import Sorting.Permutation.
 Require Import Sumbool.
 
-Require Import mathcomp.ssreflect.ssreflect.
+Require Import Verdi.Ssrexport.
 
 Set Implicit Arguments.
 

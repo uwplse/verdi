@@ -9,7 +9,7 @@ Require Import Verdi.PartialMapSimulations.
 Require Import Cheerios.Cheerios.
 Require Import Verdi.SerializedMsgParams.
 
-Require Import mathcomp.ssreflect.ssreflect.
+Require Import Verdi.Ssrexport.
 
 Section SerializedMsgCorrect.
   Context {orig_base_params : BaseParams}.

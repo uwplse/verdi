@@ -12,8 +12,8 @@ Require Import FunctionalExtensionality.
 
 Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
-Require Import mathcomp.ssreflect.ssreflect.
-Require Import mathcomp.ssreflect.ssrbool.
+Require Import Verdi.Ssrexport.
+Require Import ssr.ssrbool.
 
 Set Implicit Arguments.
 
@@ -78,15 +78,15 @@ have H_neq': lb <> label_silent.
   move => H_eq.
   by rewrite H_eq in H_neq.
 invcs H_step => //=.
-- case H_m: (pt_map_packet p) => [p'|]; last first.
+- destruct (pt_map_packet p) eqn:?; last first.
     destruct p.
     simpl in *.
     break_match => //.
-    have H_q := @pt_lb_net_handlers_none _ _ _ _ _ _ _ _ multi_map_lb_congr pDst pSrc _ (nwState net pDst) Heqo.
+    have H_q := @pt_lb_net_handlers_none _ _ _ _ _ _ _ _ multi_map_lb_congr pDst pSrc _ (nwState net pDst) Heqo0.
     rewrite /tot_mapped_lb_net_handlers_label in H_q.
     repeat break_let.
     by tuple_inversion.
-  have H_eq_n: tot_map_name (pDst p) = pDst p'.
+  have H_eq_n: tot_map_name (pDst p) = pDst p0.
     destruct p.
     simpl in *.
     break_match => //.
@@ -95,26 +95,26 @@ invcs H_step => //=.
   apply (@LabeledStepFailure_deliver _ _ _ _ _ _ (filterMap pt_map_packet xs) (filterMap pt_map_packet ys) (filterMap pt_map_output out) (pt_map_data d) (filterMap (@pt_map_name_msg _ _ _ _ _ msg_map) l)).
   * rewrite /pt_map_net /=.
     find_rewrite.
-    by rewrite filterMap_app /= H_m.
+    by rewrite filterMap_app /= Heqo.
   * rewrite -H_eq_n.
     exact: not_in_failed_not_in.
   * rewrite /pt_map_net /= -{2}H_eq_n tot_map_name_inv_inverse.
-    destruct p, p'.
+    destruct p, p0.
     simpl in *.
     break_match => //.
     find_injection.
     clean.
-    have H_q := @pt_net_handlers_some _ _ _ _ _ _ _ multi_map_congr pDst pSrc pBody (nwState net pDst) _ Heqo.
+    have H_q := @pt_net_handlers_some _ _ _ _ _ _ _ multi_map_congr pDst pSrc pBody (nwState net pDst) _ Heqo0.
     rewrite /pt_mapped_net_handlers /net_handlers /= /unlabeled_net_handlers in H_q.
     repeat break_let.
     repeat tuple_inversion.
-    have H_q' := @pt_lb_net_handlers_some _ _ _ _ _ _ _ _ multi_map_lb_congr _ _ _ _ _ _ _ _ _ Heqo Heqp1.
+    have H_q' := @pt_lb_net_handlers_some _ _ _ _ _ _ _ _ multi_map_lb_congr _ _ _ _ _ _ _ _ _ Heqo0 Heqp1.
     rewrite /tot_mapped_lb_net_handlers_label in H_q'.
     repeat break_let.
     break_and.
     by repeat tuple_inversion.
   * rewrite /pt_map_net /= 2!filterMap_app.
-    by rewrite (filterMap_pt_map_packet_map_eq_some _ _ H_m) (pt_map_update_eq_some _ _ _ H_m).
+    by rewrite (filterMap_pt_map_packet_map_eq_some _ _ Heqo) (pt_map_update_eq_some _ _ _ Heqo).
 - case H_i: pt_map_input => [inp'|]; last first.
     have H_q := @pt_lb_input_handlers_none _ _ _ _ _ _ _ _ multi_map_lb_congr h _ (nwState net h) H_i.
     rewrite /tot_mapped_lb_input_handlers_label /= in H_q.
@@ -145,16 +145,16 @@ Theorem lb_step_failure_pt_mapped_simulation_1_silent :
 Proof using multi_map_lb_congr multi_map_congr.
 move => net net' failed failed' lb tr H_eq H_step.
 invcs H_step => //=.
-- case H_m: (pt_map_packet p) => [p'|].
-    destruct p, p'.
+- destruct (pt_map_packet p) eqn:?.
+    destruct p, p0.
     simpl in *.
     break_match_hyp => //.
     find_injection.
-    have H_q := @pt_net_handlers_some _ _ _ _ _ _ _ multi_map_congr pDst pSrc pBody (nwState net pDst) _ Heqo.
+    have H_q := @pt_net_handlers_some _ _ _ _ _ _ _ multi_map_congr pDst pSrc pBody (nwState net pDst) _ Heqo0.
     rewrite /pt_mapped_net_handlers /net_handlers /= /unlabeled_net_handlers in H_q.
     repeat break_let.
     repeat tuple_inversion.
-    have H_q' := @pt_lb_net_handlers_some _ _ _ _ _ _ _ _ multi_map_lb_congr _ _ _ _ _ _ _ _ _ Heqo Heqp1.
+    have H_q' := @pt_lb_net_handlers_some _ _ _ _ _ _ _ _ multi_map_lb_congr _ _ _ _ _ _ _ _ _ Heqo0 Heqp1.
     break_and.
     unfold tot_mapped_lb_net_handlers_label in *.
     repeat break_let.
@@ -162,13 +162,13 @@ invcs H_step => //=.
   destruct p.
   simpl in *.
   break_match_hyp => //.
-  have H_q := @pt_net_handlers_none _ _ _ _ _ _ _ multi_map_congr pDst pSrc pBody (nwState net pDst) out d l Heqo.
+  have H_q := @pt_net_handlers_none _ _ _ _ _ _ _ multi_map_congr pDst pSrc pBody (nwState net pDst) out d l Heqo0.
   rewrite /net_handlers /= /unlabeled_net_handlers in H_q.
   repeat break_let.
   repeat tuple_inversion.
   concludes.
   break_and.
-  have H_q' := @pt_lb_net_handlers_none _ _ _ _ _ _ _ _ multi_map_lb_congr pDst pSrc _ (nwState net pDst) Heqo.
+  have H_q' := @pt_lb_net_handlers_none _ _ _ _ _ _ _ _ multi_map_lb_congr pDst pSrc _ (nwState net pDst) Heqo0.
   rewrite /tot_mapped_lb_net_handlers_label in H_q'.
   repeat break_let.
   repeat tuple_inversion.
