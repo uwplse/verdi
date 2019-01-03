@@ -7,7 +7,7 @@ Require Import StructTact.Util.
 Require Import FunctionalExtensionality.
 Require Import Verdi.TotalMapSimulations.
 
-Require Import mathcomp.ssreflect.ssreflect.
+Require Import Verdi.Ssrexport.
 
 Set Implicit Arguments.
 

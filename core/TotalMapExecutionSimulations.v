@@ -10,7 +10,7 @@ Require Import FunctionalExtensionality.
 
 Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
-Require Import mathcomp.ssreflect.ssreflect.
+Require Import Verdi.Ssrexport.
 
 Set Implicit Arguments.
 

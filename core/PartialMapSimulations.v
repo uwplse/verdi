@@ -9,7 +9,7 @@ Require Import Sumbool.
 Require Import Sorting.Permutation.
 Require Import Verdi.DynamicNetLemmas.
 
-Require Import mathcomp.ssreflect.ssreflect.
+Require Import Verdi.Ssrexport.
 
 Set Implicit Arguments.
 
@@ -637,16 +637,15 @@ Proof using name_map_bijective multi_map_congr.
 move => net net' tr.
 case => {net net' tr}.
 - move => net net' tr m ms out d l from to H_eq H_hnd H_eq' H_eq_tr.
-  case H_m: (pt_map_msg m) => [m'|].
+  destruct (pt_map_msg m) eqn:?.
     left.
     rewrite H_eq' /= /pt_map_onet /=.
-    apply (@StepOrdered_deliver _ _ _ _ _ m' (filterMap pt_map_msg ms) (filterMap pt_map_output out) (pt_map_data d) (filterMap pt_map_name_msg l) (tot_map_name from) (tot_map_name to)).
+    apply (@StepOrdered_deliver _ _ _ _ _ m0 (filterMap pt_map_msg ms) (filterMap pt_map_output out) (pt_map_data d) (filterMap pt_map_name_msg l) (tot_map_name from) (tot_map_name to)).
     * rewrite /= 2!tot_map_name_inv_inverse H_eq /=.
-      case H_m0: (pt_map_msg _) => [m0|]; last by rewrite H_m0 in H_m.
-      rewrite H_m0 in H_m.
-      by inversion H_m.
+      destruct (pt_map_msg _) eqn:?; last by congruence.
+      by find_injection.
     * rewrite /= tot_map_name_inv_inverse.
-      rewrite -(pt_net_handlers_some _ _ _ _ H_m).
+      rewrite -(pt_net_handlers_some _ _ _ _ Heqo).
       rewrite /pt_mapped_net_handlers /=.
       repeat break_let.
       by inversion H_hnd.
@@ -654,7 +653,7 @@ case => {net net' tr}.
     * by rewrite H_eq_tr /= filterMap_pt_map_trace_ev_outputs_eq.
   right.
   rewrite /=.
-  have [H_eq_d [H_ms H_out]] := pt_net_handlers_none _ _ _ _ H_m H_hnd.
+  have [H_eq_d [H_ms H_out]] := pt_net_handlers_none _ _ _ _ Heqo H_hnd.
   rewrite H_eq_tr filterMap_pt_map_trace_ev_outputs_eq H_out /=.
   split => //.
   rewrite H_eq' /pt_map_onet /=.
@@ -679,24 +678,24 @@ case => {net net' tr}.
     move: H_dec => [H_eq_from H_eq_to].
     rewrite -H_eq_from -H_eq_to H_eq /=.
     case H_m': (pt_map_msg _) => [m'|] //.
-    by rewrite H_m' in H_m.
+    by rewrite H_m' in Heqo.
   by rewrite H_eq_s H_eq_p.
 - move => h net net' tr out inp d l H_hnd H_eq H_eq_tr.
-  case H_i: (pt_map_input inp) => [inp'|].
+  destruct (pt_map_input inp) eqn:?.
     left.
-    apply (@StepOrdered_input _ _ (tot_map_name h) _ _ _ (filterMap pt_map_output out) inp' (pt_map_data d) (filterMap pt_map_name_msg l)).
+    apply (@StepOrdered_input _ _ (tot_map_name h) _ _ _ (filterMap pt_map_output out) i (pt_map_data d) (filterMap pt_map_name_msg l)).
     * rewrite /=.
-      have H_q := pt_input_handlers_some h inp (onwState net h) H_i.
+      have H_q := pt_input_handlers_some h inp (onwState net h) Heqo.
       rewrite /pt_mapped_input_handlers /= in H_q.
       rewrite H_hnd in H_q.
       rewrite H_q.
       by rewrite tot_map_name_inv_inverse.
     * by rewrite H_eq /pt_map_onet /= pt_map_update_eq collate_pt_map_eq.
-    * by rewrite H_eq_tr /= H_i filterMap_pt_map_trace_ev_outputs_eq.
+    * by rewrite H_eq_tr /= Heqo filterMap_pt_map_trace_ev_outputs_eq.
   right.
   rewrite /=.
-  have [H_d [H_l H_o]] := pt_input_handlers_none h inp (onwState net h) H_i H_hnd.
-  rewrite H_eq_tr /= filterMap_pt_map_trace_ev_outputs_eq H_i H_o /=.
+  have [H_d [H_l H_o]] := pt_input_handlers_none h inp (onwState net h) Heqo H_hnd.
+  rewrite H_eq_tr /= filterMap_pt_map_trace_ev_outputs_eq Heqo H_o /=.
   split => //.
   rewrite H_eq /= /pt_map_onet /=.
   rewrite pt_map_update_eq /= H_d.
@@ -1021,24 +1020,23 @@ Theorem step_ordered_failure_pt_mapped_simulation_1 :
 Proof using overlay_map_congr name_map_bijective multi_map_congr fail_msg_map_congr.
 move => net net' failed failed' tr H_step.
 invcs H_step.
-- case H_m: (pt_map_msg m) => [m'|].
+- destruct (pt_map_msg m) eqn:?.
     left.
     rewrite /pt_map_onet /=.
-    apply (@StepOrderedFailure_deliver _ _ _ _ _ _ _ _ m' (filterMap pt_map_msg ms) (filterMap pt_map_output out) (pt_map_data d) (filterMap pt_map_name_msg l) (tot_map_name from) (tot_map_name to)).
+    apply (@StepOrderedFailure_deliver _ _ _ _ _ _ _ _ m0 (filterMap pt_map_msg ms) (filterMap pt_map_output out) (pt_map_data d) (filterMap pt_map_name_msg l) (tot_map_name from) (tot_map_name to)).
     * rewrite /= 2!tot_map_name_inv_inverse /=.
       find_rewrite.
       rewrite /=.
-      case H_m0: (pt_map_msg _) => [m0|]; last by rewrite H_m in H_m0.
-      rewrite H_m in H_m0.
-      by inversion H_m0.
+      destruct (pt_map_msg _) eqn:?; rewrite Heqo in Heqo0 => //.
+      by inversion Heqo.
     * exact: not_in_failed_not_in.
-    * rewrite /= -(pt_net_handlers_some _ _ _ _ H_m)  /pt_mapped_net_handlers /= tot_map_name_inv_inverse.
+    * rewrite /= -(pt_net_handlers_some _ _ _ _ Heqo)  /pt_mapped_net_handlers /= tot_map_name_inv_inverse.
       repeat break_let.
       by find_inversion.
     * by rewrite /= pt_map_update_eq collate_pt_map_update2_eq.
     * by rewrite filterMap_pt_map_trace_ev_outputs_eq.
   right.
-  have [H_eq_d [H_ms H_out]] := pt_net_handlers_none _ _ _ _ H_m H5.
+  have [H_eq_d [H_ms H_out]] := pt_net_handlers_none _ _ _ _ Heqo H5.
   rewrite filterMap_pt_map_trace_ev_outputs_eq /= H_out /=.
   split => //.
   rewrite /pt_map_onet /= pt_map_update_eq H_eq_d collate_pt_map_update2_eq H_ms /=.
@@ -1061,7 +1059,7 @@ invcs H_step.
     move: H_dec => [H_eq_from H_eq_to].
     rewrite -H_eq_from -H_eq_to /= 2!tot_map_name_inv_inverse H3 /=.
     case H_m': (pt_map_msg _) => [m'|] //.
-    by rewrite H_m' in H_m.
+    by rewrite H_m' in Heqo.
   by rewrite H_eq_s H_eq_p.
 - case H_i: (pt_map_input _) => [inp'|].
     left.
@@ -1249,17 +1247,17 @@ invcs H_step.
       + by find_apply_lem_hyp tot_adjacent_to_fst_snd.
       + by find_apply_lem_hyp tot_adjacent_to_fst_snd.
   by rewrite H_eq_p.
-- case H_m: (pt_map_msg m) => [m'|].
+- destruct (pt_map_msg m) eqn:?.
     left.
     rewrite /pt_map_odnet /=.
-    apply (@StepOrderedDynamicFailure_deliver _ _ _ _ _ _ _ _ _ m' (filterMap pt_map_msg ms) (filterMap pt_map_output out) (pt_map_data d) (pt_map_data d') (filterMap pt_map_name_msg l) (tot_map_name from) (tot_map_name to)).
+    apply (@StepOrderedDynamicFailure_deliver _ _ _ _ _ _ _ _ _ m0 (filterMap pt_map_msg ms) (filterMap pt_map_output out) (pt_map_data d) (pt_map_data d') (filterMap pt_map_name_msg l) (tot_map_name from) (tot_map_name to)).
     * exact: not_in_failed_not_in.
     * exact: in_failed_in. 
     * by rewrite /= tot_map_name_inv_inverse /= H5.
     * rewrite /= 2!tot_map_name_inv_inverse /=.
       find_rewrite.
-      by rewrite /= H_m.
-    * rewrite /= -(pt_net_handlers_some _ _ _ _ H_m) /pt_mapped_net_handlers /=.
+      by rewrite /= Heqo.
+    * rewrite /= -(pt_net_handlers_some _ _ _ _ Heqo) /pt_mapped_net_handlers /=.
       repeat break_let.
       by tuple_inversion.
     * set u1 := fun _ => match _ with | _ => _ end.
@@ -1275,7 +1273,7 @@ invcs H_step.
       by find_rewrite_lem tot_map_name_inv_inverse.
     * by rewrite filterMap_pt_map_trace_ev_outputs_eq.
 - right.
-  have [H_eq_d [H_ms H_out]] := pt_net_handlers_none _ _ _ _ H_m H7.
+  have [H_eq_d [H_ms H_out]] := pt_net_handlers_none _ _ _ _ Heqo H7.
   rewrite filterMap_pt_map_trace_ev_outputs_eq H_out /=.
   split => //.
   rewrite /pt_map_odnet /= collate_pt_map_update2_eq H_ms /=.
@@ -1296,7 +1294,7 @@ invcs H_step.
     rewrite /update2 /=.
     break_if => //.
     break_and.
-    by rewrite -H -H0 2!tot_map_name_inv_inverse H6 /= H_m.
+    by rewrite -H -H0 2!tot_map_name_inv_inverse H6 /= Heqo.
   by rewrite H_eq_s H_eq_p.
 - case H_i: (pt_map_input _) => [inp'|].
     left.

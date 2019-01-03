@@ -14,8 +14,7 @@ build: [
 install: [ make "install" ]
 remove: [ "sh" "-c" "rm -rf '%{lib}%/coq/user-contrib/Verdi'" ]
 depends: [
-  "coq" {>= "8.6.1" & < "8.10~"}
-  "coq-mathcomp-ssreflect" {>= "1.6" & < "1.8~"}
+  "coq" {>= "8.7" & < "8.10~"}
   "InfSeqExt" {= "dev"}
   "StructTact" {= "dev"}
   "cheerios" {= "dev"}
@@ -25,6 +24,7 @@ tags: [
   "category:Computer Science/Concurrent Systems and Protocols/Theory of concurrent systems"
   "keyword:program verification"
   "keyword:distributed algorithms"
+  "logpath:Verdi"
 ]
 authors: [
   "James Wilcox <>"

@@ -9,7 +9,7 @@ Require Import FunctionalExtensionality.
 Require Import Sumbool.
 Require Import Sorting.Permutation.
 
-Require Import mathcomp.ssreflect.ssreflect.
+Require Import Verdi.Ssrexport.
 
 Set Implicit Arguments.
 
@@ -144,24 +144,25 @@ Proof using name_map_bijective multi_map_congr.
 move => net net' tr.
 case => {net net' tr}.
 - move => net net' p ms ms' out d l H_eq H_hnd H_eq'.
-  case H_m: (pt_map_packet p) => [p'|].
+  destruct (pt_map_packet p) eqn:?.
     left.
     rewrite H_eq' /= /pt_ext_map_net /=.
-    have H_eq_dst: tot_map_name (pDst p) = pDst p'.
-      case: p H_eq H_hnd H_eq' H_m => /= src dst m H_eq H_hnd H_eq'.
+    have H_eq_dst: tot_map_name (pDst p) = pDst p0.
+      case: p H_eq H_hnd H_eq' Heqo => /= src dst m H_eq H_hnd H_eq'.
       case (pt_map_msg m) => //= m' H_m.
       by inversion H_m.
-    case H_n: (net_handlers (pDst p') (pSrc p') (pBody p') (pt_ext_map_data (nwState net (pDst p)) (pDst p))) => [[out' d'] ps].
-    exists [(pDst p', inr out')].
-    apply StepAsync_deliver with (xs := filterMap pt_map_packet ms) (ys := filterMap pt_map_packet ms') (d0 := pt_ext_map_data d (pDst p)) (l0 := filterMap pt_map_name_msg l).
+    destruct (net_handlers (pDst p0) (pSrc p0) (pBody p0) (pt_ext_map_data (nwState net (pDst p)) (pDst p))) eqn:?.
+    destruct p1 as [out' d'].
+    exists [(pDst p0, inr out')].
+    apply StepAsync_deliver with (xs := filterMap pt_map_packet ms) (ys := filterMap pt_map_packet ms') (d0 := pt_ext_map_data d (pDst p)) (l1 := filterMap pt_map_name_msg l).
     * rewrite /= H_eq filterMap_app /=.
-      case H_p: (pt_map_packet _) => [p0|]; last by rewrite H_p in H_m.
-      by rewrite H_p in H_m; injection H_m => H_eq_p; rewrite H_eq_p.
+      case H_p: (pt_map_packet _) => [p1|]; last by rewrite H_p in Heqo.
+      by rewrite H_p in Heqo; injection Heqo => H_eq_p; rewrite H_eq_p.
     * rewrite /=.
       rewrite -{2}H_eq_dst tot_map_name_inv_inverse.
-      case: p H_eq H_hnd H_eq' H_m H_eq_dst H_n => /= src dst mg H_eq H_hnd H_eq'.
+      case: p H_eq H_hnd H_eq' Heqo H_eq_dst Heqp1 => /= src dst mg H_eq H_hnd H_eq'.
       case H_m: (pt_map_msg mg) => [mg'|] //.
-      case: p' H_eq' => src' dst' m0 H_eq' H_eq_p.
+      case: p0 H_eq' => src' dst' m0 H_eq' H_eq_p.
       inversion H_eq_p; subst.
       move => H_eq_dst H_eq_n {H_eq_p H_eq_dst}.
       simpl in *.
@@ -171,12 +172,12 @@ case => {net net' tr}.
       find_inversion.
       by rewrite tot_map_name_inv_inverse.
     * rewrite /= /pt_ext_map_net /= 2!filterMap_app.
-      rewrite (filterMap_pt_map_packet_map_eq_some _ _ H_m).
-      by rewrite (pt_ext_map_update_eq_some _ _ _ H_m).
+      rewrite (filterMap_pt_map_packet_map_eq_some _ _ Heqo).
+      by rewrite (pt_ext_map_update_eq_some _ _ _ Heqo).
   right.
   rewrite H_eq' /= {H_eq'}.
   rewrite /pt_ext_map_net /=.
-  case: p H_eq H_hnd H_m => /= src dst m H_eq H_hnd.
+  case: p H_eq H_hnd Heqo => /= src dst m H_eq H_hnd.
   case H_m: (pt_map_msg _) => [m'|] // H_eq' {H_eq'}.
   rewrite 2!filterMap_app H_eq filterMap_app /=.
   case H_m': (pt_map_msg _) => [m'|]; first by rewrite H_m' in H_m.
@@ -192,13 +193,14 @@ case => {net net' tr}.
       by rewrite H_dec H_d.
     by rewrite H_eq_s.
 - move => h net net' out inp d l H_hnd H_eq.  
-  case H_i: (pt_ext_map_input inp h (nwState net h)) => [inp'|].
+  destruct (pt_ext_map_input inp h (nwState net h)) eqn:?.
     left.
-    case H_h: (input_handlers (tot_map_name h) inp' (pt_ext_map_data (nwState net h) h)) => [[out' d'] ps].
-    exists [(tot_map_name h, inl inp'); (tot_map_name h, inr out')].
+    destruct (input_handlers (tot_map_name h) i (pt_ext_map_data (nwState net h) h)) eqn:?.
+    destruct p  as [out' d'].
+    exists [(tot_map_name h, inl i); (tot_map_name h, inr out')].
     apply (@StepAsync_input _ _ _ _ _ _ _ (pt_ext_map_data d h) (filterMap pt_map_name_msg l)).
       rewrite /=.
-      have H_q := @pt_ext_input_handlers_some _ _ _ _ _ _ _ multi_map_congr h inp (nwState net h) _ _ _ _ H_i H_h.
+      have H_q := @pt_ext_input_handlers_some _ _ _ _ _ _ _ multi_map_congr h inp (nwState net h) _ _ _ _ Heqo Heqp.
       rewrite /pt_ext_mapped_input_handlers /= in H_q.
       rewrite H_hnd in H_q.
       find_inversion.
@@ -207,7 +209,7 @@ case => {net net' tr}.
     by rewrite -pt_ext_map_update_eq.
   right.
   rewrite H_eq /pt_ext_map_net /=.
-  have [H_d H_l] := pt_ext_input_handlers_none _ _ _ H_i H_hnd.
+  have [H_d H_l] := pt_ext_input_handlers_none _ _ _ Heqo H_hnd.
   rewrite filterMap_app.
   rewrite (filterMap_pt_map_name_msg_empty_eq _ h H_l) /=.
   set nwS1 := fun _ => _.
@@ -266,23 +268,24 @@ Proof using name_map_bijective multi_map_congr.
 move => net net' tr.
 case => {net net' tr}.
 - move => net net' tr m ms out d l from to H_eq H_hnd H_eq' H_eq_tr.
-  case H_m: (pt_map_msg m) => [m'|].
+  destruct (pt_map_msg m) eqn:?.
     left.
-    case H_n: (net_handlers (tot_map_name to) (tot_map_name from) m' (pt_ext_map_data (onwState net to) to)) => [[out' d'] ps].
+    destruct (net_handlers (tot_map_name to) (tot_map_name from) m0 (pt_ext_map_data (onwState net to) to)) eqn:?.
+    destruct p as [out' d'].
     exists (map2fst (tot_map_name to) (map inr out')).
     rewrite H_eq' /= /pt_ext_map_onet /=.
-    apply (@StepOrdered_deliver _ _ _ _ _ m' (filterMap pt_map_msg ms) out' (pt_ext_map_data d to) (filterMap pt_map_name_msg l) (tot_map_name from) (tot_map_name to)) => //=.
+    apply (@StepOrdered_deliver _ _ _ _ _ m0 (filterMap pt_map_msg ms) out' (pt_ext_map_data d to) (filterMap pt_map_name_msg l) (tot_map_name from) (tot_map_name to)) => //=.
     * rewrite 2!tot_map_name_inv_inverse H_eq /=.
-      case H_m0: pt_map_msg => [m0|]; last by rewrite H_m0 in H_m.
-      rewrite H_m0 in H_m.
-      by inversion H_m.
+      case H_m1: pt_map_msg => [m1|]; last by rewrite Heqo in H_m1.
+      rewrite H_m1 in Heqo.
+      by inversion Heqo.
     * rewrite tot_map_name_inv_inverse.
-      have H_q := @pt_ext_net_handlers_some _ _ _ _ _ _ _ multi_map_congr _ _ _ _ _ _ _ _ H_m H_n.
+      have H_q := @pt_ext_net_handlers_some _ _ _ _ _ _ _ multi_map_congr _ _ _ _ _ _ _ _ Heqo Heqp.
       rewrite /pt_ext_mapped_net_handlers /= in H_q.
       by repeat break_let; repeat tuple_inversion.
     * by rewrite /= pt_ext_map_update_eq collate_pt_map_update2_eq.
   right.
-  have [H_eq_d H_ms] := pt_ext_net_handlers_none _ _ _ _ H_m H_hnd.
+  have [H_eq_d H_ms] := pt_ext_net_handlers_none _ _ _ _ Heqo H_hnd.
   rewrite H_eq' /pt_ext_map_onet /=.
   rewrite pt_ext_map_update_eq /= H_eq_d.
   rewrite collate_pt_map_eq H_ms /=.
@@ -305,21 +308,22 @@ case => {net net' tr}.
     move: H_dec => [H_eq_from H_eq_to].
     rewrite -H_eq_from -H_eq_to H_eq /=.
     case H_m': (pt_map_msg _) => [m'|] //.
-    by rewrite H_m' in H_m.
+    by rewrite H_m' in Heqo.
   by rewrite H_eq_s H_eq_p.
 - move => h net net' tr out inp d l H_hnd H_eq H_eq_tr.
-  case H_i: (pt_ext_map_input inp h (onwState net h)) => [inp'|].
+  destruct (pt_ext_map_input inp h (onwState net h)) eqn:?.
     left.
-    case H_h: (input_handlers (tot_map_name h) inp' (pt_ext_map_data (onwState net h) h)) => [[out' d'] ps].
-    exists ((tot_map_name h, inl inp') :: map2fst (tot_map_name h) (map inr out')).
-    apply (@StepOrdered_input _ _ (tot_map_name h) _ _ _ out' inp' (pt_ext_map_data d h) (filterMap pt_map_name_msg l)) => //=; last by rewrite H_eq /pt_ext_map_onet /= pt_ext_map_update_eq collate_pt_map_eq.
-    have H_q := @pt_ext_input_handlers_some _ _ _ _ _ _ _ multi_map_congr h inp (onwState net h) _ _ _ _ H_i H_h.
+    destruct (input_handlers (tot_map_name h) i (pt_ext_map_data (onwState net h) h)) eqn:?.
+    destruct p as [out' d'].
+    exists ((tot_map_name h, inl i) :: map2fst (tot_map_name h) (map inr out')).
+    apply (@StepOrdered_input _ _ (tot_map_name h) _ _ _ out' i (pt_ext_map_data d h) (filterMap pt_map_name_msg l)) => //=; last by rewrite H_eq /pt_ext_map_onet /= pt_ext_map_update_eq collate_pt_map_eq.
+    have H_q := @pt_ext_input_handlers_some _ _ _ _ _ _ _ multi_map_congr h inp (onwState net h) _ _ _ _ Heqo Heqp.
     rewrite /pt_ext_mapped_input_handlers /= in H_q.
     rewrite tot_map_name_inv_inverse.
     by repeat break_let; repeat tuple_inversion.
   right.
   rewrite /=.
-  have [H_d H_l] := pt_ext_input_handlers_none h inp (onwState net h) H_i H_hnd.
+  have [H_d H_l] := pt_ext_input_handlers_none h inp (onwState net h) Heqo H_hnd.
   rewrite H_eq /= /pt_ext_map_onet /=.
   rewrite pt_ext_map_update_eq /= H_d.
   rewrite collate_pt_map_eq H_l /=.
@@ -381,25 +385,26 @@ Theorem step_ordered_failure_pt_ext_mapped_simulation_1 :
 Proof using overlay_map_congr name_map_bijective multi_map_congr fail_msg_map_congr.
 move => net net' failed failed' tr H_step.
 invcs H_step.
-- case H_m: (pt_map_msg m) => [m'|].
+- destruct (pt_map_msg m) eqn:?.
     left.
-    case H_n: (net_handlers (tot_map_name to) (tot_map_name from) m' (pt_ext_map_data (onwState net to) to)) => [[out' d'] ps].
+    destruct (net_handlers (tot_map_name to) (tot_map_name from) m0 (pt_ext_map_data (onwState net to) to)) eqn:?.
+    destruct p as [out' d'].
     exists (map2fst (tot_map_name to) (map inr out')).
     rewrite /pt_ext_map_onet /=.
-    apply (@StepOrderedFailure_deliver _ _ _ _ _ _ _ _ m' (filterMap pt_map_msg ms) out' (pt_ext_map_data d to) (filterMap pt_map_name_msg l) (tot_map_name from) (tot_map_name to)) => //=.
+    apply (@StepOrderedFailure_deliver _ _ _ _ _ _ _ _ m0 (filterMap pt_map_msg ms) out' (pt_ext_map_data d to) (filterMap pt_map_name_msg l) (tot_map_name from) (tot_map_name to)) => //=.
     * rewrite 2!tot_map_name_inv_inverse /= H3 /=.
-      case H_m0: (pt_map_msg _) => [m0|]; last by rewrite H_m in H_m0.
-      rewrite H_m in H_m0.
-      by inversion H_m0.
+      case H_m1: (pt_map_msg _) => [m1|]; last by rewrite Heqo in H_m1.
+      rewrite Heqo in H_m1.
+      by inversion H_m1.
     * exact: not_in_failed_not_in.
     * rewrite /= tot_map_name_inv_inverse.
-      have H_q := @pt_ext_net_handlers_some _ _ _ _ _ _ _ multi_map_congr _ _ _ _ _ _ _ _ H_m H_n.
+      have H_q := @pt_ext_net_handlers_some _ _ _ _ _ _ _ multi_map_congr _ _ _ _ _ _ _ _ Heqo Heqp.
       rewrite /pt_ext_mapped_net_handlers /= in H_q.
       by repeat break_let; repeat tuple_inversion.
     * by rewrite /= pt_ext_map_update_eq collate_pt_map_update2_eq.
   right.
   split => //.
-  have [H_eq_d H_ms] := pt_ext_net_handlers_none _ _ _ _ H_m H5.
+  have [H_eq_d H_ms] := pt_ext_net_handlers_none _ _ _ _ Heqo H5.
   rewrite /pt_ext_map_onet /= pt_ext_map_update_eq H_eq_d collate_pt_map_update2_eq H_ms /=.
   set nwP1 := update2 _ _ _ _ _.
   set nwS1 := update _ _ _ _.
@@ -420,22 +425,23 @@ invcs H_step.
     move: H_dec => [H_eq_from H_eq_to].
     rewrite -H_eq_from -H_eq_to /= 2!tot_map_name_inv_inverse H3 /=.
     case H_m': (pt_map_msg _) => [m'|] //.
-    by rewrite H_m' in H_m.
+    by rewrite H_m' in Heqo.
   by rewrite H_eq_s H_eq_p.
-- case H_i: (pt_ext_map_input inp h (onwState net h)) => [inp'|].
+- destruct (pt_ext_map_input inp h (onwState net h)) eqn:?.
     left.
-    case H_h: (input_handlers (tot_map_name h) inp' (pt_ext_map_data (onwState net h) h)) => [[out' d'] ps].
-    exists ((tot_map_name h, inl inp') :: map2fst (tot_map_name h) (map inr out')).
-    apply (@StepOrderedFailure_input _ _ _ _ (tot_map_name h) _ _ _ _ out' inp' (pt_ext_map_data d h) (filterMap pt_map_name_msg l)) => //=.
+    destruct (input_handlers (tot_map_name h) i (pt_ext_map_data (onwState net h) h)) eqn:?.
+    destruct p as [out' d'].
+    exists ((tot_map_name h, inl i) :: map2fst (tot_map_name h) (map inr out')).
+    apply (@StepOrderedFailure_input _ _ _ _ (tot_map_name h) _ _ _ _ out' i (pt_ext_map_data d h) (filterMap pt_map_name_msg l)) => //=.
     * exact: not_in_failed_not_in.
     * rewrite /= tot_map_name_inv_inverse.
-      have H_q := @pt_ext_input_handlers_some _ _ _ _ _ _ _ multi_map_congr h inp (onwState net h) _ _ _ _ H_i H_h.
+      have H_q := @pt_ext_input_handlers_some _ _ _ _ _ _ _ multi_map_congr h inp (onwState net h) _ _ _ _ Heqo Heqp.
       rewrite /pt_ext_mapped_input_handlers /= in H_q.
       by repeat break_let; repeat tuple_inversion.
     * by rewrite /pt_ext_map_onet /= pt_ext_map_update_eq collate_pt_map_eq.
   right.
   rewrite /= /pt_ext_map_onet /=.
-  have [H_d H_l] := pt_ext_input_handlers_none h inp (onwState net h) H_i H4.
+  have [H_d H_l] := pt_ext_input_handlers_none h inp (onwState net h) Heqo H4.
   split => //.
   rewrite pt_ext_map_update_eq /= H_d.
   rewrite collate_pt_map_eq H_l /=.
@@ -593,19 +599,20 @@ invcs H_step.
       + by find_apply_lem_hyp tot_adjacent_to_fst_snd.
       + by find_apply_lem_hyp tot_adjacent_to_fst_snd.
   by rewrite H_eq_p.
-- case H_m: (pt_map_msg m) => [m'|].
+- destruct (pt_map_msg m) eqn:?.
     left.
-    case H_n: (net_handlers (tot_map_name to) (tot_map_name from) m' (pt_ext_map_data d to)) => [[out' d''] ps].
+    destruct (net_handlers (tot_map_name to) (tot_map_name from) m0 (pt_ext_map_data d to)) eqn:?.
+    destruct p as [out' d''].
     exists (map2fst (tot_map_name to) (map inr out')).
     rewrite /pt_ext_map_onet /=.
-    apply (@StepOrderedDynamicFailure_deliver _ _ _ _ _ _ _ _ _ m' (filterMap pt_map_msg ms) out' (pt_ext_map_data d to) (pt_ext_map_data d' to) (filterMap pt_map_name_msg l) (tot_map_name from) (tot_map_name to)) => //=.
+    apply (@StepOrderedDynamicFailure_deliver _ _ _ _ _ _ _ _ _ m0 (filterMap pt_map_msg ms) out' (pt_ext_map_data d to) (pt_ext_map_data d' to) (filterMap pt_map_name_msg l) (tot_map_name from) (tot_map_name to)) => //=.
     * exact: not_in_failed_not_in.
     * exact: in_failed_in.
     * by rewrite /= tot_map_name_inv_inverse /= H5.
     * rewrite /= 2!tot_map_name_inv_inverse /=.
       find_rewrite.
-      by rewrite /= H_m.
-    * have H_q := @pt_ext_net_handlers_some _ _ _ _ _ _ _ multi_map_congr _ _ _ _ _ _ _ _ H_m H_n.
+      by rewrite /= Heqo.
+    * have H_q := @pt_ext_net_handlers_some _ _ _ _ _ _ _ multi_map_congr _ _ _ _ _ _ _ _ Heqo Heqp.
       rewrite /pt_ext_mapped_net_handlers /= in H_q.
       by repeat break_let; repeat tuple_inversion.
     * rewrite /= /pt_ext_map_odnet /=.
@@ -622,7 +629,7 @@ invcs H_step.
       by find_rewrite_lem tot_map_name_inv_inverse.
   right.
   split => //.
-  have [H_eq_d H_ms] := pt_ext_net_handlers_none _ _ _ _ H_m H7.
+  have [H_eq_d H_ms] := pt_ext_net_handlers_none _ _ _ _ Heqo H7.
   rewrite /pt_ext_map_odnet /= collate_pt_map_update2_eq H_ms /=.
   set nwP1 := update2 _ _ _ _ _.
   set nwS1 := fun _ => match _ with _ => _ end.
@@ -643,17 +650,18 @@ invcs H_step.
     rewrite /update2 /=.
     break_if => //.
     break_and.
-    by rewrite -H -H0 2!tot_map_name_inv_inverse H6 /= H_m.
+    by rewrite -H -H0 2!tot_map_name_inv_inverse H6 /= Heqo.
   by rewrite H_eq_s H_eq_p.
-- case H_i: (pt_ext_map_input inp h d) => [inp'|].
+- destruct (pt_ext_map_input inp h d) eqn:?.
     left.
-    case H_h: (input_handlers (tot_map_name h) inp' (pt_ext_map_data d h)) => [[out' d''] ps].
-    exists ((tot_map_name h, inl inp') :: map2fst (tot_map_name h) (map inr out')).
-    apply (@StepOrderedDynamicFailure_input _ _ _ _ _ (tot_map_name h) _ _ _ _ out' inp' (pt_ext_map_data d h) (pt_ext_map_data d' h) (filterMap pt_map_name_msg l)) => //=.
+    destruct (input_handlers (tot_map_name h) i (pt_ext_map_data d h)) eqn:?.
+    destruct p as [out' d''].
+    exists ((tot_map_name h, inl i) :: map2fst (tot_map_name h) (map inr out')).
+    apply (@StepOrderedDynamicFailure_input _ _ _ _ _ (tot_map_name h) _ _ _ _ out' i (pt_ext_map_data d h) (pt_ext_map_data d' h) (filterMap pt_map_name_msg l)) => //=.
     * exact: not_in_failed_not_in.
     * exact: in_failed_in. 
     * by rewrite /pt_ext_map_odnet /= tot_map_name_inv_inverse H5.
-    * have H_q := @pt_ext_input_handlers_some _ _ _ _ _ _ _ multi_map_congr h inp d _ _ _ _ H_i H_h.
+    * have H_q := @pt_ext_input_handlers_some _ _ _ _ _ _ _ multi_map_congr h inp d _ _ _ _ Heqo Heqp.
       rewrite /pt_ext_mapped_input_handlers /= in H_q.
       find_rewrite.
       by repeat tuple_inversion.
@@ -670,7 +678,7 @@ invcs H_step.
       by find_rewrite_lem tot_map_name_inv_inverse.
   right.
   rewrite /= /pt_ext_map_odnet /=.
-  have [H_d H_l] := pt_ext_input_handlers_none h inp d H_i H6.
+  have [H_d H_l] := pt_ext_input_handlers_none h inp d Heqo H6.
   split => //=.
   rewrite collate_pt_map_eq H_l /=.
   set nwS1 := fun n : name => match _ with | _ => _ end.

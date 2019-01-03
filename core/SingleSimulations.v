@@ -1,7 +1,7 @@
 Require Import Verdi.Verdi.
 Require Import Verdi.DynamicNetLemmas.
 
-Require Import mathcomp.ssreflect.ssreflect.
+Require Import Verdi.Ssrexport.
 
 Set Implicit Arguments.
 
@@ -60,22 +60,22 @@ invcs H_step.
   break_if; last by left.
   right.
   subst_max.
-  case H_hnd: (input_handler (tot_s_map_msg me from m) (tot_s_map_data (onwState net me))) => [out' d'].
-  have H_eq := H_net_eq _ _ _ _ _ _ _ _ _ _ _ H_star H3 H4 H5 H_hnd.
+  destruct (input_handler (tot_s_map_msg me from m) (tot_s_map_data (onwState net me))) eqn:?.
+  have H_eq := H_net_eq _ _ _ _ _ _ _ _ _ _ _ H_star H3 H4 H5 Heqp.
   break_and.
-  exists (inl (tot_s_map_msg me from m) :: (map inr out')).
+  exists (inl (tot_s_map_msg me from m) :: (map inr l0)).
   apply: SST_deliver => //=.
-  by rewrite H_hnd H0.
+  by rewrite Heqp H0.
 - rewrite /update.
   break_if; last by left.
   right.
   subst_max.
-  case H_hnd: (input_handler (tot_s_map_input me inp) (tot_s_map_data (onwState net me))) => [out' d'].
-  have H_eq_inp := @tot_s_input_handlers_eq _ _ _ _ _ _ map_congr _ _ _ _ _ _ _ H4 H_hnd.
+  destruct (input_handler (tot_s_map_input me inp) (tot_s_map_data (onwState net me))) eqn:?.
+  have H_eq_inp := @tot_s_input_handlers_eq _ _ _ _ _ _ map_congr _ _ _ _ _ _ _ H4 Heqp.
   break_and.
-  exists (inl (tot_s_map_input me inp) :: map inr out').
+  exists (inl (tot_s_map_input me inp) :: map inr l0).
   apply: SST_deliver => //=.
-  by rewrite H_hnd H0.
+  by rewrite Heqp H0.
 - by left.
 Qed.
 
@@ -151,12 +151,12 @@ invcs H_step.
   find_injection.
   rewrite H_eq in H5.
   find_injection.
-  case H_hnd: (input_handler (tot_s_map_msg me from m) (tot_s_map_data d0)) => [out' d''].
-  have H_eq_st := H_net_eq _ _ _ _ _ _ _ _ _ _ _ _ H_star H6 H3 H_eq H7 H_hnd.
+  destruct (input_handler (tot_s_map_msg me from m) (tot_s_map_data d0)) eqn:?.
+  have H_eq_st := H_net_eq _ _ _ _ _ _ _ _ _ _ _ _ H_star H6 H3 H_eq H7 Heqp.
   break_and.
-  exists (inl (tot_s_map_msg me from m) :: (map inr out')).
+  exists (inl (tot_s_map_msg me from m) :: (map inr l0)).
   apply: SST_deliver => //=.
-  by rewrite H_hnd H0.
+  by rewrite Heqp H0.
 - move: H_eq'.
   rewrite /update.
   break_if => H_eq'; last by left; rewrite H_eq in H_eq'; find_injection.
@@ -164,12 +164,12 @@ invcs H_step.
   find_injection.
   rewrite H_eq in H5.
   find_injection.
-  case H_hnd: (input_handler (tot_s_map_input me inp) (tot_s_map_data d0)) => [out' d''].
-  have H_eq_inp := @tot_s_input_handlers_eq _ _ _ _ _ _ map_congr _ _ _ _ _ _ _ H6 H_hnd.
+  destruct (input_handler (tot_s_map_input me inp) (tot_s_map_data d0)) eqn:?.
+  have H_eq_inp := @tot_s_input_handlers_eq _ _ _ _ _ _ map_congr _ _ _ _ _ _ _ H6 Heqp.
   break_and.
-  exists (inl (tot_s_map_input me inp) :: map inr out').
+  exists (inl (tot_s_map_input me inp) :: map inr l0).
   apply: SST_deliver => //=.
-  by rewrite H_hnd H0.
+  by rewrite Heqp H0.
 - left.
   find_rewrite.
   by find_injection.
