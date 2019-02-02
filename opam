@@ -5,7 +5,7 @@ maintainer: "palmskog@gmail.com"
 homepage: "https://github.com/uwplse/verdi"
 dev-repo: "https://github.com/uwplse/verdi.git"
 bug-reports: "https://github.com/uwplse/verdi/issues"
-license: "BSD"
+license: "BSD-2-Clause"
 
 build: [
   [ "./configure" ]

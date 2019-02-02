@@ -10,7 +10,7 @@ Requirements
 
 Framework:
 
-- [`Coq 8.7`](https://coq.inria.fr/coq-87), or [`Coq 8.8`](https://github.com/coq/coq/releases/tag/V8.8.2)
+- [`Coq`](https://coq.inria.fr) (8.7, 8.8, or 8.9)
 - [`StructTact`](https://github.com/uwplse/StructTact)
 - [`InfSeqExt`](https://github.com/DistributedComponents/InfSeqExt)
 - [`Cheerios`](https://github.com/uwplse/cheerios)
