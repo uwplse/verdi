@@ -10,7 +10,7 @@ Requirements
 
 Framework:
 
-- [`Coq`](https://coq.inria.fr) (8.7, 8.8, or 8.9)
+- [`Coq`](https://coq.inria.fr) (8.7 or later)
 - [`StructTact`](https://github.com/uwplse/StructTact)
 - [`InfSeqExt`](https://github.com/DistributedComponents/InfSeqExt)
 - [`Cheerios`](https://github.com/uwplse/cheerios)
@@ -24,12 +24,10 @@ Building
 --------
 
 We recommend installing Verdi via [OPAM](http://opam.ocaml.org/doc/Install.html),
-which will automatically build and install its dependencies.
-
+which will automatically build and install its dependencies:
 ```
-opam repo add coq-released https://coq.inria.fr/opam/released
-opam repo add distributedcomponents-dev http://opam-dev.distributedcomponents.net
-opam install verdi
+opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev
+opam install coq-verdi
 ```
 
 To build Verdi manually, it is a good idea to first consult the [`opam`](opam)
@@ -54,10 +52,9 @@ to OCaml and linked with one of the shims in the Verdi
 [runtime library](https://github.com/DistributedComponents/verdi-runtime)
 that handles low-level network communication.
 
-To install the runtime library via OPAM, make sure the `distributedcomponents-dev`
-repo has been added as above and use the following command:
-
+To install the runtime library via OPAM, use the following commands:
 ```
+opam repo add distributedcomponents-dev http://opam-dev.distributedcomponents.net
 opam install verdi-runtime
 ```
 

@@ -1,0 +1,47 @@
+opam-version: "2.0"
+version: "dev"
+maintainer: "palmskog@gmail.com"
+
+homepage: "https://github.com/uwplse/verdi"
+dev-repo: "git+https://github.com/uwplse/verdi.git"
+bug-reports: "https://github.com/uwplse/verdi/issues"
+license: "BSD-2-Clause"
+synopsis: "Framework for verification of implementations of distributed systems in Coq"
+description: """
+Verdi is a Coq framework to implement and formally verify distributed systems.
+Verdi supports several different fault models ranging from idealistic to realistic.
+Verdi's verified system transformers (VSTs) encapsulate common fault tolerance
+techniques. Developers can verify an application in an idealized fault model, and
+then apply a VST to obtain an application that is guaranteed to have analogous
+properties in a more adversarial environment.
+"""
+
+build: [
+  [ "./configure" ]
+  [ make "-j%{jobs}%" ]
+]
+install: [ make "install" ]
+depends: [
+  "ocaml"
+  "coq" {(>= "8.7" & < "8.10~") | (= "dev")}
+  "coq-inf-seq-ext" {= "dev"}
+  "coq-struct-tact" {= "dev"}
+  "coq-cheerios" {= "dev"}
+]
+
+tags: [
+  "category:Computer Science/Concurrent Systems and Protocols/Theory of concurrent systems"
+  "keyword:program verification"
+  "keyword:distributed algorithms"
+  "logpath:Verdi"
+]
+authors: [
+  "James R. Wilcox"
+  "Doug Woos"
+  "Pavel Panchekha"
+  "Zachary Tatlock"
+  "Steve Anton"
+  "Karl Palmskog"
+  "Ryan Doenges"
+  "Justin Adsuara"
+]
