@@ -41,6 +41,11 @@ matrix:
     - NJOBS=2
     <<: *OPAM
   - env:
+    - COQ_IMAGE=coqorg/coq:8.10
+    - CONTRIB_NAME=coq-verdi
+    - NJOBS=2
+    <<: *OPAM
+  - env:
     - COQ_IMAGE=coqorg/coq:dev
     - CONTRIB_NAME=coq-verdi
     - NJOBS=2

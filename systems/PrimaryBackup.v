@@ -356,7 +356,7 @@ Section PrimaryBackup.
     break_match; auto; congruence.
   Qed.
 
-  Hint Extern 4 => congruence.
+  Hint Extern 4 => congruence : core.
 
   Lemma correspond_preserved_primary_apply_entry :
     forall sigma sigma' st tr_1 tr_m tr_m' i l d h,

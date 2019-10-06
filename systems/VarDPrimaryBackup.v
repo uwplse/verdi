@@ -21,7 +21,11 @@ Proof.
   eauto using step_1_star_trace_correct.
 Qed.
 
-Eval compute in revert_trace [(Primary, inl (Request (Put "james" "awesome")))].
+Example revert_trace_primary_empty :
+  revert_trace [(Primary, inl (Request (Put "james" "awesome")))] = [].
+Proof.
+  reflexivity.
+Qed.
 
 Example revert_trace_eg :
   forall net tr o,

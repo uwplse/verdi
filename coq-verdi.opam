@@ -17,13 +17,13 @@ properties in a more adversarial environment.
 """
 
 build: [
-  [ "./configure" ]
-  [ make "-j%{jobs}%" ]
+  ["./configure"]
+  [make "-j%{jobs}%"]
 ]
-install: [ make "install" ]
+install: [make "install"]
 depends: [
   "ocaml"
-  "coq" {(>= "8.7" & < "8.10~") | (= "dev")}
+  "coq" {(>= "8.7" & < "8.11~") | (= "dev")}
   "coq-inf-seq-ext" {= "dev"}
   "coq-struct-tact" {= "dev"}
   "coq-cheerios" {= "dev"}
@@ -36,12 +36,12 @@ tags: [
   "logpath:Verdi"
 ]
 authors: [
+  "Justin Adsuara"
+  "Steve Anton"
+  "Ryan Doenges"
+  "Karl Palmskog"
+  "Pavel Panchekha"
+  "Zachary Tatlock"  
   "James R. Wilcox"
   "Doug Woos"
-  "Pavel Panchekha"
-  "Zachary Tatlock"
-  "Steve Anton"
-  "Karl Palmskog"
-  "Ryan Doenges"
-  "Justin Adsuara"
 ]
