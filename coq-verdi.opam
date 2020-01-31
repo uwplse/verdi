@@ -22,8 +22,7 @@ build: [
 ]
 install: [make "install"]
 depends: [
-  "ocaml"
-  "coq" {(>= "8.7" & < "8.11~") | (= "dev")}
+  "coq" {(>= "8.7" & < "8.12~") | (= "dev")}
   "coq-inf-seq-ext" {= "dev"}
   "coq-struct-tact" {= "dev"}
   "coq-cheerios" {= "dev"}
@@ -41,7 +40,7 @@ authors: [
   "Ryan Doenges"
   "Karl Palmskog"
   "Pavel Panchekha"
-  "Zachary Tatlock"  
+  "Zachary Tatlock"
   "James R. Wilcox"
   "Doug Woos"
 ]
