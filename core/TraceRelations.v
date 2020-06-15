@@ -35,7 +35,7 @@ Section TraceRelations.
     find_copy_apply_lem_hyp refl_trans_1n_n1_trace.
     remember init as s'.
     induction H1.
-    - intros; exfalso; eauto using T_false_init.
+    - intros; exfalso; pose T_false_init; auto.
     - subst. destruct (T_dec cs); intuition eauto using R_monotonic, refl_trans_n1_1n_trace, T_implies_R.
   Qed.
 End TraceRelations.
