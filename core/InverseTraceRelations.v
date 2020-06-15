@@ -31,7 +31,7 @@ Section InverseTraceRelations.
     intros. find_apply_lem_hyp refl_trans_1n_n1_trace.
     remember init as s'.
     induction H.
-    - subst. exfalso. eauto using R_false_init.
+    - subst. exfalso. pose R_false_init; auto.
     - subst. concludes.
       destruct (R_dec x');
         intuition eauto using T_monotonic, refl_trans_n1_1n_trace, R_implies_T.
