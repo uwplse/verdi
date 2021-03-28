@@ -16,7 +16,7 @@ Section SeqNumCorrect.
     induction l; intros; simpl in *.
     - find_inversion. simpl in *. intuition.
     - break_match. find_inversion. simpl in *. intuition.
-      + subst. simpl. omega.
+      + subst. simpl. lia.
       + eauto using le_gt_trans, le_plus_l.
   Qed.
 
@@ -29,7 +29,7 @@ Section SeqNumCorrect.
     - intros. find_inversion. intuition.
     - break_match. find_inversion.
       find_insterU. find_insterU. conclude_using eauto.
-      omega.
+      lia.
   Qed.
 
   Lemma processPackets_ge_start :
@@ -84,7 +84,7 @@ Section SeqNumCorrect.
     - find_inversion. simpl in *. intuition.
     - break_match. find_inversion. simpl in *.
       intuition; subst; simpl in *; eauto;
-      subst; eapply processPackets_correct in Heqp; eauto; omega.
+      subst; eapply processPackets_correct in Heqp; eauto; lia.
   Qed.
 
   Lemma processPackets_NoDup : forall n l n' l',
@@ -98,7 +98,7 @@ Section SeqNumCorrect.
       constructor; auto.
       intro.
       eapply processPackets_correct in H; eauto.
-      simpl in *. omega.
+      simpl in *. lia.
   Qed.
 
   Lemma processPackets_preserves_messages :
@@ -186,7 +186,7 @@ Section SeqNumCorrect.
       + simpl in *. 
         repeat break_match; try find_inversion;
         simpl in *; find_apply_lem_hyp processPackets_num_monotonic;
-        find_apply_hyp_hyp; try omega.
+        find_apply_hyp_hyp; try lia.
     - in_crush; eauto with *.
   Qed.
 
@@ -293,7 +293,7 @@ Section SeqNumCorrect.
         match goal with
             _ : In ?p _, H : forall _ : packet, In _ _ -> _ |- _ =>
             specialize (H p); forward H; [in_crush|]; [concludes]
-        end. simpl in *. repeat find_rewrite. omega.
+        end. simpl in *. repeat find_rewrite. lia.
       + find_inversion.
         match goal with H : processPackets _ _ = _ |- _ =>
                         eapply processPackets_ge_start in H
@@ -301,7 +301,7 @@ Section SeqNumCorrect.
         match goal with
             _ : In ?p _, H : forall _ : packet, In _ _ -> _ |- _ =>
             specialize (H p); forward H; [in_crush|]; [concludes]
-        end. simpl in *. repeat find_rewrite. omega.
+        end. simpl in *. repeat find_rewrite. lia.
       + match goal with
             H : forall _ _ : packet, In _ _ -> _ |- ?p = ?p' =>
             specialize (H p p'); repeat (forward H; [in_crush|]; concludes)
@@ -321,7 +321,7 @@ Section SeqNumCorrect.
         match goal with
             _ : In ?p _, H : forall _ : packet, In _ _ -> _ |- _ =>
             specialize (H p); forward H; [in_crush|]; [concludes]
-        end. simpl in *. repeat find_rewrite. omega.
+        end. simpl in *. repeat find_rewrite. lia.
       + find_inversion.
         match goal with H : processPackets _ _ = _ |- _ =>
                         eapply processPackets_ge_start in H
@@ -329,7 +329,7 @@ Section SeqNumCorrect.
         match goal with
             _ : In ?p _, H : forall _ : packet, In _ _ -> _ |- _ =>
             specialize (H p); forward H; [in_crush|]; [concludes]
-        end. simpl in *. repeat find_rewrite. omega.
+        end. simpl in *. repeat find_rewrite. lia.
     - repeat find_rewrite. in_crush.
   Qed.
 
@@ -384,7 +384,7 @@ Section SeqNumCorrect.
           assert (In p (nwPackets net)) by eauto
       end.
       unfold sequence_sane in *.
-      find_apply_hyp_hyp. simpl in *. subst. simpl in *. omega.
+      find_apply_hyp_hyp. simpl in *. subst. simpl in *. lia.
   Qed.
 
   Lemma revertNetwork_deliver_step :
@@ -474,17 +474,17 @@ Section SeqNumCorrect.
              case i; intro.
              ** rewrite <- H12 in H11.
                 rewrite <- e0 in H11.
-                omega.
+                lia.
              ** pose proof (H0 _ _ _ H12).
-                omega.
+                lia.
            ++ match goal with
              | [H: In _ (assoc_default _ (assoc_set _ _ _ _) _ _) |- _ ] =>
                rewrite get_set_diff_default in H
              end; auto.
              pose proof (H0 _ _ _ i).
-             omega.
+             lia.
         -- pose proof (H0 _ _ _ i).
-           omega.
+           lia.
     - rewrite <- filter_except_one
       with (f := (fun p0 : seq_num_packet =>
                    if member (tmNum (pBody p0)) (assoc_default name_eq_dec (tdSeen (nwState st (pDst p0))) (pSrc p0) [])
@@ -563,7 +563,7 @@ Section SeqNumCorrect.
         in_crush.
         find_eapply_lem_hyp processPackets_ge_start; [|eauto].
         repeat (break_if; simpl in *; repeat find_rewrite; intuition);
-          unfold sequence_seen in *; find_apply_hyp_hyp; omega.
+          unfold sequence_seen in *; find_apply_hyp_hyp; lia.
     - f_equal. apply filter_fun_ext_eq.
       intros. repeat (break_if; simpl in *; repeat find_rewrite; intuition).
     - apply functional_extensionality. intros; repeat break_if; simpl in *; intuition.
