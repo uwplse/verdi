@@ -2075,7 +2075,7 @@ Section LockServ.
   Proof using.
     induction n; intros; simpl in *; auto.
     - intuition.
-      assert (n' = 0) by omega. subst.
+      assert (n' = 0) by lia. subst.
       eauto using clients_move_up_in_queue.
     - match goal with
       | H : _ (hd s) |- _ =>
@@ -2087,7 +2087,7 @@ Section LockServ.
           clear H1; clear H2; clear H3
       end; simpl in *.
       find_apply_lem_hyp le_lt_eq_dec. intuition.
-      + assert (n' <= n) by omega.
+      + assert (n' <= n) by lia.
         find_eapply_lem_hyp clients_move_up_in_queue; eauto;
           try solve [unfold and_tl in *; intuition]; [idtac].
         eapply eventually_trans. 4:eauto.

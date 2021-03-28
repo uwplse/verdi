@@ -242,7 +242,7 @@ Proof.
       * erewrite PrimaryNetHandler_no_msgs with (ms := l) in * by eauto.
         rewrite inc_in_flight_to_backup_cons_primary_dst in * by auto.
         simpl in *. rewrite inc_in_flight_to_backup_nil in *. auto with *.
-      * omega.
+      * lia.
     + find_apply_lem_hyp input_handlers_InputHandlers.
       find_copy_apply_lem_hyp InputHandler_inc_in_flight_to_backup_preserved.
       unfold send_packets in *. simpl in *.
@@ -250,9 +250,9 @@ Proof.
       destruct h eqn:?;
                try rewrite update_same;
         try rewrite update_diff by congruence.
-      * omega.
+      * lia.
       * erewrite InputHandler_backup_no_msgs with (l := l) by eauto.
-        simpl. rewrite inc_in_flight_to_backup_nil. omega.
+        simpl. rewrite inc_in_flight_to_backup_nil. lia.
 Qed.
 
 Theorem primary_ge_backup :
@@ -410,10 +410,10 @@ Proof.
       find_apply_lem_hyp NetHandler_trace_preserved.
       destruct (pDst p) eqn:?.
       * erewrite inc_in_flight_to_backup_cons_primary_dst in * by eauto.
-        rewrite trace_inputs_output in *. simpl in  *. omega.
+        rewrite trace_inputs_output in *. simpl in  *. lia.
       * rewrite ack_in_flight_to_primary_backup in * by auto.
         rewrite trace_outputs_backup in *. unfold send_packets in *.
-        simpl in *. rewrite <- plus_n_O in *. omega.
+        simpl in *. rewrite <- plus_n_O in *. lia.
     + find_apply_lem_hyp input_handlers_InputHandlers.
       find_apply_lem_hyp InputHandler_trace_preserved.
       rewrite cons_is_app.
@@ -423,7 +423,7 @@ Proof.
       repeat rewrite ack_in_flight_to_primary_app in *.
       rewrite trace_outputs_input.
       rewrite trace_inputs_output.
-      unfold send_packets in *. simpl in *. omega.
+      unfold send_packets in *. simpl in *. lia.
 Qed.
 
 Theorem inputs_ge_outputs :
@@ -433,5 +433,5 @@ Theorem inputs_ge_outputs :
 Proof.
   intros.
   apply inputs_eq_outputs_plus_inc_plus_ack in H.
-  omega.
+  lia.
 Qed.
