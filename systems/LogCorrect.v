@@ -299,10 +299,10 @@ Section LogCorrect.
       rewrite revert_send.
       assert (revert_packet : do_pDst p = pDst (revertPacket p)) by reflexivity.
       rewrite revert_packet in *.
-      apply StepFailure_deliver with (xs0 := map revertPacket xs)
-                                     (ys0 := map revertPacket ys)
-                                     (d0 := log_data d)
-                                     (l0 := l).
+      apply @StepFailure_deliver with (xs := map revertPacket xs)
+                                     (ys := map revertPacket ys)
+                                     (d := log_data d)
+                                     (l := l).
       + reflexivity.
       + assumption.
       + simpl.
@@ -319,7 +319,7 @@ Section LogCorrect.
       simpl.
       repeat rewrite map_app.
       rewrite revert_send.
-      apply StepFailure_input with (d0 := log_data d) (l0 := l).
+      apply @StepFailure_input with (d := log_data d) (l := l).
       + assumption.
       + unfold log_input_handlers, log_handler_result in *.
         do 2 break_let.
@@ -331,9 +331,9 @@ Section LogCorrect.
     - unfold revertLogNetwork.
       simpl. find_rewrite.
       rewrite map_app. simpl.
-      apply StepFailure_drop with (xs0 := map revertPacket xs)
-                                  (p0 := revertPacket p)
-                                  (ys0 := map revertPacket ys).
+      apply @StepFailure_drop with (xs := map revertPacket xs)
+                                  (p := revertPacket p)
+                                  (ys := map revertPacket ys).
       + reflexivity.
       + rewrite map_app. reflexivity.
     - unfold revertLogNetwork.
@@ -346,7 +346,7 @@ Section LogCorrect.
       + reflexivity.
       + reflexivity.
     - constructor.
-    - apply StepFailure_reboot with (h0 := h).
+    - apply @StepFailure_reboot with (h := h).
       + assumption.
       + reflexivity.
       + unfold revertLogNetwork. simpl.
