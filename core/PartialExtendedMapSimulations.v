@@ -154,7 +154,7 @@ case => {net net' tr}.
     destruct (net_handlers (pDst p0) (pSrc p0) (pBody p0) (pt_ext_map_data (nwState net (pDst p)) (pDst p))) eqn:?.
     destruct p1 as [out' d'].
     exists [(pDst p0, inr out')].
-    apply StepAsync_deliver with (xs := filterMap pt_map_packet ms) (ys := filterMap pt_map_packet ms') (d0 := pt_ext_map_data d (pDst p)) (l1 := filterMap pt_map_name_msg l).
+    apply @StepAsync_deliver with (xs := filterMap pt_map_packet ms) (ys := filterMap pt_map_packet ms') (d := pt_ext_map_data d (pDst p)) (l := filterMap pt_map_name_msg l).
     * rewrite /= H_eq filterMap_app /=.
       case H_p: (pt_map_packet _) => [p1|]; last by rewrite H_p in Heqo.
       by rewrite H_p in Heqo; injection Heqo => H_eq_p; rewrite H_eq_p.
