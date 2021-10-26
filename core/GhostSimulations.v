@@ -83,7 +83,7 @@ Definition deghost (net : @network _ refined_multi_params) : (@network _ multi_p
                      _
          ).
   intros.
-  destruct net.
+  destruct net as [? nwState].
   concludes.
   destruct nwState. auto.
 Defined.
@@ -249,7 +249,7 @@ Definition reghost (net : @network _ multi_params) : @network _ refined_multi_pa
                      _
          ).
   intros.
-  destruct net.
+  destruct net as [? nwState].
   concludes.
   exact (ghost_init, nwState).
 Defined.
