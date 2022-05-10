@@ -43,14 +43,14 @@ Definition refined_init_handlers (n : name) : ghost_data * data :=
 Definition refined_reboot (st : ghost_data * data) :=
   (fst st , reboot (snd st)).
 
-Instance refined_base_params : BaseParams :=
+#[global] Instance refined_base_params : BaseParams :=
   {
     data := (ghost_data * data)%type ;
     input := input ;
     output := output
   }.
 
-Instance refined_multi_params : MultiParams _ :=
+#[global] Instance refined_multi_params : MultiParams _ :=
   {
     name := name ;
     msg := msg ;
@@ -64,7 +64,7 @@ Instance refined_multi_params : MultiParams _ :=
     input_handlers := refined_input_handlers
   }.
 
-Instance refined_failure_params : FailureParams _ :=
+#[global] Instance refined_failure_params : FailureParams _ :=
   {
     reboot := refined_reboot
   }.
@@ -93,7 +93,7 @@ Arguments deghost_packet /_.
 Definition deghost_prop I (failed_net : list name * network) : Prop :=
   I ((fst failed_net), deghost (snd failed_net)).
 
-Instance refined_base_params_tot_map :
+#[global] Instance refined_base_params_tot_map :
  BaseParamsTotalMap refined_base_params base_params :=
   {
     tot_map_data := snd ;
@@ -101,27 +101,27 @@ Instance refined_base_params_tot_map :
     tot_map_output := id
   }.
 
-Instance refined_multi_params_name_tot_map :
+#[global] Instance refined_multi_params_name_tot_map :
  MultiParamsNameTotalMap refined_multi_params multi_params :=
   {
     tot_map_name := id ;
     tot_map_name_inv := id
   }.
 
-Instance refined_multi_params_name_tot_map_bijective :
+#[global] Instance refined_multi_params_name_tot_map_bijective :
  MultiParamsNameTotalMapBijective refined_multi_params_name_tot_map :=
   {
     tot_map_name_inv_inverse := fun _ => eq_refl ;
     tot_map_name_inverse_inv := fun _ => eq_refl
   }.
 
-Instance refined_multi_params_tot_msg_map :
+#[global] Instance refined_multi_params_tot_msg_map :
  MultiParamsMsgTotalMap refined_multi_params multi_params :=
   {
     tot_map_msg := id
   }.
 
-Program Instance refined_multi_params_map_congruency :
+#[global] Program Instance refined_multi_params_map_congruency :
  MultiParamsTotalMapCongruency refined_base_params_tot_map
   refined_multi_params_name_tot_map refined_multi_params_tot_msg_map :=
   {
@@ -144,7 +144,7 @@ find_inversion.
 by rewrite /id /= map_id /tot_map_name_msgs /= /id /= map_fst_snd_id.
 Qed.
 
-Instance refined_failure_params_map_congruency :
+#[global] Instance refined_failure_params_map_congruency :
  FailureParamsTotalMapCongruency refined_failure_params
   failure_params refined_base_params_tot_map :=
   {
@@ -335,14 +335,14 @@ Proof using.
   decide equality; auto using msg_eq_dec, ghost_msg_eq_dec.
 Qed.
 
-Instance mgv_refined_base_params : BaseParams :=
+#[global] Instance mgv_refined_base_params : BaseParams :=
   {
     data := data ;
     input := input ;
     output := output
   }.
 
-Instance mgv_refined_multi_params : MultiParams _ :=
+#[global] Instance mgv_refined_multi_params : MultiParams _ :=
   {
     name := name ;
     msg := (ghost_msg * msg) ;
@@ -356,7 +356,7 @@ Instance mgv_refined_multi_params : MultiParams _ :=
     input_handlers := mgv_refined_input_handlers
   }.
 
-Instance mgv_refined_failure_params : FailureParams _ :=
+#[global] Instance mgv_refined_failure_params : FailureParams _ :=
   {
     reboot := (@reboot base_params multi_params failure_params)
   }.
@@ -381,7 +381,7 @@ Defined.
 
 Arguments mgv_deghost_packet /_.
 
-Instance mgv_refined_base_params_tot_map :
+#[global] Instance mgv_refined_base_params_tot_map :
  BaseParamsTotalMap mgv_refined_base_params base_params :=
   {
     tot_map_data := id ;
@@ -389,27 +389,27 @@ Instance mgv_refined_base_params_tot_map :
     tot_map_output := id
   }.
 
-Instance mgv_refined_multi_params_name_tot_map :
+#[global] Instance mgv_refined_multi_params_name_tot_map :
  MultiParamsNameTotalMap mgv_refined_multi_params multi_params :=
   {
     tot_map_name := id ;
     tot_map_name_inv := id ;
   }.
 
-Instance mgv_refined_multi_params_name_tot_map_bijective :
+#[global] Instance mgv_refined_multi_params_name_tot_map_bijective :
  MultiParamsNameTotalMapBijective mgv_refined_multi_params_name_tot_map :=
   {
     tot_map_name_inv_inverse := fun _ => eq_refl ;
     tot_map_name_inverse_inv := fun _ => eq_refl
   }.
 
-Instance mgv_refined_multi_params_tot_map :
+#[global] Instance mgv_refined_multi_params_tot_map :
  MultiParamsMsgTotalMap mgv_refined_multi_params multi_params :=
   {
     tot_map_msg := snd ;
   }.
 
-Program Instance mgv_refined_multi_params_map_congruency :
+#[global] Program Instance mgv_refined_multi_params_map_congruency :
  MultiParamsTotalMapCongruency mgv_refined_base_params_tot_map
   mgv_refined_multi_params_name_tot_map mgv_refined_multi_params_tot_map :=
   {
@@ -441,7 +441,7 @@ find_inversion.
 by find_rewrite; find_rewrite.
 Qed.
 
-Instance mgv_refined_failure_params_map_congruency :
+#[global] Instance mgv_refined_failure_params_map_congruency :
  FailureParamsTotalMapCongruency mgv_refined_failure_params
   failure_params mgv_refined_base_params_tot_map :=
   {

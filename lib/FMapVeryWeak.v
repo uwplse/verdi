@@ -20,7 +20,7 @@ Module Type VWS.
   Declare Module E : DecidableType.
 
   Definition key := E.t.
-  Hint Transparent key : core.
+  #[global] Hint Transparent key : core.
 
   Parameter t : Type -> Type.
 

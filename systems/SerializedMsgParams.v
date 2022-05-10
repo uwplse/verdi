@@ -28,9 +28,9 @@ Section Serialized.
   Definition serialized_input_handlers (h : name) (inp : input) (d : data) :=
     serialize_handler_result (input_handlers h inp d).
 
-  Instance serialized_base_params : BaseParams := orig_base_params.
+  #[global] Instance serialized_base_params : BaseParams := orig_base_params.
 
-  Instance serialized_multi_params : MultiParams _ :=
+  #[global] Instance serialized_multi_params : MultiParams _ :=
     {
       name := name;
       name_eq_dec := name_eq_dec;
@@ -44,12 +44,12 @@ Section Serialized.
       input_handlers := serialized_input_handlers;
     }.
 
-  Instance serialized_failure_params : FailureParams serialized_multi_params :=
+  #[global] Instance serialized_failure_params : FailureParams serialized_multi_params :=
     {
       reboot := @reboot _ _ orig_failure_params
     }.
 
-  Instance serialized_name_overlay_params : NameOverlayParams serialized_multi_params :=
+  #[global] Instance serialized_name_overlay_params : NameOverlayParams serialized_multi_params :=
     {
       adjacent_to := @adjacent_to _ _ orig_name_overlay_params;
       adjacent_to_dec := @adjacent_to_dec _ _ orig_name_overlay_params;
@@ -57,20 +57,20 @@ Section Serialized.
       adjacent_to_irreflexive := @adjacent_to_irreflexive _ _ orig_name_overlay_params
     }.
 
-  Instance serialized_fail_msg_params : FailMsgParams serialized_multi_params :=
+  #[global] Instance serialized_fail_msg_params : FailMsgParams serialized_multi_params :=
     {
       msg_fail := serialize_top (serialize msg_fail)
     }.
 
-  Instance serialized_new_msg_params : NewMsgParams serialized_multi_params :=
+  #[global] Instance serialized_new_msg_params : NewMsgParams serialized_multi_params :=
     {
       msg_new := serialize_top (serialize msg_new)
     }.
 End Serialized.
 
-Hint Extern 5 (@BaseParams) => apply serialized_base_params : typeclass_instances.
-Hint Extern 5 (@MultiParams _) => apply serialized_multi_params : typeclass_instances.
-Hint Extern 5 (@FailureParams _ _) => apply serialized_failure_params : typeclass_instances.
-Hint Extern 5 (@NameOverlayParams _ _) => apply serialized_name_overlay_params : typeclass_instances.
-Hint Extern 5 (@FailMsgParams _ _) => apply serialized_fail_msg_params : typeclass_instances.
-Hint Extern 5 (@NewMsgParams _ _) => apply serialized_new_msg_params : typeclass_instances.
+#[global] Hint Extern 5 (@BaseParams) => apply serialized_base_params : typeclass_instances.
+#[global] Hint Extern 5 (@MultiParams _) => apply serialized_multi_params : typeclass_instances.
+#[global] Hint Extern 5 (@FailureParams _ _) => apply serialized_failure_params : typeclass_instances.
+#[global] Hint Extern 5 (@NameOverlayParams _ _) => apply serialized_name_overlay_params : typeclass_instances.
+#[global] Hint Extern 5 (@FailMsgParams _ _) => apply serialized_fail_msg_params : typeclass_instances.
+#[global] Hint Extern 5 (@NewMsgParams _ _) => apply serialized_new_msg_params : typeclass_instances.

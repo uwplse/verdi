@@ -7,7 +7,7 @@ Require Import Verdi.PrimaryBackup.
 
 Open Scope string_scope.
 
-Instance vard_pbj_params : PrimaryBackupParams vard_base_params :=
+#[global] Instance vard_pbj_params : PrimaryBackupParams vard_base_params :=
   {
     input_eq_dec := VarD.input_eq_dec
   }.

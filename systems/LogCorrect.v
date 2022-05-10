@@ -16,9 +16,9 @@ Section LogCorrect.
 
   Variable snapshot_interval : nat.
 
-  Instance log_base_params : BaseParams := @log_base_params orig_base_params.
-  Instance log_multi_params : DiskOpMultiParams log_base_params := log_multi_params snapshot_interval.
-  Instance log_failure_params : DiskOpFailureParams log_multi_params := log_failure_params snapshot_interval.
+  #[global] Instance log_base_params : BaseParams := @log_base_params orig_base_params.
+  #[global] Instance log_multi_params : DiskOpMultiParams log_base_params := log_multi_params snapshot_interval.
+  #[global] Instance log_failure_params : DiskOpFailureParams log_multi_params := log_failure_params snapshot_interval.
 
   Lemma apply_log_app : forall h d entries e,
       apply_log h d (entries ++ [e]) =

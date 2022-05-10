@@ -48,14 +48,14 @@ Section Log.
     let '(out, d, ps) := input_handlers h inp (log_data st) in
     log_handler_result (log_num_entries st) (inl inp) out d ps.
 
-  Instance log_base_params : BaseParams :=
+  #[global] Instance log_base_params : BaseParams :=
     {
       data := log_state ;
       input := input ;
       output := output
     }.
 
-  Instance log_multi_params : DiskOpMultiParams log_base_params :=
+  #[global] Instance log_multi_params : DiskOpMultiParams log_base_params :=
     {
       do_name := name;
       file_name := log_files;
@@ -107,10 +107,10 @@ Section Log.
     in
     (mk_log_state 0 d, [Delete Log; Write Snapshot (serialize d); Write Count (serialize 0)]).
 
-  Instance log_failure_params : DiskOpFailureParams log_multi_params :=
+  #[global] Instance log_failure_params : DiskOpFailureParams log_multi_params :=
     { do_reboot := do_log_reboot }.
 End Log.
 
-Hint Extern 5 (@BaseParams) => apply log_base_params : typeclass_instances.
-Hint Extern 5 (@DiskOpMultiParams _) => apply log_multi_params : typeclass_instances.
-Hint Extern 5 (@DiskOpFailureParams _ _) => apply log_failure_params : typeclass_instances.
+#[global] Hint Extern 5 (@BaseParams) => apply log_base_params : typeclass_instances.
+#[global] Hint Extern 5 (@DiskOpMultiParams _) => apply log_multi_params : typeclass_instances.
+#[global] Hint Extern 5 (@DiskOpFailureParams _ _) => apply log_failure_params : typeclass_instances.

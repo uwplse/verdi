@@ -839,7 +839,7 @@ Section LockServ.
   Ltac unlabeled_unfold :=
     unfold unlabeled_net_handlers, unlabeled_input_handlers in *.
   
-  Instance LockServ_Decompositition : Decomposition _ LockServ_MultiParams.
+  #[global] Instance LockServ_Decompositition : Decomposition _ LockServ_MultiParams.
   apply Build_Decomposition with (state_invariant := locks_correct)
                                  (network_invariant := LockServ_network_invariant)
                                  (network_network_invariant := LockServ_network_network_invariant);

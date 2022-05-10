@@ -196,13 +196,13 @@ Section PrimaryBackup.
     - left. intuition.
   Qed.
 
-  Instance PB_base_params : BaseParams :=
+  #[global] Instance PB_base_params : BaseParams :=
     Build_BaseParams
       PB_data
       PB_input
       PB_output.
 
-  Instance PB_multi_params : MultiParams PB_base_params :=
+  #[global] Instance PB_multi_params : MultiParams PB_base_params :=
     Build_MultiParams
       PB_base_params
       msg_eq_dec

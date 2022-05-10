@@ -531,4 +531,4 @@ Section LabeledStepOrderDynamicFailure.
   Qed.
 End LabeledStepOrderDynamicFailure.
 
-Hint Extern 4 (@LabeledMultiParams _) => apply unlabeled_multi_params : typeclass_instances.
+#[global] Hint Extern 4 (@LabeledMultiParams _) => apply unlabeled_multi_params : typeclass_instances.

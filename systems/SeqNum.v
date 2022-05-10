@@ -47,14 +47,14 @@ Section SeqNum.
     let (n', tpkts) := processPackets (tdNum state) pkts in
     (out, mkseq_num_data n' (tdSeen state) data', tpkts).
 
-  Instance base_params : BaseParams :=
+  #[global] Instance base_params : BaseParams :=
     {
       data := seq_num_data ;
       input := input ;
       output := output
     }.
 
-  Instance multi_params : MultiParams _ :=
+  #[global] Instance multi_params : MultiParams _ :=
     {
       name := name ;
       msg := seq_num_msg ;
@@ -69,5 +69,5 @@ Section SeqNum.
     }.
 End SeqNum.
 
-Hint Extern 5 (@BaseParams) => apply base_params : typeclass_instances.
-Hint Extern 5 (@MultiParams _) => apply multi_params : typeclass_instances.
+#[global] Hint Extern 5 (@BaseParams) => apply base_params : typeclass_instances.
+#[global] Hint Extern 5 (@MultiParams _) => apply multi_params : typeclass_instances.
