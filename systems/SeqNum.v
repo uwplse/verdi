@@ -69,5 +69,7 @@ Section SeqNum.
     }.
 End SeqNum.
 
+#[global]
 Hint Extern 5 (@BaseParams) => apply base_params : typeclass_instances.
+#[global]
 Hint Extern 5 (@MultiParams _) => apply multi_params : typeclass_instances.

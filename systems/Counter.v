@@ -62,6 +62,7 @@ Definition InputHandler (me : Name) (i : Input) : Handler Data :=
   | backup => BackupInputHandler i
   end.
 
+#[global]
 Instance Counter_BaseParams : BaseParams :=
   {
     data := Data;
@@ -81,6 +82,7 @@ Proof.
   repeat constructor; simpl; intuition discriminate.
 Qed.
 
+#[global]
 Instance Counter_MultiParams : MultiParams Counter_BaseParams :=
   {
     name := Name;
