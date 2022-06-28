@@ -68,9 +68,15 @@ Section Serialized.
     }.
 End Serialized.
 
+#[global]
 Hint Extern 5 (@BaseParams) => apply serialized_base_params : typeclass_instances.
+#[global]
 Hint Extern 5 (@MultiParams _) => apply serialized_multi_params : typeclass_instances.
+#[global]
 Hint Extern 5 (@FailureParams _ _) => apply serialized_failure_params : typeclass_instances.
+#[global]
 Hint Extern 5 (@NameOverlayParams _ _) => apply serialized_name_overlay_params : typeclass_instances.
+#[global]
 Hint Extern 5 (@FailMsgParams _ _) => apply serialized_fail_msg_params : typeclass_instances.
+#[global]
 Hint Extern 5 (@NewMsgParams _ _) => apply serialized_new_msg_params : typeclass_instances.

@@ -87,6 +87,7 @@ Definition VarDHandler := runHandler VarDHandler'.
 
 Definition init_map := Map.empty string.
 
+#[global]
 Instance vard_base_params : BaseParams :=
   {
     data := data ;
@@ -94,6 +95,7 @@ Instance vard_base_params : BaseParams :=
     output := output
   }.
 
+#[global]
 Instance vard_one_node_params : OneNodeParams _ :=
   {
     init := init_map ;

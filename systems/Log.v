@@ -111,6 +111,9 @@ Section Log.
     { do_reboot := do_log_reboot }.
 End Log.
 
+#[global]
 Hint Extern 5 (@BaseParams) => apply log_base_params : typeclass_instances.
+#[global]
 Hint Extern 5 (@DiskOpMultiParams _) => apply log_multi_params : typeclass_instances.
+#[global]
 Hint Extern 5 (@DiskOpFailureParams _ _) => apply log_failure_params : typeclass_instances.
