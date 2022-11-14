@@ -2,7 +2,6 @@
 *.glob
 *.v.d
 *.buildtime
-_CoqProject
 Makefile.coq
 Makefile.coq.bak
 Makefile.coq.conf
@@ -15,3 +14,4 @@ Makefile.coq.conf
 *.vok
 *.pyc
 .coqdeps.d
+.lia.cache
