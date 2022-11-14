@@ -1,0 +1,147 @@
+---
+fullname: Verdi
+shortname: verdi
+opam_name: coq-verdi
+organization: uwplse
+community: false
+action: true
+dune: false
+coqdoc: false
+
+synopsis: Framework for verification of implementations of distributed systems in Coq
+
+description: |-
+  Verdi is a Coq framework to implement and formally verify distributed systems.
+  Verdi supports several different fault models ranging from idealistic to realistic.
+  Verdi's verified system transformers (VSTs) encapsulate common fault tolerance
+  techniques. Developers can verify an application in an idealized fault model, and
+  then apply a VST to obtain an application that is guaranteed to have analogous
+  properties in a more adversarial environment.
+
+publications:
+- pub_url: http://verdi.uwplse.org/verdi.pdf
+  pub_title: 'Verdi: A Framework for Implementing and Verifying Distributed Systems'
+  pub_doi: 10.1145/2737924.2737958
+- pub_url: http://verdi.uwplse.org/raft-proof.pdf
+  pub_title: 'Planning for Change in a Formal Verification of the Raft Consensus Protocol'
+  pub_doi: 10.1145/2854065.2854081
+
+authors:
+- name: Justin Adsuara
+- name: Steve Anton
+- name: Ryan Doenges
+- name: Karl Palmskog
+- name: Pavel Panchekha
+- name: Zachary Tatlock
+- name: James R. Wilcox
+- name: Doug Woos
+
+maintainers:
+- name: Karl Palmskog
+  nickname: palmskog
+
+opam-file-maintainer: palmskog@gmail.com
+
+opam-file-version: dev
+
+license:
+  fullname: BSD 2-Clause "Simplified" license
+  identifier: BSD-2-Clause
+
+supported_coq_versions:
+  text: 8.14 or later
+  opam: '{>= "8.14"}'
+
+tested_coq_opam_versions:
+- version: dev
+- version: '8.16'
+- version: '8.15'
+- version: '8.14'
+
+dependencies:
+- opam:
+    name: coq-inf-seq-ext
+    version: '{= "dev"}'
+  description: |-
+    [InfSeqExt](https://github.com/DistributedComponents/InfSeqExt)
+- opam:
+    name: coq-struct-tact
+    version: '{= "dev"}'
+  description: |-
+    [StructTact](https://github.com/uwplse/StructTact)
+- opam:
+    name: coq-cheerios
+    version: '{= "dev"}'
+  description: |-
+    [Cheerios](https://github.com/uwplse/cheerios)
+
+ci_extra_dev: true
+
+namespace: Verdi
+
+keywords:
+- name: program verification
+- name: distributed algorithms
+
+categories:
+- name: Computer Science/Concurrent Systems and Protocols/Theory of concurrent systems
+
+build: |-
+  ## Building and installation instructions
+
+  We recommend installing Verdi via [opam](http://opam.ocaml.org/doc/Install.html),
+  which will automatically build and install its dependencies:
+  ```shell
+  opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev
+  opam install coq-verdi
+  ```
+
+  To build Verdi manually, first install all requirements. Then,
+  run `make` in the Verdi root directory.  This will compile
+  the framework's core specifications and proofs, as well as some
+  simple example systems and their correctness proofs.
+
+  To run Verdi systems on real hardware, event handler code must be extracted
+  to OCaml and linked with one of the shims in the Verdi
+  [runtime library](https://github.com/DistributedComponents/verdi-runtime)
+  that handles low-level network communication.
+
+documentation: |-
+  ## Documentation
+ 
+  To set up your own Verdi-based distributed systems verification project, we
+  recommend basing it on
+  [Verdi LockServ](https://github.com/DistributedComponents/verdi-lockserv).
+
+  Verdi LockServ contains a minimalistic implementation of a message-passing
+  lock server and a proof that it maintains mutual exclusion between client
+  nodes. At build time, extracted OCaml code is linked to a runtime library
+  shim to produce an executable program that can be run in a cluster. There
+  is also a simple script to interface with cluster nodes.
+
+  In addition to the example verified systems listed below, see the
+  scientific papers and blog posts listed at the
+  [Verdi website](http://verdi.uwplse.org). See also
+  [Verdi Raft](https://github.com/uwplse/verdi-raft), a verified
+  implementation of the Raft distributed consensus protocol.
+
+  ### Files
+
+  - Core Verdi files:
+    - `Verdi.v`: exporting of core Verdi theories, imported by systems
+    - `Net.v`: core (unlabeled) network semantics
+    - `LabeledNet.v`: labeled network semantics, for use in liveness reasoning
+    - `HandlerMonad.v`: a monad for writing network/input handlers
+    - `StatePacketPacket.v`: a technique for writing easily decomposable
+    invariants
+  - Example systems:
+    - `Counter.v`: counting server with backup
+    - `LockServ.v`: lock server with proof of safety
+    - `LiveLockServ.v`: lock server with proof of liveness
+    - `VarD.v`: `vard`, a key-value store
+  - Verified system transformers:
+    - `SeqNum.v` and `SeqNumCorrect.v`, a system transformer implementing sequence numbering
+    - `LockServSeqNum.v`, the sequence numbering transformer applied to the lock server
+    - `PrimaryBackup.v`, a system transformer implementing asynchronous primary-backup replication
+    - `VarDPrimaryBackup.v`, the primary-backup transformer applied to the key-value store
+---

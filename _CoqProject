@@ -1,0 +1,48 @@
+-Q core Verdi
+-Q lib Verdi
+-Q systems Verdi
+-Q extraction Verdi
+
+core/NameOverlay.v
+core/DynamicNetLemmas.v
+core/Net.v
+core/HandlerMonad.v
+core/Verdi.v
+core/StateMachineHandlerMonad.v
+core/InverseTraceRelations.v
+core/SingleSimulations.v
+core/PartialMapSimulations.v
+core/TotalMapExecutionSimulations.v
+core/VerdiHints.v
+core/DupDropReordering.v
+core/PartialMapExecutionSimulations.v
+core/GhostSimulations.v
+core/StatePacketPacketDecomposition.v
+core/TraceRelations.v
+core/LabeledNet.v
+core/TotalMapSimulations.v
+core/PartialExtendedMapSimulations.v
+
+lib/Ssrexport.v
+lib/FMapVeryWeak.v
+
+systems/Counter.v
+systems/SerializedMsgParams.v
+systems/PrimaryBackup.v
+systems/SerializedMsgParamsCorrect.v
+systems/LockServSeqNum.v
+systems/VarDPrimaryBackup.v
+systems/VarD.v
+systems/SeqNum.v
+systems/LiveLockServ.v
+systems/SeqNumCorrect.v
+systems/LockServ.v
+systems/Log.v
+systems/LogCorrect.v
+
+extraction/ExtrOcamlFinInt.v
+extraction/ExtrOcamlNatIntExt.v
+extraction/ExtrOcamlDiskOp.v
+extraction/ExtrOcamlBasicExt.v
+extraction/ExtrOcamlBool.v
+extraction/ExtrOcamlList.v
