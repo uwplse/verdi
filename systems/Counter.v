@@ -182,7 +182,7 @@ Proof.
   intros.
   monad_unfold.
   repeat break_match; find_inversion; compute; auto.
-  rewrite plus_comm. auto.
+  rewrite Nat.add_comm. auto.
 Qed.
 
 Lemma NetHandler_inc_in_flight_to_backup_preserved :

@@ -892,7 +892,7 @@ Section LockServ.
                                         end
 
       | (Client n, inr [Locked]) :: tr => last_holder' (Some n) tr
-      | (n, _) :: tr => last_holder' holder tr
+      | (_n, _) :: tr => last_holder' holder tr
     end.
 
   Fixpoint trace_mutual_exclusion' (holder : option Client_index) (trace : list (name * (input + list output))) : Prop :=
@@ -904,7 +904,7 @@ Section LockServ.
                                                          else trace_mutual_exclusion' holder tr'
                                              | _ => trace_mutual_exclusion' holder tr'
                                            end
-      | (n, (inl _)) :: tr' => trace_mutual_exclusion' holder tr'
+      | (_n, (inl _)) :: tr' => trace_mutual_exclusion' holder tr'
       | (Client n, (inr [Locked])) :: tr' => match holder with
                                                | None => trace_mutual_exclusion' (Some n) tr'
                                                | Some _ => False
