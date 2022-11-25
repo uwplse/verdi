@@ -16,8 +16,10 @@ Section SeqNumCorrect.
     induction l; intros; simpl in *.
     - find_inversion. simpl in *. intuition.
     - break_match. find_inversion. simpl in *. intuition.
-      + subst. simpl. lia.
-      + eauto using le_gt_trans, le_plus_l.
+      + subst; simpl; lia.
+      + apply (Nat.lt_le_trans _ n0).
+        * apply (IHl _ l0); auto.
+        * auto.
   Qed.
 
   Lemma processPackets_num_monotonic :
@@ -171,7 +173,7 @@ Section SeqNumCorrect.
         repeat break_match; try find_inversion.
         * rewrite <- e. intuition.
         * apply processPackets_num_monotonic in Heqp0.
-          apply lt_le_trans with (m := (tdNum (nwState a (pDst p0)))); auto.
+          apply Nat.lt_le_trans with (m := (tdNum (nwState a (pDst p0)))); auto.
           rewrite <- e. intuition.
         * intuition.
         * intuition.
@@ -207,7 +209,7 @@ Section SeqNumCorrect.
           apply processPackets_num_monotonic in H
       end;
       try break_if; simpl in *; intuition; subst; eauto;
-      repeat find_rewrite; (eapply lt_le_trans; [|eauto]; eauto).
+      repeat find_rewrite; (eapply Nat.lt_le_trans; [|eauto]; eauto).
       * case (name_eq_dec (pSrc p) (pDst p)); intro.
         + rewrite <- e in H2.
           rewrite get_set_same_default in H2.
@@ -248,7 +250,7 @@ Section SeqNumCorrect.
       end;
       try break_if; simpl in *; intuition; subst; eauto;
       repeat find_rewrite;
-      (eapply lt_le_trans; [|eauto]; eauto).
+      (eapply Nat.lt_le_trans; [|eauto]; eauto).
     - eauto.
   Qed.
 
