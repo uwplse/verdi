@@ -18,12 +18,13 @@ jobs:
       matrix:
         image:
           - 'coqorg/coq:dev'
+          - 'coqorg/coq:8.17'
           - 'coqorg/coq:8.16'
           - 'coqorg/coq:8.15'
           - 'coqorg/coq:8.14'
       fail-fast: false
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: coq-community/docker-coq-action@v1
         with:
           opam_file: 'coq-verdi.opam'
@@ -33,6 +34,7 @@ jobs:
               opam repo -a --set-default add coq-extra-dev https://coq.inria.fr/opam/extra-dev
               opam config list; opam repo list; opam list
             endGroup
+
 
 # See also:
 # https://github.com/coq-community/docker-coq-action#readme
