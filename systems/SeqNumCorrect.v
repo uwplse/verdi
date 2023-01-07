@@ -1,6 +1,6 @@
-Require Import Verdi.Verdi.
-Require Import FunctionalExtensionality.
-Require Import Verdi.SeqNum.
+From Verdi Require Import Verdi.
+From Coq Require Import FunctionalExtensionality.
+From Verdi Require Import SeqNum.
 
 Section SeqNumCorrect.
   Context {orig_base_params : BaseParams}.
@@ -64,10 +64,12 @@ Section SeqNumCorrect.
       intuition.
       + subst. intuition.
       + subst. simpl in *.
-        apply processPackets_correct with (p := p) in Heqp0; intuition.
+        apply processPackets_correct with (p := p) in Heqp0;
+          intuition auto with zarith.
       + subst. simpl in *.
-        apply processPackets_correct with (p := p') in Heqp0; intuition.
-      + apply IHl with n0 l0 p p'; intuition.
+        apply processPackets_correct with (p := p') in Heqp0;
+          intuition auto with zarith.
+      + apply IHl with n0 l0 p p'; auto.
   Qed.
 
   Lemma processPackets_seq_eq :
@@ -171,12 +173,12 @@ Section SeqNumCorrect.
         repeat find_rewrite.
         do_in_app.
         repeat break_match; try find_inversion.
-        * rewrite <- e. intuition.
+        * rewrite <- e. intuition auto with datatypes.
         * apply processPackets_num_monotonic in Heqp0.
           apply Nat.lt_le_trans with (m := (tdNum (nwState a (pDst p0)))); auto.
-          rewrite <- e. intuition.
-        * intuition.
-        * intuition.
+          rewrite <- e. intuition auto with datatypes.
+        * intuition auto with datatypes.
+        * intuition auto with datatypes.
     - unfold seq_num_input_handlers in *. simpl in *. do_in_app. intuition.
       + do_in_map. subst; simpl in *.
         repeat break_match; try find_inversion; simpl in *; intuition.
@@ -279,7 +281,7 @@ Section SeqNumCorrect.
       repeat find_rewrite.
       repeat break_match; find_inversion; simpl in *; intuition;
       repeat do_in_map; subst; simpl in *.
-      + repeat do_in_app. intuition.
+      + repeat do_in_app. intuition auto with datatypes.
       + find_inversion.
         match goal with
           | x : prod _ _, x' : prod _ _ |- _ =>
@@ -290,19 +292,23 @@ Section SeqNumCorrect.
         end; eauto.
         match goal with
             _ : In ?p _, H : forall _ : packet, In _ _ -> _ |- _ =>
-            specialize (H p); forward H; [in_crush|]; [concludes]
-        end. simpl in *. repeat find_rewrite. lia.
+            specialize (H p); forward H;
+            [do_in_app; intuition auto with datatypes|]; [concludes]
+        end.
+        repeat find_rewrite. lia.
       + find_inversion.
         match goal with H : processPackets _ _ = _ |- _ =>
                         eapply processPackets_ge_start in H
         end; eauto.
         match goal with
             _ : In ?p _, H : forall _ : packet, In _ _ -> _ |- _ =>
-            specialize (H p); forward H; [in_crush|]; [concludes]
+            specialize (H p); forward H;
+            [do_in_app; intuition auto with datatypes|]; [concludes]
         end. simpl in *. repeat find_rewrite. lia.
       + match goal with
             H : forall _ _ : packet, In _ _ -> _ |- ?p = ?p' =>
-            specialize (H p p'); repeat (forward H; [in_crush|]; concludes)
+            specialize (H p p'); repeat (forward H;
+          [repeat do_in_app; intuition auto with datatypes|]; concludes)
         end; auto.
     - unfold seq_num_input_handlers in *.
       repeat do_in_app.
@@ -328,7 +334,9 @@ Section SeqNumCorrect.
             _ : In ?p _, H : forall _ : packet, In _ _ -> _ |- _ =>
             specialize (H p); forward H; [in_crush|]; [concludes]
         end. simpl in *. repeat find_rewrite. lia.
-    - repeat find_rewrite. in_crush.
+    - repeat find_rewrite.
+      repeat break_or_hyp; subst;
+      intuition auto with datatypes.
   Qed.
 
   Lemma revertNetwork_In :
@@ -353,7 +361,8 @@ Section SeqNumCorrect.
         xs' ++ (revertPacket p) :: ys'.
   Proof using.
     intros.
-    apply in_split. apply revertNetwork_In; repeat find_rewrite; in_crush.
+    apply in_split. apply revertNetwork_In; repeat find_rewrite;
+      intuition auto with datatypes.
   Qed.
 
   Lemma processPackets_dedup :
@@ -427,7 +436,7 @@ Section SeqNumCorrect.
     find_rewrite.
     rewrite filter_app.
     rewrite map_app.
-    assert (In p (nwPackets st)) by (find_rewrite; in_crush).
+    assert (In p (nwPackets st)) by (find_rewrite; intuition auto with datatypes).
     match goal with
       | H : In _ _ |- _ =>
         apply dedup_In with (A_eq_dec := pkt_eq_dec) in H
@@ -440,7 +449,7 @@ Section SeqNumCorrect.
     match goal with
       | [ |- context [ filter ?f (?xs ++ ?p :: ?ys) ] ] =>
         assert (In p (filter f (xs ++ p :: ys)))
-          by (apply filter_In; repeat break_if; intuition)
+          by (apply filter_In; repeat break_if; intuition auto with datatypes)
     end. find_apply_lem_hyp in_split. break_exists.
     repeat find_rewrite.
     exists (map revertPacket x1), (map revertPacket x2).
@@ -461,7 +470,7 @@ Section SeqNumCorrect.
         match goal with
             p : packet |- _ =>
             assert (tmNum (pBody p) < tdNum (nwState st (pSrc p))) by
-                (eapply_prop sequence_sane; find_rewrite; in_crush)
+                (eapply_prop sequence_sane; find_rewrite; intuition auto with datatypes)
         end.
         repeat (break_if; simpl in *; repeat find_rewrite; intuition);
           unfold sequence_seen in *.
@@ -503,12 +512,14 @@ Section SeqNumCorrect.
            ** rewrite get_set_diff_default; auto.
         -- exfalso.
            match goal with H : _ = _ -> False |- _ => apply H end.
-           eapply_prop sequence_equality; repeat find_rewrite; in_crush.
-           ** find_apply_lem_hyp in_dedup_was_in. in_crush.
+           eapply_prop sequence_equality; repeat find_rewrite;
+             intuition auto with datatypes.
+           ** find_apply_lem_hyp in_dedup_was_in.
+               do_in_app; intuition auto with datatypes arith.
            ** case (name_eq_dec (pSrc p) (pSrc y)); intro.
               ++ rewrite e0 in i.
-                rewrite get_set_same_default in i.
-                case i; intro; intuition.
+                 rewrite get_set_same_default in i.
+                 case i; intro; intuition.
               ++ rewrite get_set_diff_default in i; intuition.
            ** case (name_eq_dec (pSrc p) (pSrc y)); intro; auto.
               rewrite get_set_diff_default in i; intuition.

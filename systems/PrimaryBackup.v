@@ -1,5 +1,4 @@
-Require Import Verdi.Verdi.
-Require Import Verdi.HandlerMonad.
+From Verdi Require Import Verdi HandlerMonad.
 
 Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
@@ -47,11 +46,10 @@ Section PrimaryBackup.
   Definition all_nodes : list name := [Primary; Backup].
 
   Lemma all_nodes_all :
-    forall x,
-      In x all_nodes.
+    forall x, In x all_nodes.
   Proof using.
     unfold all_nodes.
-    destruct x; intuition.
+    destruct x; intuition auto with datatypes.
   Qed.
 
   Lemma NoDup_all_nodes :
