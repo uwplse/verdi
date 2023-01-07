@@ -54,6 +54,7 @@ supported_coq_versions:
 
 tested_coq_opam_versions:
 - version: dev
+- version: '8.17'
 - version: '8.16'
 - version: '8.15'
 - version: '8.14'

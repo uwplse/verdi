@@ -1,12 +1,7 @@
-Require Import List.
+From Coq Require Import List Relations Permutation.
+From StructTact Require Import StructTactics.
+From Verdi Require Import Net.
 Import ListNotations.
-
-Require Import Relations.
-
-Require Import Permutation.
-
-Require Import StructTact.StructTactics.
-Require Import Verdi.Net.
 
 Section dup_drop_reorder.
   Variable A : Type.
@@ -129,7 +124,7 @@ Section dup_drop_reorder.
         subst. auto.
       + apply IHclos_refl_trans_n1.
         find_apply_lem_hyp in_app_or.
-        intuition.
+        intuition auto with datatypes.
   Qed.
 
   Lemma dup_drop_dup_early :

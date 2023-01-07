@@ -1,14 +1,10 @@
-Require Import Verdi.Verdi.
-Require Import Verdi.HandlerMonad.
-Require Import StructTact.Fin.
+From Verdi Require Import Verdi HandlerMonad.
+From StructTact Require Import Fin.
+From Verdi Require Import StatePacketPacketDecomposition.
+From Verdi Require Import LabeledNet.
+From InfSeqExt Require Import infseq classical.
 
 Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
-
-Require Import Verdi.StatePacketPacketDecomposition.
-Require Import Verdi.LabeledNet.
-
-Require Import InfSeqExt.infseq.
-Require Import InfSeqExt.classical.
 
 Set Implicit Arguments.
 
@@ -1289,7 +1285,6 @@ Section LockServ.
           -- subst. rewrite update_nop_ext.
              find_apply_lem_hyp IHrefl_trans_n1_trace; auto; [idtac].
              repeat find_rewrite.
-             simpl.
              in_crush.
              discriminate.
           -- subst.
@@ -1300,7 +1295,7 @@ Section LockServ.
                let H' := fresh H in
                pose H as H';
                  eapply locks_correct_locked_invariant with (p := p) in H';
-                 [| now repeat find_rewrite; in_crush];
+                 [| now repeat find_rewrite; intuition auto with datatypes];
                  eapply locks_correct_locked_at_head in H'; eauto
              end.
              unfold at_head_of_queue in *. break_exists. find_rewrite. find_inversion.
@@ -1329,7 +1324,7 @@ Section LockServ.
         * break_exists. break_and. subst.
           rewrite_update.
           find_apply_hyp_hyp.
-          intuition.
+          intuition auto with datatypes.
           -- subst. rewrite update_nop_ext. auto.
           -- find_apply_lem_hyp refl_trans_n1_1n_trace.
              find_apply_lem_hyp reachable_intro.
