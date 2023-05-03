@@ -867,7 +867,7 @@ Proof using.
 move => h m.
 elim => //=.
 move => n ns IH.
-case (adjacent_to_dec _ _) => H_dec /=.
+case: (adjacent_to_dec _ _) => H_dec /=.
   case => n' m' H_in.
   case: H_in => H_in.
     by inversion H_in.
@@ -994,7 +994,7 @@ elim => //= [|n l IH] failed h n'; first by rewrite remove_all_nil.
 have H_cn := remove_all_cons name_eq_dec failed n l.
 break_or_hyp; break_and; find_rewrite; first exact: IH.
 rewrite /=.
-case (adjacent_to_dec _ _) => H_dec' /=.
+case: (adjacent_to_dec _ _) => H_dec' /=.
   move => H_in.
   case: H_in => H_in.
     inversion H_in.
@@ -1013,7 +1013,7 @@ elim => [|n l IH] failed n' h; first by rewrite remove_all_nil.
 have H_cn := remove_all_cons name_eq_dec failed n l.
 break_or_hyp; break_and; find_rewrite; first exact: IH.
 rewrite /=.
-case (adjacent_to_dec _ _) => /= H_dec'.
+case: (adjacent_to_dec _ _) => /= H_dec'.
   move => H_in.
   case: H_in => H_in.
     rewrite {1}H_in -{4}H_in.
@@ -1161,7 +1161,7 @@ Proof using.
 move => m.
 elim => //=.
 move => n ns IH n' h H_adj H_in.
-case (adjacent_to_dec _ _) => H_dec; case: H_in => H_in.
+case: (adjacent_to_dec _ _) => H_dec; case: H_in => H_in.
 - rewrite /=.
   left.
   by rewrite H_in.
@@ -1572,7 +1572,7 @@ invcs H_step.
     repeat break_or_hyp; repeat break_and; repeat find_rewrite => //=.
     * by find_apply_lem_hyp not_in_failed_not_in.
     * by find_apply_lem_hyp in_failed_in.
-    * case adjacent_to_dec => H_dec; case adjacent_to_dec => H_dec' => //=.
+    * case: adjacent_to_dec => H_dec; case adjacent_to_dec => H_dec' => //=.
       + by rewrite IH.
       + by find_apply_lem_hyp tot_adjacent_to_fst_snd.
       + by find_apply_lem_hyp tot_adjacent_to_fst_snd.
