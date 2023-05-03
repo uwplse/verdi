@@ -111,7 +111,7 @@ Proof using name_map_bijective.
 move => f h d.
 apply functional_extensionality => n.
 rewrite /update /=.
-case (name_eq_dec _ _) => H_dec; case (name_eq_dec _ _) => H_dec' //.
+case: (name_eq_dec _ _) => H_dec; case (name_eq_dec _ _) => H_dec' //.
 - rewrite -H_dec in H_dec'.
   by rewrite H_dec.
 - case: H_dec'.
@@ -189,7 +189,7 @@ case => {net net' tr}.
     rewrite /nwS1 /nwS2 /=.
     apply functional_extensionality => n.
     rewrite /update /=.
-      case name_eq_dec => H_dec //.
+      case: name_eq_dec => H_dec //.
       by rewrite H_dec H_d.
     by rewrite H_eq_s.
 - move => h net net' out inp d l H_hnd H_eq.  
@@ -218,7 +218,7 @@ case => {net net' tr}.
       rewrite /nwS1 /nwS2 /=.
       apply functional_extensionality => n.
       rewrite /update /=.
-      case name_eq_dec => H_dec //.
+      case: name_eq_dec => H_dec //.
       by rewrite H_dec H_d.
     by rewrite H_eq_s.
 Qed.
@@ -594,7 +594,7 @@ invcs H_step.
     repeat break_or_hyp; repeat break_and; repeat find_rewrite => //=.
     * by find_apply_lem_hyp not_in_failed_not_in.
     * by find_apply_lem_hyp in_failed_in.
-    * case adjacent_to_dec => H_dec; case adjacent_to_dec => H_dec' => //=.
+    * case: adjacent_to_dec => H_dec; case adjacent_to_dec => H_dec' => //=.
       + by rewrite IH.
       + by find_apply_lem_hyp tot_adjacent_to_fst_snd.
       + by find_apply_lem_hyp tot_adjacent_to_fst_snd.
