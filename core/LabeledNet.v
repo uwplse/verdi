@@ -371,7 +371,7 @@ Section LabeledStepOrderFailure.
     invcs H_st.
     - set net' := {| onwPackets := _ ; onwState := _ |}.
       apply (@refl_trans_1n_trace_trans _ _ _ _ (failed', net)) => //.
-      rewrite (app_nil_end (map2fst _ _)).
+      rewrite -(app_nil_r (map2fst _ _)).
       apply: (@RT1nTStep _ _ _ _ (failed', net')); last exact: RT1nTBase.
       apply: (StepOrderedFailure_deliver _ _ _ H3) => //.
       rewrite /net_handlers /= /unlabeled_net_handlers /=.
@@ -379,7 +379,7 @@ Section LabeledStepOrderFailure.
       by tuple_inversion.
     - set net' := {| onwPackets := _ ; onwState := _ |}.
       apply (@refl_trans_1n_trace_trans _ _ _ _ (failed', net)) => //.
-      rewrite (app_nil_end (_ :: _)).
+      rewrite -(app_nil_r (_ :: _)).
       apply: (@RT1nTStep _ _ _ _ (failed', net')); last exact: RT1nTBase.
       apply: StepOrderedFailure_input => //; first by [].
       rewrite /input_handlers /= /unlabeled_input_handlers /=.
@@ -436,7 +436,7 @@ Section LabeledStepOrderDynamic.
     invcs H_st.
     - set net' := {| odnwNodes := _ ; odnwPackets := _ ; odnwState := _ |}.
       apply (@refl_trans_1n_trace_trans _ _ _ _ net) => //.
-      rewrite (app_nil_end (map2fst _ _)).
+      rewrite -(app_nil_r (map2fst _ _)).
       apply: (@RT1nTStep _ _ _ _ net'); last exact: RT1nTBase.
       apply: (StepOrderedDynamic_deliver _ _ _ H0 H1) => //.
       rewrite /net_handlers /= /unlabeled_net_handlers /=.
@@ -444,7 +444,7 @@ Section LabeledStepOrderDynamic.
       by tuple_inversion.
     - set net' := {| odnwNodes := _ ; odnwPackets := _ ; odnwState := _ |}.
       apply (@refl_trans_1n_trace_trans _ _ _ _ net) => //.
-      rewrite (app_nil_end (_ :: _)).
+      rewrite -(app_nil_r (_ :: _)).
       apply: (@RT1nTStep _ _ _ _ net'); last exact: RT1nTBase.
       apply: (StepOrderedDynamic_input _ _ H0) => //.
       rewrite /input_handlers /= /unlabeled_input_handlers /=.
@@ -504,7 +504,7 @@ Section LabeledStepOrderDynamicFailure.
     invcs H_st.
     - set net' := {| odnwNodes := _ ; odnwPackets := _ ; odnwState := _ |}.
       apply (@refl_trans_1n_trace_trans _ _ _ _ (failed', net)) => //.
-      rewrite (app_nil_end (map2fst _ _)).
+      rewrite -(app_nil_r (map2fst _ _)).
       apply: (@RT1nTStep _ _ _ _ (failed', net')); last exact: RT1nTBase.
       apply: (StepOrderedDynamicFailure_deliver _ _ _ _ _ H5 H6) => //.
       rewrite /net_handlers /= /unlabeled_net_handlers /=.
@@ -512,7 +512,7 @@ Section LabeledStepOrderDynamicFailure.
       by tuple_inversion.
     - set net' := {| odnwNodes := _ ; odnwPackets := _ ; odnwState := _ |}.
       apply (@refl_trans_1n_trace_trans _ _ _ _ (failed', net)) => //.
-      rewrite (app_nil_end (_ :: _)).
+      rewrite -(app_nil_r (_ :: _)).
       apply: (@RT1nTStep _ _ _ _ (failed', net')); last exact: RT1nTBase.
       apply: (StepOrderedDynamicFailure_input _ _ _ _ H5) => //.
       rewrite /input_handlers /= /unlabeled_input_handlers /=.

@@ -341,7 +341,7 @@ case: H => H.
   split.
   * have H_trans := refl_trans_1n_trace_trans H_star.
     apply: H_trans.
-    rewrite (app_nil_end (filterMap pt_map_trace_occ _)).
+    rewrite -(app_nil_r (filterMap pt_map_trace_occ _)).
     apply: (@RT1nTStep _ _ _ _ (pt_map_net x'')) => //.
     exact: RT1nTBase.
   * by rewrite 2!filterMap_app H_eq_tr filterMap_app.
@@ -351,7 +351,7 @@ move: IHH_step1 => [tr' [H_star H_tr]].
 exists tr'.
 split => //.
 rewrite 2!filterMap_app.
-by rewrite H_eq' -app_nil_end.
+by rewrite H_eq' app_nil_r.
 Qed.
 
 Context {fail_fst : FailureParams multi_fst}.
@@ -506,7 +506,7 @@ case: H => H.
   split.
   * have H_trans := refl_trans_1n_trace_trans H_star.
     apply: H_trans.
-    rewrite (app_nil_end (filterMap pt_map_trace_occ _)).
+    rewrite -(app_nil_r (filterMap pt_map_trace_occ _)).
     apply: (@RT1nTStep _ _ _ _ (map tot_map_name failed'', pt_map_net net'')) => //.
     exact: RT1nTBase.
   * by rewrite 3!filterMap_app H_eq_tr.
@@ -516,7 +516,7 @@ move: IHH_step1 => [tr' [H_star H_tr]].
 exists tr'.
 split => //.
 rewrite 2!filterMap_app.
-by rewrite H_eq -app_nil_end.
+by rewrite H_eq app_nil_r.
 Qed.
 
 Definition pt_map_onet (onet : @ordered_network _ multi_fst) : @ordered_network _ multi_snd :=
@@ -572,7 +572,7 @@ case H_m: pt_map_msg => [m'|] /=.
   by rewrite H_eq_f.
 rewrite pt_map_msg_update2 /= filterMap_app /=.
 case H_m': (pt_map_msg _) => [m'|]; first by rewrite H_m' in H_m.
-rewrite -app_nil_end.
+rewrite app_nil_r.
 set f1 := update2 _ _ _ _ _.
 set f2 := fun _ _ => _ _.
 have H_eq_f: f1 = f2.
@@ -731,11 +731,11 @@ apply step_ordered_pt_mapped_simulation_1 in H.
 case: H => H.
   have H_trans := refl_trans_1n_trace_trans IHH_step1.
   apply: H_trans.
-  rewrite (app_nil_end (filterMap pt_map_trace_ev _)).
+  rewrite -(app_nil_r (filterMap pt_map_trace_ev _)).
   apply: (@RT1nTStep _ _ _ _ (pt_map_onet x'')) => //.
   exact: RT1nTBase.
 move: H => [H_eq H_eq'].
-by rewrite H_eq H_eq' -app_nil_end.
+by rewrite H_eq H_eq' app_nil_r.
 Qed.
 
 Lemma pt_msg_in_map :
@@ -1136,11 +1136,11 @@ rewrite filterMap_app.
 case: H => H.
   have H_trans := refl_trans_1n_trace_trans IHH_step1.
   apply: H_trans.
-  rewrite (app_nil_end (filterMap pt_map_trace_ev _)).
+  rewrite -(app_nil_r (filterMap pt_map_trace_ev _)).
   apply: (@RT1nTStep _ _ _ _ (map tot_map_name failed'', pt_map_onet net'')) => //.
   exact: RT1nTBase.
 move: H => [H_eq_n [H_eq_f H_eq]].
-by rewrite H_eq_n -H_eq_f H_eq -app_nil_end.
+by rewrite H_eq_n -H_eq_f H_eq app_nil_r.
 Qed.
 
 Context {new_msg_fst : NewMsgParams multi_fst}.
@@ -1380,11 +1380,11 @@ rewrite filterMap_app.
 case: H => H.
   have H_trans := refl_trans_1n_trace_trans IHH_step1.
   apply: H_trans.
-  rewrite (app_nil_end (filterMap pt_map_trace_ev _)).
+  rewrite -(app_nil_r (filterMap pt_map_trace_ev _)).
   apply: (@RT1nTStep _ _ _ _ (map tot_map_name l0, pt_map_odnet o0)) => //.
   exact: RT1nTBase.
 move: H => [H_eq_n [H_eq_f H_eq]].
-by rewrite H_eq_n -H_eq_f H_eq -app_nil_end.
+by rewrite H_eq_n -H_eq_f H_eq app_nil_r.
 Qed.
 
 Lemma in_msg_filterMap_pt_map_msg :

@@ -304,7 +304,7 @@ Section PrimaryBackup.
     intros. induction tr1; simpl.
     - auto.
     - repeat break_match; subst; auto.
-      rewrite app_ass. auto using f_equal.
+      rewrite <- app_assoc. auto using f_equal.
   Qed.
 
   Lemma correspond_preserved_primary_same_no_outputs :
@@ -374,7 +374,7 @@ Section PrimaryBackup.
     simpl in *.
     repeat break_match. repeat find_inversion.
     find_rewrite. find_inversion.
-    rewrite app_ass. auto.
+    rewrite <- app_assoc. auto.
   Qed.
 
   Lemma inputs_m_inr_singleton :
@@ -475,7 +475,7 @@ Section PrimaryBackup.
     intros.
     rewrite outputs_m_app, outputs_1_app in *.
     repeat break_match.
-    rewrite app_ass.
+    rewrite <- app_assoc.
     simpl.
     repeat find_rewrite.
     rewrite processInputs_app in *.
@@ -484,7 +484,7 @@ Section PrimaryBackup.
     simpl in *. break_match. tuple_inversion.
     break_and. subst.
     find_rewrite. tuple_inversion.
-    rewrite <- app_ass.
+    rewrite app_assoc.
     find_rewrite.
     auto.
   Qed.
@@ -942,7 +942,7 @@ Section PrimaryBackup.
     - rewrite IHtr1.
       repeat break_match; subst.
       + auto.
-      + rewrite app_ass. auto.
+      + rewrite <- app_assoc. auto.
   Qed.
 
   Lemma simulation :
@@ -1270,7 +1270,7 @@ Section PrimaryBackup.
       rewrite revert_trace_app.
       rewrite inputs_1_app.
       rewrite IHrefl_trans_n1_trace.
-      repeat rewrite app_ass.
+      repeat rewrite <- app_assoc.
       f_equal.
       invc H1; simpl in *.
       + find_apply_lem_hyp PB_net_defn.

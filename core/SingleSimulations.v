@@ -106,7 +106,7 @@ case: H_st => H_st; first by rewrite -H_st; exists tr'.
 have [tr'' H_st'] := H_st.
 exists (tr' ++ tr'').
 apply: (refl_trans_1n_trace_trans H_star).
-have ->: tr'' = tr'' ++ [] by rewrite -app_nil_end.
+have ->: tr'' = tr'' ++ [] by rewrite app_nil_r.
 apply RT1nTStep with (x' := (tot_s_map_data (onwState net'' me))) => //.
 exact: RT1nTBase.
 Qed.
@@ -227,7 +227,7 @@ case: H_st => H_st; first by rewrite -H_st; exists tr'.
 have [tr'' H_st'] := H_st.
 exists (tr' ++ tr'').
 apply: (refl_trans_1n_trace_trans H_star).
-have ->: tr'' = tr'' ++ [] by rewrite -app_nil_end.
+have ->: tr'' = tr'' ++ [] by rewrite app_nil_r.
 apply RT1nTStep with (x' := (tot_s_map_data d)) => //.
 exact: RT1nTBase.
 Qed.
