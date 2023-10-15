@@ -131,7 +131,7 @@ Section LockServ.
   Proof using.
     unfold Nodes, list_Clients.
     apply NoDup_cons.
-    - in_crush. discriminate.
+    - in_crush_tac (intuition auto). discriminate.
     - apply NoDup_map_injective.
       + intros. congruence.
       + apply all_fin_NoDup.
@@ -1285,7 +1285,7 @@ Section LockServ.
           -- subst. rewrite update_nop_ext.
              find_apply_lem_hyp IHrefl_trans_n1_trace; auto; [idtac].
              repeat find_rewrite.
-             in_crush.
+             in_crush_tac (intuition auto with datatypes).
              discriminate.
           -- subst.
              find_apply_lem_hyp refl_trans_n1_1n_trace.
@@ -1310,15 +1310,15 @@ Section LockServ.
                 do 2 insterU IHrefl_trans_n1_trace.
                 repeat conclude_using eauto.
                 intuition.
-                ** in_crush. discriminate.
-                ** in_crush. discriminate.
+                ** in_crush_tac (intuition auto with datatypes). discriminate.
+                ** in_crush_tac (intuition auto with datatypes). discriminate.
           -- congruence.
           -- break_exists. intuition. subst. simpl.
              repeat find_rewrite. find_inversion. auto.
           -- subst. simpl.
              find_apply_hyp_hyp. intuition.
-             ++ repeat find_rewrite. in_crush. discriminate.
-             ++ repeat find_rewrite. in_crush.
+             ++ repeat find_rewrite. in_crush_tac (intuition auto with datatypes). discriminate.
+             ++ repeat find_rewrite. in_crush_tac (intuition auto with datatypes).
       + find_apply_lem_hyp InputHandler_cases.
         intuition.
         * break_exists. break_and. subst.
