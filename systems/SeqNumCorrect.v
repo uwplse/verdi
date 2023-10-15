@@ -660,7 +660,7 @@ Section SeqNumCorrect.
       break_or_hyp.
       * exists (tr' ++ tr2); split.
         + eapply refl_trans_1n_trace_trans; eauto.
-          rewrite (app_nil_end tr2).
+          rewrite <- (app_nil_r tr2).
           eapply RT1nTStep; eauto.
           apply RT1nTBase.
         + rewrite filterMap_app.
@@ -675,12 +675,12 @@ Section SeqNumCorrect.
           rewrite <- H
         end.
         rewrite filterMap_app.
-        destruct tr2; simpl in *; [ rewrite <- app_nil_end | idtac ]; auto.
+        destruct tr2; simpl in *; [ rewrite app_nil_r | idtac ]; auto.
         match goal with
         | [H : _ = [] |- _ ] =>
           rewrite H
         end.
-        rewrite <- app_nil_end; auto.
+        rewrite app_nil_r; auto.
   Qed.
 
   Theorem reachable_revert :

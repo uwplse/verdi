@@ -123,7 +123,7 @@ Section StepRelations.
     intros.
     induction H; simpl; auto.
     concludes.
-    rewrite app_ass.
+    rewrite <- app_assoc.
     constructor 2 with x'; auto.
   Qed.
 
@@ -208,7 +208,7 @@ Section StepRelations.
       constructor.
       auto.
     - concludes.
-      rewrite <- app_ass.
+      rewrite app_assoc.
       econstructor; eauto.
   Qed.
 
@@ -232,7 +232,7 @@ Section StepRelations.
     intros.
     induction H.
     - simpl. rewrite <- app_nil_r. econstructor; eauto. constructor.
-    - concludes. rewrite app_ass.
+    - concludes. rewrite <- app_assoc.
       econstructor; eauto.
   Qed.
 

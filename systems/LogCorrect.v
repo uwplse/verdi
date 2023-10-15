@@ -245,7 +245,7 @@ Section LogCorrect.
     | H : IOStreamWriter.unwrap _ = IOStreamWriter.unwrap _ |- _ => rewrite H
     end.
     rewrite nat_serialize_deserialize_id.
-    rewrite (app_nil_end (IOStreamWriter.unwrap _)).
+    rewrite <- (app_nil_r (IOStreamWriter.unwrap _)).
     rewrite list_serialize_deserialize_id_rec.
     find_rewrite.
     reflexivity.

@@ -296,7 +296,7 @@ rewrite map_app.
 match goal with
 | H : step_async_star _ _ _ |- _ => apply: (refl_trans_1n_trace_trans H)
 end.
-rewrite (app_nil_end (map _ _)).
+rewrite -(app_nil_r (map _ _)).
 apply: (@RT1nTStep _ _ _ _ (tot_map_net x'')) => //.
 exact: RT1nTBase.
 Qed.
@@ -571,7 +571,7 @@ rewrite map_app.
 match goal with
 | H : step_failure_star _ _ _ |- _ => apply: (refl_trans_1n_trace_trans H)
 end.
-rewrite (app_nil_end (map tot_map_trace_occ _)).
+rewrite -(app_nil_r (map tot_map_trace_occ _)).
 apply (@RT1nTStep _ _ _ _ (map tot_map_name l0, tot_map_net n0)) => //.
 exact: RT1nTBase.
 Qed.
@@ -1455,7 +1455,7 @@ rewrite map_app.
 match goal with
 | H : step_ordered_failure_star _ _ _ |- _ => apply: (refl_trans_1n_trace_trans H)
 end.
-rewrite (app_nil_end (map tot_map_trace _)).
+rewrite -(app_nil_r (map tot_map_trace _)).
 apply (@RT1nTStep _ _ _ _ (map tot_map_name l0, tot_map_onet o0)) => //.
 exact: RT1nTBase.
 Qed.
@@ -1668,7 +1668,7 @@ find_apply_lem_hyp step_ordered_dynamic_failure_tot_mapped_simulation_1.
   match goal with
   | H : step_ordered_dynamic_failure_star _ _ _ |- _ => apply: (refl_trans_1n_trace_trans H)
   end.
-  rewrite (app_nil_end (map tot_map_trace _)).
+  rewrite -(app_nil_r (map tot_map_trace _)).
   apply (@RT1nTStep _ _ _ _ (map tot_map_name l0, tot_map_odnet o0)) => //.
   exact: RT1nTBase.
 move: H_step1.

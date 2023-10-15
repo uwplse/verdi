@@ -246,7 +246,7 @@ case: H => H.
   exists (tr' ++ tr'').
   have H_trans := refl_trans_1n_trace_trans H_star.
   apply: H_trans.
-  have ->: tr'' = tr'' ++ [] by rewrite -app_nil_end.
+  have ->: tr'' = tr'' ++ [] by rewrite app_nil_r.
   apply: (@RT1nTStep _ _ _ _ (pt_ext_map_net x'')) => //.
   exact: RT1nTBase.
 move: H => [H_eq H_eq'].
@@ -361,7 +361,7 @@ case: H => H.
   exists (tr' ++ tr'').
   have H_trans := refl_trans_1n_trace_trans H_star.
   apply: H_trans.
-  have ->: tr'' = tr'' ++ [] by rewrite -app_nil_end.
+  have ->: tr'' = tr'' ++ [] by rewrite app_nil_r.
   apply: (@RT1nTStep _ _ _ _ (pt_ext_map_onet x'')) => //.
   exact: RT1nTBase.
 move: H => [H_eq H_eq'].
@@ -506,7 +506,7 @@ case: H => H.
   exists (tr' ++ tr'').
   have H_trans := refl_trans_1n_trace_trans H_star.
   apply: H_trans.
-  have ->: tr'' = tr'' ++ [] by rewrite -app_nil_end.
+  have ->: tr'' = tr'' ++ [] by rewrite app_nil_r.
   apply: (@RT1nTStep _ _ _ _ (map tot_map_name failed'', pt_ext_map_onet net'')) => //.
   exact: RT1nTBase.  
 move: H => [H_eq_n H_eq_f].
@@ -741,7 +741,7 @@ case: H => H.
   exists (tr' ++ tr'').
   have H_trans := refl_trans_1n_trace_trans H_star.
   apply: H_trans.
-  have ->: tr'' = tr'' ++ [] by rewrite -app_nil_end.
+  have ->: tr'' = tr'' ++ [] by rewrite app_nil_r.
   apply: (@RT1nTStep _ _ _ _ (map tot_map_name failed'', pt_ext_map_odnet net'')) => //.
   exact: RT1nTBase.  
 move: H => [H_eq_n H_eq_f].
