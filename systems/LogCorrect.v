@@ -68,7 +68,7 @@ Section LogCorrect.
           end.
           rewrite app_length.
           simpl.
-          rewrite NPeano.Nat.add_1_r.
+          rewrite Nat.add_1_r.
           reflexivity.
       + break_match.
         * find_inversion.
@@ -85,7 +85,7 @@ Section LogCorrect.
         end.
         rewrite app_length.
         simpl.
-        rewrite NPeano.Nat.add_1_r.
+        rewrite Nat.add_1_r.
         reflexivity.
       + rewrite apply_log_app.
         match goal with
@@ -127,7 +127,7 @@ Section LogCorrect.
           end.
           rewrite app_length.
           simpl.
-          rewrite NPeano.Nat.add_1_r.
+          rewrite Nat.add_1_r.
           reflexivity.
       + break_match.
         * find_inversion.
@@ -144,7 +144,7 @@ Section LogCorrect.
         end.
         rewrite app_length.
         simpl.
-        rewrite NPeano.Nat.add_1_r.
+        rewrite Nat.add_1_r.
         reflexivity.
       + rewrite apply_log_app.
         match goal with
