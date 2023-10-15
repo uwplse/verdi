@@ -11,4 +11,4 @@ Require Export StructTact.StructTactics.
 Require Export Verdi.VerdiHints.
 Require Export Verdi.Net.
 
-Require NPeano.
+Require PeanoNat.
