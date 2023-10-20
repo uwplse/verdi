@@ -1,6 +1,5 @@
-Require Import PeanoNat.
-Require Import Ascii.
-Require Extraction.
+From Coq Require Import PeanoNat Ascii.
+From Coq Require Extraction.
 
 Extract Inlined Constant Nat.max => "Pervasives.max".
 Extract Inlined Constant Nat.min => "Pervasives.min".

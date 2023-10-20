@@ -1,8 +1,6 @@
-Require Import Verdi.Verdi.
-Require Import InfSeqExt.infseq.
-Require Import InfSeqExt.exteq.
-
-Require Import Verdi.Ssrexport.
+From Verdi Require Import Verdi.
+From InfSeqExt Require Import infseq exteq.
+From Verdi Require Import Ssrexport.
 
 Set Implicit Arguments.
 

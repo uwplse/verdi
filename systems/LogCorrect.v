@@ -1,8 +1,7 @@
-Require Import Verdi.Verdi.
-Require Import Cheerios.Cheerios.
-
-Require Import Verdi.Log.
-Require Import FunctionalExtensionality.
+From Verdi Require Import Verdi.
+From Cheerios Require Import Cheerios.
+From Verdi Require Import Log.
+From Coq Require Import FunctionalExtensionality.
 
 Section LogCorrect.
   Context {orig_base_params : BaseParams}.

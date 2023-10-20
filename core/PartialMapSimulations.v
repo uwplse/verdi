@@ -1,15 +1,10 @@
-Require Import Verdi.Verdi.
-Require Import Verdi.DynamicNetLemmas.
-Require Import Verdi.TotalMapSimulations.
+From Verdi Require Import Verdi DynamicNetLemmas TotalMapSimulations.
+From Coq Require Import FunctionalExtensionality.
+From Coq Require Import Sumbool Sorting.Permutation.
+From Verdi Require Import DynamicNetLemmas.
+From Verdi Require Import Ssrexport.
 
 Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
-
-Require Import FunctionalExtensionality.
-Require Import Sumbool.
-Require Import Sorting.Permutation.
-Require Import Verdi.DynamicNetLemmas.
-
-Require Import Verdi.Ssrexport.
 
 Set Implicit Arguments.
 

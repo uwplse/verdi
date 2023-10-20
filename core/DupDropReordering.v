@@ -1,6 +1,7 @@
 From Coq Require Import List Relations Permutation.
 From StructTact Require Import StructTactics.
 From Verdi Require Import Net.
+
 Import ListNotations.
 
 Section dup_drop_reorder.

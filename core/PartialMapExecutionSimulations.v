@@ -1,19 +1,12 @@
-Require Import Verdi.Verdi.
-Require Import Verdi.LabeledNet.
-Require Import Verdi.TotalMapSimulations.
-Require Import Verdi.PartialMapSimulations.
-Require Import Verdi.TotalMapExecutionSimulations.
-
-Require Import InfSeqExt.infseq.
-Require Import InfSeqExt.map.
-Require Import InfSeqExt.exteq.
-
-Require Import FunctionalExtensionality.
+From Verdi Require Import Verdi LabeledNet.
+From Verdi Require Import TotalMapSimulations PartialMapSimulations.
+From Verdi Require Import TotalMapExecutionSimulations.
+From InfSeqExt Require Import infseq map exteq.
+From Coq Require Import FunctionalExtensionality.
+From Verdi Require Import Ssrexport.
+From Coq Require Import ssrbool.
 
 Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
-
-Require Import Verdi.Ssrexport.
-Require Import ssr.ssrbool.
 
 Set Implicit Arguments.
 

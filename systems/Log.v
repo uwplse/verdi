@@ -1,6 +1,5 @@
-Require Import Verdi.Verdi.
-
-Require Import Cheerios.Cheerios.
+From Verdi Require Import Verdi.
+From Cheerios Require Import Cheerios.
 
 Import DeserializerNotations.
 

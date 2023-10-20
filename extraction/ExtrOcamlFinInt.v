@@ -1,5 +1,5 @@
-Require Import StructTact.Fin.
-Require Extraction.
+From StructTact Require Import Fin.
+From Coq Require Extraction.
 
 Extract Inlined Constant fin => int.
 

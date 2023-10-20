@@ -1,14 +1,8 @@
-Require Export List.
+From Coq Require Export List.
 Export ListNotations.
-Require Export Arith.
-Require Export Lia.
-Require Export Coq.Numbers.Natural.Abstract.NDiv.
-Require Export Sorting.Permutation.
-
-Require Export StructTact.Util.
-Require Export StructTact.StructTactics.
-
-Require Export Verdi.VerdiHints.
-Require Export Verdi.Net.
-
-Require PeanoNat.
+From Coq Require Export Arith Lia.
+From Coq Require Export Numbers.Natural.Abstract.NDiv.
+From Coq Require Export Sorting.Permutation.
+From StructTact Require Export Util StructTactics.
+From Verdi Require Export VerdiHints Net.
+From Coq Require PeanoNat.

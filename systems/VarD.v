@@ -1,10 +1,6 @@
-Require Import Verdi.Verdi.
-
-Require Import FMapList.
-Require Import String.
-
-Require Import Verdi.FMapVeryWeak.
-Require Import Verdi.StateMachineHandlerMonad.
+From Verdi Require Import Verdi.
+From Coq Require Import FMapList String.
+From Verdi Require Import FMapVeryWeak StateMachineHandlerMonad.
 
 Definition key := string.
 Definition value := string.

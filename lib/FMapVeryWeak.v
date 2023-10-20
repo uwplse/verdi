@@ -1,16 +1,8 @@
-Require Import ZArith.
-
-Require Import FMapInterface.
-Require Import FMapPositive.
-Require Import FMapList.
-Require Import FMapFacts.
-
-Require Import String.
-Require Import Ascii.
-Require Import List.
-
-Require Import StructTact.StructTactics.
-Require Import StructTact.StringOrders.
+From Coq Require Import ZArith.
+From Coq Require Import FMapInterface FMapPositive.
+From Coq Require Import FMapList FMapFacts.
+From Coq Require Import String Ascii List.
+From StructTact Require Import StructTactics StringOrders.
 
 Import ListNotations.
 
@@ -20,8 +12,8 @@ Module Type VWS.
   Declare Module E : DecidableType.
 
   Definition key := E.t.
-#[global]
-  Hint Transparent key : core.
+
+  #[global] Hint Transparent key : core.
 
   Parameter t : Type -> Type.
 

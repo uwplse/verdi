@@ -1,5 +1,5 @@
-Require Import Bool.
-Require Extraction.
+From Coq Require Import Bool.
+From Coq Require Extraction.
 
 Extract Inlined Constant negb => "not".
 

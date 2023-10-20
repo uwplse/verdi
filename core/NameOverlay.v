@@ -1,7 +1,6 @@
-Require Import Verdi.Verdi.
-Require Import StructTact.Fin.
-
-Require Import OrderedType.
+From Verdi Require Import Verdi.
+From StructTact Require Import Fin.
+From Coq Require Import OrderedType.
 
 Module Type NameType.
   Parameter name : Type.
@@ -42,7 +41,7 @@ End NameOrderedTypeCompat.
 
 Module FinNameOrderedTypeCompat (N : NatValue) (FN : FinNameType N) <: NameOrderedTypeCompat FN := fin_OT_compat N.
 
-Require Import MSetInterface.
+From Coq Require Import MSetInterface.
 
 Module Type NameOrderedType (Import NT : NameType) <: OrderedType.
   Definition t := name.

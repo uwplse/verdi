@@ -1,9 +1,6 @@
-Require Import Verdi.Verdi.
-
-Require Import String.
-
-Require Import Verdi.VarD.
-Require Import Verdi.PrimaryBackup.
+From Verdi Require Import Verdi.
+From Coq Require Import String.
+From Verdi Require Import VarD PrimaryBackup.
 
 Open Scope string_scope.
 

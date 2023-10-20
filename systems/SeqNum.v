@@ -1,4 +1,4 @@
-Require Import Verdi.Verdi.
+From Verdi Require Import Verdi.
 
 Set Implicit Arguments.
 

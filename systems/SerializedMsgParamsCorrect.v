@@ -1,15 +1,10 @@
-Require Import StructTact.Util.
-Require Import Verdi.Verdi.
-
-Require Import FunctionalExtensionality.
-
-Require Import Verdi.TotalMapSimulations.
-Require Import Verdi.PartialMapSimulations.
-
-Require Import Cheerios.Cheerios.
-Require Import Verdi.SerializedMsgParams.
-
-Require Import Verdi.Ssrexport.
+From StructTact Require Import Util.
+From Verdi Require Import Verdi.
+From Coq Require Import FunctionalExtensionality.
+From Verdi Require Import TotalMapSimulations PartialMapSimulations.
+From Cheerios Require Import Cheerios.
+From Verdi Require Import SerializedMsgParams.
+From Verdi Require Import Ssrexport.
 
 Section SerializedMsgCorrect.
   Context {orig_base_params : BaseParams}.

@@ -1,4 +1,4 @@
-Require Import Verdi.Verdi.
+From Verdi Require Import Verdi.
 
 Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 
@@ -100,12 +100,6 @@ Class Decomposition (B : BaseParams) (M : MultiParams B) :=
 
 Section Decomposition.
   Context `{d : Decomposition}.
-
-  (* Fixpoint remove_one {A : Type} (A_eq_dec : forall x y : A, {x = y} + {x <> y}) a l :=
-    match l with
-      | x :: xs => if A_eq_dec a x then xs else x :: remove_one A_eq_dec a xs
-      | [] => []
-    end. *)
 
   Definition packet_eq_dec :
     forall p1 p2 : packet,

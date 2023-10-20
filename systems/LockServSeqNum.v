@@ -1,8 +1,6 @@
-Require Import Verdi.Verdi.
-
-Require Import Verdi.LockServ.
-Require Verdi.SeqNum.
-Require Import Verdi.SeqNumCorrect.
+From Verdi Require Import Verdi LockServ.
+From Verdi Require SeqNum.
+From Verdi Require Import SeqNumCorrect.
 
 Section LockServSeqNum.
 
