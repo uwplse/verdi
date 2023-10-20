@@ -1,7 +1,5 @@
-Require Import Verdi.Verdi.
-Require Import Verdi.DynamicNetLemmas.
-
-Require Import Verdi.Ssrexport.
+From Verdi Require Import Verdi DynamicNetLemmas.
+From Verdi Require Import Ssrexport.
 
 Set Implicit Arguments.
 

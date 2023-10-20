@@ -1,17 +1,11 @@
-Require Import List.
+From Coq Require Import List.
+From StructTact Require Import StructTactics.
+From StructTact Require Import Update Update2 RemoveAll.
+From Coq Require Import Sumbool Relation_Definitions RelationClasses.
+From Verdi Require Export VerdiHints.
+From Cheerios Require Import Cheerios.
+
 Import ListNotations.
-
-Require Import StructTact.StructTactics.
-Require Import StructTact.Update.
-Require Import StructTact.Update2.
-Require Import StructTact.RemoveAll.
-Require Import Sumbool.
-Require Import Relation_Definitions.
-Require Import RelationClasses.
-
-Require Export Verdi.VerdiHints.
-
-Require Import Cheerios.Cheerios.
 
 Set Implicit Arguments.
 

@@ -1,13 +1,8 @@
-Require Import List.
-
-Require Import StructTact.StructTactics.
-Require Import Verdi.Net.
-Require Import StructTact.Util.
-
-Require Import FunctionalExtensionality.
-Require Import Verdi.TotalMapSimulations.
-
-Require Import Verdi.Ssrexport.
+From Coq Require Import List.
+From StructTact Require Import StructTactics Util.
+From Verdi Require Import Net TotalMapSimulations.
+From Coq Require Import FunctionalExtensionality.
+From Verdi Require Import Ssrexport.
 
 Set Implicit Arguments.
 

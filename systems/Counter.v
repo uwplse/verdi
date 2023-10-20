@@ -1,5 +1,4 @@
-Require Import Verdi.Verdi.
-Require Import Verdi.HandlerMonad.
+From Verdi Require Import Verdi HandlerMonad.
 
 Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
 

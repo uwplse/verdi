@@ -1,4 +1,4 @@
-Require Import List.
+From Coq Require Import List.
 
 (*
 This file is very similar to HandlerMonad.v, but supports step_1

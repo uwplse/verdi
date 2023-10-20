@@ -1,12 +1,8 @@
-Require Import Verdi.Verdi.
-
-Require Import StructTact.Update.
-Require Import FunctionalExtensionality.
-Require Import Sumbool.
-Require Import Relation_Definitions.
-Require Import RelationClasses.
-
-Require Import Verdi.Ssrexport.
+From Verdi Require Import Verdi.
+From StructTact Require Import Update.
+From Coq Require Import FunctionalExtensionality.
+From Coq Require Import Sumbool Relation_Definitions RelationClasses.
+From Verdi Require Import Ssrexport.
 
 Set Implicit Arguments.
 

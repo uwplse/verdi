@@ -1,4 +1,5 @@
-Require Import List.
+From Coq Require Import List.
+
 Import ListNotations.
 
 Definition GenHandler (W S O A : Type) : Type := S -> A * list O * S * list W % type.

@@ -1,5 +1,5 @@
-Require Import List.
-Require Extraction.
+From Coq Require Import List.
+From Coq Require Extraction.
 
 Extract Inlined Constant length => "List.length".
 Extract Inlined Constant app => "List.append".

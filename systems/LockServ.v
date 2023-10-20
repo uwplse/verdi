@@ -1,10 +1,8 @@
-Require Import Verdi.Verdi.
-Require Import Verdi.HandlerMonad.
-Require Import StructTact.Fin.
+From Verdi Require Import Verdi HandlerMonad.
+From StructTact Require Import Fin.
+From Verdi Require Import StatePacketPacketDecomposition.
 
 Local Arguments update {_} {_} _ _ _ _ _ : simpl never.
-
-Require Import Verdi.StatePacketPacketDecomposition.
 
 Set Implicit Arguments.
 

@@ -1,7 +1,6 @@
-Require Import List.
-
-Require Import Verdi.Net.
-Require Import StructTact.StructTactics.
+From Coq Require Import List.
+From Verdi Require Import Net.
+From StructTact Require Import StructTactics.
 
 Class InverseTraceRelation `{State : Type} `{Event : Type} (step : step_relation State Event) :=
   {
