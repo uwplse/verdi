@@ -1,24 +1,16 @@
-default: Makefile.coq
-	$(MAKE) -f Makefile.coq
-
-quick: Makefile.coq
-	$(MAKE) -f Makefile.coq quick
-
-install: Makefile.coq
-	$(MAKE) -f Makefile.coq install
-
-Makefile.coq: _CoqProject
-	coq_makefile -f _CoqProject -o Makefile.coq
+all: Makefile.coq
+	@+$(MAKE) -f Makefile.coq all
 
 clean: Makefile.coq
-	$(MAKE) -f Makefile.coq cleanall
-	rm -f Makefile.coq Makefile.coq.conf
+	@+$(MAKE) -f Makefile.coq cleanall
+	@rm -f Makefile.coq Makefile.coq.conf
 
-lint:
-	@echo "Possible use of hypothesis names:"
-	find . -name '*.v' -exec grep -Hn 'H[0-9][0-9]*' {} \;
+Makefile.coq: _CoqProject
+	$(COQBIN)coq_makefile -f _CoqProject -o Makefile.coq
 
-distclean: clean
-	rm -f _CoqProject
+force _CoqProject Makefile: ;
 
-.PHONY: default quick clean lint distclean install
+%: Makefile.coq force
+	@+$(MAKE) -f Makefile.coq $@
+
+.PHONY: all clean force

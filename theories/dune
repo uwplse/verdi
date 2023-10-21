@@ -1,0 +1,6 @@
+(coq.theory
+ (name Verdi)
+ (package coq-verdi)
+ (synopsis "Framework for verification of implementations of distributed systems in Coq"))
+
+(include_subdirs qualified)
