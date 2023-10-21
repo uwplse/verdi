@@ -1,48 +1,45 @@
--Q core Verdi
--Q lib Verdi
--Q systems Verdi
--Q extraction Verdi
+-Q theories Verdi
 
-core/NameOverlay.v
-core/DynamicNetLemmas.v
-core/Net.v
-core/HandlerMonad.v
-core/Verdi.v
-core/StateMachineHandlerMonad.v
-core/InverseTraceRelations.v
-core/SingleSimulations.v
-core/PartialMapSimulations.v
-core/TotalMapExecutionSimulations.v
-core/VerdiHints.v
-core/DupDropReordering.v
-core/PartialMapExecutionSimulations.v
-core/GhostSimulations.v
-core/StatePacketPacketDecomposition.v
-core/TraceRelations.v
-core/LabeledNet.v
-core/TotalMapSimulations.v
-core/PartialExtendedMapSimulations.v
+theories/Core/NameOverlay.v
+theories/Core/DynamicNetLemmas.v
+theories/Core/Net.v
+theories/Core/HandlerMonad.v
+theories/Core/Verdi.v
+theories/Core/StateMachineHandlerMonad.v
+theories/Core/InverseTraceRelations.v
+theories/Core/SingleSimulations.v
+theories/Core/PartialMapSimulations.v
+theories/Core/TotalMapExecutionSimulations.v
+theories/Core/VerdiHints.v
+theories/Core/DupDropReordering.v
+theories/Core/PartialMapExecutionSimulations.v
+theories/Core/GhostSimulations.v
+theories/Core/StatePacketPacketDecomposition.v
+theories/Core/TraceRelations.v
+theories/Core/LabeledNet.v
+theories/Core/TotalMapSimulations.v
+theories/Core/PartialExtendedMapSimulations.v
 
-lib/Ssrexport.v
-lib/FMapVeryWeak.v
+theories/Lib/Ssrexport.v
+theories/Lib/FMapVeryWeak.v
 
-systems/Counter.v
-systems/SerializedMsgParams.v
-systems/PrimaryBackup.v
-systems/SerializedMsgParamsCorrect.v
-systems/LockServSeqNum.v
-systems/VarDPrimaryBackup.v
-systems/VarD.v
-systems/SeqNum.v
-systems/LiveLockServ.v
-systems/SeqNumCorrect.v
-systems/LockServ.v
-systems/Log.v
-systems/LogCorrect.v
+theories/Systems/Counter.v
+theories/Systems/SerializedMsgParams.v
+theories/Systems/PrimaryBackup.v
+theories/Systems/SerializedMsgParamsCorrect.v
+theories/Systems/LockServSeqNum.v
+theories/Systems/VarDPrimaryBackup.v
+theories/Systems/VarD.v
+theories/Systems/SeqNum.v
+theories/Systems/LiveLockServ.v
+theories/Systems/SeqNumCorrect.v
+theories/Systems/LockServ.v
+theories/Systems/Log.v
+theories/Systems/LogCorrect.v
 
-extraction/ExtrOcamlFinInt.v
-extraction/ExtrOcamlNatIntExt.v
-extraction/ExtrOcamlDiskOp.v
-extraction/ExtrOcamlBasicExt.v
-extraction/ExtrOcamlBool.v
-extraction/ExtrOcamlList.v
+theories/Extraction/ExtrOcamlFinInt.v
+theories/Extraction/ExtrOcamlNatIntExt.v
+theories/Extraction/ExtrOcamlDiskOp.v
+theories/Extraction/ExtrOcamlBasicExt.v
+theories/Extraction/ExtrOcamlBool.v
+theories/Extraction/ExtrOcamlList.v
