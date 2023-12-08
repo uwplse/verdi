@@ -1,9 +1,13 @@
+<!---
+This file was generated from `meta.yml`, please do not edit manually.
+Follow the instructions on https://github.com/coq-community/templates to regenerate.
+--->
 # Verdi
 
 [![Docker CI][docker-action-shield]][docker-action-link]
 
-[docker-action-shield]: https://github.com/uwplse/verdi/workflows/Docker%20CI/badge.svg?branch=master
-[docker-action-link]: https://github.com/uwplse/verdi/actions?query=workflow:"Docker%20CI"
+[docker-action-shield]: https://github.com/uwplse/verdi/actions/workflows/docker-action.yml/badge.svg?branch=master
+[docker-action-link]: https://github.com/uwplse/verdi/actions/workflows/docker-action.yml
 
 
 
@@ -34,8 +38,8 @@ properties in a more adversarial environment.
   - [Cheerios](https://github.com/uwplse/cheerios)
 - Coq namespace: `Verdi`
 - Related publication(s):
-  - [Verdi: A Framework for Implementing and Verifying Distributed Systems](http://verdi.uwplse.org/verdi.pdf) doi:[10.1145/2737924.2737958](https://doi.org/10.1145/2737924.2737958)
-  - [Planning for Change in a Formal Verification of the Raft Consensus Protocol](http://verdi.uwplse.org/raft-proof.pdf) doi:[10.1145/2854065.2854081](https://doi.org/10.1145/2854065.2854081)
+  - [Verdi: A Framework for Implementing and Verifying Distributed Systems](https://homes.cs.washington.edu/~mernst/pubs/verify-distsystem-pldi2015.pdf) doi:[10.1145/2737924.2737958](https://doi.org/10.1145/2737924.2737958)
+  - [Planning for Change in a Formal Verification of the Raft Consensus Protocol](https://homes.cs.washington.edu/~mernst/pubs/raft-proof-cpp2016.pdf) doi:[10.1145/2854065.2854081](https://doi.org/10.1145/2854065.2854081)
 
 ## Building and installation instructions
 
