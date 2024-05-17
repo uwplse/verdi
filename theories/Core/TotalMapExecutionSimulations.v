@@ -138,9 +138,7 @@ apply: (@Cons_lb_step_exec _ _ _ _ _ _ (List.map tot_map_trace_occ tr)) => /=.
 - simpl in *.
   find_rewrite.
   by rewrite map_app.
-- set e0 := {| evt_a := _ ; evt_l := _ ; evt_trace := _ |}.
-  have ->: e0 = tot_map_net_event e' by [].
-  pose s' := Cons e' s0.
+- pose s' := Cons e' s0.
   rewrite (tot_map_net_event_map_unfold s').
   exact: c.
 Qed.
@@ -291,9 +289,7 @@ apply: (@Cons_lb_step_exec _ _ _ _ _ _ (List.map tot_map_trace tr)) => /=.
 - simpl in *.
   find_rewrite.
   by rewrite map_app.
-- set e0 := {| evt_a := _ ; evt_l := _ ; evt_trace := _ |}.
-  have ->: e0 = tot_map_onet_event e' by [].
-  pose s' := Cons e' s0.
+- pose s' := Cons e' s0.
   rewrite (tot_map_onet_event_map_unfold s').
   exact: c.
 Qed.
@@ -448,9 +444,7 @@ apply: (@Cons_lb_step_exec _ _ _ _ _ _ (List.map tot_map_trace tr)) => /=.
 - simpl in *.
   find_rewrite.
   by rewrite map_app.
-- set e0 := {| evt_a := _ ; evt_l := _ ; evt_trace := _ |}.
-  have ->: e0 = tot_map_odnet_event e' by [].
-  pose s' := Cons e' s0.
+- pose s' := Cons e' s0.
   rewrite (tot_map_odnet_event_map_unfold s').
   exact: c.
 Qed.
