@@ -1584,8 +1584,8 @@ invcs H_step.
   * rewrite -tot_net_handlers_eq /tot_mapped_net_handlers.
     repeat break_let.
     by repeat tuple_inversion.
-  * set u1 := fun _ => match _ with | _ => _ end.
-    set u2 := update _ _ _ _.   
+  * set u1 := fun _ => if _ is None then _ else _.
+    set u2 := update _ _ _ _.
     rewrite collate_tot_map_update2_eq.
     suff H_suff: u1 = u2 by rewrite H_suff.
     rewrite /u1 /u2 /update /=.
@@ -1606,7 +1606,7 @@ invcs H_step.
     repeat break_let.
     by repeat tuple_inversion.
   * rewrite collate_tot_map_eq.
-    set u1 := fun _ => match _ with | _ => _ end.
+    set u1 := fun _ => if _ is None then _ else _.
     set u2 := update _ _ _ _.   
     suff H_suff: u1 = u2 by rewrite H_suff.
     rewrite /u1 /u2 /update /=.
