@@ -131,7 +131,7 @@ Section SerializedMsgCorrect.
   rewrite /tot_map_odnet.
   rewrite /tot_map_name /= /id /= map_id.
   rewrite /serialize_odnet.
-  set f := fun _ => match _ with _ => _ end.
+  set f := fun _ => if _ is None then _ else _.
   by have ->: odnwState net = f by rewrite /f; apply functional_extensionality => n; case: odnwState.
   Qed.
 
@@ -517,7 +517,7 @@ Section SerializedMsgCorrect.
   rewrite /pt_map_odnet /pt_map_data /= /id /= /pt_map_msg.
   set fm := fun _ _ => filterMap _ _.
   rewrite map_id.
-  set s := fun _ => match _ with _ => _ end.
+  set s := fun _ => if _ is None then _ else _.
   have H_eq: odnwState net = s.
     rewrite /s.
     apply functional_extensionality => n.

@@ -633,7 +633,7 @@ invcs H_step => //=.
     by repeat tuple_inversion.
   * rewrite {2}/pt_map_odnet /=.
     rewrite (@collate_pt_map_update2_eq _ _ _ _ name_map).
-    set f1 := fun _ => match _ with _ => _ end.    
+    set f1 := fun _ => if _ is None then _ else _.    
     set f2 := update _ _ _ _.
     have H_eq_f: f1 = f2.
       rewrite /f1 /f2.
@@ -664,7 +664,7 @@ invcs H_step => //=.
     by repeat tuple_inversion.
   * rewrite {2}/pt_map_odnet /=.
     rewrite (@collate_pt_map_eq _ _ _ _ name_map).
-    set f1 := fun _ => match _ with _ => _ end.
+    set f1 := fun _ => if _ is None then _ else _.
     set f2 := update _ _ _ _.
     have H_eq_f: f1 = f2.
       rewrite /f1 /f2.
@@ -750,8 +750,8 @@ invcs H_step => //=.
   repeat tuple_inversion.
   rewrite /pt_map_odnet /=.
   rewrite (@collate_pt_map_eq _ _ _ _ name_map) H0 /=.
-  set s1 := fun _ => match _ with _ => _ end.
-  set s2 := fun _ => match _ with _ => _ end.
+  set s1 := fun _ => if _ is None then _ else _.
+  set s2 := fun _ => if _ is None then _ else _.
   have H_eq_s: s1 = s2.
     rewrite /s1 /s2.
     apply functional_extensionality => n.

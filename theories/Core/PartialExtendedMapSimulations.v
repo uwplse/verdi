@@ -611,7 +611,7 @@ invcs H_step.
       rewrite /pt_ext_mapped_net_handlers /= in H_q.
       by repeat break_let; repeat tuple_inversion.
     * rewrite /= /pt_ext_map_odnet /=.
-      set u1 := fun _ => match _ with | _ => _ end.
+      set u1 := fun _ => if _ is None then _ else _.
       set u2 := update _ _ _ _.
       rewrite collate_pt_map_update2_eq.
       suff H_suff: u1 = u2 by rewrite H_suff.
@@ -627,7 +627,7 @@ invcs H_step.
   have [H_eq_d H_ms] := pt_ext_net_handlers_none _ _ _ _ Heqo H7.
   rewrite /pt_ext_map_odnet /= collate_pt_map_update2_eq H_ms /=.
   set nwP1 := update2 _ _ _ _ _.
-  set nwS1 := fun _ => match _ with _ => _ end.
+  set nwS1 := fun _ => if _ is None then _ else _.
   set nwP2 := fun _ _ => _.
   set nwS2 := fun _ => _.
   have H_eq_s: nwS1 = nwS2.
@@ -661,7 +661,7 @@ invcs H_step.
       find_rewrite.
       by repeat tuple_inversion.
     * rewrite /= /pt_ext_map_odnet /= collate_pt_map_eq.
-      set u1 := fun _ => match _ with | _ => _ end.
+      set u1 := fun _ => if _ is None then _ else _.
       set u2 := update _ _ _ _.
       suff H_suff: u1 = u2 by rewrite H_suff.
       rewrite /u1 /u2 /update /=.
@@ -676,8 +676,8 @@ invcs H_step.
   have [H_d H_l] := pt_ext_input_handlers_none h inp d Heqo H6.
   split => //=.
   rewrite collate_pt_map_eq H_l /=.
-  set nwS1 := fun n : name => match _ with | _ => _ end.
-  set nwS2 := fun n : name => match _ with | _ => _ end.
+  set nwS1 := fun n : name => if _ is None then _ else _.
+  set nwS2 := fun n : name => if _ is None then _ else _.
   have H_eq_n: nwS1 = nwS2.
     rewrite /nwS1 /nwS2 /=.
     apply functional_extensionality => n.
