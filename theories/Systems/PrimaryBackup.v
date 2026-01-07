@@ -824,11 +824,11 @@ Section PrimaryBackup.
 
   Definition network_invariant (net : @network _ PB_multi_params) : Prop :=
     (nwPackets net = [] /\ state (nwState net Primary) = state (nwState net Backup)) \/
-    (exists i is, nwPackets net = [mkPacket Primary Backup (BackItUp i)] /\
-               queue (nwState net Primary) = i :: is /\
+    (exists i si, nwPackets net = [mkPacket Primary Backup (BackItUp i)] /\
+               queue (nwState net Primary) = i :: si /\
                state (nwState net Primary) = state (nwState net Backup)) \/
     (nwPackets net = [mkPacket Backup Primary Ack] /\
-     exists i is, queue (nwState net Primary) = i :: is /\
+     exists i si, queue (nwState net Primary) = i :: si /\
                   snd (handler i (state (nwState net Primary))) = state (nwState net Backup)).
 
   Ltac prep := subst; simpl in *; try find_inversion; repeat find_rewrite; simpl in *.

@@ -91,7 +91,7 @@ Section LockServ.
                                  ServerNetHandler,
                                  ClientNetHandler,
                                  ClientIOHandler,
-                                 ServerIOHandler in *).
+                                 ServerIOHandler in * ).
 
 
 
